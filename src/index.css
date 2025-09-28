@@ -2,41 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* E-Commerce Admin Panel Design System - Professional Blue Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Professional Admin Color Palette */
+    --background: 248 250 252;
+    --foreground: 226 232 240;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 226 232 240;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 226 232 240;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Professional Blue Primary */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 55%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Admin Secondary Colors */
+    --secondary: 226 232 240;
+    --secondary-foreground: 30 41% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 248 250 252;
+    --muted-foreground: 100 116 139;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 226 232 240;
+    --accent-foreground: 30 41% 25%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Admin Status Colors */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    /* Admin Interface Elements */
+    --border: 226 232 240;
+    --input: 0 0% 100%;
+    --ring: 217 91% 60%;
+
+    /* Admin Layout */
+    --sidebar-bg: 0 0% 100%;
+    --sidebar-border: 226 232 240;
+    --sidebar-active: 217 91% 97%;
+    
+    /* Admin Cards & Stats */
+    --stat-card-bg: 0 0% 100%;
+    --stat-card-shadow: 226 232 240;
+    
+    /* Professional Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 45%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(248 250 252));
+    
+    /* Professional Shadows */
+    --shadow-card: 0 1px 3px 0 hsl(226 232 240 / 0.1), 0 1px 2px 0 hsl(226 232 240 / 0.06);
+    --shadow-elevated: 0 10px 15px -3px hsl(226 232 240 / 0.1), 0 4px 6px -2px hsl(226 232 240 / 0.05);
+    
+    /* Smooth Transitions */
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -94,12 +125,39 @@ All colors MUST be HSL.
   }
 }
 
+/* Admin Utility Classes */
+@layer components {
+  .admin-card {
+    @apply bg-card border border-border rounded-lg shadow-[var(--shadow-card)] transition-[var(--transition-base)];
+  }
+  
+  .admin-card-elevated {
+    @apply admin-card shadow-[var(--shadow-elevated)] hover:shadow-[var(--shadow-elevated)];
+  }
+  
+  .admin-stat-card {
+    @apply admin-card p-6 hover:shadow-[var(--shadow-elevated)] cursor-pointer transition-[var(--transition-smooth)];
+  }
+  
+  .admin-button-primary {
+    @apply bg-primary hover:bg-[hsl(var(--primary-hover))] text-primary-foreground font-medium px-4 py-2 rounded-lg transition-[var(--transition-base)];
+  }
+  
+  .admin-button-secondary {
+    @apply bg-secondary hover:bg-muted text-secondary-foreground border border-border font-medium px-4 py-2 rounded-lg transition-[var(--transition-base)];
+  }
+  
+  .admin-input {
+    @apply bg-input border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring transition-[var(--transition-base)];
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
