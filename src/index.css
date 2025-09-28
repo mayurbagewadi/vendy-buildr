@@ -6,15 +6,15 @@
 
 @layer base {
   :root {
-    /* Professional Admin Color Palette */
-    --background: 248 250 252;
-    --foreground: 226 232 240;
+    /* Professional Admin Color Palette - All HSL Values */
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 226 232 240;
+    --card-foreground: 222.2 84% 4.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 226 232 240;
+    --popover-foreground: 222.2 84% 4.9%;
 
     /* Professional Blue Primary */
     --primary: 217 91% 60%;
@@ -22,14 +22,14 @@
     --primary-hover: 217 91% 55%;
 
     /* Admin Secondary Colors */
-    --secondary: 226 232 240;
-    --secondary-foreground: 30 41% 25%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 248 250 252;
-    --muted-foreground: 100 116 139;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 226 232 240;
-    --accent-foreground: 30 41% 25%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
     /* Admin Status Colors */
     --success: 142 71% 45%;
@@ -42,26 +42,26 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Admin Interface Elements */
-    --border: 226 232 240;
+    --border: 214.3 31.8% 91.4%;
     --input: 0 0% 100%;
     --ring: 217 91% 60%;
 
     /* Admin Layout */
     --sidebar-bg: 0 0% 100%;
-    --sidebar-border: 226 232 240;
+    --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-active: 217 91% 97%;
     
     /* Admin Cards & Stats */
     --stat-card-bg: 0 0% 100%;
-    --stat-card-shadow: 226 232 240;
+    --stat-card-shadow: 214.3 31.8% 91.4%;
     
     /* Professional Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 45%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(248 250 252));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98%));
     
     /* Professional Shadows */
-    --shadow-card: 0 1px 3px 0 hsl(226 232 240 / 0.1), 0 1px 2px 0 hsl(226 232 240 / 0.06);
-    --shadow-elevated: 0 10px 15px -3px hsl(226 232 240 / 0.1), 0 4px 6px -2px hsl(226 232 240 / 0.05);
+    --shadow-card: 0 1px 3px 0 hsl(214.3 31.8% 91.4% / 0.1), 0 1px 2px 0 hsl(214.3 31.8% 91.4% / 0.06);
+    --shadow-elevated: 0 10px 15px -3px hsl(214.3 31.8% 91.4% / 0.1), 0 4px 6px -2px hsl(214.3 31.8% 91.4% / 0.05);
     
     /* Smooth Transitions */
     --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
