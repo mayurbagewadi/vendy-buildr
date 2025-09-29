@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { 
   Table, 
   TableBody, 
@@ -19,21 +28,34 @@ import {
   Eye, 
   Edit,
   Trash2,
-  Filter
+  Filter,
+  Layers3
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 interface Product {
   id: string;
   name: string;
   description: string;
-  price: number;
+  basePrice?: number;
+  price?: number; // for backward compatibility
   category: string;
-  sku: string;
-  stock: number;
+  baseSku?: string;
+  sku?: string; // for backward compatibility
+  baseStock?: number;
+  stock?: number; // for backward compatibility
   status: "active" | "draft" | "inactive";
   images: string[];
   createdAt: string;
+  variants?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    sku?: string;
+  }>;
+  variantCount?: number;
+  priceRange?: string;
 }
 
 const Products = () => {
@@ -41,6 +63,10 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     // Load products from localStorage
@@ -53,14 +79,21 @@ const Products = () => {
   }, []);
 
   useEffect(() => {
-    // Filter products based on search term
-    const filtered = products.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter products based on search term, category, and status
+    let filtered = products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.sku || product.baseSku || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+      const matchesStatus = statusFilter === "all" || product.status === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+    
     setFilteredProducts(filtered);
-  }, [products, searchTerm]);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [products, searchTerm, categoryFilter, statusFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -80,6 +113,44 @@ const Products = () => {
       style: 'currency',
       currency: 'USD'
     }).format(price);
+  };
+
+  const deleteProduct = (productId: string) => {
+    const updatedProducts = products.filter(p => p.id !== productId);
+    setProducts(updatedProducts);
+    localStorage.setItem("products", JSON.stringify(updatedProducts));
+    toast({
+      title: "Product deleted",
+      description: "Product has been removed from your catalog",
+    });
+  };
+
+  const getUniqueCategories = () => {
+    const categories = [...new Set(products.map(p => p.category))];
+    return categories.sort();
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
   };
 
   return (
@@ -147,7 +218,7 @@ const Products = () => {
         {/* Search and Filters */}
         <Card>
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -157,10 +228,35 @@ const Products = () => {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline">
-                <Filter className="w-4 h-4 mr-2" />
-                Filters
-              </Button>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {getUniqueCategories().map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -168,7 +264,12 @@ const Products = () => {
         {/* Products Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Product List</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Product List ({filteredProducts.length})</CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {filteredProducts.length === 0 ? (
@@ -192,19 +293,18 @@ const Products = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="hover:bg-transparent">
                       <TableHead>Product</TableHead>
-                      <TableHead>SKU</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Stock</TableHead>
+                      <TableHead>Variants</TableHead>
+                      <TableHead>Price Range</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
+                    {paginatedProducts.map((product) => (
+                      <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
@@ -212,19 +312,28 @@ const Products = () => {
                             </div>
                             <div>
                               <p className="font-medium text-foreground">{product.name}</p>
-                              <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                                {product.description}
+                              <p className="text-sm text-muted-foreground font-mono">
+                                {product.baseSku || product.sku}
                               </p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">{product.sku}</TableCell>
-                        <TableCell>{product.category}</TableCell>
-                        <TableCell className="font-semibold">{formatPrice(product.price)}</TableCell>
                         <TableCell>
-                          <span className={`${product.stock < 10 ? 'text-warning' : 'text-foreground'}`}>
-                            {product.stock}
-                          </span>
+                          <Badge variant="outline">{product.category}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Layers3 className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {product.variantCount || 0}
+                            </span>
+                            {product.variantCount && product.variantCount > 0 && (
+                              <span className="text-muted-foreground text-sm">variants</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {product.priceRange || formatPrice(product.basePrice || product.price || 0)}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(product.status)}>
@@ -233,13 +342,19 @@ const Products = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" title="View Details">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" title="Edit Product">
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => deleteProduct(product.id)}
+                              title="Delete Product"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -248,6 +363,41 @@ const Products = () => {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredProducts.length > itemsPerPage && (
+              <div className="mt-6 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {generatePageNumbers().map((pageNum) => (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             )}
           </CardContent>

@@ -9,43 +9,59 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Upload, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 
-const productSchema = z.object({
-  name: z.string().trim().min(1, "Product name is required").max(100, "Name must be less than 100 characters"),
-  description: z.string().trim().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
+const variantSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1, "Variant name is required"),
   price: z.string().refine((val) => {
     const num = parseFloat(val);
     return !isNaN(num) && num > 0;
   }, "Price must be a valid positive number"),
+  sku: z.string().trim().optional(),
+});
+
+const productSchema = z.object({
+  name: z.string().trim().min(1, "Product name is required").max(100, "Name must be less than 100 characters"),
+  description: z.string().trim().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
   category: z.string().min(1, "Category is required"),
-  sku: z.string().trim().min(1, "SKU is required").max(50, "SKU must be less than 50 characters"),
-  stock: z.string().refine((val) => {
+  basePrice: z.string().refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0;
+  }, "Base price must be a valid positive number"),
+  baseSku: z.string().trim().min(1, "Base SKU is required").max(50, "SKU must be less than 50 characters"),
+  baseStock: z.string().refine((val) => {
     const num = parseInt(val);
     return !isNaN(num) && num >= 0;
   }, "Stock must be a valid number (0 or greater)"),
   status: z.enum(["active", "draft", "inactive"]),
+  variants: z.array(variantSchema).optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
+type Variant = z.infer<typeof variantSchema>;
 
 const AddProduct = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
+  const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       description: "",
-      price: "",
+      basePrice: "",
       category: "",
-      sku: "",
-      stock: "",
+      baseSku: "",
+      baseStock: "",
       status: "draft",
+      variants: [],
     },
   });
 
@@ -104,6 +120,44 @@ const AddProduct = () => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const addVariant = () => {
+    if (!newVariant.name.trim() || !newVariant.price.trim()) {
+      toast({
+        title: "Invalid variant",
+        description: "Please provide variant name and price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const variant: Variant = {
+      id: Date.now().toString(),
+      name: newVariant.name.trim(),
+      price: newVariant.price,
+      sku: newVariant.sku.trim() || undefined,
+    };
+
+    setVariants(prev => [...prev, variant]);
+    setNewVariant({ name: "", price: "", sku: "" });
+  };
+
+  const removeVariant = (id: string) => {
+    setVariants(prev => prev.filter(v => v.id !== id));
+  };
+
+  const getPriceRange = () => {
+    if (variants.length === 0) return null;
+    
+    const prices = variants.map(v => parseFloat(v.price));
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    
+    if (minPrice === maxPrice) {
+      return `$${minPrice.toFixed(2)}`;
+    }
+    return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+  };
+
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
     
@@ -114,8 +168,14 @@ const AddProduct = () => {
       // In real app, would upload images and save product to backend
       const productData = {
         ...data,
-        price: parseFloat(data.price),
-        stock: parseInt(data.stock),
+        basePrice: parseFloat(data.basePrice),
+        baseStock: parseInt(data.baseStock),
+        variants: variants.map(v => ({
+          ...v,
+          price: parseFloat(v.price),
+        })),
+        variantCount: variants.length,
+        priceRange: getPriceRange() || `$${parseFloat(data.basePrice).toFixed(2)}`,
         images: imageFiles.map(file => file.name),
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
@@ -211,10 +271,10 @@ const AddProduct = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="price"
+                        name="basePrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Price ($)</FormLabel>
+                            <FormLabel>Base Price ($)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -257,10 +317,10 @@ const AddProduct = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="sku"
+                        name="baseSku"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>SKU</FormLabel>
+                            <FormLabel>Base SKU</FormLabel>
                             <FormControl>
                               <Input placeholder="Product SKU" {...field} />
                             </FormControl>
@@ -271,10 +331,10 @@ const AddProduct = () => {
 
                       <FormField
                         control={form.control}
-                        name="stock"
+                        name="baseStock"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Stock Quantity</FormLabel>
+                            <FormLabel>Base Stock Quantity</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -287,6 +347,101 @@ const AddProduct = () => {
                         )}
                       />
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Product Variants */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Variants</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Create different variations of your product (e.g., sizes, weights, colors)
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Add New Variant */}
+                    <div className="border rounded-lg p-4 space-y-4">
+                      <h4 className="font-medium">Add Variant</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Variant Name</label>
+                          <Input
+                            placeholder="e.g., 1 KG Pack, Size XL"
+                            value={newVariant.name}
+                            onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Price ($)</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={newVariant.price}
+                            onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">SKU (Optional)</label>
+                          <Input
+                            placeholder="Optional SKU"
+                            value={newVariant.sku}
+                            onChange={(e) => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <Button type="button" onClick={addVariant} size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Variant
+                      </Button>
+                    </div>
+
+                    {/* Variants Preview */}
+                    {variants.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">Variants ({variants.length})</h4>
+                          <div className="text-sm text-muted-foreground">
+                            Price Range: <span className="font-medium">{getPriceRange()}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Variant Name</TableHead>
+                                <TableHead>Price</TableHead>
+                                <TableHead>SKU</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {variants.map((variant) => (
+                                <TableRow key={variant.id}>
+                                  <TableCell className="font-medium">{variant.name}</TableCell>
+                                  <TableCell>${parseFloat(variant.price).toFixed(2)}</TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {variant.sku || "—"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeVariant(variant.id)}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
