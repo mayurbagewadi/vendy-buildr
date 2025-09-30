@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,9 +11,11 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
 import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
-import Home from "./pages/customer/Home";
-import CustomerProducts from "./pages/customer/Products";
-import ProductDetail from "./pages/customer/ProductDetail";
+
+// Lazy load customer pages
+const Home = lazy(() => import("./pages/customer/Home"));
+const CustomerProducts = lazy(() => import("./pages/customer/Products"));
+const ProductDetail = lazy(() => import("./pages/customer/ProductDetail"));
 
 const queryClient = new QueryClient();
 
@@ -26,9 +29,21 @@ const App = () => (
           <Route path="/" element={<Index />} />
           
           {/* Customer Routes */}
-          <Route path="/home" element={<Home />} />
-          <Route path="/products" element={<CustomerProducts />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/home" element={
+            <Suspense fallback={<div>Loading...</div>}>
+              <Home />
+            </Suspense>
+          } />
+          <Route path="/products" element={
+            <Suspense fallback={<div>Loading...</div>}>
+              <CustomerProducts />
+            </Suspense>
+          } />
+          <Route path="/products/:id" element={
+            <Suspense fallback={<div>Loading...</div>}>
+              <ProductDetail />
+            </Suspense>
+          } />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
