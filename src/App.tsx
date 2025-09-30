@@ -10,6 +10,9 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
 import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
+import Home from "./pages/customer/Home";
+import CustomerProducts from "./pages/customer/Products";
+import ProductDetail from "./pages/customer/ProductDetail";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +24,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          
+          {/* Customer Routes */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/products" element={<CustomerProducts />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

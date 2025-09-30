@@ -42,19 +42,22 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="admin-card border-2 border-muted">
+          <Card className="admin-card cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4">
-                  <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg mb-4">
+                  <ShoppingBag className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">Customer Store</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Public storefront for customers (Coming Soon)
+                  Browse products and shop online
                 </p>
-                <Button variant="outline" className="w-full" disabled>
-                  Coming Soon
-                </Button>
+                <Link to="/home">
+                  <Button className="admin-button-primary w-full">
+                    Visit Store
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
