@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, ShoppingCart, Share2, ChevronRight, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
 
 interface Variant {
   name: string;
@@ -33,6 +34,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -68,6 +70,18 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
+    if (!product) return;
+
+    addToCart({
+      productId: product.id,
+      productName: product.name,
+      productImage: images[0],
+      variant: selectedVariant || undefined,
+      price: currentPrice,
+      quantity: quantity,
+      sku: currentVariant?.sku || product.baseSku,
+    });
+
     toast({
       title: "Added to cart",
       description: `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} has been added to your cart.`,

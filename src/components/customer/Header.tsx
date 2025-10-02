@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import MiniCart from "@/components/customer/MiniCart";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -90,9 +91,7 @@ const Header = () => {
             >
               <Phone className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="icon">
-              <ShoppingCart className="w-4 h-4" />
-            </Button>
+            <MiniCart />
             <Button
               variant="ghost"
               size="icon"
