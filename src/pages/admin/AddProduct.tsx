@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { addProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -37,7 +38,7 @@ const productSchema = z.object({
     const num = parseInt(val);
     return !isNaN(num) && num >= 0;
   }, "Stock must be a valid number (0 or greater)"),
-  status: z.enum(["active", "draft", "inactive"]),
+  status: z.enum(["published", "draft", "inactive"]),
   variants: z.array(variantSchema).optional(),
 });
 
@@ -153,9 +154,9 @@ const AddProduct = () => {
     const maxPrice = Math.max(...prices);
     
     if (minPrice === maxPrice) {
-      return `$${minPrice.toFixed(2)}`;
+      return `₹${minPrice.toFixed(2)}`;
     }
-    return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+    return `₹${minPrice.toFixed(2)} - ₹${maxPrice.toFixed(2)}`;
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -165,25 +166,29 @@ const AddProduct = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // In real app, would upload images and save product to backend
-      const productData = {
-        ...data,
-        basePrice: parseFloat(data.basePrice),
-        baseStock: parseInt(data.baseStock),
-        variants: variants.map(v => ({
-          ...v,
-          price: parseFloat(v.price),
-        })),
-        variantCount: variants.length,
-        priceRange: getPriceRange() || `$${parseFloat(data.basePrice).toFixed(2)}`,
-        images: imageFiles.map(file => file.name),
+      // Create product using shared utility
+      const productData: SharedProduct = {
         id: Date.now().toString(),
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        basePrice: parseFloat(data.basePrice),
+        stock: parseInt(data.baseStock),
+        sku: data.baseSku,
+        status: data.status as 'published' | 'draft' | 'inactive',
+        images: imageFiles.length > 0 ? imageFiles.map(file => URL.createObjectURL(file)) : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
+        variants: variants.map(v => ({
+          name: v.name,
+          price: parseFloat(v.price),
+          sku: v.sku,
+        })),
+        priceRange: getPriceRange() || `₹${parseFloat(data.basePrice).toFixed(2)}`,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      // Store in localStorage for demo
-      const existingProducts = JSON.parse(localStorage.getItem("products") || "[]");
-      localStorage.setItem("products", JSON.stringify([...existingProducts, productData]));
+      // Use shared utility to add product
+      addProduct(productData);
 
       toast({
         title: "Product created successfully",
@@ -526,7 +531,7 @@ const AddProduct = () => {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="published">Published</SelectItem>
                               <SelectItem value="inactive">Inactive</SelectItem>
                             </SelectContent>
                           </Select>

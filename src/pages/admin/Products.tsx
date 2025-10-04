@@ -33,30 +33,11 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  basePrice?: number;
-  price?: number; // for backward compatibility
-  category: string;
-  baseSku?: string;
-  sku?: string; // for backward compatibility
-  baseStock?: number;
-  stock?: number; // for backward compatibility
-  status: "active" | "draft" | "inactive";
-  images: string[];
-  createdAt: string;
-  variants?: Array<{
-    id: string;
-    name: string;
-    price: number;
-    sku?: string;
-  }>;
+type Product = SharedProduct & {
   variantCount?: number;
-  priceRange?: string;
-}
+};
 
 const Products = () => {
   const navigate = useNavigate();
@@ -69,20 +50,20 @@ const Products = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    // Load products from localStorage
-    const savedProducts = localStorage.getItem("products");
-    if (savedProducts) {
-      const parsedProducts = JSON.parse(savedProducts);
-      setProducts(parsedProducts);
-      setFilteredProducts(parsedProducts);
-    }
+    // Load products using shared utility
+    const loadedProducts = getProducts().map(p => ({
+      ...p,
+      variantCount: p.variants?.length || 0,
+    }));
+    setProducts(loadedProducts);
+    setFilteredProducts(loadedProducts);
   }, []);
 
   useEffect(() => {
     // Filter products based on search term, category, and status
     let filtered = products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.sku || product.baseSku || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.sku || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
@@ -97,7 +78,7 @@ const Products = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
+      case "published":
         return "bg-success/10 text-success";
       case "draft":
         return "bg-warning/10 text-warning";
@@ -109,16 +90,23 @@ const Products = () => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(price);
   };
 
-  const deleteProduct = (productId: string) => {
-    const updatedProducts = products.filter(p => p.id !== productId);
-    setProducts(updatedProducts);
-    localStorage.setItem("products", JSON.stringify(updatedProducts));
+  const handleDeleteProduct = (productId: string) => {
+    // Use shared utility to delete product
+    deleteProductUtil(productId);
+    
+    // Reload products
+    const loadedProducts = getProducts().map(p => ({
+      ...p,
+      variantCount: p.variants?.length || 0,
+    }));
+    setProducts(loadedProducts);
+    
     toast({
       title: "Product deleted",
       description: "Product has been removed from your catalog",
@@ -190,9 +178,9 @@ const Products = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Products</p>
+                  <p className="text-sm font-medium text-muted-foreground">Published Products</p>
                   <p className="text-2xl font-bold text-foreground mt-2">
-                    {products.filter(p => p.status === "active").length}
+                    {products.filter(p => p.status === "published").length}
                   </p>
                 </div>
                 <Eye className="w-8 h-8 text-success" />
@@ -251,7 +239,7 @@ const Products = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
@@ -313,7 +301,7 @@ const Products = () => {
                             <div>
                               <p className="font-medium text-foreground">{product.name}</p>
                               <p className="text-sm text-muted-foreground font-mono">
-                                {product.baseSku || product.sku}
+                                {product.sku}
                               </p>
                             </div>
                           </div>
@@ -333,7 +321,7 @@ const Products = () => {
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {product.priceRange || formatPrice(product.basePrice || product.price || 0)}
+                          {product.priceRange || (product.basePrice ? formatPrice(product.basePrice) : '—')}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(product.status)}>
@@ -352,7 +340,7 @@ const Products = () => {
                               variant="ghost" 
                               size="sm" 
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => deleteProduct(product.id)}
+                              onClick={() => handleDeleteProduct(product.id)}
                               title="Delete Product"
                             >
                               <Trash2 className="w-4 h-4" />
