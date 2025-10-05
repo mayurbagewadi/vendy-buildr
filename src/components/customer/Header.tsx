@@ -4,6 +4,7 @@ import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
+import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -19,7 +20,8 @@ const Header = () => {
   };
 
   const handleWhatsApp = () => {
-    window.open("https://wa.me/1234567890", "_blank");
+    const message = generateGeneralInquiryMessage();
+    openWhatsApp(message);
   };
 
   return (

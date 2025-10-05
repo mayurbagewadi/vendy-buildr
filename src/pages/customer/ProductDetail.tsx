@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, ShoppingCart, Share2, ChevronRight, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 
 interface Variant {
   name: string;
@@ -89,14 +90,29 @@ const ProductDetail = () => {
   };
 
   const handleBuyWhatsApp = () => {
-    const message = encodeURIComponent(
-      `Hi, I'm interested in buying:\n\nProduct: ${product.name}\n` +
-      `${selectedVariant ? `Variant: ${selectedVariant}\n` : ''}` +
-      `Price: ₹${currentPrice}\n` +
-      `Quantity: ${quantity}\n` +
-      `Total: ₹${currentPrice * quantity}`
-    );
-    window.open(`https://wa.me/1234567890?text=${message}`, "_blank");
+    const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || product.baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
+    openWhatsApp(message);
+
+    toast({
+      title: "Redirecting to WhatsApp",
+      description: "Complete your purchase via WhatsApp",
+    });
+  };
+
+  const handleProductInquiry = () => {
+    const inquiry = {
+      productName: product.name,
+      productId: product.id,
+      variant: selectedVariant || undefined,
+    };
+
+    const message = generateProductInquiryMessage(inquiry);
+    openWhatsApp(message);
+
+    toast({
+      title: "Redirecting to WhatsApp",
+      description: "Ask us anything about this product",
+    });
   };
 
   const handleShare = () => {
@@ -256,10 +272,15 @@ const ProductDetail = () => {
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <Button onClick={handleBuyWhatsApp} variant="outline" className="w-full" size="lg">
-                <MessageCircle className="w-5 h-5 mr-2" />
-                Buy via WhatsApp
-              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={handleBuyWhatsApp} variant="outline" size="lg">
+                  Buy via WhatsApp
+                </Button>
+                <Button onClick={handleProductInquiry} variant="outline" size="lg">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Ask Question
+                </Button>
+              </div>
               <Button onClick={handleShare} variant="ghost" className="w-full">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share Product

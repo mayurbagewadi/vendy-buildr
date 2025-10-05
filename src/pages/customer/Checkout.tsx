@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronRight, MessageCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import {
   Form,
   FormControl,
@@ -79,33 +80,30 @@ const Checkout = () => {
   const onSubmit = (data: CheckoutFormData) => {
     setIsSubmitting(true);
 
-    const orderItems = cart
-      .map((item) => `• ${item.productName}${item.variant ? ` (${item.variant})` : ""} - ₹${item.price} × ${item.quantity} = ₹${item.price * item.quantity}`)
-      .join("\n");
-
     const deliveryTimeText = {
       morning: "Morning (9 AM - 12 PM)",
       evening: "Evening (4 PM - 7 PM)",
       anytime: "Anytime",
     }[data.deliveryTime];
 
-    const message = encodeURIComponent(
-      `🛍️ NEW ORDER\n\n` +
-      `📦 ORDER DETAILS:\n${orderItems}\n\n` +
-      `💰 TOTAL: ₹${cartTotal}\n\n` +
-      `👤 CUSTOMER DETAILS:\n` +
-      `Name: ${data.fullName}\n` +
-      `Phone: ${data.phone}\n` +
-      `${data.email ? `Email: ${data.email}\n` : ''}` +
-      `\n📍 DELIVERY ADDRESS:\n` +
-      `${data.address}\n` +
-      `${data.landmark ? `Landmark: ${data.landmark}\n` : ''}` +
-      `PIN Code: ${data.pincode}\n\n` +
-      `⏰ Preferred Delivery Time: ${deliveryTimeText}\n\n` +
-      `💵 Payment Method: Cash on Delivery (COD)`
-    );
+    // Prepare order details for WhatsApp
+    const orderDetails = {
+      customerName: data.fullName,
+      phone: data.phone,
+      email: data.email || undefined,
+      address: data.address,
+      landmark: data.landmark || undefined,
+      pincode: data.pincode,
+      deliveryTime: deliveryTimeText,
+      cart: cart,
+      subtotal: cartTotal,
+      deliveryCharge: 0,
+      total: cartTotal,
+    };
 
-    window.open(`https://wa.me/1234567890?text=${message}`, "_blank");
+    // Generate and send WhatsApp message
+    const message = generateOrderMessage(orderDetails);
+    openWhatsApp(message);
 
     toast({
       title: "Order placed successfully!",
