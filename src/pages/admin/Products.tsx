@@ -330,10 +330,25 @@ const Products = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            <Button variant="ghost" size="sm" title="View Details">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="View Details"
+                              onClick={() => navigate(`/products/${product.id}`)}
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" title="Edit Product">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="Edit Product"
+                              onClick={() => {
+                                toast({
+                                  title: "Edit functionality",
+                                  description: "Edit product page coming soon!",
+                                });
+                              }}
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
