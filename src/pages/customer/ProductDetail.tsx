@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Minus, Plus, ShoppingCart, Share2, ChevronRight, MessageCircle } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Share2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
@@ -46,7 +46,7 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>("");
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
 
   useEffect(() => {
@@ -75,7 +75,7 @@ const ProductDetail = () => {
   const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.svg"];
 
   const handleQuantityChange = (delta: number) => {
-    setQuantity(Math.max(1, quantity + delta));
+    setQuantity(Math.max(0, quantity + delta));
   };
 
   const handleAddToCart = () => {
@@ -302,7 +302,7 @@ const ProductDetail = () => {
                     size="icon"
                     className="min-w-[44px] min-h-[44px]"
                     onClick={() => handleQuantityChange(-1)}
-                    disabled={quantity <= 1}
+                    disabled={quantity <= 0}
                   >
                     <Minus className="w-5 h-5" />
                   </Button>
@@ -324,19 +324,15 @@ const ProductDetail = () => {
 
             {/* Action Buttons - Touch Optimized */}
             <div className="space-y-3 mb-6">
-              <Button onClick={handleAddToCart} className="w-full min-h-[48px]" size="lg">
+              <Button 
+                onClick={handleAddToCart} 
+                className="w-full min-h-[48px]" 
+                size="lg"
+                disabled={quantity === 0}
+              >
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button onClick={handleBuyWhatsApp} variant="outline" size="lg" className="min-h-[48px]">
-                  Buy via WhatsApp
-                </Button>
-                <Button onClick={handleProductInquiry} variant="outline" size="lg" className="min-h-[48px]">
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Ask Question
-                </Button>
-              </div>
               <Button onClick={handleShare} variant="ghost" className="w-full min-h-[44px]">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share Product
