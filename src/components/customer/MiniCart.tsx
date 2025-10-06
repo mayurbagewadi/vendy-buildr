@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
+import LazyImage from "@/components/ui/lazy-image";
 
 const MiniCart = () => {
   const { cart, cartCount, cartTotal, removeItem } = useCart();
@@ -49,10 +50,10 @@ const MiniCart = () => {
                   <Card key={`${item.productId}-${item.variant}`} className="overflow-hidden">
                     <CardContent className="p-3">
                       <div className="flex gap-3">
-                        <img
+                        <LazyImage
                           src={item.productImage}
                           alt={item.productName}
-                          className="w-16 h-16 object-cover rounded"
+                          className="w-16 h-16 object-cover rounded flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-sm truncate">{item.productName}</h4>
@@ -87,12 +88,12 @@ const MiniCart = () => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Link to="/cart" className="w-full">
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full min-h-[44px]">
                     View Cart
                   </Button>
                 </Link>
                 <Link to="/checkout" className="w-full">
-                  <Button className="w-full">Checkout</Button>
+                  <Button className="w-full min-h-[44px]">Checkout</Button>
                 </Link>
               </div>
             </div>

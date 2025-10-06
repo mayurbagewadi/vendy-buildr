@@ -11,6 +11,14 @@ import { Minus, Plus, ShoppingCart, Share2, ChevronRight, MessageCircle } from "
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import LazyImage from "@/components/ui/lazy-image";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface Variant {
   name: string;
@@ -146,40 +154,86 @@ const ProductDetail = () => {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image Gallery */}
+          {/* Image Gallery with Swipe Support */}
           <div>
-            <Card className="overflow-hidden mb-4">
-              <CardContent className="p-0">
-                <div className="aspect-square bg-muted">
-                  <img
-                    src={images[selectedImage]}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
+            {/* Mobile: Swipeable Carousel */}
+            <div className="lg:hidden mb-4">
+              <Carousel className="w-full" opts={{ loop: true }}>
+                <CarouselContent>
+                  {images.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <Card className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="aspect-square bg-muted">
+                            <LazyImage
+                              src={image}
+                              alt={`${product.name} ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {images.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-2" />
+                    <CarouselNext className="right-2" />
+                  </>
+                )}
+              </Carousel>
+              {images.length > 1 && (
+                <div className="flex justify-center gap-2 mt-3">
+                  {images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        selectedImage === index ? "bg-primary" : "bg-muted-foreground/30"
+                      }`}
+                      aria-label={`View image ${index + 1}`}
+                    />
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-            {images.length > 1 && (
-              <div className="grid grid-cols-5 gap-2">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedImage === index
-                        ? "border-primary"
-                        : "border-transparent hover:border-border"
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
+              )}
+            </div>
+
+            {/* Desktop: Thumbnail Gallery */}
+            <div className="hidden lg:block">
+              <Card className="overflow-hidden mb-4">
+                <CardContent className="p-0">
+                  <div className="aspect-square bg-muted">
+                    <LazyImage
+                      src={images[selectedImage]}
+                      alt={product.name}
                       className="w-full h-full object-cover"
                     />
-                  </button>
-                ))}
-              </div>
-            )}
+                  </div>
+                </CardContent>
+              </Card>
+              {images.length > 1 && (
+                <div className="grid grid-cols-5 gap-2">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors min-h-[44px] ${
+                        selectedImage === index
+                          ? "border-primary"
+                          : "border-transparent hover:border-border"
+                      }`}
+                    >
+                      <LazyImage
+                        src={image}
+                        alt={`${product.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Product Info */}
@@ -238,26 +292,28 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Quantity Selector */}
+            {/* Quantity Selector - Touch Optimized */}
             <div className="mb-6">
               <Label className="text-base font-semibold mb-3 block">Quantity</Label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center border border-border rounded-lg">
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="min-w-[44px] min-h-[44px]"
                     onClick={() => handleQuantityChange(-1)}
                     disabled={quantity <= 1}
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-5 h-5" />
                   </Button>
-                  <span className="w-12 text-center font-semibold">{quantity}</span>
+                  <span className="w-16 text-center font-semibold text-lg">{quantity}</span>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="min-w-[44px] min-h-[44px]"
                     onClick={() => handleQuantityChange(1)}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5" />
                   </Button>
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -266,22 +322,22 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - Touch Optimized */}
             <div className="space-y-3 mb-6">
-              <Button onClick={handleAddToCart} className="w-full" size="lg">
+              <Button onClick={handleAddToCart} className="w-full min-h-[48px]" size="lg">
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <div className="grid grid-cols-2 gap-3">
-                <Button onClick={handleBuyWhatsApp} variant="outline" size="lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button onClick={handleBuyWhatsApp} variant="outline" size="lg" className="min-h-[48px]">
                   Buy via WhatsApp
                 </Button>
-                <Button onClick={handleProductInquiry} variant="outline" size="lg">
+                <Button onClick={handleProductInquiry} variant="outline" size="lg" className="min-h-[48px]">
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Ask Question
                 </Button>
               </div>
-              <Button onClick={handleShare} variant="ghost" className="w-full">
+              <Button onClick={handleShare} variant="ghost" className="w-full min-h-[44px]">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share Product
               </Button>

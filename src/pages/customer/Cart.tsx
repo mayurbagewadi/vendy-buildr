@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import LazyImage from "@/components/ui/lazy-image";
 
 const Cart = () => {
   const { cart, cartTotal, updateQuantity, removeItem } = useCart();
@@ -52,10 +53,10 @@ const Cart = () => {
                   <CardContent className="p-4 md:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}
-                      <img
+                      <LazyImage
                         src={item.productImage}
                         alt={item.productName}
-                        className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg"
+                        className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg flex-shrink-0"
                       />
 
                       {/* Product Details */}
@@ -82,11 +83,12 @@ const Cart = () => {
                         </div>
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
-                          {/* Quantity Controls */}
+                          {/* Quantity Controls - Touch Optimized */}
                           <div className="flex items-center border border-border rounded-lg w-fit">
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="min-w-[44px] min-h-[44px]"
                               onClick={() =>
                                 updateQuantity(
                                   item.productId,
@@ -96,14 +98,15 @@ const Cart = () => {
                               }
                               disabled={item.quantity <= 1}
                             >
-                              <Minus className="w-4 h-4" />
+                              <Minus className="w-5 h-5" />
                             </Button>
-                            <span className="w-12 text-center font-semibold">
+                            <span className="w-14 text-center font-semibold text-lg">
                               {item.quantity}
                             </span>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="min-w-[44px] min-h-[44px]"
                               onClick={() =>
                                 updateQuantity(
                                   item.productId,
@@ -112,7 +115,7 @@ const Cart = () => {
                                 )
                               }
                             >
-                              <Plus className="w-4 h-4" />
+                              <Plus className="w-5 h-5" />
                             </Button>
                           </div>
 
@@ -156,12 +159,12 @@ const Cart = () => {
                 </div>
 
                 <Link to="/checkout" className="block mb-3">
-                  <Button className="w-full" size="lg">
+                  <Button className="w-full min-h-[48px]" size="lg">
                     Proceed to Checkout
                   </Button>
                 </Link>
                 <Link to="/products">
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full min-h-[44px]">
                     Continue Shopping
                   </Button>
                 </Link>

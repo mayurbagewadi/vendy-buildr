@@ -83,21 +83,21 @@ const Header = () => {
             </div>
           </form>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Touch Optimized */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="icon"
               onClick={handleWhatsApp}
-              className="hidden sm:flex"
+              className="hidden sm:flex min-w-[44px] min-h-[44px]"
             >
-              <Phone className="w-4 h-4" />
+              <Phone className="w-5 h-5" />
             </Button>
             <MiniCart />
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden min-w-[44px] min-h-[44px]"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -159,8 +159,8 @@ const Header = () => {
             >
               About
             </Link>
-            <Button onClick={handleWhatsApp} className="w-full">
-              <Phone className="w-4 h-4 mr-2" />
+            <Button onClick={handleWhatsApp} className="w-full min-h-[48px]">
+              <Phone className="w-5 h-5 mr-2" />
               Contact on WhatsApp
             </Button>
           </nav>

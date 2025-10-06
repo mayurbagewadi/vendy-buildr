@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import LazyImage from "@/components/ui/lazy-image";
 
 interface ProductCardProps {
   id: string;
@@ -19,7 +20,7 @@ const ProductCard = ({ id, name, category, priceRange, images, status }: Product
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
       <Link to={`/products/${id}`}>
         <div className="relative aspect-square overflow-hidden bg-muted">
-          <img
+          <LazyImage
             src={imageUrl}
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -42,7 +43,7 @@ const ProductCard = ({ id, name, category, priceRange, images, status }: Product
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Link to={`/products/${id}`} className="w-full">
-          <Button className="w-full" variant="outline">
+          <Button className="w-full min-h-[44px]" variant="outline">
             View Details
           </Button>
         </Link>

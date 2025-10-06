@@ -101,9 +101,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Mobile Optimized */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 overflow-y-auto
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
@@ -128,7 +128,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </Button>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation - Touch Optimized */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigationItems.map((item) => (
               <Link
@@ -136,7 +136,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 to={item.href}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                  flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200
+                  flex items-center px-3 py-3 min-h-[48px] text-sm font-medium rounded-lg transition-all duration-200
                   ${item.current
                     ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -154,7 +154,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             <Button
               onClick={handleLogout}
               variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="w-full justify-start min-h-[48px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <LogOut className="w-4 h-4 mr-3" />
               Sign Out
