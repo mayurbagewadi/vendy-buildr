@@ -29,7 +29,7 @@ const Header = () => {
       {/* Top Bar */}
       <div className="bg-primary text-primary-foreground py-2">
         <div className="container mx-auto px-4 text-center text-sm">
-          <p>Free shipping on orders above ₹500 | Call us: +91 1234567890</p>
+          <p>Call us: +91 1234567890</p>
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, Package, Shield, Truck, HeadphonesIcon } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 
 interface Product {
   id: string;
@@ -53,7 +53,7 @@ const Home = () => {
                 Welcome to MyStore
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
-                Discover quality products at unbeatable prices. Shop now and enjoy free shipping on orders above ₹500!
+                Discover quality products at unbeatable prices. Shop now!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/products">
@@ -72,41 +72,6 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Features */}
-        <section className="py-12 border-b border-border">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="p-6 text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Truck className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">Free Shipping</h3>
-                <p className="text-sm text-muted-foreground">On orders above ₹500</p>
-              </Card>
-              <Card className="p-6 text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">Secure Payment</h3>
-                <p className="text-sm text-muted-foreground">100% secure transactions</p>
-              </Card>
-              <Card className="p-6 text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Package className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">Easy Returns</h3>
-                <p className="text-sm text-muted-foreground">7-day return policy</p>
-              </Card>
-              <Card className="p-6 text-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <HeadphonesIcon className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">24/7 Support</h3>
-                <p className="text-sm text-muted-foreground">We're here to help</p>
-              </Card>
-            </div>
-          </div>
-        </section>
 
         {/* Featured Products */}
         <section className="py-16">
