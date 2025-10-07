@@ -158,16 +158,16 @@ const Cart = () => {
                   </div>
                 </div>
 
-                <Link to="/checkout" className="block mb-3">
-                  <Button className="w-full min-h-[48px]" size="lg">
+                <Button asChild className="w-full min-h-[48px]" size="lg">
+                  <Link to="/checkout">
                     Proceed to Checkout
-                  </Button>
-                </Link>
-                <Link to="/products">
-                  <Button variant="outline" className="w-full min-h-[44px]">
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full min-h-[44px] mt-3">
+                  <Link to="/products">
                     Continue Shopping
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
