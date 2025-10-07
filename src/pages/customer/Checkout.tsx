@@ -280,12 +280,14 @@ const Checkout = () => {
                 <Card>
                   <CardContent className="p-6">
                     <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
-                    <div className="flex items-center space-x-2 border border-border rounded-lg p-4 bg-accent">
-                      <RadioGroupItem value="cod" id="cod" checked disabled />
-                      <Label htmlFor="cod" className="flex-1 font-normal">
-                        Cash on Delivery (COD)
-                      </Label>
-                    </div>
+                    <RadioGroup defaultValue="cod" disabled>
+                      <div className="flex items-center space-x-2 border border-border rounded-lg p-4 bg-accent">
+                        <RadioGroupItem value="cod" id="cod" />
+                        <Label htmlFor="cod" className="flex-1 font-normal">
+                          Cash on Delivery (COD)
+                        </Label>
+                      </div>
+                    </RadioGroup>
                     <p className="text-sm text-muted-foreground mt-2">
                       Pay when you receive your order
                     </p>

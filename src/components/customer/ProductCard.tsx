@@ -8,7 +8,7 @@ interface ProductCardProps {
   id: string;
   name: string;
   category: string;
-  priceRange: string;
+  priceRange?: string;
   images: string[];
   status: string;
 }
@@ -38,7 +38,7 @@ const ProductCard = ({ id, name, category, priceRange, images, status }: Product
           <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
             {name}
           </h3>
-          <p className="text-lg font-bold text-primary">{priceRange}</p>
+          <p className="text-lg font-bold text-primary">{priceRange || 'Price on request'}</p>
         </Link>
       </CardContent>
       <CardFooter className="p-4 pt-0">

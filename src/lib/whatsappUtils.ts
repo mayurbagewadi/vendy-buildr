@@ -2,12 +2,33 @@ import { CartItem } from './cartUtils';
 
 // Get WhatsApp business number from settings
 export const getWhatsAppNumber = (): string => {
-  const settings = localStorage.getItem('storeSettings');
-  if (settings) {
-    const parsed = JSON.parse(settings);
-    return parsed.whatsapp || '+1234567890'; // Default fallback
+  // Try multiple storage keys for backward compatibility
+  const savedNumber = localStorage.getItem('whatsapp_business_number');
+  if (savedNumber) return savedNumber;
+  
+  // Try store_settings (new format)
+  try {
+    const settings = localStorage.getItem('store_settings');
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      return parsed.whatsappNumber || '919876543210';
+    }
+  } catch (error) {
+    console.error('Error reading WhatsApp number from settings:', error);
   }
-  return '+1234567890';
+  
+  // Try storeSettings (old format)
+  try {
+    const oldSettings = localStorage.getItem('storeSettings');
+    if (oldSettings) {
+      const parsed = JSON.parse(oldSettings);
+      return parsed.whatsapp || '919876543210';
+    }
+  } catch (error) {
+    console.error('Error reading WhatsApp number from old settings:', error);
+  }
+  
+  return '919876543210'; // Default Indian format
 };
 
 // Format phone number for WhatsApp (remove spaces, dashes, etc.)

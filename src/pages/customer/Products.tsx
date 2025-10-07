@@ -9,22 +9,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, X } from "lucide-react";
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  priceRange: string;
-  images: string[];
-  status: string;
-  basePrice?: number;
-  variants?: Array<{ price: number }>;
-}
+import { Filter } from "lucide-react";
+import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
+import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
+import { useProductData } from "@/hooks/useProductData";
+import type { Product } from "@/lib/productData";
 
 const Products = () => {
   const [searchParams] = useSearchParams();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const { products: allProducts, loading, error, refresh } = useProductData(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -33,12 +26,8 @@ const Products = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    const products = JSON.parse(localStorage.getItem("products") || "[]");
-    const published = products.filter((p: Product) => p.status === "published");
-    setAllProducts(published);
-    
     // Extract unique categories
-    const uniqueCategories = [...new Set(published.map((p: Product) => p.category))] as string[];
+    const uniqueCategories = [...new Set(allProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
     setCategories(uniqueCategories);
 
     // Check for URL params
@@ -49,7 +38,7 @@ const Products = () => {
       setSelectedCategories([categoryParam]);
     }
 
-    let filtered = [...published];
+    let filtered = [...allProducts];
 
     // Apply category filter
     if (categoryParam) {
@@ -64,7 +53,7 @@ const Products = () => {
     }
 
     setFilteredProducts(filtered);
-  }, [searchParams]);
+  }, [searchParams, allProducts]);
 
   useEffect(() => {
     let filtered = [...allProducts];
@@ -131,7 +120,20 @@ const Products = () => {
       <Header />
 
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+        {loading ? (
+          <div className="py-20">
+            <LoadingSpinner size="lg" text="Loading products..." />
+          </div>
+        ) : error ? (
+          <div className="py-20">
+            <ErrorDisplay 
+              title="Failed to load products"
+              message={error}
+              onRetry={refresh}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className={`lg:w-64 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <Card className="sticky top-24">
@@ -249,6 +251,7 @@ const Products = () => {
             )}
           </div>
         </div>
+        )}
       </main>
 
       <Footer />
