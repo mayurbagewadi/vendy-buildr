@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { getSettings, saveSettings } from "@/lib/settingsData";
 
 const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +19,7 @@ const AdminSettings = () => {
     phone: "",
     email: "",
     address: "",
-    whatsapp: "",
+    whatsappNumber: "",
     deliveryAreas: "",
     returnPolicy: "",
     shippingPolicy: "",
@@ -26,12 +27,27 @@ const AdminSettings = () => {
   });
 
   useEffect(() => {
-    // Load existing settings from localStorage
-    const savedSettings = localStorage.getItem("storeSettings");
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setFormData({ ...formData, ...settings });
-    }
+    // Load existing settings from centralized settings
+    const settings = getSettings();
+    
+    // Load additional settings from old localStorage format for backward compatibility
+    const oldSettings = localStorage.getItem("storeSettings");
+    const extraData = oldSettings ? JSON.parse(oldSettings) : {};
+    
+    setFormData({
+      storeName: settings.storeName,
+      tagline: extraData.tagline || "",
+      logoUrl: extraData.logoUrl || "",
+      heroImageUrl: extraData.heroImageUrl || "",
+      phone: extraData.phone || "",
+      email: settings.email || "",
+      address: settings.address || "",
+      whatsappNumber: settings.whatsappNumber,
+      deliveryAreas: extraData.deliveryAreas || "",
+      returnPolicy: extraData.returnPolicy || "",
+      shippingPolicy: extraData.shippingPolicy || "",
+      termsConditions: extraData.termsConditions || "",
+    });
   }, []);
 
   const handleInputChange = (field: string, value: string) => {
@@ -50,10 +66,21 @@ const AdminSettings = () => {
           title: "Validation Error",
           description: "Store name is required",
         });
+        setIsLoading(false);
         return;
       }
 
-      // Save to localStorage
+      // Save to centralized settings
+      const settings = getSettings();
+      saveSettings({
+        ...settings,
+        storeName: formData.storeName,
+        whatsappNumber: formData.whatsappNumber,
+        email: formData.email,
+        address: formData.address,
+      });
+
+      // Save additional fields to old format for backward compatibility
       localStorage.setItem("storeSettings", JSON.stringify(formData));
       
       toast({
@@ -88,7 +115,7 @@ const AdminSettings = () => {
       fields: [
         { key: "phone", label: "Phone Number", placeholder: "+1 (555) 123-4567" },
         { key: "email", label: "Email Address", placeholder: "contact@yourstore.com" },
-        { key: "whatsapp", label: "WhatsApp Business Number", placeholder: "+1 (555) 123-4567" },
+        { key: "whatsappNumber", label: "WhatsApp Business Number", placeholder: "919876543210 (with country code, no spaces)" },
         { key: "address", label: "Store Address", placeholder: "123 Main St, City, State 12345", multiline: true },
       ]
     }
