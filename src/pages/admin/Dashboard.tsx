@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -14,6 +15,7 @@ import {
 import AdminLayout from "@/components/admin/AdminLayout";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeProducts: 0,
@@ -47,14 +49,14 @@ const AdminDashboard = () => {
       title: "Add New Product",
       description: "Create a new product listing",
       icon: Plus,
-      action: "/admin/products/add",
+      action: () => navigate("/admin/products/add"),
       primary: true,
     },
     {
       title: "View All Products",
       description: "Manage your product catalog",
       icon: Eye,
-      action: "/admin/products",
+      action: () => navigate("/admin/products"),
       primary: false,
     },
   ];
@@ -148,7 +150,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {quickActions.map((action, index) => (
-              <Card key={index} className="admin-card cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20">
+              <Card key={index} className="admin-card cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20" onClick={action.action}>
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div className={`p-3 rounded-lg ${action.primary ? 'bg-primary/10' : 'bg-muted'}`}>
@@ -165,6 +167,10 @@ const AdminDashboard = () => {
                         variant={action.primary ? "default" : "outline"} 
                         size="sm"
                         className={action.primary ? "admin-button-primary" : "admin-button-secondary"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          action.action();
+                        }}
                       >
                         Get Started
                         <ArrowUpRight className="w-4 h-4 ml-2" />

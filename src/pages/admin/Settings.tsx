@@ -20,6 +20,8 @@ const AdminSettings = () => {
     email: "",
     address: "",
     whatsappNumber: "",
+    currency: "INR",
+    currencySymbol: "₹",
     deliveryAreas: "",
     returnPolicy: "",
     shippingPolicy: "",
@@ -43,6 +45,8 @@ const AdminSettings = () => {
       email: settings.email || "",
       address: settings.address || "",
       whatsappNumber: settings.whatsappNumber,
+      currency: settings.currency || "INR",
+      currencySymbol: settings.currencySymbol || "₹",
       deliveryAreas: extraData.deliveryAreas || "",
       returnPolicy: extraData.returnPolicy || "",
       shippingPolicy: extraData.shippingPolicy || "",
@@ -78,6 +82,8 @@ const AdminSettings = () => {
         whatsappNumber: formData.whatsappNumber,
         email: formData.email,
         address: formData.address,
+        currency: formData.currency,
+        currencySymbol: formData.currencySymbol,
       });
 
       // Save additional fields to old format for backward compatibility
@@ -117,6 +123,14 @@ const AdminSettings = () => {
         { key: "email", label: "Email Address", placeholder: "contact@yourstore.com" },
         { key: "whatsappNumber", label: "WhatsApp Business Number", placeholder: "919876543210 (with country code, no spaces)" },
         { key: "address", label: "Store Address", placeholder: "123 Main St, City, State 12345", multiline: true },
+      ]
+    },
+    {
+      title: "Currency Settings",
+      icon: Store,
+      fields: [
+        { key: "currencySymbol", label: "Currency Symbol", placeholder: "₹, $, €, £, etc." },
+        { key: "currency", label: "Currency Code", placeholder: "INR, USD, EUR, GBP, etc." },
       ]
     }
   ];

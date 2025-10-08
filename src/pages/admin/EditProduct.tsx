@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { addProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
+import { getProductById, updateProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -45,16 +45,29 @@ const productSchema = z.object({
 type ProductFormData = z.infer<typeof productSchema>;
 type Variant = z.infer<typeof variantSchema>;
 
-const AddProduct = () => {
+const EditProduct = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [customCategory, setCustomCategory] = useState("");
   const [showCustomCategory, setShowCustomCategory] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [categories, setCategories] = useState([
+    "Electronics",
+    "Clothing",
+    "Home & Garden",
+    "Books",
+    "Sports & Outdoors",
+    "Health & Beauty",
+    "Toys & Games",
+    "Food & Beverages",
+    "Other"
+  ]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -70,17 +83,52 @@ const AddProduct = () => {
     },
   });
 
-  const [categories, setCategories] = useState([
-    "Electronics",
-    "Clothing",
-    "Home & Garden",
-    "Books",
-    "Sports & Outdoors",
-    "Health & Beauty",
-    "Toys & Games",
-    "Food & Beverages",
-    "Other"
-  ]);
+  useEffect(() => {
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "Product ID is missing",
+        variant: "destructive",
+      });
+      navigate("/admin/products");
+      return;
+    }
+
+    const product = getProductById(id);
+    if (!product) {
+      toast({
+        title: "Product not found",
+        description: "The product you're trying to edit doesn't exist",
+        variant: "destructive",
+      });
+      navigate("/admin/products");
+      return;
+    }
+
+    // Load product data
+    form.reset({
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      basePrice: product.basePrice?.toString() || "",
+      baseSku: product.sku || "",
+      baseStock: product.stock?.toString() || "",
+      status: product.status,
+    });
+
+    setImageUrls(product.images || []);
+    
+    if (product.variants) {
+      setVariants(product.variants.map((v, idx) => ({
+        id: `${idx}`,
+        name: v.name,
+        price: v.price.toString(),
+        sku: v.sku,
+      })));
+    }
+
+    setIsLoading(false);
+  }, [id, navigate, form]);
 
   const addCustomCategory = () => {
     if (customCategory.trim() && !categories.includes(customCategory.trim())) {
@@ -94,49 +142,6 @@ const AddProduct = () => {
         description: `${customCategory.trim()} has been added to categories`,
       });
     }
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
-      
-      if (!isValidType) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a valid image file`,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      if (!isValidSize) {
-        toast({
-          title: "File too large",
-          description: `${file.name} exceeds 5MB limit`,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      return true;
-    });
-
-    if (imageFiles.length + validFiles.length > 5) {
-      toast({
-        title: "Too many images",
-        description: "Maximum 5 images allowed per product",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setImageFiles(prev => [...prev, ...validFiles]);
-  };
-
-  const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const addImageUrl = () => {
@@ -158,7 +163,7 @@ const AddProduct = () => {
       }
     }
 
-    if (imageUrls.length + imageFiles.length >= 5) {
+    if (imageUrls.length >= 5) {
       toast({
         title: "Too many images",
         description: "Maximum 5 images allowed per product",
@@ -196,8 +201,8 @@ const AddProduct = () => {
     setNewVariant({ name: "", price: "", sku: "" });
   };
 
-  const removeVariant = (id: string) => {
-    setVariants(prev => prev.filter(v => v.id !== id));
+  const removeVariant = (variantId: string) => {
+    setVariants(prev => prev.filter(v => v.id !== variantId));
   };
 
   const getPriceRange = () => {
@@ -214,21 +219,17 @@ const AddProduct = () => {
   };
 
   const onSubmit = async (data: ProductFormData) => {
+    if (!id) return;
+    
     setIsSubmitting(true);
     
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Combine file uploads and URL images
-      const allImages = [
-        ...imageUrls,
-        ...imageFiles.map(file => URL.createObjectURL(file))
-      ];
-
-      // Create product using shared utility
+      // Update product using shared utility
       const productData: SharedProduct = {
-        id: Date.now().toString(),
+        id,
         name: data.name,
         description: data.description,
         category: data.category,
@@ -236,29 +237,28 @@ const AddProduct = () => {
         stock: parseInt(data.baseStock),
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
-        images: allImages.length > 0 ? allImages : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
+        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
         variants: variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
           sku: v.sku,
         })),
         priceRange: getPriceRange() || `₹${parseFloat(data.basePrice).toFixed(2)}`,
-        createdAt: new Date().toISOString(),
+        createdAt: getProductById(id)?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // Use shared utility to add product
-      addProduct(productData);
+      updateProduct(id, productData);
 
       toast({
-        title: "Product created successfully",
-        description: `${data.name} has been added to your catalog`,
+        title: "Product updated successfully",
+        description: `${data.name} has been updated`,
       });
 
       navigate("/admin/products");
     } catch (error) {
       toast({
-        title: "Error creating product",
+        title: "Error updating product",
         description: "Please try again later",
         variant: "destructive",
       });
@@ -266,6 +266,16 @@ const AddProduct = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <p className="text-muted-foreground">Loading product...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -282,9 +292,9 @@ const AddProduct = () => {
               Back to Products
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Add New Product</h1>
+              <h1 className="text-3xl font-bold text-foreground">Edit Product</h1>
               <p className="text-muted-foreground mt-1">
-                Create a new product listing for your store
+                Update product information
               </p>
             </div>
           </div>
@@ -361,7 +371,7 @@ const AddProduct = () => {
                             <FormLabel>Category</FormLabel>
                             {!showCustomCategory ? (
                               <>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select category" />
@@ -556,7 +566,7 @@ const AddProduct = () => {
                   <CardHeader>
                     <CardTitle>Product Images</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Add images from Google Drive or upload from your device
+                      Add images from Google Drive
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -584,39 +594,15 @@ const AddProduct = () => {
                       </p>
                     </div>
 
-                    {/* File Upload */}
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                      <Upload className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Or upload from device</p>
-                        <p className="text-xs text-muted-foreground">
-                          PNG, JPG up to 5MB each. Maximum 5 images total.
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        id="image-upload"
-                      />
-                      <label htmlFor="image-upload">
-                        <Button type="button" variant="outline" className="mt-4">
-                          Choose Files
-                        </Button>
-                      </label>
-                    </div>
-
                     {/* Image Previews */}
-                    {(imageUrls.length > 0 || imageFiles.length > 0) && (
+                    {imageUrls.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {imageUrls.map((url, index) => (
-                          <div key={`url-${index}`} className="relative group">
+                          <div key={index} className="relative group">
                             <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                               <img
                                 src={url}
-                                alt={`URL Preview ${index + 1}`}
+                                alt={`Preview ${index + 1}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800';
@@ -632,32 +618,6 @@ const AddProduct = () => {
                             >
                               <X className="w-3 h-3" />
                             </Button>
-                            <p className="text-xs text-muted-foreground mt-1 truncate">
-                              From URL
-                            </p>
-                          </div>
-                        ))}
-                        {imageFiles.map((file, index) => (
-                          <div key={`file-${index}`} className="relative group">
-                            <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                              <img
-                                src={URL.createObjectURL(file)}
-                                alt={`File Preview ${index + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removeImage(index)}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-1 truncate">
-                              {file.name}
-                            </p>
                           </div>
                         ))}
                       </div>
@@ -679,7 +639,7 @@ const AddProduct = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
@@ -708,7 +668,7 @@ const AddProduct = () => {
                         disabled={isSubmitting}
                       >
                         <Save className="w-4 h-4 mr-2" />
-                        {isSubmitting ? "Creating..." : "Create Product"}
+                        {isSubmitting ? "Updating..." : "Update Product"}
                       </Button>
                       
                       <Button 
@@ -732,4 +692,4 @@ const AddProduct = () => {
   );
 };
 
-export default AddProduct;
+export default EditProduct;

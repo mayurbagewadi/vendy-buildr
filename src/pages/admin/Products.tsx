@@ -342,12 +342,7 @@ const Products = () => {
                               variant="ghost" 
                               size="sm" 
                               title="Edit Product"
-                              onClick={() => {
-                                toast({
-                                  title: "Edit functionality",
-                                  description: "Edit product page coming soon!",
-                                });
-                              }}
+                              onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
