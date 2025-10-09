@@ -157,9 +157,16 @@ const EditProduct = () => {
     // Convert Google Drive share link to direct link
     let imageUrl = newImageUrl.trim();
     if (imageUrl.includes('drive.google.com')) {
-      const fileIdMatch = imageUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const fileIdMatch = imageUrl.match(/\/d\/([a-zA-Z0-9_-]+)|[?&]id=([a-zA-Z0-9_-]+)/);
       if (fileIdMatch) {
-        imageUrl = `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+        const fileId = fileIdMatch[1] || fileIdMatch[2];
+        // Use thumbnail API which works more reliably for public images
+        imageUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+        
+        toast({
+          title: "Google Drive Link Added",
+          description: "Make sure the file is set to 'Anyone with the link can view'",
+        });
       }
     }
 
