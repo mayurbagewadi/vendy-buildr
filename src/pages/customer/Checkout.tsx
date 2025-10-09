@@ -103,7 +103,17 @@ const Checkout = () => {
 
     // Generate and send WhatsApp message
     const message = generateOrderMessage(orderDetails);
-    openWhatsApp(message);
+    const result = openWhatsApp(message);
+
+    if (!result.success) {
+      setIsSubmitting(false);
+      toast({
+        title: "WhatsApp Not Configured",
+        description: result.error,
+        variant: "destructive",
+      });
+      return;
+    }
 
     toast({
       title: "Order placed successfully!",

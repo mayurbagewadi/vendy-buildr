@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +23,15 @@ const Header = () => {
 
   const handleWhatsApp = () => {
     const message = generateGeneralInquiryMessage();
-    openWhatsApp(message);
+    const result = openWhatsApp(message);
+    
+    if (!result.success) {
+      toast({
+        title: "WhatsApp Not Configured",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
   };
 
   return (

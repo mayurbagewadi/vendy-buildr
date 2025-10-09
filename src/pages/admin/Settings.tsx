@@ -74,6 +74,29 @@ const AdminSettings = () => {
         return;
       }
 
+      // Validate WhatsApp number - prevent default number
+      const cleanNumber = formData.whatsappNumber.replace(/[^0-9]/g, '');
+      if (cleanNumber === '9876543210' || cleanNumber === '919876543210') {
+        toast({
+          variant: "destructive",
+          title: "Invalid WhatsApp Number",
+          description: "The default number 9876543210 is not allowed. Please enter your actual WhatsApp business number.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate WhatsApp number format
+      if (formData.whatsappNumber.trim() && cleanNumber.length < 10) {
+        toast({
+          variant: "destructive",
+          title: "Invalid WhatsApp Number",
+          description: "Please enter a valid WhatsApp number with at least 10 digits.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Save to centralized settings
       const settings = getSettings();
       saveSettings({

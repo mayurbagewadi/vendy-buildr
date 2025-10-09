@@ -1,5 +1,18 @@
 import { CartItem } from './cartUtils';
 
+// Validate if WhatsApp number is properly configured
+export const isWhatsAppConfigured = (): boolean => {
+  const number = getWhatsAppNumber();
+  const formattedNumber = formatWhatsAppNumber(number);
+  
+  // Check if number is empty, default, or invalid
+  if (!number || number.trim() === '') return false;
+  if (formattedNumber === '919876543210' || formattedNumber === '9876543210') return false;
+  if (formattedNumber.length < 10) return false;
+  
+  return true;
+};
+
 // Get WhatsApp business number from settings
 export const getWhatsAppNumber = (): string => {
   // Try multiple storage keys for backward compatibility
@@ -133,13 +146,31 @@ export const generateSupportMessage = (): string => {
 };
 
 // Open WhatsApp with pre-filled message
-export const openWhatsApp = (message: string, phoneNumber?: string): void => {
+export const openWhatsApp = (message: string, phoneNumber?: string): { success: boolean; error?: string } => {
+  // If phoneNumber is not provided, check if WhatsApp is configured
+  if (!phoneNumber && !isWhatsAppConfigured()) {
+    return {
+      success: false,
+      error: 'WhatsApp number is not configured. Please contact the store owner to set up a valid WhatsApp number in admin settings.'
+    };
+  }
+  
   const number = phoneNumber || getWhatsAppNumber();
   const formattedNumber = formatWhatsAppNumber(number);
+  
+  // Additional validation for the specific number being used
+  if (formattedNumber === '919876543210' || formattedNumber === '9876543210') {
+    return {
+      success: false,
+      error: 'Invalid WhatsApp number. The default number 9876543210 is not allowed. Please contact the store owner to set up a valid WhatsApp number.'
+    };
+  }
+  
   const encodedMessage = encodeURIComponent(message);
   
   // Use api.whatsapp.com for better mobile/desktop compatibility
   const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
   
   window.open(whatsappUrl, '_blank');
+  return { success: true };
 };

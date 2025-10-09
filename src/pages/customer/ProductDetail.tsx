@@ -99,7 +99,16 @@ const ProductDetail = () => {
 
   const handleBuyWhatsApp = () => {
     const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || product.baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
-    openWhatsApp(message);
+    const result = openWhatsApp(message);
+
+    if (!result.success) {
+      toast({
+        title: "WhatsApp Not Configured",
+        description: result.error,
+        variant: "destructive",
+      });
+      return;
+    }
 
     toast({
       title: "Redirecting to WhatsApp",
@@ -115,7 +124,16 @@ const ProductDetail = () => {
     };
 
     const message = generateProductInquiryMessage(inquiry);
-    openWhatsApp(message);
+    const result = openWhatsApp(message);
+
+    if (!result.success) {
+      toast({
+        title: "WhatsApp Not Configured",
+        description: result.error,
+        variant: "destructive",
+      });
+      return;
+    }
 
     toast({
       title: "Redirecting to WhatsApp",
