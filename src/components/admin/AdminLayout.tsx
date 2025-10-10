@@ -54,26 +54,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   useEffect(() => {
     // Check authentication
-    const authData = localStorage.getItem("adminAuth") || sessionStorage.getItem("adminAuth");
+    const adminToken = localStorage.getItem("adminToken");
     
-    if (!authData) {
-      navigate("/admin/login");
-      return;
-    }
-
-    const auth = JSON.parse(authData);
-    const loginTime = new Date(auth.loginTime);
-    const now = new Date();
-    const hoursDiff = (now.getTime() - loginTime.getTime()) / (1000 * 60 * 60);
-
-    // Auto-logout after 1 hour
-    if (hoursDiff > 1) {
-      localStorage.removeItem("adminAuth");
-      sessionStorage.removeItem("adminAuth");
-      toast({
-        title: "Session Expired",
-        description: "Please log in again",
-      });
+    if (!adminToken) {
       navigate("/admin/login");
       return;
     }
@@ -101,8 +84,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("adminAuth");
-    sessionStorage.removeItem("adminAuth");
+    localStorage.removeItem("adminToken");
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out",
