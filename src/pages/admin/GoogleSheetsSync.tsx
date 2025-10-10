@@ -25,9 +25,11 @@ import {
   getSpreadsheetId, 
   saveSpreadsheetId, 
   syncFromGoogleSheets,
-  getLastSyncTime 
+  getLastSyncTime,
+  pushToGoogleSheets,
+  getScriptUrl
 } from '@/lib/googleSheetsSync';
-import { saveProducts } from '@/lib/productData';
+import { saveProducts, getProducts } from '@/lib/productData';
 import { 
   requestSheetsAccess, 
   getAccessToken, 
@@ -43,6 +45,7 @@ const GoogleSheetsSync = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [hasAccess, setHasAccess] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
 
   useEffect(() => {
     const savedUrl = localStorage.getItem('google_apps_script_url');
@@ -174,6 +177,66 @@ const GoogleSheetsSync = () => {
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handlePushAllProducts = async () => {
+    const savedUrl = getScriptUrl();
+    if (!savedUrl) {
+      toast({
+        title: 'Error',
+        description: 'Please configure and save your Script URL first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const products = getProducts();
+    if (products.length === 0) {
+      toast({
+        title: 'No Products',
+        description: 'There are no products to push to Google Sheets',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPushing(true);
+
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const product of products) {
+        try {
+          await pushToGoogleSheets(product);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to push product ${product.id}:`, error);
+          failCount++;
+        }
+      }
+
+      if (failCount === 0) {
+        toast({
+          title: 'Push Successful',
+          description: `Successfully pushed ${successCount} products to Google Sheets`,
+        });
+      } else {
+        toast({
+          title: 'Push Completed with Errors',
+          description: `Pushed ${successCount} products, ${failCount} failed`,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Push Failed',
+        description: error instanceof Error ? error.message : 'Failed to push to Google Sheets',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPushing(false);
     }
   };
 
@@ -424,7 +487,7 @@ const GoogleSheetsSync = () => {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold">Sync Products</h3>
+                    <h3 className="font-semibold">Sync Products FROM Sheet</h3>
                     <p className="text-sm text-muted-foreground">
                       Import products from your Google Apps Script
                     </p>
@@ -436,6 +499,26 @@ const GoogleSheetsSync = () => {
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                     {isSyncing ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Push Products TO Sheet</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Push all products from admin panel to Google Sheets
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handlePushAllProducts} 
+                    disabled={isPushing || !scriptUrl}
+                    className="gap-2"
+                    variant="secondary"
+                  >
+                    <Database className={`w-4 h-4 ${isPushing ? 'animate-pulse' : ''}`} />
+                    {isPushing ? 'Pushing...' : 'Push All Products'}
                   </Button>
                 </div>
               </TabsContent>
