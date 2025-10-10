@@ -75,27 +75,27 @@ export const generateOrderMessage = (orderDetails: {
     })
     .join("\n");
 
-  return `🛍️ *New Order Request*
+  return `*New Order Request*
 
-📋 *Order Details:*
+*Order Details:*
 ${itemsList}
 
-💰 *Subtotal:* ${settings.currencySymbol}${orderDetails.subtotal.toFixed(2)}
-🚚 *Delivery:* ${settings.currencySymbol}${orderDetails.deliveryCharge.toFixed(2)}
-💵 *Total:* ${settings.currencySymbol}${orderDetails.total.toFixed(2)}
+*Subtotal:* ${settings.currencySymbol}${orderDetails.subtotal.toFixed(2)}
+*Delivery:* ${settings.currencySymbol}${orderDetails.deliveryCharge.toFixed(2)}
+*Total:* ${settings.currencySymbol}${orderDetails.total.toFixed(2)}
 
-📧 *Customer Info:*
+*Customer Info:*
 Name: ${orderDetails.customerName}
 Phone: ${orderDetails.phone}
 ${orderDetails.email ? `Email: ${orderDetails.email}` : ""}
 
-🏠 *Delivery Address:*
+*Delivery Address:*
 ${orderDetails.address}
 ${orderDetails.landmark ? `Landmark: ${orderDetails.landmark}` : ""}
 Pincode: ${orderDetails.pincode}
 Preferred Time: ${orderDetails.deliveryTime}
 
-🆔 Order ID: ${orderId}`;
+Order ID: ${orderId}`;
 };
 
 // ✅ Prepare data for Google Sheets integration
