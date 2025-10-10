@@ -73,6 +73,33 @@ function handleProduct(spreadsheet, productData) {
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('#ffffff');
+    
+    // Auto-resize columns for better visibility
+    sheet.autoResizeColumns(1, headers.length);
+  }
+  
+  // Ensure headers exist even if sheet was created manually
+  if (sheet.getLastRow() === 0) {
+    const headers = [
+      'product_id',
+      'product_name', 
+      'category',
+      'price_min',
+      'price_max',
+      'description',
+      'status',
+      'main_image',
+      'additional_images',
+      'date_added',
+      'last_modified'
+    ];
+    sheet.appendRow(headers);
+    
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setFontWeight('bold');
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('#ffffff');
+    sheet.autoResizeColumns(1, headers.length);
   }
   
   // Handle delete action

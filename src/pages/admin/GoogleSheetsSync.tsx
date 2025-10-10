@@ -446,7 +446,37 @@ const GoogleSheetsSync = () => {
                   <CardContent>
                     <pre className="text-xs bg-background p-4 rounded-md overflow-x-auto">
 {`function doGet() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Products');
+  
+  // Create Products sheet if it doesn't exist
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Products');
+  }
+  
+  // Check if headers exist, if not create them
+  if (sheet.getLastRow() === 0) {
+    var headers = [
+      'product_id',
+      'product_name',
+      'category',
+      'price_min',
+      'price_max',
+      'description',
+      'status',
+      'main_image',
+      'additional_images',
+      'date_added',
+      'last_modified'
+    ];
+    sheet.appendRow(headers);
+    
+    // Format header row
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setFontWeight('bold');
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('#ffffff');
+  }
+  
   var data = sheet.getDataRange().getValues();
   var products = [];
   
@@ -482,6 +512,10 @@ const GoogleSheetsSync = () => {
   return ContentService.createTextOutput(JSON.stringify(products))
     .setMimeType(ContentService.MimeType.JSON);
 }`}</pre>
+                    <div className="mt-4 p-4 bg-muted rounded-md">
+                      <p className="text-sm font-semibold mb-2">Column Headers (A to K):</p>
+                      <code className="text-xs">product_id | product_name | category | price_min | price_max | description | status | main_image | additional_images | date_added | last_modified</code>
+                    </div>
                   </CardContent>
                 </Card>
 
