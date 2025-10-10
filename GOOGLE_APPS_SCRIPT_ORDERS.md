@@ -75,6 +75,26 @@ function handleProduct(spreadsheet, productData) {
     headerRange.setFontColor('#ffffff');
   }
   
+  // Handle delete action
+  if (productData.action === 'delete') {
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === productData.product_id) {
+        sheet.deleteRow(i + 1);
+        return ContentService.createTextOutput(JSON.stringify({
+          success: true,
+          message: 'Product deleted successfully'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: 'Product not found'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
   // Check if product already exists
   const data = sheet.getDataRange().getValues();
   let rowIndex = -1;

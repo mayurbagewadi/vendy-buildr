@@ -37,6 +37,7 @@ import {
   getUserInfo,
   getGoogleClientId 
 } from '@/lib/googleAuth';
+import { SyncStatusBadge } from '@/components/admin/SyncStatusBadge';
 
 const GoogleSheetsSync = () => {
   const [syncMethod, setSyncMethod] = useState<'script' | 'oauth'>('script');
@@ -375,9 +376,9 @@ const GoogleSheetsSync = () => {
                 <LinkIcon className="w-5 h-5 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">Sheets Access</p>
-                  <p className="font-medium">
-                    {hasAccess ? 'Granted' : 'Not granted'}
-                  </p>
+                  <div className="mt-1">
+                    <SyncStatusBadge isEnabled={!!scriptUrl || hasAccess} lastSync={lastSync} />
+                  </div>
                 </div>
               </div>
             </div>

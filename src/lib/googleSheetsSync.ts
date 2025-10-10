@@ -194,6 +194,35 @@ export const pushToGoogleSheets = async (product: Product): Promise<void> => {
   }
 };
 
+// Delete product from Google Sheets
+export const deleteFromGoogleSheets = async (productId: string): Promise<void> => {
+  try {
+    const scriptUrl = getScriptUrl();
+    if (!scriptUrl) {
+      throw new Error('Apps Script URL not configured.');
+    }
+
+    const payload = {
+      action: 'delete',
+      product_id: productId,
+    };
+
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('Product deleted from Google Sheets:', productId);
+  } catch (error) {
+    console.error('Error deleting from Google Sheets:', error);
+    throw error;
+  }
+};
+
 // Push order data to Google Sheets
 export interface OrderData {
   orderId: string;

@@ -34,6 +34,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
+import { deleteFromGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
 
 type Product = SharedProduct & {
   variantCount?: number;
@@ -96,7 +97,7 @@ const Products = () => {
     }).format(price);
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     // Use shared utility to delete product
     deleteProductUtil(productId);
     
@@ -107,9 +108,19 @@ const Products = () => {
     }));
     setProducts(loadedProducts);
     
+    // Delete from Google Sheets if configured (don't wait, async)
+    const scriptUrl = getScriptUrl();
+    if (scriptUrl) {
+      deleteFromGoogleSheets(productId).catch(error => {
+        console.error('Failed to delete from Google Sheets:', error);
+      });
+    }
+    
     toast({
       title: "Product deleted",
-      description: "Product has been removed from your catalog",
+      description: scriptUrl 
+        ? "Product removed and will sync to Google Sheets"
+        : "Product removed from catalog",
     });
   };
 
