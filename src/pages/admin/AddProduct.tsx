@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { addProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { generateProductId } from "@/lib/idGenerator";
+import { pushToGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -259,10 +260,28 @@ const AddProduct = () => {
       // Use shared utility to add product
       addProduct(productData);
 
-      toast({
-        title: "Product created successfully",
-        description: `${data.name} has been added to your catalog`,
-      });
+      // Push to Google Sheets if configured
+      const scriptUrl = getScriptUrl();
+      if (scriptUrl) {
+        try {
+          await pushToGoogleSheets(productData);
+          toast({
+            title: "Product created successfully",
+            description: `${data.name} has been added to your catalog and synced to Google Sheets`,
+          });
+        } catch (sheetError) {
+          toast({
+            title: "Product created successfully",
+            description: `${data.name} has been added, but failed to sync to Google Sheets`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Product created successfully",
+          description: `${data.name} has been added to your catalog`,
+        });
+      }
 
       navigate("/admin/products");
     } catch (error) {

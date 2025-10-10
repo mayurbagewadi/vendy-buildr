@@ -14,6 +14,7 @@ import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProductById, updateProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
+import { pushToGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -257,10 +258,28 @@ const EditProduct = () => {
 
       updateProduct(id, productData);
 
-      toast({
-        title: "Product updated successfully",
-        description: `${data.name} has been updated`,
-      });
+      // Push to Google Sheets if configured
+      const scriptUrl = getScriptUrl();
+      if (scriptUrl) {
+        try {
+          await pushToGoogleSheets(productData);
+          toast({
+            title: "Product updated successfully",
+            description: `${data.name} has been updated and synced to Google Sheets`,
+          });
+        } catch (sheetError) {
+          toast({
+            title: "Product updated successfully",
+            description: `${data.name} has been updated, but failed to sync to Google Sheets`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Product updated successfully",
+          description: `${data.name} has been updated`,
+        });
+      }
 
       navigate("/admin/products");
     } catch (error) {

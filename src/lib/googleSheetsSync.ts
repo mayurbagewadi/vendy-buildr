@@ -5,6 +5,7 @@ import { generateProductId } from './idGenerator';
 import { getAccessToken } from './googleAuth';
 
 const SPREADSHEET_ID_KEY = 'google_sheets_spreadsheet_id';
+const SCRIPT_URL_KEY = 'google_sheets_script_url';
 const LAST_SYNC_KEY = 'google_sheets_last_sync';
 
 export interface SheetRow {
@@ -29,6 +30,16 @@ export const saveSpreadsheetId = (id: string): void => {
 // Get spreadsheet ID
 export const getSpreadsheetId = (): string | null => {
   return localStorage.getItem(SPREADSHEET_ID_KEY);
+};
+
+// Save script URL
+export const saveScriptUrl = (url: string): void => {
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+};
+
+// Get script URL
+export const getScriptUrl = (): string | null => {
+  return localStorage.getItem(SCRIPT_URL_KEY);
 };
 
 // Get last sync time
@@ -125,6 +136,60 @@ export const syncFromGoogleSheets = async (spreadsheetId: string): Promise<Produ
     return products;
   } catch (error) {
     console.error('Error syncing from Google Sheets:', error);
+    throw error;
+  }
+};
+
+// Convert Product to Sheet row format
+const convertProductToSheetRow = (product: Product): any => {
+  const priceMin = product.basePrice || 0;
+  const priceMax = product.variants && product.variants.length > 0
+    ? Math.max(...product.variants.map(v => v.price))
+    : priceMin;
+
+  const additionalImages = product.images.length > 1
+    ? product.images.slice(1).join(', ')
+    : '';
+
+  return {
+    product_id: product.id,
+    product_name: product.name,
+    category: product.category,
+    price_min: priceMin.toString(),
+    price_max: priceMax !== priceMin ? priceMax.toString() : '',
+    description: product.description,
+    status: product.status,
+    main_image: product.images[0] || '',
+    additional_images: additionalImages,
+    date_added: product.createdAt,
+    last_modified: product.updatedAt,
+  };
+};
+
+// Push product data to Google Sheets via Apps Script
+export const pushToGoogleSheets = async (product: Product): Promise<void> => {
+  try {
+    const scriptUrl = getScriptUrl();
+    if (!scriptUrl) {
+      throw new Error('Apps Script URL not configured. Please set it up in Google Sheets Sync settings.');
+    }
+
+    const rowData = convertProductToSheetRow(product);
+
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors', // Apps Script requires no-cors
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(rowData),
+    });
+
+    // Note: no-cors mode means we can't read the response
+    // We assume success if no error is thrown
+    console.log('Product pushed to Google Sheets:', product.name);
+  } catch (error) {
+    console.error('Error pushing to Google Sheets:', error);
     throw error;
   }
 };
