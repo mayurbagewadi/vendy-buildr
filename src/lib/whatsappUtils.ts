@@ -168,8 +168,8 @@ export const openWhatsApp = (message: string, phoneNumber?: string): { success: 
   
   const encodedMessage = encodeURIComponent(message);
   
-  // Use api.whatsapp.com for better mobile/desktop compatibility
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
+  // Use wa.me for better compatibility and to avoid blocking issues
+  const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
   
   window.open(whatsappUrl, '_blank');
   return { success: true };
