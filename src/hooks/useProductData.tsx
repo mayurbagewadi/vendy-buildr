@@ -43,6 +43,16 @@ export const useProductData = (publishedOnly = false) => {
 
   useEffect(() => {
     loadProducts();
+
+    // Listen for storage changes in other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'products' && e.newValue) {
+        loadProducts();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [loadProducts]);
 
   const addProduct = useCallback(async (product: Product) => {
