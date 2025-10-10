@@ -168,8 +168,15 @@ export const openWhatsApp = (message: string, phoneNumber?: string): { success: 
   
   const encodedMessage = encodeURIComponent(message);
   
-  // Use wa.me for better compatibility and to avoid blocking issues
-  const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+  // Detect if user is on mobile or desktop
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // Use appropriate URL based on device type
+  // Desktop: web.whatsapp.com to avoid api.whatsapp.com blocking
+  // Mobile: wa.me for app deep linking
+  const whatsappUrl = isMobile
+    ? `https://wa.me/${formattedNumber}?text=${encodedMessage}`
+    : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
   
   window.open(whatsappUrl, '_blank');
   return { success: true };
