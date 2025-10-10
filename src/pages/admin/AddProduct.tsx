@@ -14,6 +14,7 @@ import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { addProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
+import { generateProductId } from "@/lib/idGenerator";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -233,9 +234,9 @@ const AddProduct = () => {
         ...imageFiles.map(file => URL.createObjectURL(file))
       ];
 
-      // Create product using shared utility
+      // Create product using shared utility with auto-generated unique ID
       const productData: SharedProduct = {
-        id: Date.now().toString(),
+        id: generateProductId(),
         name: data.name,
         description: data.description,
         category: data.category,
