@@ -1,12 +1,12 @@
 import { getSettings } from "./settingsData";
 
-// Get WhatsApp number from settings
+// ✅ Get WhatsApp number from store settings
 export const getWhatsAppNumber = (): string => {
   const settings = getSettings();
   return settings.whatsappNumber;
 };
 
-// Open WhatsApp with a message
+// ✅ Open WhatsApp chat with prefilled message
 export const openWhatsApp = (message: string): { success: boolean; error?: string } => {
   const phoneNumber = getWhatsAppNumber();
 
@@ -20,18 +20,19 @@ export const openWhatsApp = (message: string): { success: boolean; error?: strin
   const encodedMessage = encodeURIComponent(message);
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 
+  // open WhatsApp window
   window.open(whatsappUrl, "_blank");
 
   return { success: true };
 };
 
-// Generate general inquiry message
+// ✅ Generate a general inquiry message
 export const generateGeneralInquiryMessage = (): string => {
   const settings = getSettings();
   return `Hello ${settings.storeName}! I have a question about your products.`;
 };
 
-// Generate product inquiry message
+// ✅ Generate a product-specific inquiry message
 export const generateProductInquiryMessage = (inquiry: {
   productName: string;
   productId: string;
@@ -42,7 +43,7 @@ export const generateProductInquiryMessage = (inquiry: {
   return `Hello ${settings.storeName}! I'm interested in "${inquiry.productName}"${variantInfo} (ID: ${inquiry.productId}). Can you provide more details?`;
 };
 
-// Generate order message for checkout
+// ✅ Generate an order message for WhatsApp checkout
 export const generateOrderMessage = (orderDetails: {
   customerName: string;
   phone: string;
@@ -68,7 +69,9 @@ export const generateOrderMessage = (orderDetails: {
   const itemsList = orderDetails.cart
     .map((item) => {
       const variantInfo = item.variant ? ` (${item.variant})` : "";
-      return `• ${item.productName}${variantInfo} - ${settings.currencySymbol}${item.price.toFixed(2)} (Qty: ${item.quantity})`;
+      return `• ${item.productName}${variantInfo} - ${settings.currencySymbol}${item.price.toFixed(
+        2,
+      )} (Qty: ${item.quantity})`;
     })
     .join("\n");
 
@@ -77,9 +80,9 @@ export const generateOrderMessage = (orderDetails: {
 📋 *Order Details:*
 ${itemsList}
 
-💰 *Subtotal: ${settings.currencySymbol}${orderDetails.subtotal.toFixed(2)}*
-🚚 *Delivery: ${settings.currencySymbol}${orderDetails.deliveryCharge.toFixed(2)}*
-💵 *Total: ${settings.currencySymbol}${orderDetails.total.toFixed(2)}*
+💰 *Subtotal:* ${settings.currencySymbol}${orderDetails.subtotal.toFixed(2)}
+🚚 *Delivery:* ${settings.currencySymbol}${orderDetails.deliveryCharge.toFixed(2)}
+💵 *Total:* ${settings.currencySymbol}${orderDetails.total.toFixed(2)}
 
 📧 *Customer Info:*
 Name: ${orderDetails.customerName}
@@ -92,10 +95,10 @@ ${orderDetails.landmark ? `Landmark: ${orderDetails.landmark}` : ""}
 Pincode: ${orderDetails.pincode}
 Preferred Time: ${orderDetails.deliveryTime}
 
-Order ID: ${orderId}`;
+🆔 Order ID: ${orderId}`;
 };
 
-// Prepare order data for Google Sheets
+// ✅ Prepare data for Google Sheets integration
 export const prepareOrderDataForSheets = (orderDetails: {
   customerName: string;
   phone: string;
@@ -118,11 +121,12 @@ export const prepareOrderDataForSheets = (orderDetails: {
   const orderId = `ORD${Date.now()}`;
   const orderDate = new Date().toISOString();
 
-  // Convert items array to string format for Google Sheets
+  // Convert cart items into a single string for sheet storage
   const itemsString = orderDetails.cart
     .map((item) => {
       const variantInfo = item.variant ? ` (${item.variant})` : "";
-      return `${item.productName}${variantInfo} x${item.quantity} - ₹${item.price * item.quantity}`;
+      const totalPrice = item.price * item.quantity;
+      return `${item.productName}${variantInfo} x${item.quantity} - ₹${totalPrice}`;
     })
     .join(" | ");
 
@@ -133,7 +137,6 @@ export const prepareOrderDataForSheets = (orderDetails: {
     phone: orderDetails.phone,
     email: orderDetails.email || "",
     address: `${orderDetails.address}${orderDetails.landmark ? `, ${orderDetails.landmark}` : ""}`,
-    landmark: orderDetails.landmark,
     pincode: orderDetails.pincode,
     deliveryTime: orderDetails.deliveryTime,
     items: itemsString,
