@@ -8,16 +8,16 @@ Replace your existing Apps Script with this version:
 
 ```javascript
 function doGet(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Products');
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Products');
   if (!sheet) {
     return ContentService.createTextOutput(JSON.stringify({error: 'Products sheet not found'}))
       .setMimeType(ContentService.MimeType.JSON);
   }
   
-  const data = sheet.getDataRange().getValues();
+  var data = sheet.getDataRange().getValues();
   
   // Remove header row
-  const rows = data.slice(1);
+  var rows = data.slice(1);
   
   return ContentService.createTextOutput(JSON.stringify(rows))
     .setMimeType(ContentService.MimeType.JSON);
@@ -25,10 +25,10 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     
     // Parse incoming data
-    const postData = JSON.parse(e.postData.contents);
+    var postData = JSON.parse(e.postData.contents);
     
     // Check if this is an order or a product
     if (postData._type === 'order') {
@@ -46,14 +46,14 @@ function doPost(e) {
 }
 
 function handleProduct(spreadsheet, productData) {
-  let sheet = spreadsheet.getSheetByName('Products');
+  var sheet = spreadsheet.getSheetByName('Products');
   
   // Create Products sheet if it doesn't exist
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Products');
     
     // Create headers
-    const headers = [
+    var headers = [
       'product_id',
       'product_name', 
       'category',
@@ -69,7 +69,7 @@ function handleProduct(spreadsheet, productData) {
     sheet.appendRow(headers);
     
     // Format header row
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('#ffffff');
@@ -80,7 +80,7 @@ function handleProduct(spreadsheet, productData) {
   
   // Ensure headers exist even if sheet was created manually
   if (sheet.getLastRow() === 0) {
-    const headers = [
+    var headers = [
       'product_id',
       'product_name', 
       'category',
@@ -95,7 +95,7 @@ function handleProduct(spreadsheet, productData) {
     ];
     sheet.appendRow(headers);
     
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('#ffffff');
@@ -104,9 +104,9 @@ function handleProduct(spreadsheet, productData) {
   
   // Handle delete action
   if (productData.action === 'delete') {
-    const data = sheet.getDataRange().getValues();
+    var data = sheet.getDataRange().getValues();
     
-    for (let i = 1; i < data.length; i++) {
+    for (var i = 1; i < data.length; i++) {
       if (data[i][0] === productData.product_id) {
         sheet.deleteRow(i + 1);
         return ContentService.createTextOutput(JSON.stringify({
@@ -123,10 +123,10 @@ function handleProduct(spreadsheet, productData) {
   }
   
   // Check if product already exists
-  const data = sheet.getDataRange().getValues();
-  let rowIndex = -1;
+  var data = sheet.getDataRange().getValues();
+  var rowIndex = -1;
   
-  for (let i = 1; i < data.length; i++) {
+  for (var i = 1; i < data.length; i++) {
     if (data[i][0] === productData.product_id) {
       rowIndex = i + 1;
       break;
@@ -134,7 +134,7 @@ function handleProduct(spreadsheet, productData) {
   }
   
   // Prepare row data
-  const rowData = [
+  var rowData = [
     productData.product_id,
     productData.product_name,
     productData.category,
@@ -166,14 +166,14 @@ function handleProduct(spreadsheet, productData) {
 }
 
 function handleOrder(spreadsheet, orderData) {
-  let sheet = spreadsheet.getSheetByName('Orders');
+  var sheet = spreadsheet.getSheetByName('Orders');
   
   // Create Orders sheet if it doesn't exist
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Orders');
     
     // Create headers
-    const headers = [
+    var headers = [
       'Order ID',
       'Order Date',
       'Customer Name',
@@ -192,14 +192,14 @@ function handleOrder(spreadsheet, orderData) {
     sheet.appendRow(headers);
     
     // Format header row
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#34a853');
     headerRange.setFontColor('#ffffff');
   }
   
   // Prepare row data
-  const rowData = [
+  var rowData = [
     orderData.orderId,
     orderData.orderDate,
     orderData.customerName,
