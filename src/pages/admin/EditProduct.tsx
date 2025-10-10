@@ -258,28 +258,20 @@ const EditProduct = () => {
 
       updateProduct(id, productData);
 
-      // Push to Google Sheets if configured
+      // Push to Google Sheets if configured (don't wait, async)
       const scriptUrl = getScriptUrl();
       if (scriptUrl) {
-        try {
-          await pushToGoogleSheets(productData);
-          toast({
-            title: "Product updated successfully",
-            description: `${data.name} has been updated and synced to Google Sheets`,
-          });
-        } catch (sheetError) {
-          toast({
-            title: "Product updated successfully",
-            description: `${data.name} has been updated, but failed to sync to Google Sheets`,
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Product updated successfully",
-          description: `${data.name} has been updated`,
+        pushToGoogleSheets(productData).catch(error => {
+          console.error('Failed to sync to Google Sheets:', error);
         });
       }
+
+      toast({
+        title: "Product updated successfully",
+        description: scriptUrl 
+          ? `${data.name} has been updated and will sync to Google Sheets`
+          : `${data.name} has been updated`,
+      });
 
       navigate("/admin/products");
     } catch (error) {

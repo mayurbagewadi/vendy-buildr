@@ -260,28 +260,20 @@ const AddProduct = () => {
       // Use shared utility to add product
       addProduct(productData);
 
-      // Push to Google Sheets if configured
+      // Push to Google Sheets if configured (don't wait, async)
       const scriptUrl = getScriptUrl();
       if (scriptUrl) {
-        try {
-          await pushToGoogleSheets(productData);
-          toast({
-            title: "Product created successfully",
-            description: `${data.name} has been added to your catalog and synced to Google Sheets`,
-          });
-        } catch (sheetError) {
-          toast({
-            title: "Product created successfully",
-            description: `${data.name} has been added, but failed to sync to Google Sheets`,
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Product created successfully",
-          description: `${data.name} has been added to your catalog`,
+        pushToGoogleSheets(productData).catch(error => {
+          console.error('Failed to sync to Google Sheets:', error);
         });
       }
+
+      toast({
+        title: "Product created successfully",
+        description: scriptUrl 
+          ? `${data.name} has been added and will sync to Google Sheets`
+          : `${data.name} has been added to your catalog`,
+      });
 
       navigate("/admin/products");
     } catch (error) {
