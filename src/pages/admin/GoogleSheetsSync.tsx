@@ -27,7 +27,8 @@ import {
   syncFromGoogleSheets,
   getLastSyncTime,
   pushToGoogleSheets,
-  getScriptUrl
+  getScriptUrl,
+  saveScriptUrl
 } from '@/lib/googleSheetsSync';
 import { saveProducts, getProducts } from '@/lib/productData';
 import { 
@@ -48,7 +49,7 @@ const GoogleSheetsSync = () => {
   const [isPushing, setIsPushing] = useState(false);
 
   useEffect(() => {
-    const savedUrl = localStorage.getItem('google_apps_script_url');
+    const savedUrl = getScriptUrl();
     if (savedUrl) {
       setScriptUrl(savedUrl);
       setSyncMethod('script');
@@ -129,7 +130,7 @@ const GoogleSheetsSync = () => {
       return;
     }
 
-    localStorage.setItem('google_apps_script_url', scriptUrl);
+    saveScriptUrl(scriptUrl);
     toast({
       title: 'Success',
       description: 'Script URL saved successfully',
@@ -137,7 +138,7 @@ const GoogleSheetsSync = () => {
   };
 
   const handleSyncFromScript = async () => {
-    const savedUrl = localStorage.getItem('google_apps_script_url');
+    const savedUrl = getScriptUrl();
     if (!savedUrl) {
       toast({
         title: 'Error',
