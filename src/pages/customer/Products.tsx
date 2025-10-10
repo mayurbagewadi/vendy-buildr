@@ -56,6 +56,11 @@ const Products = () => {
   }, [searchParams, allProducts]);
 
   useEffect(() => {
+    // Skip filtering if no products loaded yet
+    if (!allProducts || allProducts.length === 0) {
+      return;
+    }
+
     let filtered = [...allProducts];
 
     // Category filter
@@ -63,29 +68,31 @@ const Products = () => {
       filtered = filtered.filter(p => selectedCategories.includes(p.category));
     }
 
-    // Price filter
-    filtered = filtered.filter(p => {
-      const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);
-      const maxPrice = p.variants?.length 
-        ? Math.max(...p.variants.map(v => v.price))
-        : (p.basePrice || 0);
-      
-      return maxPrice >= priceRange[0] && minPrice <= priceRange[1];
-    });
+    // Price filter - only apply if not at default max range
+    if (priceRange[0] > 0 || priceRange[1] < 10000) {
+      filtered = filtered.filter(p => {
+        const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);
+        const maxPrice = p.variants?.length 
+          ? Math.max(...p.variants.map(v => v.price))
+          : (p.basePrice || 0);
+        
+        return maxPrice >= priceRange[0] && minPrice <= priceRange[1];
+      });
+    }
 
     // Sorting
     switch (sortBy) {
       case "price-low":
         filtered.sort((a, b) => {
-          const priceA = a.basePrice || 0;
-          const priceB = b.basePrice || 0;
+          const priceA = a.basePrice || (a.variants?.length ? a.variants[0].price : 0);
+          const priceB = b.basePrice || (b.variants?.length ? b.variants[0].price : 0);
           return priceA - priceB;
         });
         break;
       case "price-high":
         filtered.sort((a, b) => {
-          const priceA = a.basePrice || 0;
-          const priceB = b.basePrice || 0;
+          const priceA = a.basePrice || (a.variants?.length ? a.variants[0].price : 0);
+          const priceB = b.basePrice || (b.variants?.length ? b.variants[0].price : 0);
           return priceB - priceA;
         });
         break;
