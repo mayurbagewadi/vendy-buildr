@@ -63,12 +63,15 @@ const Products = () => {
 
     let filtered = [...allProducts];
 
-    // Category filter
-    if (selectedCategories.length > 0) {
+    // Only apply filters if they've been explicitly set by user
+    const categoryParam = searchParams.get("category");
+    
+    // Category filter - only if selected categories exist AND no URL param
+    if (selectedCategories.length > 0 && !categoryParam) {
       filtered = filtered.filter(p => selectedCategories.includes(p.category));
     }
 
-    // Price filter - only apply if not at default max range
+    // Price filter - only apply if user has changed from default
     if (priceRange[0] > 0 || priceRange[1] < 10000) {
       filtered = filtered.filter(p => {
         const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);

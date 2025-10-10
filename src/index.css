@@ -179,6 +179,15 @@
     backface-visibility: hidden;
     perspective: 1000px;
   }
+  
+  /* Hide scrollbar while maintaining scroll functionality */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @layer base {

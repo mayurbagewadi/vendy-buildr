@@ -108,18 +108,15 @@ const Home = () => {
         {categories.length > 0 && (
           <section id="categories" className="py-16 bg-muted/50">
             <div className="container mx-auto px-4">
-              <div className="text-center mb-8">
+              <div className="mb-8">
                 <h2 className="text-3xl font-bold text-foreground mb-2">Shop by Category</h2>
                 <p className="text-muted-foreground">Browse our wide range of categories</p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
                 {categories.map((category) => (
                   <Link key={category} to={`/products?category=${encodeURIComponent(category)}`}>
-                    <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-                      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Package className="w-8 h-8 text-primary" />
-                      </div>
-                      <h3 className="font-semibold">{category}</h3>
+                    <Card className="px-6 py-3 hover:shadow-lg transition-shadow cursor-pointer whitespace-nowrap min-w-fit">
+                      <h3 className="font-semibold text-foreground">{category}</h3>
                     </Card>
                   </Link>
                 ))}
