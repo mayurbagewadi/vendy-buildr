@@ -278,19 +278,19 @@ const AddProduct = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 lg:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Add New Product</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Add New Product</h1>
+          <p className="text-sm lg:text-base text-muted-foreground mt-1">
             Create a new product listing for your store
           </p>
         </div>
 
         {/* Form */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 lg:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
               {/* Main Product Information */}
               <div className="lg:col-span-2 space-y-6">
                 <Card>

@@ -142,17 +142,17 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-4 lg:space-y-8">
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome back! 👋</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Welcome back! 👋</h1>
+            <p className="text-sm lg:text-base text-muted-foreground mt-1">
               Here's what's happening with <span className="font-medium text-primary">{storeName}</span> today.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="touch-target">
               <Star className="w-4 h-4 mr-2" />
               Quick Tour
             </Button>
@@ -160,25 +160,25 @@ const AdminDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((stat, index) => (
             <Card key={index} className="admin-stat-card group">
-              <CardContent className="p-6">
+              <CardContent className="p-4 lg:p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">
                       {stat.title}
                     </p>
-                    <p className="text-2xl font-bold text-foreground mt-2">
+                    <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                       {stat.value}
                     </p>
-                    <p className="flex items-center text-sm text-success mt-1">
-                      <ArrowUpRight className="w-3 h-3 mr-1" />
-                      {stat.change} from last month
+                    <p className="flex items-center text-xs lg:text-sm text-success mt-0.5 lg:mt-1">
+                      <ArrowUpRight className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">{stat.change} from last month</span>
                     </p>
                   </div>
-                  <div className={`p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200`}>
-                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`p-2 lg:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200 flex-shrink-0 ml-2`}>
+                    <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>

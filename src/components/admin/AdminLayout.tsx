@@ -131,124 +131,140 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile sidebar backdrop */}
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar - Mobile Optimized */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 overflow-y-auto
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border">
-            <div className="flex items-center space-x-3">
+      {/* Sidebar */}
+      <aside 
+        className={`
+          fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col
+          transform transition-transform duration-300 ease-out shadow-xl lg:shadow-none
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <ShoppingBag className="w-6 h-6 text-primary-foreground" />
               </div>
-              <div>
-                <h2 className="font-semibold text-foreground text-sm">{storeName}</h2>
-                <p className="text-xs text-muted-foreground">Admin Panel</p>
+              <div className="flex-1">
+                <h2 className="font-semibold text-foreground text-sm truncate">{storeName}</h2>
+                <p className="text-xs text-muted-foreground truncate">Admin Panel</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden"
+              className="lg:hidden p-1.5 hover:bg-muted rounded-md transition-colors touch-target"
             >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Navigation - Touch Optimized */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setIsSidebarOpen(false)}
-                className={`
-                  flex items-center px-3 py-3 min-h-[48px] text-sm font-medium rounded-lg transition-all duration-200
-                  ${item.current
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }
-                `}
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t border-border">
-            <Button
-              onClick={handleLogout}
-              variant="ghost"
-              className="w-full justify-start min-h-[48px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            >
-              <LogOut className="w-4 h-4 mr-3" />
-              Sign Out
-            </Button>
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
           </div>
         </div>
-      </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-hide">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.name}
+              to={item.href}
+              onClick={() => {
+                if (window.innerWidth < 1024) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 touch-target
+                ${item.current 
+                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                  : 'text-foreground hover:bg-muted'
+                }
+              `}
+            >
+              <item.icon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium text-sm">{item.name}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Sign Out Button */}
+        <div className="p-3 border-t border-border">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200 touch-target"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className="font-medium text-sm">Sign Out</span>
+          </button>
+        </div>
+      </aside>
 
       {/* Main Content */}
-      <div className="lg:ml-64 flex flex-col min-h-screen">
-        {/* Top Header */}
-        <header className="bg-card border-b border-border px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-card border-b border-border sticky top-0 z-30">
+          <div className="flex items-center justify-between px-4 lg:px-6 h-14 lg:h-16">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors touch-target"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-6 h-6 text-foreground" />
+            </button>
+
+            {/* Logo for mobile when sidebar is closed */}
+            <div className="lg:hidden flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-semibold text-foreground text-sm truncate max-w-[120px]">{storeName}</span>
             </div>
 
-            <div className="flex items-center space-x-4">
+            {/* Right Header Actions */}
+            <div className="flex items-center gap-2 lg:gap-3 ml-auto">
+              {/* Notifications */}
               <div className="relative" ref={notificationRef}>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="relative"
+                <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                  className="relative p-2 hover:bg-muted rounded-lg transition-colors touch-target"
+                  aria-label="Notifications"
                 >
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full text-[10px] text-primary-foreground flex items-center justify-center">
-                    {notifications.filter(n => n.unread).length}
-                  </span>
-                </Button>
+                  <Bell className="w-5 h-5 text-foreground" />
+                  {notifications.filter(n => n.unread).length > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-card"></span>
+                  )}
+                </button>
 
+                {/* Notification Dropdown */}
                 {isNotificationOpen && (
-                  <Card className="absolute right-0 mt-2 w-80 shadow-lg z-50 max-h-96 overflow-y-auto">
+                  <div 
+                    className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-top-2"
+                  >
                     <div className="p-4 border-b border-border">
-                      <h3 className="font-semibold text-foreground">Notifications</h3>
+                      <h3 className="font-semibold text-foreground text-sm">Notifications</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        You have {notifications.filter(n => n.unread).length} unread notifications
+                      </p>
                     </div>
-                    <div className="divide-y divide-border">
+                    <div className="max-h-80 overflow-y-auto scrollbar-hide">
                       {notifications.map((notification) => (
                         <div 
                           key={notification.id}
-                          className={`p-4 hover:bg-muted/50 cursor-pointer transition-colors ${
+                          className={`p-4 hover:bg-muted transition-colors cursor-pointer border-b border-border last:border-0 ${
                             notification.unread ? 'bg-primary/5' : ''
                           }`}
                         >
                           <div className="flex justify-between items-start mb-1">
-                            <p className="font-medium text-sm text-foreground">{notification.title}</p>
+                            <p className="text-sm font-medium text-foreground flex-1">{notification.title}</p>
                             {notification.unread && (
-                              <span className="w-2 h-2 bg-primary rounded-full mt-1"></span>
+                              <span className="w-2 h-2 bg-primary rounded-full mt-1 ml-2 flex-shrink-0"></span>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">{notification.description}</p>
@@ -256,22 +272,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                         </div>
                       ))}
                     </div>
-                    <div className="p-3 border-t border-border text-center">
-                      <Button variant="ghost" size="sm" className="text-xs">
-                        Mark all as read
-                      </Button>
-                    </div>
-                  </Card>
+                  </div>
                 )}
               </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-primary" />
+
+              {/* User Profile */}
+              <div className="flex items-center gap-2 pl-2 lg:pl-3 border-l border-border">
+                <div className="w-8 h-8 lg:w-9 lg:h-9 bg-primary rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 lg:w-5 lg:h-5 text-primary-foreground" />
                 </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-foreground">Admin User</p>
-                  <p className="text-xs text-muted-foreground">Store Manager</p>
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium text-foreground truncate max-w-[120px]">Admin User</p>
+                  <p className="text-xs text-muted-foreground truncate">Store Manager</p>
                 </div>
               </div>
             </div>
@@ -279,8 +291,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto smooth-scroll">
+          <div className="p-4 lg:p-6">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </div>
         </main>
       </div>
     </div>

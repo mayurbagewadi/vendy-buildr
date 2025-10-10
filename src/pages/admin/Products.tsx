@@ -143,61 +143,61 @@ const Products = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 lg:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Products</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Products</h1>
+            <p className="text-sm lg:text-base text-muted-foreground mt-1">
               Manage your product catalog
             </p>
           </div>
-          <Button onClick={() => navigate("/admin/products/add")}>
+          <Button onClick={() => navigate("/admin/products/add")} className="touch-target">
             <Plus className="w-4 h-4 mr-2" />
             Add Product
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Products</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Total Products</p>
+                  <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                     {products.length}
                   </p>
                 </div>
-                <Package className="w-8 h-8 text-primary" />
+                <Package className="w-6 h-6 lg:w-8 lg:h-8 text-primary flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Published Products</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Published Products</p>
+                  <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                     {products.filter(p => p.status === "published").length}
                   </p>
                 </div>
-                <Eye className="w-8 h-8 text-success" />
+                <Eye className="w-6 h-6 lg:w-8 lg:h-8 text-success flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Draft Products</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Draft Products</p>
+                  <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                     {products.filter(p => p.status === "draft").length}
                   </p>
                 </div>
-                <Edit className="w-8 h-8 text-warning" />
+                <Edit className="w-6 h-6 lg:w-8 lg:h-8 text-warning flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -205,8 +205,8 @@ const Products = () => {
 
         {/* Search and Filters */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+          <CardContent className="p-4 lg:p-6">
+            <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -278,63 +278,61 @@ const Products = () => {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Variants</TableHead>
-                      <TableHead>Price Range</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="min-w-[200px]">Product</TableHead>
+                      <TableHead className="hidden sm:table-cell">Category</TableHead>
+                      <TableHead className="hidden md:table-cell">Variants</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead className="hidden lg:table-cell">Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedProducts.map((product) => (
                       <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                              <Package className="w-5 h-5 text-muted-foreground" />
+                        <TableCell className="min-w-[200px]">
+                          <div className="flex items-center space-x-2 lg:space-x-3">
+                            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Package className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground" />
                             </div>
-                            <div>
-                              <p className="font-medium text-foreground">{product.name}</p>
-                              <p className="text-sm text-muted-foreground font-mono">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-foreground text-sm lg:text-base truncate">{product.name}</p>
+                              <p className="text-xs lg:text-sm text-muted-foreground font-mono truncate">
                                 {product.sku}
                               </p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{product.category}</Badge>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="text-xs">{product.category}</Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Layers3 className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center space-x-1.5">
+                            <Layers3 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium text-sm">
                               {product.variantCount || 0}
                             </span>
-                            {product.variantCount && product.variantCount > 0 && (
-                              <span className="text-muted-foreground text-sm">variants</span>
-                            )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-semibold">
+                        <TableCell className="font-semibold text-sm whitespace-nowrap">
                           {product.priceRange || (product.basePrice ? formatPrice(product.basePrice) : '—')}
                         </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(product.status)}>
+                        <TableCell className="hidden lg:table-cell">
+                          <Badge className={getStatusColor(product.status)} variant="outline">
                             {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-1">
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               title="View Details"
                               onClick={() => navigate(`/products/${product.id}`)}
+                              className="h-8 w-8 p-0"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -343,13 +341,14 @@ const Products = () => {
                               size="sm" 
                               title="Edit Product"
                               onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                              className="h-8 w-8 p-0"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                               onClick={() => handleDeleteProduct(product.id)}
                               title="Delete Product"
                             >
