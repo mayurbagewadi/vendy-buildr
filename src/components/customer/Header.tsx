@@ -36,13 +36,6 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-      {/* Top Bar */}
-      <div className="bg-primary text-primary-foreground py-2">
-        <div className="container mx-auto px-4 text-center text-sm">
-          <p>Call us: +91 1234567890</p>
-        </div>
-      </div>
-
       {/* Main Header */}
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">

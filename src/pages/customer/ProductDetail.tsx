@@ -186,7 +186,7 @@ const ProductDetail = () => {
                             <LazyImage
                               src={image}
                               alt={`${product.name} ${index + 1}`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                             />
                           </div>
                         </CardContent>
@@ -225,7 +225,7 @@ const ProductDetail = () => {
                     <LazyImage
                       src={images[selectedImage]}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 </CardContent>
@@ -245,7 +245,7 @@ const ProductDetail = () => {
                       <LazyImage
                         src={image}
                         alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     </button>
                   ))}

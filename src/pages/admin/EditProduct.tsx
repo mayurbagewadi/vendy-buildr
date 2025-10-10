@@ -356,7 +356,7 @@ const EditProduct = () => {
                         name="basePrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Base Price ($)</FormLabel>
+                            <FormLabel>Base Price (₹)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -495,7 +495,7 @@ const EditProduct = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Price ($)</label>
+                          <label className="text-sm font-medium">Price (₹)</label>
                           <Input
                             type="number"
                             step="0.01"

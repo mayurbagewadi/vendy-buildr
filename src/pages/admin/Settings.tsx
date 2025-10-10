@@ -26,6 +26,9 @@ const AdminSettings = () => {
     returnPolicy: "",
     shippingPolicy: "",
     termsConditions: "",
+    facebook: "",
+    instagram: "",
+    twitter: "",
   });
 
   useEffect(() => {
@@ -51,6 +54,9 @@ const AdminSettings = () => {
       returnPolicy: extraData.returnPolicy || "",
       shippingPolicy: extraData.shippingPolicy || "",
       termsConditions: extraData.termsConditions || "",
+      facebook: extraData.facebook || "",
+      instagram: extraData.instagram || "",
+      twitter: extraData.twitter || "",
     });
   }, []);
 
@@ -146,6 +152,15 @@ const AdminSettings = () => {
         { key: "email", label: "Email Address", placeholder: "contact@yourstore.com" },
         { key: "whatsappNumber", label: "WhatsApp Business Number", placeholder: "919876543210 (with country code, no spaces)" },
         { key: "address", label: "Store Address", placeholder: "123 Main St, City, State 12345", multiline: true },
+      ]
+    },
+    {
+      title: "Social Media",
+      icon: MessageCircle,
+      fields: [
+        { key: "facebook", label: "Facebook URL", placeholder: "https://facebook.com/yourstore" },
+        { key: "instagram", label: "Instagram URL", placeholder: "https://instagram.com/yourstore" },
+        { key: "twitter", label: "Twitter URL", placeholder: "https://twitter.com/yourstore" },
       ]
     },
     {
