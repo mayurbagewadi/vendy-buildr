@@ -174,3 +174,28 @@ export const openWhatsApp = (message: string, phoneNumber?: string): { success: 
   window.open(whatsappUrl, '_blank');
   return { success: true };
 };
+
+// Export order data for Google Sheets tracking
+export const prepareOrderDataForSheets = (order: OrderDetails) => {
+  const orderId = `ORD${Date.now()}`;
+  const itemsList = order.cart.map(item => 
+    `${item.productName}${item.variant ? ` (${item.variant})` : ''} x${item.quantity}`
+  ).join(', ');
+
+  return {
+    orderId,
+    customerName: order.customerName,
+    phone: order.phone,
+    email: order.email || '',
+    address: order.address,
+    landmark: order.landmark || '',
+    pincode: order.pincode,
+    deliveryTime: order.deliveryTime,
+    items: itemsList,
+    subtotal: order.subtotal,
+    deliveryCharge: order.deliveryCharge,
+    total: order.total,
+    orderDate: new Date().toISOString(),
+    status: 'Pending'
+  };
+};

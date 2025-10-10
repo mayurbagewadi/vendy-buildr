@@ -13,7 +13,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronRight, MessageCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
-import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { generateOrderMessage, openWhatsApp, prepareOrderDataForSheets } from "@/lib/whatsappUtils";
+import { pushOrderToGoogleSheets } from "@/lib/googleSheetsSync";
 import {
   Form,
   FormControl,
@@ -77,7 +78,7 @@ const Checkout = () => {
     );
   }
 
-  const onSubmit = (data: CheckoutFormData) => {
+  const onSubmit = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
 
     const deliveryTimeText = {
@@ -100,6 +101,12 @@ const Checkout = () => {
       deliveryCharge: 0,
       total: cartTotal,
     };
+
+    // Push order to Google Sheets (non-blocking)
+    const orderData = prepareOrderDataForSheets(orderDetails);
+    pushOrderToGoogleSheets(orderData).catch(err => {
+      console.error('Failed to push order to Google Sheets:', err);
+    });
 
     // Generate and send WhatsApp message
     const message = generateOrderMessage(orderDetails);

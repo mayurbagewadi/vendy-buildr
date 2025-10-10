@@ -193,3 +193,51 @@ export const pushToGoogleSheets = async (product: Product): Promise<void> => {
     throw error;
   }
 };
+
+// Push order data to Google Sheets
+export interface OrderData {
+  orderId: string;
+  customerName: string;
+  phone: string;
+  email?: string;
+  address: string;
+  landmark?: string;
+  pincode: string;
+  deliveryTime: string;
+  items: string;
+  subtotal: number;
+  deliveryCharge: number;
+  total: number;
+  orderDate: string;
+  status: string;
+}
+
+export const pushOrderToGoogleSheets = async (order: OrderData): Promise<void> => {
+  try {
+    const scriptUrl = getScriptUrl();
+    if (!scriptUrl) {
+      console.warn('Apps Script URL not configured. Order not pushed to Google Sheets.');
+      return; // Silently skip if not configured
+    }
+
+    // Add marker to indicate this is an order
+    const orderWithMarker = {
+      ...order,
+      _type: 'order'
+    };
+
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderWithMarker),
+    });
+
+    console.log('Order pushed to Google Sheets:', order.orderId);
+  } catch (error) {
+    console.error('Error pushing order to Google Sheets:', error);
+    // Don't throw - we don't want to break the checkout flow
+  }
+};
