@@ -487,41 +487,53 @@ const GoogleSheetsSync = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">Sync Products FROM Sheet</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Import products from your Google Apps Script
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">Push All Products TO Sheet</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Push all {getProducts().length} products from local storage to Google Sheets
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handlePushAllProducts} 
+                      disabled={isPushing || !scriptUrl}
+                      className="gap-2"
+                      variant="default"
+                    >
+                      {isPushing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Pushing...
+                        </>
+                      ) : (
+                        <>
+                          <Database className="w-4 h-4" />
+                          Push All Products
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={handleSync} 
-                    disabled={isSyncing || !scriptUrl}
-                    className="gap-2"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing...' : 'Sync Now'}
-                  </Button>
-                </div>
 
-                <Separator />
+                  <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">Push Products TO Sheet</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Push all products from admin panel to Google Sheets
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">Sync Products FROM Sheet</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Import products from your Google Apps Script
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleSync} 
+                      disabled={isSyncing || !scriptUrl}
+                      className="gap-2"
+                      variant="outline"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                      {isSyncing ? 'Syncing...' : 'Sync Now'}
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={handlePushAllProducts} 
-                    disabled={isPushing || !scriptUrl}
-                    className="gap-2"
-                    variant="secondary"
-                  >
-                    <Database className={`w-4 h-4 ${isPushing ? 'animate-pulse' : ''}`} />
-                    {isPushing ? 'Pushing...' : 'Push All Products'}
-                  </Button>
                 </div>
               </TabsContent>
 
