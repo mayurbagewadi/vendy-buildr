@@ -1,36 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Search, Menu, X, Phone, User, LogOut } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, isAuthenticated, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully",
-    });
-    navigate('/home');
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,40 +98,6 @@ const Header = () => {
             </Button>
             <MiniCart />
             
-            {/* User Menu */}
-            {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]">
-                    <User className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/auth')}
-                className="hidden sm:flex"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Sign in
-              </Button>
-            )}
-            
             <Button
               variant="ghost"
               size="icon"
@@ -220,18 +167,6 @@ const Header = () => {
               <Phone className="w-5 h-5 mr-2" />
               Contact on WhatsApp
             </Button>
-            {!isAuthenticated && (
-              <Button onClick={() => navigate('/auth')} variant="outline" className="w-full min-h-[48px]">
-                <User className="w-5 h-5 mr-2" />
-                Sign in
-              </Button>
-            )}
-            {isAuthenticated && (
-              <Button onClick={handleLogout} variant="outline" className="w-full min-h-[48px]">
-                <LogOut className="w-5 h-5 mr-2" />
-                Sign out
-              </Button>
-            )}
           </nav>
         </div>
       )}

@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
-import { AuthProvider } from "@/contexts/AuthContext";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -20,28 +19,26 @@ import CustomerProducts from "./pages/customer/Products";
 import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
-import CustomerAuth from "./pages/customer/Auth";
+
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <CartProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              
-              {/* Customer Routes */}
-              <Route path="/home" element={<Home />} />
-              <Route path="/products" element={<CustomerProducts />} />
-              <Route path="/products/:id" element={<ProductDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/auth" element={<CustomerAuth />} />
+      <CartProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            
+            {/* Customer Routes */}
+            <Route path="/home" element={<Home />} />
+            <Route path="/products" element={<CustomerProducts />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
@@ -56,8 +53,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        </CartProvider>
-      </AuthProvider>
+      </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
