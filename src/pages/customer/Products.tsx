@@ -65,12 +65,12 @@ const Products = () => {
 
     // Price filter
     filtered = filtered.filter(p => {
-      const minPrice = p.basePrice || 0;
+      const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);
       const maxPrice = p.variants?.length 
         ? Math.max(...p.variants.map(v => v.price))
-        : minPrice;
+        : (p.basePrice || 0);
       
-      return minPrice >= priceRange[0] && maxPrice <= priceRange[1];
+      return maxPrice >= priceRange[0] && minPrice <= priceRange[1];
     });
 
     // Sorting
