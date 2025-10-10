@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,6 +13,7 @@ import {
   User
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Card } from "@/components/ui/card";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -23,6 +24,32 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [storeName, setStoreName] = useState("Your Store");
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  const notifications = [
+    {
+      id: 1,
+      title: "New Order Received",
+      description: "Order #1234 has been placed",
+      time: "5 minutes ago",
+      unread: true
+    },
+    {
+      id: 2,
+      title: "Product Stock Low",
+      description: "Premium Coffee is running low",
+      time: "2 hours ago",
+      unread: true
+    },
+    {
+      id: 3,
+      title: "New Customer",
+      description: "John Doe has registered",
+      time: "1 day ago",
+      unread: false
+    }
+  ];
 
   useEffect(() => {
     // Check authentication
@@ -59,6 +86,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       }
     }
   }, [navigate]);
+
+  useEffect(() => {
+    // Close notification dropdown when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("adminAuth");
@@ -180,12 +219,51 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full text-[10px] text-primary-foreground flex items-center justify-center">
-                  3
-                </span>
-              </Button>
+              <div className="relative" ref={notificationRef}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative"
+                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full text-[10px] text-primary-foreground flex items-center justify-center">
+                    {notifications.filter(n => n.unread).length}
+                  </span>
+                </Button>
+
+                {isNotificationOpen && (
+                  <Card className="absolute right-0 mt-2 w-80 shadow-lg z-50 max-h-96 overflow-y-auto">
+                    <div className="p-4 border-b border-border">
+                      <h3 className="font-semibold text-foreground">Notifications</h3>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id}
+                          className={`p-4 hover:bg-muted/50 cursor-pointer transition-colors ${
+                            notification.unread ? 'bg-primary/5' : ''
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <p className="font-medium text-sm text-foreground">{notification.title}</p>
+                            {notification.unread && (
+                              <span className="w-2 h-2 bg-primary rounded-full mt-1"></span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{notification.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-3 border-t border-border text-center">
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        Mark all as read
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+              </div>
               
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
