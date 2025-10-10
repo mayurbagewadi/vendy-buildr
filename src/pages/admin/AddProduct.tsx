@@ -48,6 +48,7 @@ type Variant = z.infer<typeof variantSchema>;
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  const [generatedProductId] = useState(generateProductId());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -236,7 +237,7 @@ const AddProduct = () => {
 
       // Create product using shared utility with auto-generated unique ID
       const productData: SharedProduct = {
-        id: generateProductId(),
+        id: generatedProductId,
         name: data.name,
         description: data.description,
         category: data.category,
@@ -279,23 +280,11 @@ const AddProduct = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/admin/products")}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Products
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Add New Product</h1>
-              <p className="text-muted-foreground mt-1">
-                Create a new product listing for your store
-              </p>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Add New Product</h1>
+          <p className="text-muted-foreground mt-1">
+            Create a new product listing for your store
+          </p>
         </div>
 
         {/* Form */}
@@ -309,6 +298,14 @@ const AddProduct = () => {
                     <CardTitle>Product Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Product ID Display */}
+                    <div className="space-y-2">
+                      <FormLabel className="text-muted-foreground">Product ID (Auto-generated)</FormLabel>
+                      <div className="px-3 py-2 bg-muted rounded-md font-mono text-sm text-foreground">
+                        {generatedProductId}
+                      </div>
+                    </div>
+
                     <FormField
                       control={form.control}
                       name="name"
