@@ -10,9 +10,12 @@ import {
   ShoppingCart, 
   Users,
   Star,
-  ArrowUpRight
+  ArrowUpRight,
+  Clock
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { toast } from "@/hooks/use-toast";
+import { getProducts } from "@/lib/productData";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -24,6 +27,12 @@ const AdminDashboard = () => {
   });
 
   const [storeName, setStoreName] = useState("Your Store");
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string;
+    action: string;
+    product: string;
+    time: string;
+  }>>([]);
 
   useEffect(() => {
     // Load store name from localStorage
@@ -35,12 +44,44 @@ const AdminDashboard = () => {
       }
     }
 
-    // Demo stats - in real app, fetch from API
+    // Load real product data
+    const products = getProducts();
+    const activeProducts = products.filter(p => p.status === 'published').length;
+    
     setStats({
-      totalProducts: 24,
-      activeProducts: 18,
-      totalOrders: 156,
-      totalCustomers: 89,
+      totalProducts: products.length,
+      activeProducts: activeProducts,
+      totalOrders: 156, // Demo data
+      totalCustomers: 89, // Demo data
+    });
+
+    // Demo recent activity
+    const demoActivity = [
+      {
+        id: '1',
+        action: 'Product published',
+        product: products[0]?.name || 'Sample Product',
+        time: '2 hours ago'
+      },
+      {
+        id: '2',
+        action: 'New order received',
+        product: products[1]?.name || 'Sample Product',
+        time: '5 hours ago'
+      },
+      {
+        id: '3',
+        action: 'Product updated',
+        product: products[2]?.name || 'Sample Product',
+        time: '1 day ago'
+      }
+    ];
+    setRecentActivity(demoActivity);
+
+    // Show demo notification
+    toast({
+      title: "Welcome to your dashboard! 👋",
+      description: "All systems are running smoothly.",
     });
   }, []);
 
@@ -183,17 +224,33 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity Placeholder */}
+        {/* Recent Activity */}
         <Card className="admin-card">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Recent Activity</CardTitle>
+            <p className="text-muted-foreground">Latest updates from your store</p>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No recent activity to display</p>
-              <p className="text-sm">Start by adding your first product!</p>
-            </div>
+          <CardContent className="space-y-4">
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">{activity.action}</p>
+                    <p className="text-sm text-muted-foreground">{activity.product}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No recent activity to display</p>
+                <p className="text-sm">Start by adding your first product!</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
