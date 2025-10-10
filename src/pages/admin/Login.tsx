@@ -1,74 +1,114 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
+import { 
+  initGoogleSignIn, 
+  handleGoogleCallback, 
+  saveUserInfo, 
+  getGoogleClientId,
+  saveGoogleClientId,
+  isAuthenticated 
+} from "@/lib/googleAuth";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    rememberMe: false,
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  const [clientId, setClientId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.username || !formData.password) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please fill in all fields",
-      });
+  useEffect(() => {
+    // Check if already authenticated
+    if (isAuthenticated()) {
+      navigate("/admin/dashboard");
       return;
     }
 
-    setIsLoading(true);
-
-    // Simple demo authentication
-    if (formData.username === "admin" && formData.password === "admin123") {
-      const loginTime = new Date().toISOString();
-      
-      if (formData.rememberMe) {
-        localStorage.setItem("adminAuth", JSON.stringify({
-          isAuthenticated: true,
-          loginTime,
-          rememberMe: true
-        }));
-      } else {
-        sessionStorage.setItem("adminAuth", JSON.stringify({
-          isAuthenticated: true,
-          loginTime,
-          rememberMe: false
-        }));
-      }
-
-      toast({
-        title: "Login Successful",
-        description: "Welcome to your admin dashboard",
-      });
-
-      navigate("/admin/dashboard");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid username or password",
-      });
+    // Load saved client ID
+    const savedClientId = getGoogleClientId();
+    if (savedClientId) {
+      setClientId(savedClientId);
+      loadGoogleScript(savedClientId);
     }
-    
-    setIsLoading(false);
+  }, [navigate]);
+
+  const loadGoogleScript = async (id: string) => {
+    try {
+      await initGoogleSignIn(id);
+      setGoogleLoaded(true);
+      
+      // Initialize Google Sign-In button
+      setTimeout(() => {
+        if (window.google) {
+          window.google.accounts.id.initialize({
+            client_id: id,
+            callback: handleCredentialResponse,
+          });
+          
+          const buttonDiv = document.getElementById('google-signin-button');
+          if (buttonDiv) {
+            window.google.accounts.id.renderButton(
+              buttonDiv,
+              { theme: "outline", size: "large", width: 350 }
+            );
+          }
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Failed to load Google Sign-In:', error);
+    }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleCredentialResponse = (response: any) => {
+    setIsLoading(true);
+    try {
+      const userInfo = handleGoogleCallback(response);
+      
+      // Save user info and auth
+      saveUserInfo(userInfo);
+      localStorage.setItem("adminAuth", "true");
+      
+      toast({
+        title: "Success",
+        description: `Welcome ${userInfo.name}!`,
+      });
+      
+      setTimeout(() => {
+        navigate("/admin/dashboard");
+      }, 500);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign in with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveClientId = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientId.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid Google Client ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    saveGoogleClientId(clientId);
+    loadGoogleScript(clientId);
+    
+    toast({
+      title: "Success",
+      description: "Client ID saved. You can now sign in.",
+    });
   };
 
   return (
@@ -79,7 +119,7 @@ const AdminLogin = () => {
             <ShoppingBag className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Admin Portal</h1>
-          <p className="text-muted-foreground">Sign in to manage your e-commerce store</p>
+          <p className="text-muted-foreground">Sign in with your Google account to access the admin panel</p>
         </div>
 
         <Card className="admin-card-elevated">
@@ -87,74 +127,67 @@ const AdminLogin = () => {
             <CardTitle className="text-xl">Welcome Back</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange("username", e.target.value)}
-                  className="admin-input"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
+            {!googleLoaded ? (
+              <form onSubmit={handleSaveClientId} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientId">Google OAuth Client ID</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    className="admin-input pr-10"
+                    id="clientId"
+                    type="text"
+                    placeholder="Enter your Google Client ID"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Get your Client ID from{" "}
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Google Cloud Console
+                    </a>
+                  </p>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rememberMe"
-                  checked={formData.rememberMe}
-                  onCheckedChange={(checked) => handleInputChange("rememberMe", !!checked)}
+                <Button type="submit" className="w-full admin-button-primary">
+                  Save & Continue
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div 
+                  id="google-signin-button" 
+                  className="flex justify-center"
                 />
-                <Label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer">
-                  Remember me for 30 days
-                </Label>
+                
+                {isLoading && (
+                  <p className="text-sm text-center text-muted-foreground">
+                    Signing in...
+                  </p>
+                )}
               </div>
-
-              <Button
-                type="submit"
-                className="w-full admin-button-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
+            )}
 
             <div className="mt-6 p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground text-center">
-                Demo Credentials:<br />
-                <strong>Username:</strong> admin<br />
-                <strong>Password:</strong> admin123
+              <p className="text-sm text-muted-foreground">
+                <strong className="block mb-2">Setup Instructions:</strong>
               </p>
+              <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                <li>Create a project in Google Cloud Console</li>
+                <li>Enable Google+ API</li>
+                <li>Create OAuth 2.0 Client ID (Web application)</li>
+                <li>Add authorized JavaScript origins</li>
+                <li>Copy the Client ID and paste above</li>
+              </ol>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Session expires after 1 hour of inactivity
+          Secure authentication powered by Google
         </p>
       </div>
     </div>

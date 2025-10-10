@@ -2,8 +2,9 @@
 
 import { Product } from './productData';
 import { generateProductId } from './idGenerator';
+import { getAccessToken } from './googleAuth';
 
-const WEBHOOK_URL_KEY = 'google_sheets_webhook_url';
+const SPREADSHEET_ID_KEY = 'google_sheets_spreadsheet_id';
 const LAST_SYNC_KEY = 'google_sheets_last_sync';
 
 export interface SheetRow {
@@ -20,14 +21,14 @@ export interface SheetRow {
   last_modified?: string;
 }
 
-// Save webhook URL
-export const saveWebhookUrl = (url: string): void => {
-  localStorage.setItem(WEBHOOK_URL_KEY, url);
+// Save spreadsheet ID
+export const saveSpreadsheetId = (id: string): void => {
+  localStorage.setItem(SPREADSHEET_ID_KEY, id);
 };
 
-// Get webhook URL
-export const getWebhookUrl = (): string | null => {
-  return localStorage.getItem(WEBHOOK_URL_KEY);
+// Get spreadsheet ID
+export const getSpreadsheetId = (): string | null => {
+  return localStorage.getItem(SPREADSHEET_ID_KEY);
 };
 
 // Get last sync time
@@ -70,30 +71,54 @@ const convertSheetRowToProduct = (row: SheetRow): Product => {
   };
 };
 
-// Fetch data from Google Sheets webhook
-export const syncFromGoogleSheets = async (webhookUrl: string): Promise<Product[]> => {
+// Fetch data from Google Sheets API
+export const syncFromGoogleSheets = async (spreadsheetId: string): Promise<Product[]> => {
   try {
-    const response = await fetch(webhookUrl, {
-      method: 'GET',
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      throw new Error('Not authenticated. Please sign in with Google.');
+    }
+
+    // Fetch data from Google Sheets API
+    const range = 'Sheet1!A2:J'; // Adjust range as needed
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    
+    const response = await fetch(url, {
       headers: {
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch data: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `Failed to fetch data: ${response.statusText}`);
     }
 
     const data = await response.json();
+    const rows = data.values || [];
     
-    // Expected format: { data: SheetRow[] } or SheetRow[]
-    const rows: SheetRow[] = Array.isArray(data) ? data : data.data;
-    
-    if (!rows || !Array.isArray(rows)) {
-      throw new Error('Invalid data format received from webhook');
+    if (!rows.length) {
+      throw new Error('No data found in spreadsheet');
     }
 
-    const products = rows.map(convertSheetRowToProduct);
+    // Convert rows to SheetRow objects
+    const sheetRows: SheetRow[] = rows.map((row: string[]) => ({
+      product_id: row[0] || undefined,
+      product_name: row[1] || '',
+      category: row[2] || '',
+      price_min: row[3] || '0',
+      price_max: row[4] || undefined,
+      description: row[5] || '',
+      status: row[6] || 'draft',
+      main_image: row[7] || '',
+      additional_images: row[8] || undefined,
+      date_added: row[9] || undefined,
+    }));
+
+    const products = sheetRows
+      .filter(row => row.product_name && row.main_image)
+      .map(convertSheetRowToProduct);
     
     updateLastSyncTime();
     

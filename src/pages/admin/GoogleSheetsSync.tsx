@@ -16,64 +16,110 @@ import {
   Database,
   Clock,
   FileSpreadsheet,
-  Info
+  Info,
+  Key
 } from 'lucide-react';
 import { 
-  getWebhookUrl, 
-  saveWebhookUrl, 
+  getSpreadsheetId, 
+  saveSpreadsheetId, 
   syncFromGoogleSheets,
   getLastSyncTime 
 } from '@/lib/googleSheetsSync';
 import { saveProducts } from '@/lib/productData';
+import { 
+  requestSheetsAccess, 
+  getAccessToken, 
+  getUserInfo,
+  getGoogleClientId 
+} from '@/lib/googleAuth';
 
 const GoogleSheetsSync = () => {
-  const [webhookUrl, setWebhookUrl] = useState('');
+  const [spreadsheetId, setSpreadsheetId] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    const savedUrl = getWebhookUrl();
-    if (savedUrl) {
-      setWebhookUrl(savedUrl);
+    const savedId = getSpreadsheetId();
+    if (savedId) {
+      setSpreadsheetId(savedId);
     }
     
     const lastSyncTime = getLastSyncTime();
     setLastSync(lastSyncTime);
+
+    const token = getAccessToken();
+    setHasAccess(!!token);
   }, []);
 
-  const handleSaveWebhookUrl = () => {
-    if (!webhookUrl.trim()) {
+  const handleRequestAccess = async () => {
+    const clientId = getGoogleClientId();
+    if (!clientId) {
       toast({
         title: 'Error',
-        description: 'Please enter a webhook URL',
+        description: 'Please sign in with Google first',
         variant: 'destructive',
       });
       return;
     }
 
     try {
-      new URL(webhookUrl);
-      saveWebhookUrl(webhookUrl);
+      await requestSheetsAccess(clientId);
+      setHasAccess(true);
       toast({
         title: 'Success',
-        description: 'Webhook URL saved successfully',
+        description: 'Google Sheets access granted',
       });
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Please enter a valid URL',
+        description: 'Failed to get Google Sheets access',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveSpreadsheetId = () => {
+    if (!spreadsheetId.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid Spreadsheet ID',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      saveSpreadsheetId(spreadsheetId);
+      toast({
+        title: 'Success',
+        description: 'Spreadsheet ID saved successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid Spreadsheet ID',
         variant: 'destructive',
       });
     }
   };
 
   const handleSync = async () => {
-    const savedUrl = getWebhookUrl();
-    if (!savedUrl) {
+    if (!hasAccess) {
       toast({
         title: 'Error',
-        description: 'Please save a webhook URL first',
+        description: 'Please grant Google Sheets access first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const savedId = getSpreadsheetId();
+    if (!savedId) {
+      toast({
+        title: 'Error',
+        description: 'Please save a Spreadsheet ID first',
         variant: 'destructive',
       });
       return;
@@ -83,7 +129,7 @@ const GoogleSheetsSync = () => {
     setSyncStatus('idle');
 
     try {
-      const products = await syncFromGoogleSheets(savedUrl);
+      const products = await syncFromGoogleSheets(savedId);
       saveProducts(products);
       
       const syncTime = new Date().toISOString();
@@ -122,6 +168,8 @@ const GoogleSheetsSync = () => {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
+  const userInfo = getUserInfo();
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -141,7 +189,15 @@ const GoogleSheetsSync = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                <FileSpreadsheet className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Signed in as</p>
+                  <p className="font-medium text-xs">{userInfo?.email || 'Not signed in'}</p>
+                </div>
+              </div>
+
               <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
                 <Clock className="w-5 h-5 text-primary" />
                 <div>
@@ -151,7 +207,7 @@ const GoogleSheetsSync = () => {
               </div>
               
               <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                <FileSpreadsheet className="w-5 h-5 text-primary" />
+                <AlertCircle className="w-5 h-5 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <div className="flex items-center gap-2 mt-1">
@@ -177,15 +233,36 @@ const GoogleSheetsSync = () => {
               <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
                 <LinkIcon className="w-5 h-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Connection</p>
+                  <p className="text-sm text-muted-foreground">Sheets Access</p>
                   <p className="font-medium">
-                    {getWebhookUrl() ? 'Connected' : 'Not configured'}
+                    {hasAccess ? 'Granted' : 'Not granted'}
                   </p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Grant Access Card */}
+        {!hasAccess && (
+          <Card className="border-warning">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                Grant Google Sheets Access
+              </CardTitle>
+              <CardDescription>
+                Click the button below to allow this app to read your Google Sheets
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleRequestAccess} className="gap-2">
+                <Key className="w-4 h-4" />
+                Grant Sheets Access
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Setup Instructions */}
         <Card>
@@ -202,56 +279,34 @@ const GoogleSheetsSync = () => {
             <Alert>
               <AlertDescription className="space-y-4">
                 <div>
-                  <p className="font-semibold mb-2">Step 1: Create Google Apps Script</p>
+                  <p className="font-semibold mb-2">Required Steps:</p>
                   <ol className="list-decimal list-inside space-y-1 text-sm ml-2">
-                    <li>Open your Google Sheet</li>
-                    <li>Go to Extensions → Apps Script</li>
-                    <li>Replace the code with the webhook script</li>
-                    <li>Deploy as Web App with "Anyone" access</li>
-                    <li>Copy the deployment URL</li>
+                    <li>Sign in with Google (admin login)</li>
+                    <li>Grant access to Google Sheets (button above)</li>
+                    <li>Enter your Spreadsheet ID below</li>
+                    <li>Click "Sync Now" to import products</li>
                   </ol>
                 </div>
                 
                 <Separator />
                 
                 <div>
-                  <p className="font-semibold mb-2">Step 2: Required Columns</p>
+                  <p className="font-semibold mb-2">Required Sheet Columns (in order):</p>
                   <div className="grid grid-cols-2 gap-2 text-sm ml-2">
-                    <div>• product_name</div>
-                    <div>• category</div>
-                    <div>• price_min</div>
-                    <div>• price_max (optional)</div>
-                    <div>• description</div>
-                    <div>• status</div>
-                    <div>• main_image</div>
-                    <div>• additional_images (optional)</div>
+                    <div>• Column A: product_id (optional)</div>
+                    <div>• Column B: product_name</div>
+                    <div>• Column C: category</div>
+                    <div>• Column D: price_min</div>
+                    <div>• Column E: price_max (optional)</div>
+                    <div>• Column F: description</div>
+                    <div>• Column G: status (published/draft)</div>
+                    <div>• Column H: main_image (URL)</div>
+                    <div>• Column I: additional_images (comma-separated)</div>
+                    <div>• Column J: date_added (optional)</div>
                   </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <p className="font-semibold mb-2">Apps Script Code:</p>
-                  <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
-{`function doGet(e) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
-  
-  const jsonData = rows.map(row => {
-    const obj = {};
-    headers.forEach((header, i) => {
-      obj[header] = row[i];
-    });
-    return obj;
-  });
-  
-  return ContentService
-    .createTextOutput(JSON.stringify({ data: jsonData }))
-    .setMimeType(ContentService.MimeType.JSON);
-}`}
-                  </pre>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Note: First row should be headers, data starts from row 2
+                  </p>
                 </div>
               </AlertDescription>
             </Alert>
@@ -261,29 +316,29 @@ const GoogleSheetsSync = () => {
         {/* Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle>Webhook Configuration</CardTitle>
+            <CardTitle>Spreadsheet Configuration</CardTitle>
             <CardDescription>
-              Enter your Google Apps Script web app URL
+              Enter your Google Spreadsheet ID
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="webhookUrl">Webhook URL</Label>
+              <Label htmlFor="spreadsheetId">Spreadsheet ID</Label>
               <div className="flex gap-2">
                 <Input
-                  id="webhookUrl"
-                  type="url"
-                  placeholder="https://script.google.com/macros/s/..."
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  id="spreadsheetId"
+                  type="text"
+                  placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  value={spreadsheetId}
+                  onChange={(e) => setSpreadsheetId(e.target.value)}
                   className="flex-1"
                 />
-                <Button onClick={handleSaveWebhookUrl} variant="outline">
+                <Button onClick={handleSaveSpreadsheetId} variant="outline">
                   Save
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                This URL will be used to fetch product data from your Google Sheet
+                Find the ID in your Google Sheets URL: docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit
               </p>
             </div>
 
@@ -298,7 +353,7 @@ const GoogleSheetsSync = () => {
               </div>
               <Button 
                 onClick={handleSync} 
-                disabled={isSyncing || !getWebhookUrl()}
+                disabled={isSyncing || !hasAccess || !getSpreadsheetId()}
                 className="gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
