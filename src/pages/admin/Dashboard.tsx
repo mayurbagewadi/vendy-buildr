@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { toast } from "@/hooks/use-toast";
-import { getProducts } from "@/lib/productData";
+import { getProducts, initializeProducts } from "@/lib/productData";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +35,9 @@ const AdminDashboard = () => {
   }>>([]);
 
   useEffect(() => {
+    // Initialize products with seed data if empty
+    initializeProducts();
+    
     // Load store name from localStorage
     const storeSettings = localStorage.getItem("storeSettings");
     if (storeSettings) {

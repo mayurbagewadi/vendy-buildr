@@ -8,7 +8,8 @@ import {
   getProductById,
   addProduct as addProductUtil,
   updateProduct as updateProductUtil,
-  deleteProduct as deleteProductUtil 
+  deleteProduct as deleteProductUtil,
+  initializeProducts
 } from '@/lib/productData';
 import { validateProduct } from '@/lib/dataValidation';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +24,8 @@ export const useProductData = (publishedOnly = false) => {
     try {
       setLoading(true);
       setError(null);
+      // Initialize products with seed data if empty
+      initializeProducts();
       const data = publishedOnly ? getPublishedProducts() : getProducts();
       setProducts(data);
     } catch (err) {

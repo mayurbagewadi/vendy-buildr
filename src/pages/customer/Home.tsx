@@ -6,6 +6,7 @@ import ProductCard from "@/components/customer/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Package } from "lucide-react";
+import { initializeProducts } from "@/lib/productData";
 
 interface Product {
   id: string;
@@ -23,6 +24,9 @@ const Home = () => {
   const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
+    // Initialize products with seed data if empty
+    initializeProducts();
+    
     const products = JSON.parse(localStorage.getItem("products") || "[]");
     const publishedProducts = products.filter((p: Product) => p.status === "published");
     

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import LazyImage from "@/components/ui/lazy-image";
+import { initializeProducts } from "@/lib/productData";
 import {
   Carousel,
   CarouselContent,
@@ -50,6 +51,9 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
 
   useEffect(() => {
+    // Initialize products with seed data if empty
+    initializeProducts();
+    
     const products = JSON.parse(localStorage.getItem("products") || "[]");
     const found = products.find((p: Product) => p.id === id);
     
