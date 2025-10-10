@@ -18,7 +18,7 @@ export const openWhatsApp = (message: string): { success: boolean; error?: strin
   }
 
   const encodedMessage = encodeURIComponent(message);
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
 
   // open WhatsApp window
   window.open(whatsappUrl, "_blank");
