@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -17,7 +18,8 @@ import {
   Clock,
   FileSpreadsheet,
   Info,
-  Key
+  Key,
+  Code
 } from 'lucide-react';
 import { 
   getSpreadsheetId, 
@@ -34,6 +36,8 @@ import {
 } from '@/lib/googleAuth';
 
 const GoogleSheetsSync = () => {
+  const [syncMethod, setSyncMethod] = useState<'script' | 'oauth'>('script');
+  const [scriptUrl, setScriptUrl] = useState('');
   const [spreadsheetId, setSpreadsheetId] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -41,9 +45,16 @@ const GoogleSheetsSync = () => {
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
+    const savedUrl = localStorage.getItem('google_apps_script_url');
+    if (savedUrl) {
+      setScriptUrl(savedUrl);
+      setSyncMethod('script');
+    }
+    
     const savedId = getSpreadsheetId();
     if (savedId) {
       setSpreadsheetId(savedId);
+      if (!savedUrl) setSyncMethod('oauth');
     }
     
     const lastSyncTime = getLastSyncTime();
@@ -105,7 +116,73 @@ const GoogleSheetsSync = () => {
     }
   };
 
+  const handleSaveScriptUrl = () => {
+    if (!scriptUrl.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid Script URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    localStorage.setItem('google_apps_script_url', scriptUrl);
+    toast({
+      title: 'Success',
+      description: 'Script URL saved successfully',
+    });
+  };
+
+  const handleSyncFromScript = async () => {
+    const savedUrl = localStorage.getItem('google_apps_script_url');
+    if (!savedUrl) {
+      toast({
+        title: 'Error',
+        description: 'Please save a Script URL first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncStatus('idle');
+
+    try {
+      const response = await fetch(savedUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data from script');
+      }
+
+      const products = await response.json();
+      saveProducts(products);
+      
+      const syncTime = new Date().toISOString();
+      localStorage.setItem('google_sheets_last_sync', syncTime);
+      setLastSync(syncTime);
+      setSyncStatus('success');
+      
+      toast({
+        title: 'Sync Successful',
+        description: `Successfully synced ${products.length} products from Google Apps Script`,
+      });
+    } catch (error) {
+      setSyncStatus('error');
+      toast({
+        title: 'Sync Failed',
+        description: error instanceof Error ? error.message : 'Failed to sync from script',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSync = async () => {
+    if (syncMethod === 'script') {
+      await handleSyncFromScript();
+      return;
+    }
+
     if (!hasAccess) {
       toast({
         title: 'Error',
@@ -243,123 +320,209 @@ const GoogleSheetsSync = () => {
           </CardContent>
         </Card>
 
-        {/* Grant Access Card */}
-        {!hasAccess && (
-          <Card className="border-warning">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="w-5 h-5" />
-                Grant Google Sheets Access
-              </CardTitle>
-              <CardDescription>
-                Click the button below to allow this app to read your Google Sheets
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleRequestAccess} className="gap-2">
-                <Key className="w-4 h-4" />
-                Grant Sheets Access
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Setup Instructions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="w-5 h-5" />
-              Setup Instructions
-            </CardTitle>
-            <CardDescription>
-              Follow these steps to connect your Google Sheets
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertDescription className="space-y-4">
-                <div>
-                  <p className="font-semibold mb-2">Required Steps:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-sm ml-2">
-                    <li>Sign in with Google (admin login)</li>
-                    <li>Grant access to Google Sheets (button above)</li>
-                    <li>Enter your Spreadsheet ID below</li>
-                    <li>Click "Sync Now" to import products</li>
-                  </ol>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <p className="font-semibold mb-2">Required Sheet Columns (in order):</p>
-                  <div className="grid grid-cols-2 gap-2 text-sm ml-2">
-                    <div>• Column A: product_id (optional)</div>
-                    <div>• Column B: product_name</div>
-                    <div>• Column C: category</div>
-                    <div>• Column D: price_min</div>
-                    <div>• Column E: price_max (optional)</div>
-                    <div>• Column F: description</div>
-                    <div>• Column G: status (published/draft)</div>
-                    <div>• Column H: main_image (URL)</div>
-                    <div>• Column I: additional_images (comma-separated)</div>
-                    <div>• Column J: date_added (optional)</div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Note: First row should be headers, data starts from row 2
-                  </p>
-                </div>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-
         {/* Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle>Spreadsheet Configuration</CardTitle>
+            <CardTitle>Sync Configuration</CardTitle>
             <CardDescription>
-              Enter your Google Spreadsheet ID
+              Choose your preferred sync method
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="spreadsheetId">Spreadsheet ID</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="spreadsheetId"
-                  type="text"
-                  placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                  value={spreadsheetId}
-                  onChange={(e) => setSpreadsheetId(e.target.value)}
-                  className="flex-1"
-                />
-                <Button onClick={handleSaveSpreadsheetId} variant="outline">
-                  Save
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Find the ID in your Google Sheets URL: docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit
-              </p>
-            </div>
+          <CardContent>
+            <Tabs value={syncMethod} onValueChange={(v) => setSyncMethod(v as 'script' | 'oauth')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="script" className="gap-2">
+                  <Code className="w-4 h-4" />
+                  Apps Script (Simple)
+                </TabsTrigger>
+                <TabsTrigger value="oauth" className="gap-2">
+                  <Key className="w-4 h-4" />
+                  OAuth (Advanced)
+                </TabsTrigger>
+              </TabsList>
 
-            <Separator />
+              {/* Google Apps Script Method */}
+              <TabsContent value="script" className="space-y-4">
+                <Alert>
+                  <Info className="w-4 h-4" />
+                  <AlertDescription className="space-y-2">
+                    <p className="font-semibold">Simple Setup - No Google Login Required</p>
+                    <ol className="list-decimal list-inside space-y-1 text-sm ml-2">
+                      <li>Open your Google Sheet</li>
+                      <li>Go to Extensions → Apps Script</li>
+                      <li>Paste the provided script code</li>
+                      <li>Deploy as Web App</li>
+                      <li>Copy the Web App URL and paste below</li>
+                    </ol>
+                  </AlertDescription>
+                </Alert>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Sync Products</h3>
-                <p className="text-sm text-muted-foreground">
-                  Import products from your Google Sheet
-                </p>
-              </div>
-              <Button 
-                onClick={handleSync} 
-                disabled={isSyncing || !hasAccess || !getSpreadsheetId()}
-                className="gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Syncing...' : 'Sync Now'}
-              </Button>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scriptUrl">Google Apps Script URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="scriptUrl"
+                      type="url"
+                      placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
+                      value={scriptUrl}
+                      onChange={(e) => setScriptUrl(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleSaveScriptUrl} variant="outline">
+                      Save
+                    </Button>
+                  </div>
+                </div>
+
+                <Card className="bg-muted/50">
+                  <CardHeader>
+                    <CardTitle className="text-sm">Apps Script Code</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="text-xs bg-background p-4 rounded-md overflow-x-auto">
+{`function doGet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  var data = sheet.getDataRange().getValues();
+  var products = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var priceMin = parseFloat(row[3]) || 0;
+    var priceMax = row[4] ? parseFloat(row[4]) : priceMin;
+    
+    var images = [row[7]];
+    if (row[8]) {
+      images = images.concat(row[8].split(',').map(function(s) { return s.trim(); }));
+    }
+    
+    products.push({
+      id: row[0] || 'PROD' + (1000 + i),
+      name: row[1],
+      description: row[5],
+      category: row[2],
+      basePrice: priceMin,
+      priceRange: priceMin !== priceMax ? priceMin + '-' + priceMax : undefined,
+      stock: 100,
+      status: row[6] && row[6].toLowerCase() === 'published' ? 'published' : 'draft',
+      images: images,
+      variants: priceMin !== priceMax ? [
+        { name: 'Standard', price: priceMin },
+        { name: 'Premium', price: priceMax }
+      ] : undefined,
+      createdAt: row[9] || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(products))
+    .setMimeType(ContentService.MimeType.JSON);
+}`}</pre>
+                  </CardContent>
+                </Card>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Sync Products</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Import products from your Google Apps Script
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleSync} 
+                    disabled={isSyncing || !scriptUrl}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* OAuth Method */}
+              <TabsContent value="oauth" className="space-y-4">
+                {!hasAccess && (
+                  <Alert className="border-warning">
+                    <Key className="w-4 h-4" />
+                    <AlertDescription>
+                      <p className="font-semibold mb-2">Google Sheets Access Required</p>
+                      <p className="text-sm mb-3">Click below to grant access to your Google Sheets</p>
+                      <Button onClick={handleRequestAccess} size="sm" className="gap-2">
+                        <Key className="w-4 h-4" />
+                        Grant Sheets Access
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Alert>
+                  <Info className="w-4 h-4" />
+                  <AlertDescription className="space-y-2">
+                    <p className="font-semibold">Advanced Method - Direct API Access</p>
+                    <ol className="list-decimal list-inside space-y-1 text-sm ml-2">
+                      <li>Sign in with Google (admin login)</li>
+                      <li>Grant access to Google Sheets</li>
+                      <li>Enter your Spreadsheet ID</li>
+                      <li>Click "Sync Now"</li>
+                    </ol>
+                    <Separator className="my-2" />
+                    <p className="text-sm font-semibold">Required Sheet Columns:</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs ml-2">
+                      <div>• A: product_id</div>
+                      <div>• B: product_name</div>
+                      <div>• C: category</div>
+                      <div>• D: price_min</div>
+                      <div>• E: price_max</div>
+                      <div>• F: description</div>
+                      <div>• G: status</div>
+                      <div>• H: main_image</div>
+                      <div>• I: additional_images</div>
+                      <div>• J: date_added</div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <Label htmlFor="spreadsheetId">Spreadsheet ID</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="spreadsheetId"
+                      type="text"
+                      placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                      value={spreadsheetId}
+                      onChange={(e) => setSpreadsheetId(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleSaveSpreadsheetId} variant="outline">
+                      Save
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Find in URL: docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Sync Products</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Import products from your Google Sheet
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleSync} 
+                    disabled={isSyncing || !hasAccess || !getSpreadsheetId()}
+                    className="gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
