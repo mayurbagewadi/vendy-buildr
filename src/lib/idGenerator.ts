@@ -12,12 +12,14 @@ export const generateUniqueId = (): string => {
 };
 
 /**
- * Generates a product-specific unique ID
- * Format: PRD-[timestamp]-[random]
- * Example: PRD-1728567890123-a3k9f2
+ * Generates a product-specific unique ID (numbers only)
+ * Format: [timestamp][random-digits]
+ * Example: 17285678901234567
  */
 export const generateProductId = (): string => {
-  return `PRD-${generateUniqueId()}`;
+  const timestamp = Date.now();
+  const randomDigits = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `${timestamp}${randomDigits}`;
 };
 
 /**
