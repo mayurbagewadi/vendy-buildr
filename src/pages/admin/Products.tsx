@@ -50,14 +50,39 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    // Load products using shared utility
+  // Load products function
+  const loadProducts = () => {
     const loadedProducts = getProducts().map(p => ({
       ...p,
       variantCount: p.variants?.length || 0,
     }));
     setProducts(loadedProducts);
     setFilteredProducts(loadedProducts);
+  };
+
+  useEffect(() => {
+    // Initial load
+    loadProducts();
+    
+    // Listen for storage changes (cross-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'products') {
+        loadProducts();
+      }
+    };
+    
+    // Reload when window regains focus (catches external changes)
+    const handleFocus = () => {
+      loadProducts();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {

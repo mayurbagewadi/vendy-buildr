@@ -25,53 +25,54 @@ const Products = () => {
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Extract categories whenever products change
   useEffect(() => {
-    // Extract unique categories
     const uniqueCategories = [...new Set(allProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
     setCategories(uniqueCategories);
+  }, [allProducts]);
 
-    // Check for URL params
+  // Handle URL parameters and reload on window focus
+  useEffect(() => {
     const categoryParam = searchParams.get("category");
-    const searchParam = searchParams.get("search");
-
-    if (categoryParam) {
+    if (categoryParam && categories.includes(categoryParam)) {
       setSelectedCategories([categoryParam]);
+    }
+    
+    // Reload products when window regains focus
+    const handleFocus = () => {
+      refresh();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [searchParams, categories, refresh]);
+
+  // Filter and sort products
+  useEffect(() => {
+    if (!allProducts || allProducts.length === 0) {
+      setFilteredProducts([]);
+      return;
     }
 
     let filtered = [...allProducts];
 
-    // Apply category filter
-    if (categoryParam) {
-      filtered = filtered.filter(p => p.category === categoryParam);
-    }
-
-    // Apply search filter
+    // Apply URL-based search filter
+    const searchParam = searchParams.get("search");
     if (searchParam) {
       filtered = filtered.filter(p => 
         p.name.toLowerCase().includes(searchParam.toLowerCase())
       );
     }
 
-    setFilteredProducts(filtered);
-  }, [searchParams, allProducts]);
-
-  useEffect(() => {
-    // Skip filtering if no products loaded yet
-    if (!allProducts || allProducts.length === 0) {
-      return;
-    }
-
-    let filtered = [...allProducts];
-
-    // Only apply filters if they've been explicitly set by user
+    // Apply category filter (from URL param or user selection)
     const categoryParam = searchParams.get("category");
-    
-    // Category filter - only if selected categories exist AND no URL param
-    if (selectedCategories.length > 0 && !categoryParam) {
+    if (categoryParam) {
+      filtered = filtered.filter(p => p.category === categoryParam);
+    } else if (selectedCategories.length > 0) {
       filtered = filtered.filter(p => selectedCategories.includes(p.category));
     }
 
-    // Price filter - only apply if user has changed from default
+    // Apply price filter
     if (priceRange[0] > 0 || priceRange[1] < 10000) {
       filtered = filtered.filter(p => {
         const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);
@@ -83,7 +84,7 @@ const Products = () => {
       });
     }
 
-    // Sorting
+    // Apply sorting
     switch (sortBy) {
       case "price-low":
         filtered.sort((a, b) => {
@@ -104,12 +105,11 @@ const Products = () => {
         break;
       case "newest":
       default:
-        // Already in newest first order from localStorage
         break;
     }
 
     setFilteredProducts(filtered);
-  }, [allProducts, selectedCategories, priceRange, sortBy]);
+  }, [allProducts, selectedCategories, priceRange, sortBy, searchParams]);
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories(prev =>
