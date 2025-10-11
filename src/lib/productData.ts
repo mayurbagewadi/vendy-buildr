@@ -152,6 +152,11 @@ export const getProductById = (id: string): Product | null => {
 // Save products
 export const saveProducts = (products: Product[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  // Trigger storage event for same-window updates
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: STORAGE_KEY,
+    newValue: JSON.stringify(products),
+  }));
 };
 
 // Add product

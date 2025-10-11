@@ -23,8 +23,8 @@ const Home = () => {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
-  useEffect(() => {
-    // Initialize products with seed data if empty
+  // Load products and categories
+  const loadProducts = () => {
     initializeProducts();
     
     const products = JSON.parse(localStorage.getItem("products") || "[]");
@@ -39,9 +39,34 @@ const Home = () => {
     );
     setNewArrivals(sorted.slice(0, 4));
     
-    // Unique categories
-    const uniqueCategories = [...new Set(publishedProducts.map((p: Product) => p.category))] as string[];
+    // Unique categories - always extract from current products
+    const uniqueCategories = [...new Set(publishedProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
     setCategories(uniqueCategories);
+  };
+
+  useEffect(() => {
+    // Initial load
+    loadProducts();
+    
+    // Listen for storage changes (cross-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'products') {
+        loadProducts();
+      }
+    };
+    
+    // Reload when window regains focus
+    const handleFocus = () => {
+      loadProducts();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   return (
