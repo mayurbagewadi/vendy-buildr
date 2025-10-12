@@ -54,6 +54,7 @@ const AddProduct = () => {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [customCategory, setCustomCategory] = useState("");
@@ -247,6 +248,7 @@ const AddProduct = () => {
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
         images: allImages.length > 0 ? allImages : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
+        videoUrl: videoUrl.trim() || undefined,
         variants: variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
@@ -676,6 +678,38 @@ const AddProduct = () => {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Product Video */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Video</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Add a YouTube video to showcase your product
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">YouTube Video URL</label>
+                      <Input
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Paste a YouTube video URL to show it alongside your product images
+                      </p>
+                    </div>
+
+                    {videoUrl && (
+                      <div className="border rounded-lg p-2">
+                        <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                          <p className="text-sm text-muted-foreground">Video will appear here</p>
+                        </div>
                       </div>
                     )}
                   </CardContent>

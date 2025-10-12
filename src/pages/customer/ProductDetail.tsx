@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import LazyImage from "@/components/ui/lazy-image";
+import VideoPlayer from "@/components/ui/video-player";
 import { initializeProducts } from "@/lib/productData";
 import {
   Carousel,
@@ -33,6 +34,7 @@ interface Product {
   description: string;
   category: string;
   images: string[];
+  videoUrl?: string;
   basePrice?: number;
   baseSku?: string;
   variants?: Variant[];
@@ -256,6 +258,18 @@ const ProductDetail = () => {
                 </div>
               )}
             </div>
+
+            {/* Video Player */}
+            {product.videoUrl && (
+              <div className="mt-4">
+                <Card className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">Product Video</h3>
+                    <VideoPlayer url={product.videoUrl} className="w-full" />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Product Info */}

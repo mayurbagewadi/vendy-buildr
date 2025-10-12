@@ -17,6 +17,7 @@ export interface Product {
   sku?: string;
   status: 'published' | 'draft' | 'inactive';
   images: string[];
+  videoUrl?: string;
   variants?: Variant[];
   createdAt?: string;
   updatedAt?: string;
