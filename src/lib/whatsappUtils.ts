@@ -1,148 +1,203 @@
-import { getSettings } from "./settingsData";
+import { CartItem } from "./cartUtils";
 
-// ✅ Get WhatsApp number from store settings
-export const getWhatsAppNumber = (): string => {
-  const settings = getSettings();
-  return settings.whatsappNumber;
+// Validate if WhatsApp number is properly configured
+export const isWhatsAppConfigured = (): boolean => {
+  const number = getWhatsAppNumber();
+  const formattedNumber = formatWhatsAppNumber(number);
+
+  // Check if number is empty, default, or invalid
+  if (!number || number.trim() === "") return false;
+  if (formattedNumber === "919876543210" || formattedNumber === "9876543210") return false;
+  if (formattedNumber.length < 10) return false;
+
+  return true;
 };
 
-// ✅ Open WhatsApp chat with prefilled message
-export const openWhatsApp = (message: string): { success: boolean; error?: string } => {
-  const phoneNumber = getWhatsAppNumber();
+// Get WhatsApp business number from settings
+export const getWhatsAppNumber = (): string => {
+  // Try multiple storage keys for backward compatibility
+  const savedNumber = localStorage.getItem("whatsapp_business_number");
+  if (savedNumber) return savedNumber;
 
-  if (!phoneNumber || phoneNumber === "919876543210") {
+  // Try store_settings (new format)
+  try {
+    const settings = localStorage.getItem("store_settings");
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      return parsed.whatsappNumber || "919876543210";
+    }
+  } catch (error) {
+    console.error("Error reading WhatsApp number from settings:", error);
+  }
+
+  // Try storeSettings (old format)
+  try {
+    const oldSettings = localStorage.getItem("storeSettings");
+    if (oldSettings) {
+      const parsed = JSON.parse(oldSettings);
+      return parsed.whatsapp || "919876543210";
+    }
+  } catch (error) {
+    console.error("Error reading WhatsApp number from old settings:", error);
+  }
+
+  return "919876543210"; // Default Indian format
+};
+
+// Format phone number for WhatsApp (remove spaces, dashes, etc.)
+export const formatWhatsAppNumber = (number: string): string => {
+  return number.replace(/[^0-9+]/g, "");
+};
+
+// Generate order message for WhatsApp
+export interface OrderDetails {
+  customerName: string;
+  phone: string;
+  email?: string;
+  address: string;
+  landmark?: string;
+  pincode: string;
+  deliveryTime: string;
+  cart: CartItem[];
+  subtotal: number;
+  deliveryCharge: number;
+  total: number;
+}
+
+export const generateOrderMessage = (order: OrderDetails): string => {
+  const date = new Date().toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  let message = `🛍️ *NEW ORDER REQUEST*\n`;
+  message += `📅 ${date}\n\n`;
+
+  message += `👤 *CUSTOMER DETAILS*\n`;
+  message += `Name: ${order.customerName}\n`;
+  message += `Phone: ${order.phone}\n`;
+  if (order.email) {
+    message += `Email: ${order.email}\n`;
+  }
+  message += `\n📍 *DELIVERY ADDRESS*\n`;
+  message += `${order.address}\n`;
+  if (order.landmark) {
+    message += `Landmark: ${order.landmark}\n`;
+  }
+  message += `PIN Code: ${order.pincode}\n`;
+  message += `Preferred Time: ${order.deliveryTime}\n\n`;
+
+  message += `📦 *ORDER ITEMS*\n`;
+  message += `━━━━━━━━━━━━━━━━\n`;
+
+  order.cart.forEach((item, index) => {
+    message += `${index + 1}. ${item.productName}\n`;
+    if (item.variant) {
+      message += `   Variant: ${item.variant}\n`;
+    }
+    if (item.sku) {
+      message += `   SKU: ${item.sku}\n`;
+    }
+    message += `   Qty: ${item.quantity} × ₹${item.price.toFixed(2)}\n`;
+    message += `   Subtotal: ₹${(item.quantity * item.price).toFixed(2)}\n\n`;
+  });
+
+  message += `━━━━━━━━━━━━━━━━\n`;
+  message += `💰 *PAYMENT SUMMARY*\n`;
+  message += `Subtotal: ₹${order.subtotal.toFixed(2)}\n`;
+  message += `Delivery: ₹${order.deliveryCharge.toFixed(2)}\n`;
+  message += `*Total Amount: ₹${order.total.toFixed(2)}*\n\n`;
+
+  message += `💳 Payment Method: Cash on Delivery (COD)\n\n`;
+  message += `Please confirm this order. Thank you! 🙏`;
+
+  return message;
+};
+
+// Generate product inquiry message
+export interface ProductInquiry {
+  productName: string;
+  productId: string;
+  variant?: string;
+  customerName?: string;
+}
+
+export const generateProductInquiryMessage = (inquiry: ProductInquiry): string => {
+  let message = `👋 Hi! I'm interested in:\n\n`;
+  message += `🛍️ *${inquiry.productName}*\n`;
+  if (inquiry.variant) {
+    message += `Variant: ${inquiry.variant}\n`;
+  }
+  message += `Product ID: ${inquiry.productId}\n\n`;
+  message += `Could you please provide more details about this product?\n\n`;
+  message += `Thank you! 😊`;
+
+  return message;
+};
+
+// Generate general inquiry message
+export const generateGeneralInquiryMessage = (): string => {
+  return `👋 Hi! I have a question about your products/services.\n\nCould you please help me?\n\nThank you! 😊`;
+};
+
+// Generate support message
+export const generateSupportMessage = (): string => {
+  return `👋 Hi! I need help with:\n\n[Please describe your issue here]\n\nThank you! 🙏`;
+};
+
+// Open WhatsApp with pre-filled message
+export const openWhatsApp = (message: string, phoneNumber?: string): { success: boolean; error?: string } => {
+  // If phoneNumber is not provided, check if WhatsApp is configured
+  if (!phoneNumber && !isWhatsAppConfigured()) {
     return {
       success: false,
-      error: "WhatsApp number not configured. Please contact the store admin.",
+      error:
+        "WhatsApp number is not configured. Please contact the store owner to set up a valid WhatsApp number in admin settings.",
+    };
+  }
+
+  const number = phoneNumber || getWhatsAppNumber();
+  const formattedNumber = formatWhatsAppNumber(number);
+
+  // Additional validation for the specific number being used
+  if (formattedNumber === "919876543210" || formattedNumber === "9876543210") {
+    return {
+      success: false,
+      error:
+        "Invalid WhatsApp number. The default number 9876543210 is not allowed. Please contact the store owner to set up a valid WhatsApp number.",
     };
   }
 
   const encodedMessage = encodeURIComponent(message);
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
 
-  // open WhatsApp window
+  // Use wa.me for universal compatibility - works on all devices
+  const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+
   window.open(whatsappUrl, "_blank");
-
   return { success: true };
 };
 
-// ✅ Generate a general inquiry message
-export const generateGeneralInquiryMessage = (): string => {
-  const settings = getSettings();
-  return `Hello ${settings.storeName}! I have a question about your products.`;
-};
-
-// ✅ Generate a product-specific inquiry message
-export const generateProductInquiryMessage = (inquiry: {
-  productName: string;
-  productId: string;
-  variant?: string;
-}): string => {
-  const settings = getSettings();
-  const variantInfo = inquiry.variant ? ` (${inquiry.variant})` : "";
-  return `Hello ${settings.storeName}! I'm interested in "${inquiry.productName}"${variantInfo} (ID: ${inquiry.productId}). Can you provide more details?`;
-};
-
-// ✅ Generate an order message for WhatsApp checkout
-export const generateOrderMessage = (orderDetails: {
-  customerName: string;
-  phone: string;
-  email?: string;
-  address: string;
-  landmark?: string;
-  pincode: string;
-  deliveryTime: string;
-  cart: Array<{
-    productId: string;
-    productName: string;
-    variant?: string;
-    price: number;
-    quantity: number;
-  }>;
-  subtotal: number;
-  deliveryCharge: number;
-  total: number;
-}): string => {
-  const settings = getSettings();
-  const orderId = `#ORD${Date.now()}`;
-
-  const itemsList = orderDetails.cart
-    .map((item) => {
-      const variantInfo = item.variant ? ` (${item.variant})` : "";
-      return `• ${item.productName}${variantInfo} - ${settings.currencySymbol}${item.price.toFixed(
-        2,
-      )} (Qty: ${item.quantity})`;
-    })
-    .join("\n");
-
-  return `*New Order Request*
-
-*Order Details:*
-${itemsList}
-
-*Subtotal:* ${settings.currencySymbol}${orderDetails.subtotal.toFixed(2)}
-*Delivery:* ${settings.currencySymbol}${orderDetails.deliveryCharge.toFixed(2)}
-*Total:* ${settings.currencySymbol}${orderDetails.total.toFixed(2)}
-
-*Customer Info:*
-Name: ${orderDetails.customerName}
-Phone: ${orderDetails.phone}
-${orderDetails.email ? `Email: ${orderDetails.email}` : ""}
-
-*Delivery Address:*
-${orderDetails.address}
-${orderDetails.landmark ? `Landmark: ${orderDetails.landmark}` : ""}
-Pincode: ${orderDetails.pincode}
-Preferred Time: ${orderDetails.deliveryTime}
-
-Order ID: ${orderId}`;
-};
-
-// ✅ Prepare data for Google Sheets integration
-export const prepareOrderDataForSheets = (orderDetails: {
-  customerName: string;
-  phone: string;
-  email?: string;
-  address: string;
-  landmark?: string;
-  pincode: string;
-  deliveryTime: string;
-  cart: Array<{
-    productId: string;
-    productName: string;
-    variant?: string;
-    price: number;
-    quantity: number;
-  }>;
-  subtotal: number;
-  deliveryCharge: number;
-  total: number;
-}) => {
+// Export order data for Google Sheets tracking
+export const prepareOrderDataForSheets = (order: OrderDetails) => {
   const orderId = `ORD${Date.now()}`;
-  const orderDate = new Date().toISOString();
-
-  // Convert cart items into a single string for sheet storage
-  const itemsString = orderDetails.cart
-    .map((item) => {
-      const variantInfo = item.variant ? ` (${item.variant})` : "";
-      const totalPrice = item.price * item.quantity;
-      return `${item.productName}${variantInfo} x${item.quantity} - ₹${totalPrice}`;
-    })
-    .join(" | ");
+  const itemsList = order.cart
+    .map((item) => `${item.productName}${item.variant ? ` (${item.variant})` : ""} x${item.quantity}`)
+    .join(", ");
 
   return {
     orderId,
-    orderDate,
-    customerName: orderDetails.customerName,
-    phone: orderDetails.phone,
-    email: orderDetails.email || "",
-    address: `${orderDetails.address}${orderDetails.landmark ? `, ${orderDetails.landmark}` : ""}`,
-    pincode: orderDetails.pincode,
-    deliveryTime: orderDetails.deliveryTime,
-    items: itemsString,
-    subtotal: orderDetails.subtotal,
-    deliveryCharge: orderDetails.deliveryCharge,
-    total: orderDetails.total,
+    customerName: order.customerName,
+    phone: order.phone,
+    email: order.email || "",
+    address: order.address,
+    landmark: order.landmark || "",
+    pincode: order.pincode,
+    deliveryTime: order.deliveryTime,
+    items: itemsList,
+    subtotal: order.subtotal,
+    deliveryCharge: order.deliveryCharge,
+    total: order.total,
+    orderDate: new Date().toISOString(),
     status: "Pending",
   };
 };
