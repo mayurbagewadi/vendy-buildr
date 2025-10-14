@@ -20,6 +20,8 @@ import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
 import Auth from "./pages/Auth";
+import SuperAdminLogin from "./pages/superadmin/Login";
+import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 
 
 const queryClient = new QueryClient();
@@ -50,6 +52,10 @@ const App = () => (
             <Route path="/admin/products/edit/:id" element={<EditProduct />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/google-sheets" element={<GoogleSheetsSync />} />
+            
+            {/* Super Admin Routes */}
+            <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
