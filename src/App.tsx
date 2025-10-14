@@ -19,6 +19,7 @@ import CustomerProducts from "./pages/customer/Products";
 import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
+import Auth from "./pages/Auth";
 
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
             
             {/* Customer Routes */}
             <Route path="/home" element={<Home />} />
