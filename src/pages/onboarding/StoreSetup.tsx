@@ -27,19 +27,28 @@ const StoreSetup = () => {
   const [slugStatus, setSlugStatus] = useState<"idle" | "available" | "taken">("idle");
 
   useEffect(() => {
-    loadUserData();
-  }, []);
+    checkAuthAndLoadData();
+  }, [navigate]);
 
-  const loadUserData = async () => {
+  const checkAuthAndLoadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("user_id", user.id)
-        .single();
-      if (profile) setUserName(profile.full_name || user.email || "");
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to continue with onboarding",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
     }
+    
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    setUserName(profile?.full_name || user.email || "Guest");
   };
 
   const generateSlug = (name: string) => {
