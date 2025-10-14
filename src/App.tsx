@@ -23,6 +23,10 @@ import Auth from "./pages/Auth";
 import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
+import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
+import OnboardingGoogleSheets from "./pages/onboarding/GoogleSheets";
+import OnboardingCustomize from "./pages/onboarding/Customize";
+import OnboardingComplete from "./pages/onboarding/Complete";
 
 
 const queryClient = new QueryClient();
@@ -58,6 +62,12 @@ const App = () => (
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/superadmin/users" element={<SuperAdminUsers />} />
+            
+            {/* Onboarding Routes */}
+            <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
+            <Route path="/onboarding/google-sheets" element={<OnboardingGoogleSheets />} />
+            <Route path="/onboarding/customize" element={<OnboardingCustomize />} />
+            <Route path="/onboarding/complete" element={<OnboardingComplete />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
