@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SuperAdminLayout from "@/components/superadmin/SuperAdminLayout";
 import {
   Select,
   SelectContent,
@@ -307,7 +308,8 @@ export default function Users() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <SuperAdminLayout>
+      <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -667,6 +669,7 @@ export default function Users() {
           />
         </>
       )}
-    </div>
+      </div>
+    </SuperAdminLayout>
   );
 }

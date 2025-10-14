@@ -23,6 +23,8 @@ import Auth from "./pages/Auth";
 import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
+import SuperAdminPlans from "./pages/superadmin/Plans";
+import SuperAdminTransactions from "./pages/superadmin/Transactions";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import OnboardingGoogleSheets from "./pages/onboarding/GoogleSheets";
 import OnboardingCustomize from "./pages/onboarding/Customize";
@@ -62,6 +64,8 @@ const App = () => (
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/superadmin/users" element={<SuperAdminUsers />} />
+            <Route path="/superadmin/plans" element={<SuperAdminPlans />} />
+            <Route path="/superadmin/transactions" element={<SuperAdminTransactions />} />
             
             {/* Onboarding Routes */}
             <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
