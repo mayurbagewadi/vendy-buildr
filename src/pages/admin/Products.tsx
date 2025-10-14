@@ -180,6 +180,29 @@ const Products = () => {
   return (
     <AdminLayout>
       <div className="space-y-4 lg:space-y-6">
+        {/* Sync Status Bar */}
+        <Card className="border-l-4 border-l-success bg-success/5">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1">
+                <Package className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-sm">Synced with Google Sheets</p>
+                  <p className="text-xs text-muted-foreground">Last sync: 2 minutes ago • Products: {products.length} • Status: ✓ All in sync</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 sm:ml-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Auto-sync:</span>
+                  <div className="w-10 h-5 bg-primary rounded-full flex items-center px-0.5">
+                    <div className="w-4 h-4 bg-white rounded-full ml-auto" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -188,11 +211,31 @@ const Products = () => {
               Manage your product catalog
             </p>
           </div>
-          <Button onClick={() => navigate("/admin/products/add")} className="touch-target">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Product
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => navigate("/admin/products/add")} className="touch-target flex-1 sm:flex-initial">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Product
+            </Button>
+          </div>
         </div>
+
+        {/* Product Limit Indicator */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Products Used</span>
+                <span className="font-semibold text-foreground">{products.length} / 200</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-success h-2 rounded-full transition-all" 
+                  style={{ width: `${Math.min((products.length / 200) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -214,7 +257,7 @@ const Products = () => {
             <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Published Products</p>
+                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Published</p>
                   <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                     {products.filter(p => p.status === "published").length}
                   </p>
@@ -228,7 +271,7 @@ const Products = () => {
             <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Draft Products</p>
+                  <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">Drafts</p>
                   <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
                     {products.filter(p => p.status === "draft").length}
                   </p>

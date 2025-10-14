@@ -142,7 +142,24 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-4 lg:space-y-8">
+      <div className="space-y-4 lg:space-y-6">
+        {/* Trial Status Alert */}
+        <Card className="border-l-4 border-l-warning bg-warning/5">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm">Trial Status</p>
+                <p className="text-sm text-muted-foreground">Your free trial ends in 11 days</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
+              <Button size="sm" className="whitespace-nowrap">Upgrade Now</Button>
+              <Button size="sm" variant="outline" className="whitespace-nowrap">View Plans</Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -150,12 +167,6 @@ const AdminDashboard = () => {
             <p className="text-sm lg:text-base text-muted-foreground mt-1">
               Here's what's happening with <span className="font-medium text-primary">{storeName}</span> today.
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="touch-target">
-              <Star className="w-4 h-4 mr-2" />
-              Quick Tour
-            </Button>
           </div>
         </div>
 
@@ -186,31 +197,87 @@ const AdminDashboard = () => {
           ))}
         </div>
 
+        {/* Store URL & Google Sheets Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Store URL Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5" />
+                Your Store URL
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-mono text-foreground break-all">techstore.yourplatform.com</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+                  <Package className="w-4 h-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Generate QR
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Sheets Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Google Sheets
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
+                <p className="text-sm font-medium text-foreground">Connected</p>
+              </div>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>Last synced: 2 minutes ago</p>
+                <p>Products in sheet: {stats.totalProducts}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1">
+                  Sync Now
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1">
+                  Configure
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Quick Actions */}
         <Card className="admin-card">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
-            <p className="text-muted-foreground">Get started with these common tasks</p>
+            <p className="text-sm text-muted-foreground">Get started with these common tasks</p>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {quickActions.map((action, index) => (
               <Card key={index} className="admin-card cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20" onClick={action.action}>
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-lg ${action.primary ? 'bg-primary/10' : 'bg-muted'}`}>
-                      <action.icon className={`w-6 h-6 ${action.primary ? 'text-primary' : 'text-muted-foreground'}`} />
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-start gap-3 lg:gap-4">
+                    <div className={`p-2 lg:p-3 rounded-lg flex-shrink-0 ${action.primary ? 'bg-primary/10' : 'bg-muted'}`}>
+                      <action.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${action.primary ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-foreground mb-1 text-sm lg:text-base">
                         {action.title}
                       </h3>
-                      <p className="text-sm text-muted-foreground mb-3">
+                      <p className="text-xs lg:text-sm text-muted-foreground mb-3">
                         {action.description}
                       </p>
                       <Button 
                         variant={action.primary ? "default" : "outline"} 
                         size="sm"
-                        className={action.primary ? "admin-button-primary" : "admin-button-secondary"}
+                        className={`w-full sm:w-auto ${action.primary ? "admin-button-primary" : "admin-button-secondary"}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           action.action();
@@ -227,35 +294,99 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="admin-card">
+        {/* Getting Started Checklist */}
+        <Card className="border-l-4 border-l-primary">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">Recent Activity</CardTitle>
-            <p className="text-muted-foreground">Latest updates from your store</p>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                <Star className="w-5 h-5 text-primary" />
+                Getting Started
+              </CardTitle>
+              <span className="text-sm text-muted-foreground">3/5 complete</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2 mt-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: '60%' }} />
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivity.length > 0 ? (
-              recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">{activity.action}</p>
-                    <p className="text-sm text-muted-foreground">{activity.product}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                  </div>
+          <CardContent className="space-y-3">
+            {[
+              { done: true, text: "Create account" },
+              { done: true, text: "Set up store" },
+              { done: true, text: "Connect Google Sheets" },
+              { done: false, text: "Add first product" },
+              { done: false, text: "Customize store appearance" }
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  item.done ? 'bg-success text-success-foreground' : 'bg-muted border-2 border-border'
+                }`}>
+                  {item.done && <span className="text-xs">✓</span>}
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No recent activity to display</p>
-                <p className="text-sm">Start by adding your first product!</p>
+                <span className={`text-sm ${item.done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                  {item.text}
+                </span>
               </div>
-            )}
+            ))}
+            <Button className="w-full mt-4" size="sm">Complete Setup</Button>
           </CardContent>
         </Card>
+
+        {/* Recent Activity & Tips */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold">Recent Activity</CardTitle>
+              <p className="text-sm text-muted-foreground">Latest updates from your store</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm">{activity.action}</p>
+                      <p className="text-sm text-muted-foreground truncate">{activity.product}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">No recent activity to display</p>
+                  <p className="text-xs">Start by adding your first product!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tips & Resources */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">Tips & Resources</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { icon: "📺", text: "Video Tutorials", color: "text-red-500" },
+                { icon: "📖", text: "Help Documentation", color: "text-blue-500" },
+                { icon: "💬", text: "Contact Support", color: "text-green-500" },
+                { icon: "🎓", text: "Best Practices Guide", color: "text-purple-500" }
+              ].map((item, i) => (
+                <Button
+                  key={i}
+                  variant="ghost"
+                  className="w-full justify-start hover:bg-muted"
+                  size="sm"
+                >
+                  <span className="text-lg mr-3">{item.icon}</span>
+                  <span className="text-sm">{item.text}</span>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminLayout>
   );
