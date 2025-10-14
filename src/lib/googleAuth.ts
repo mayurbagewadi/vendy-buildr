@@ -88,17 +88,21 @@ export const handleGoogleCallback = (response: any): GoogleUserInfo => {
   };
 };
 
-// Request OAuth token with Sheets API scope
-export const requestSheetsAccess = (clientId: string): Promise<string> => {
+// Request OAuth token with Sheets API scope (read and write)
+export const requestSheetsAccess = (clientId: string, readWrite: boolean = false): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!window.google) {
       reject(new Error('Google API not loaded'));
       return;
     }
     
+    const scope = readWrite 
+      ? 'https://www.googleapis.com/auth/spreadsheets' 
+      : 'https://www.googleapis.com/auth/spreadsheets.readonly';
+    
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+      scope,
       callback: (response: any) => {
         if (response.error) {
           reject(new Error(response.error));

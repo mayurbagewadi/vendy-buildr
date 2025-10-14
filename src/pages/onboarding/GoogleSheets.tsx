@@ -1,64 +1,145 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Sheet, ArrowLeft, ExternalLink, Copy, Share, Link2, CheckCircle, XCircle, Loader2, FileText, HelpCircle } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, CheckCircle2, Loader2, ExternalLink, FileSpreadsheet, Key, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { requestSheetsAccess, saveGoogleClientId, getGoogleClientId, initGoogleSignIn } from "@/lib/googleAuth";
+import { createStoreSheet } from "@/lib/googleSheetsCreate";
+import { saveSpreadsheetId } from "@/lib/googleSheetsSync";
 
 const GoogleSheets = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle");
-  
-  const [formData, setFormData] = useState({
-    sheetsUrl: "",
-    webAppUrl: ""
-  });
+  const [setupMethod, setSetupMethod] = useState<"auto" | "manual">("auto");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [hasAccess, setHasAccess] = useState(false);
+  const [storeName, setStoreName] = useState("");
+  const [createdSheetUrl, setCreatedSheetUrl] = useState("");
+  const [manualSpreadsheetId, setManualSpreadsheetId] = useState("");
 
-  const TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1example/copy";
+  useEffect(() => {
+    checkAuthAndLoadStore();
+    const savedClientId = getGoogleClientId();
+    if (savedClientId) {
+      setGoogleClientId(savedClientId);
+    }
+  }, []);
 
-  const testConnection = async () => {
-    if (!formData.sheetsUrl) return;
+  const checkAuthAndLoadStore = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to continue",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
+    }
 
-    setTesting(true);
-    setConnectionStatus("idle");
+    // Get store info
+    const { data: store } = await supabase
+      .from("stores")
+      .select("name, google_sheet_connected")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // Simulate API test
-    setTimeout(() => {
-      const isValid = formData.sheetsUrl.includes("docs.google.com/spreadsheets");
-      setConnectionStatus(isValid ? "success" : "error");
-      setTesting(false);
-      
-      if (isValid) {
-        toast({
-          title: "Connection successful!",
-          description: "Your Google Sheet is connected."
-        });
-      } else {
-        toast({
-          title: "Connection failed",
-          description: "Please check your URL and try again.",
-          variant: "destructive"
-        });
-      }
-    }, 1500);
+    if (!store) {
+      toast({
+        title: "Store not found",
+        description: "Please complete store setup first",
+        variant: "destructive"
+      });
+      navigate("/onboarding/store-setup");
+      return;
+    }
+
+    setStoreName(store.name);
+
+    if (store.google_sheet_connected) {
+      // Already connected, skip to next step
+      navigate("/onboarding/customize");
+    }
   };
 
-  const handleContinue = async () => {
-    if (connectionStatus !== "success") return;
+  const handleSaveClientId = () => {
+    if (!googleClientId || !googleClientId.includes('.apps.googleusercontent.com')) {
+      toast({
+        title: "Invalid Client ID",
+        description: "Please enter a valid Google Cloud OAuth Client ID",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    saveGoogleClientId(googleClientId);
+    toast({
+      title: "Client ID saved",
+      description: "You can now request Google Sheets access"
+    });
+  };
+
+  const handleRequestAccess = async () => {
+    const clientId = getGoogleClientId();
+    if (!clientId) {
+      toast({
+        title: "Client ID required",
+        description: "Please enter your Google OAuth Client ID first",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     try {
+      await initGoogleSignIn(clientId);
+      await requestSheetsAccess(clientId, true); // Request read/write access
+      setHasAccess(true);
+      toast({
+        title: "Access granted!",
+        description: "You can now create Google Sheets"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Access denied",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAutoCreate = async () => {
+    if (!hasAccess) {
+      toast({
+        title: "Access required",
+        description: "Please grant Google Sheets access first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Creating Google Sheet for store:', storeName);
+      const result = await createStoreSheet(storeName);
+      
+      console.log('Sheet created:', result);
+      setCreatedSheetUrl(result.spreadsheetUrl);
+      
+      // Save to database
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      const { error } = await supabase
+      await supabase
         .from("stores")
         .update({
           google_sheet_connected: true,
@@ -66,11 +147,54 @@ const GoogleSheets = () => {
         })
         .eq("user_id", user.id);
 
-      if (error) throw error;
+      // Save spreadsheet ID locally
+      saveSpreadsheetId(result.spreadsheetId);
+
+      toast({
+        title: "Sheet created successfully! ✓",
+        description: "Your Products and Orders sheets are ready"
+      });
+
+    } catch (error: any) {
+      console.error('Error creating sheet:', error);
+      toast({
+        title: "Failed to create sheet",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualConnect = async () => {
+    if (!manualSpreadsheetId) {
+      toast({
+        title: "Spreadsheet ID required",
+        description: "Please enter your Google Sheet ID",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user found");
+
+      await supabase
+        .from("stores")
+        .update({
+          google_sheet_connected: true,
+          last_sheet_sync: new Date().toISOString()
+        })
+        .eq("user_id", user.id);
+
+      saveSpreadsheetId(manualSpreadsheetId);
 
       toast({
         title: "Sheet connected!",
-        description: "Let's customize your store appearance."
+        description: "You can now sync products"
       });
 
       navigate("/onboarding/customize");
@@ -83,6 +207,23 @@ const GoogleSheets = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleContinue = () => {
+    if (createdSheetUrl || manualSpreadsheetId) {
+      navigate("/onboarding/customize");
+    }
+  };
+
+  const handleSkip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("stores")
+        .update({ google_sheet_connected: false })
+        .eq("user_id", user.id);
+    }
+    navigate("/onboarding/customize");
   };
 
   return (
@@ -100,7 +241,7 @@ const GoogleSheets = () => {
               <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                 step <= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}>
-                {step}
+                {step < 2 ? <CheckCircle2 className="w-5 h-5" /> : step}
               </div>
               {step < 4 && <div className={`w-8 md:w-16 h-0.5 ${step < 2 ? "bg-primary" : "bg-muted"}`} />}
             </div>
@@ -117,216 +258,194 @@ const GoogleSheets = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-4">
               <Sheet className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Connect Your Product Sheet</h1>
-            <p className="text-muted-foreground">We use Google Sheets to manage your products - it's simple!</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">
+              Connect Google Sheets
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your products and orders easily with Google Sheets
+            </p>
           </div>
 
-          {/* Why Google Sheets */}
-          <div className="bg-accent/50 rounded-lg p-6 mb-8">
-            <h3 className="font-semibold mb-4">Why Google Sheets?</h3>
-            <div className="grid sm:grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <span>Familiar spreadsheet interface</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <span>Manage products easily</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <span>Real-time sync with your store</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <span>No learning curve</span>
-              </div>
-            </div>
-          </div>
+          {/* Setup Instructions */}
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>First time setup required:</strong> You need to create OAuth credentials in Google Cloud Console.
+              <a 
+                href="https://console.cloud.google.com/apis/credentials" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline ml-1 inline-flex items-center gap-1"
+              >
+                Open Google Cloud Console <ExternalLink className="w-3 h-3" />
+              </a>
+            </AlertDescription>
+          </Alert>
 
-          {/* Quick Setup Steps */}
-          <div className="mb-8">
-            <h3 className="font-semibold mb-4">Quick Setup (3 Easy Steps)</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              {/* Card 1 */}
-              <div className="bg-card border rounded-lg p-4 space-y-3">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <Copy className="w-5 h-5 text-primary" />
+          {/* Google Client ID Configuration */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                Step 1: Configure OAuth Credentials
+              </CardTitle>
+              <CardDescription>
+                Create OAuth 2.0 Client ID in Google Cloud Console and paste it here
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="clientId">Google OAuth Client ID</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="clientId"
+                    placeholder="xxxxx.apps.googleusercontent.com"
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSaveClientId} variant="outline">
+                    Save
+                  </Button>
                 </div>
-                <h4 className="font-medium">Copy Template</h4>
-                <p className="text-sm text-muted-foreground">Use our pre-built template with sample products</p>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <p className="text-xs text-muted-foreground">
+                  Required to access Google Sheets API. Create one in Google Cloud Console.
+                </p>
+              </div>
+
+              {googleClientId && (
+                <Button 
+                  onClick={handleRequestAccess} 
+                  disabled={loading || hasAccess}
                   className="w-full"
-                  onClick={() => window.open(TEMPLATE_URL, "_blank")}
                 >
-                  <FileText className="w-4 h-4" />
-                  Copy Template
-                </Button>
-              </div>
-
-              {/* Card 2 */}
-              <div className="bg-card border rounded-lg p-4 space-y-3">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <Share className="w-5 h-5 text-primary" />
-                </div>
-                <h4 className="font-medium">Share Your Sheet</h4>
-                <p className="text-sm text-muted-foreground">Make sure "Anyone with link can view"</p>
-                <div className="text-xs text-muted-foreground pt-2">
-                  Get the sharing link from your sheet
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="bg-card border rounded-lg p-4 space-y-3">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <Link2 className="w-5 h-5 text-primary" />
-                </div>
-                <h4 className="font-medium">Connect Here</h4>
-                <p className="text-sm text-muted-foreground">Paste the URL and test connection</p>
-                <div className="text-xs text-muted-foreground pt-2">
-                  We'll verify the connection
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Form */}
-          <div className="space-y-6">
-            {/* Google Sheets URL */}
-            <div className="space-y-2">
-              <Label htmlFor="sheetsUrl">
-                Google Sheets URL <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="sheetsUrl"
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  value={formData.sheetsUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sheetsUrl: e.target.value }))}
-                  className="flex-1"
-                />
-                <Button
-                  variant="outline"
-                  onClick={testConnection}
-                  disabled={!formData.sheetsUrl || testing}
-                >
-                  {testing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Requesting Access...</>
+                  ) : hasAccess ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Access Granted</>
                   ) : (
-                    "Test"
+                    "Grant Google Sheets Access"
                   )}
                 </Button>
-              </div>
-              
-              {connectionStatus === "idle" && (
-                <p className="text-xs text-muted-foreground">Not tested</p>
               )}
-              {connectionStatus === "success" && (
-                <p className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" /> Connected
-                </p>
-              )}
-              {connectionStatus === "error" && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <XCircle className="w-3 h-3" /> Connection failed - check URL
-                </p>
-              )}
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Web App URL */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="webAppUrl">Web App URL</Label>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <HelpCircle className="w-4 h-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>How to get Web App URL</DialogTitle>
-                      <DialogDescription className="space-y-2 pt-4">
-                        <p>1. Open your Google Sheet</p>
-                        <p>2. Go to Extensions → Apps Script</p>
-                        <p>3. Deploy as Web App</p>
-                        <p>4. Copy the deployment URL</p>
-                      </DialogDescription>
-                    </DialogHeader>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <Input
-                id="webAppUrl"
-                placeholder="https://script.google.com/macros/s/..."
-                value={formData.webAppUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, webAppUrl: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground">Optional for now (can add later)</p>
-            </div>
-          </div>
+          {/* Sheet Setup Methods */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5" />
+                Step 2: Setup Your Google Sheet
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={setupMethod} onValueChange={(v) => setSetupMethod(v as any)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="auto">Auto Create (Recommended)</TabsTrigger>
+                  <TabsTrigger value="manual">Manual Connect</TabsTrigger>
+                </TabsList>
 
-          {/* Help Section */}
-          <Accordion type="single" collapsible className="mt-6">
-            <AccordionItem value="help">
-              <AccordionTrigger className="text-sm font-medium">
-                Need Help?
-              </AccordionTrigger>
-              <AccordionContent className="space-y-4 pt-4">
-                <div>
-                  <h4 className="font-medium mb-2">Video Tutorial</h4>
-                  <div className="bg-muted rounded aspect-video flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">2-minute setup guide</p>
+                <TabsContent value="auto" className="space-y-4 mt-4">
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4" />
+                    <AlertDescription>
+                      We'll automatically create a Google Sheet with Products and Orders tabs, properly formatted and ready to use.
+                    </AlertDescription>
+                  </Alert>
+
+                  <Button 
+                    onClick={handleAutoCreate} 
+                    disabled={!hasAccess || loading || !!createdSheetUrl}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {loading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Creating Sheet...</>
+                    ) : createdSheetUrl ? (
+                      <><CheckCircle2 className="w-4 h-4 mr-2" /> Sheet Created</>
+                    ) : (
+                      "Create Google Sheet Automatically"
+                    )}
+                  </Button>
+
+                  {!hasAccess && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      Please grant Google Sheets access first
+                    </p>
+                  )}
+
+                  {createdSheetUrl && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <AlertDescription>
+                        <p className="font-medium text-green-800 mb-2">Sheet created successfully!</p>
+                        <a 
+                          href={createdSheetUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          Open your Google Sheet <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="manual" className="space-y-4 mt-4">
+                  <Alert>
+                    <AlertDescription>
+                      If you already have a Google Sheet, enter its ID here. Make sure it has "Products" and "Orders" tabs with the correct column headers.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="spreadsheetId">Google Sheet ID</Label>
+                    <Input
+                      id="spreadsheetId"
+                      placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                      value={manualSpreadsheetId}
+                      onChange={(e) => setManualSpreadsheetId(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Find this in your Google Sheet URL after /d/
+                    </p>
                   </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">FAQ</h4>
-                  <div className="text-sm space-y-2 text-muted-foreground">
-                    <p>• Make sure your sheet is shared with "Anyone with link can view"</p>
-                    <p>• The URL should start with https://docs.google.com/spreadsheets/</p>
-                    <p>• You can update this connection anytime from settings</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  Contact Support
-                </Button>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+
+                  <Button 
+                    onClick={handleManualConnect} 
+                    disabled={loading || !manualSpreadsheetId}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {loading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Connecting...</>
+                    ) : (
+                      "Connect Sheet"
+                    )}
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
 
           {/* Footer */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t">
             <Button
               variant="ghost"
-              onClick={() => navigate("/onboarding/store-setup")}
+              onClick={handleSkip}
               className="order-2 sm:order-1"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back
+              Skip for now
             </Button>
-            <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/onboarding/customize")}
-              >
-                Setup Later
-              </Button>
-              <Button
-                onClick={handleContinue}
-                disabled={connectionStatus !== "success" || loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </div>
+            <Button
+              onClick={handleContinue}
+              disabled={!createdSheetUrl && !manualSpreadsheetId}
+              className="w-full sm:w-auto order-1 sm:order-2"
+            >
+              Continue
+            </Button>
           </div>
         </div>
       </div>
