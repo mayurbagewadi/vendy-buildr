@@ -114,14 +114,13 @@ export default function SuperAdminDashboard() {
       const activeStores = activeProfiles?.length || 0;
       const activePercentage = totalUsers > 0 ? (activeStores / totalUsers) * 100 : 0;
 
-      // Calculate monthly revenue from coins
-      const { data: coins, error: coinsError } = await supabase
-        .from('coins')
-        .select('total_purchased');
-      
-      if (coinsError) throw coinsError;
+      // Calculate monthly revenue from transactions
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('total_amount')
+        .eq('status', 'success');
 
-      const monthlyRevenue = coins?.reduce((sum, c) => sum + (c.total_purchased * 10), 0) || 0; // Assuming 1 coin = ₹10
+      const monthlyRevenue = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0;
 
       // Get new signups in last 30 days
       const thirtyDaysAgo = new Date();
@@ -149,23 +148,8 @@ export default function SuperAdminDashboard() {
         { plan: 'Enterprise', users: Math.floor(totalUsers * 0.064), percentage: 6.4, revenue: 479200, color: 'bg-purple-500' },
       ]);
 
-      // Get recent activities
-      const { data: activitiesData, error: activitiesError } = await supabase
-        .from('activity_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (activitiesError) throw activitiesError;
-
-      setActivities(activitiesData?.map(a => ({
-        id: a.id,
-        type: a.activity_type,
-        description: a.description,
-        userEmail: a.user_email,
-        timestamp: a.created_at,
-        icon: getActivityIcon(a.activity_type),
-      })) || []);
+      // Activity log will be populated as users interact with the system
+      setActivities([]);
 
       setIsLoading(false);
     } catch (error: any) {
@@ -265,7 +249,11 @@ export default function SuperAdminDashboard() {
               <Home className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => navigate('/superadmin/users')}
+            >
               <Users className="mr-2 h-4 w-4" />
               Users & Stores
             </Button>

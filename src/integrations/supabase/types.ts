@@ -14,90 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      activity_log: {
-        Row: {
-          activity_type: string
-          created_at: string
-          description: string
-          id: string
-          metadata: Json | null
-          user_email: string | null
-        }
-        Insert: {
-          activity_type: string
-          created_at?: string
-          description: string
-          id?: string
-          metadata?: Json | null
-          user_email?: string | null
-        }
-        Update: {
-          activity_type?: string
-          created_at?: string
-          description?: string
-          id?: string
-          metadata?: Json | null
-          user_email?: string | null
-        }
-        Relationships: []
-      }
-      calls: {
-        Row: {
-          coins_used: number
-          created_at: string
-          duration_minutes: number
-          id: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          coins_used?: number
-          created_at?: string
-          duration_minutes?: number
-          id?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          coins_used?: number
-          created_at?: string
-          duration_minutes?: number
-          id?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      coins: {
-        Row: {
-          balance: number
-          created_at: string
-          id: string
-          total_purchased: number
-          total_used: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          balance?: number
-          created_at?: string
-          id?: string
-          total_purchased?: number
-          total_used?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          balance?: number
-          created_at?: string
-          id?: string
-          total_purchased?: number
-          total_used?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           created_at: string
@@ -127,6 +43,170 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      stores: {
+        Row: {
+          created_at: string
+          custom_domain: string | null
+          description: string | null
+          google_sheet_connected: boolean | null
+          hero_banner_url: string | null
+          id: string
+          is_active: boolean | null
+          last_sheet_sync: string | null
+          logo_url: string | null
+          name: string
+          slug: string
+          social_links: Json | null
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          google_sheet_connected?: boolean | null
+          hero_banner_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sheet_sync?: string | null
+          logo_url?: string | null
+          name: string
+          slug: string
+          social_links?: Json | null
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          google_sheet_connected?: boolean | null
+          hero_banner_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sheet_sync?: string | null
+          logo_url?: string | null
+          name?: string
+          slug?: string
+          social_links?: Json | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          badge_color: string | null
+          badge_text: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          is_popular: boolean | null
+          max_products: number | null
+          monthly_price: number
+          name: string
+          slug: string
+          trial_days: number | null
+          updated_at: string
+          yearly_price: number | null
+        }
+        Insert: {
+          badge_color?: string | null
+          badge_text?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          max_products?: number | null
+          monthly_price?: number
+          name: string
+          slug: string
+          trial_days?: number | null
+          updated_at?: string
+          yearly_price?: number | null
+        }
+        Update: {
+          badge_color?: string | null
+          badge_text?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          max_products?: number | null
+          monthly_price?: number
+          name?: string
+          slug?: string
+          trial_days?: number | null
+          updated_at?: string
+          yearly_price?: number | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          billing_cycle: string
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          next_billing_at: string | null
+          payment_gateway: string | null
+          plan_id: string
+          started_at: string
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          next_billing_at?: string | null
+          payment_gateway?: string | null
+          plan_id: string
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          next_billing_at?: string | null
+          payment_gateway?: string | null
+          plan_id?: string
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       super_admins: {
         Row: {
@@ -158,32 +238,70 @@ export type Database = {
         }
         Relationships: []
       }
-      webhooks: {
+      transactions: {
         Row: {
+          amount: number
           created_at: string
+          gst_amount: number | null
           id: string
-          is_active: boolean
+          invoice_number: string | null
+          payment_gateway: string
+          payment_id: string | null
+          payment_method: string | null
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
+          status: string
+          subscription_id: string | null
+          total_amount: number
           updated_at: string
           user_id: string
-          webhook_url: string
         }
         Insert: {
+          amount: number
           created_at?: string
+          gst_amount?: number | null
           id?: string
-          is_active?: boolean
+          invoice_number?: string | null
+          payment_gateway: string
+          payment_id?: string | null
+          payment_method?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          status?: string
+          subscription_id?: string | null
+          total_amount: number
           updated_at?: string
           user_id: string
-          webhook_url: string
         }
         Update: {
+          amount?: number
           created_at?: string
+          gst_amount?: number | null
           id?: string
-          is_active?: boolean
+          invoice_number?: string | null
+          payment_gateway?: string
+          payment_id?: string | null
+          payment_method?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          status?: string
+          subscription_id?: string | null
+          total_amount?: number
           updated_at?: string
           user_id?: string
-          webhook_url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
