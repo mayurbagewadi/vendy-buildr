@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -53,22 +54,44 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   ];
 
   useEffect(() => {
-    // Check authentication
-    const adminToken = localStorage.getItem("adminToken");
-    
-    if (!adminToken) {
-      navigate("/admin/login");
-      return;
-    }
-
-    // Load store name
-    const storeSettings = localStorage.getItem("storeSettings");
-    if (storeSettings) {
-      const settings = JSON.parse(storeSettings);
-      if (settings.storeName) {
-        setStoreName(settings.storeName);
+    const checkAuth = async () => {
+      console.log('[AdminLayout] Checking authentication...');
+      
+      // Check Supabase authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log('[AdminLayout] Session:', session ? 'Found' : 'None');
+      
+      if (!session) {
+        console.log('[AdminLayout] No session - redirecting to auth');
+        navigate("/auth");
+        return;
       }
-    }
+
+      console.log('[AdminLayout] User authenticated:', session.user.email);
+
+      // Load store data
+      const { data: store, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      console.log('[AdminLayout] Store data:', store ? 'Found' : 'None', error ? `Error: ${error.message}` : '');
+
+      if (!store) {
+        console.log('[AdminLayout] No store found - redirecting to onboarding');
+        navigate("/onboarding/store-setup");
+        return;
+      }
+
+      if (store.name) {
+        console.log('[AdminLayout] Setting store name:', store.name);
+        setStoreName(store.name);
+      }
+    };
+
+    checkAuth();
   }, [navigate]);
 
   useEffect(() => {
@@ -83,13 +106,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
+  const handleLogout = async () => {
+    console.log('[AdminLayout] Logging out...');
+    
+    await supabase.auth.signOut();
+    
+    console.log('[AdminLayout] User signed out');
+    
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out",
     });
-    navigate("/admin/login");
+    navigate("/");
   };
 
   const navigationItems = [

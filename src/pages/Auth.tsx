@@ -13,20 +13,55 @@ export default function Auth() {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[Auth] Checking existing session:', session ? 'Found' : 'None');
+      
       if (session) {
-        navigate("/");
+        // Check if user has completed onboarding
+        const { data: store } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        console.log('[Auth] Store found:', store ? 'Yes' : 'No');
+
+        if (!store) {
+          console.log('[Auth] Redirecting to onboarding');
+          navigate("/onboarding/store-setup");
+        } else {
+          console.log('[Auth] Redirecting to admin dashboard');
+          navigate("/admin/dashboard");
+        }
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] Auth state changed:', event, session ? 'Session exists' : 'No session');
+      
       if (event === 'SIGNED_IN' && session) {
         toast({
           title: "Success",
           description: "You have been signed in successfully!",
         });
-        navigate("/");
+
+        // Check if user has completed onboarding
+        const { data: store } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No');
+
+        if (!store) {
+          console.log('[Auth] New user - redirecting to onboarding');
+          navigate("/onboarding/store-setup");
+        } else {
+          console.log('[Auth] Existing user - redirecting to admin dashboard');
+          navigate("/admin/dashboard");
+        }
       }
     });
 
@@ -36,21 +71,27 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      console.log('[Auth] Starting Google sign in...');
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/auth`,
         },
       });
 
       if (error) {
+        console.error('[Auth] Sign in error:', error);
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
+      } else {
+        console.log('[Auth] OAuth redirect initiated');
       }
     } catch (error) {
+      console.error('[Auth] Unexpected error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -65,26 +106,26 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Welcome to StoreBuilder</CardTitle>
           <CardDescription className="text-center">
-            Sign in with your Google account to continue
+            Sign in with your Google account to create and manage your online store
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
             className="w-full"
-            variant="outline"
+            size="lg"
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Signing in...
               </>
             ) : (
               <>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -106,6 +147,10 @@ export default function Auth() {
               </>
             )}
           </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </p>
         </CardContent>
       </Card>
     </div>
