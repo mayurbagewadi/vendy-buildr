@@ -103,16 +103,9 @@ export default function SuperAdminDashboard() {
         new Date(p.created_at) >= today
       ).length || 0;
 
-      // Get active stores (profiles with status = 'active')
-      const { data: activeProfiles, error: activeError } = await supabase
-        .from('profiles')
-        .select('status')
-        .eq('status', 'active');
-      
-      if (activeError) throw activeError;
-
-      const activeStores = activeProfiles?.length || 0;
-      const activePercentage = totalUsers > 0 ? (activeStores / totalUsers) * 100 : 0;
+      // For now, consider all users as active (status field not yet implemented)
+      const activeStores = totalUsers;
+      const activePercentage = 100;
 
       // Calculate monthly revenue from transactions
       const { data: transactions } = await supabase

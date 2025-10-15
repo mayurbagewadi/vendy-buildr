@@ -41,22 +41,15 @@ export function SuspendAccountModal({
     try {
       setLoading(true);
 
-      // Update user status to suspended
-      const { error } = await supabase
-        .from("profiles")
-        .update({ status: "suspended" })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      // Activity logging will be implemented in future update
-
+      // TODO: Implement account suspension logic
+      // This will require adding a status field to the profiles table
+      
       toast({
-        title: "Account Suspended",
-        description: `${user.email}'s account has been suspended`,
+        title: "Feature Not Available",
+        description: "Account suspension requires database migration. Coming soon.",
+        variant: "destructive",
       });
 
-      onSuccess();
       onClose();
     } catch (error: any) {
       toast({
