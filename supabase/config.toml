@@ -2,3 +2,15 @@ project_id = "vexeuxsvckpfvuxqchqu"
 
 [functions.superadmin-auth]
 verify_jwt = false
+
+[functions.google-oauth-callback]
+verify_jwt = false
+
+[functions.create-google-sheet]
+verify_jwt = false
+
+[functions.sync-products-to-sheet]
+verify_jwt = false
+
+[functions.log-order-to-sheet]
+verify_jwt = false

@@ -13,6 +13,7 @@ import AdminSettings from "./pages/admin/Settings";
 import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
+import Orders from "./pages/admin/Orders";
 import GoogleSheetsSync from "./pages/admin/GoogleSheetsSync";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/admin/products" element={<Products />} />
             <Route path="/admin/products/add" element={<AddProduct />} />
             <Route path="/admin/products/edit/:id" element={<EditProduct />} />
+            <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/google-sheets" element={<GoogleSheetsSync />} />
             

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronRight, MessageCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
-import { generateOrderMessage, openWhatsApp, prepareOrderDataForSheets } from "@/lib/whatsappUtils";
-import { pushOrderToGoogleSheets } from "@/lib/googleSheetsSync";
+import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import {
   Form,
   FormControl,
@@ -87,50 +87,103 @@ const Checkout = () => {
       anytime: "Anytime",
     }[data.deliveryTime];
 
-    // Prepare order details for WhatsApp
-    const orderDetails = {
-      customerName: data.fullName,
-      phone: data.phone,
-      email: data.email || undefined,
-      address: data.address,
-      landmark: data.landmark || undefined,
-      pincode: data.pincode,
-      deliveryTime: deliveryTimeText,
-      cart: cart,
-      subtotal: cartTotal,
-      deliveryCharge: 0,
-      total: cartTotal,
-    };
+    try {
+      // Get store info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Authentication required");
 
-    // Push order to Google Sheets (non-blocking)
-    const orderData = prepareOrderDataForSheets(orderDetails);
-    pushOrderToGoogleSheets(orderData).catch(err => {
-      console.error('Failed to push order to Google Sheets:', err);
-    });
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id")
+        .eq("user_id", user.id)
+        .single();
 
-    // Generate and send WhatsApp message
-    const message = generateOrderMessage(orderDetails);
-    const result = openWhatsApp(message);
+      if (!storeData) throw new Error("Store not found");
 
-    if (!result.success) {
-      setIsSubmitting(false);
+      // Generate order number
+      const orderNumber = `ORD${Date.now().toString().slice(-8)}`;
+
+      // Prepare order for database
+      const orderRecord = {
+        store_id: storeData.id,
+        order_number: orderNumber,
+        customer_name: data.fullName,
+        customer_phone: data.phone,
+        customer_email: data.email || null,
+        delivery_address: data.address,
+        delivery_landmark: data.landmark || null,
+        delivery_pincode: data.pincode,
+        delivery_time: deliveryTimeText,
+        items: cart as any,
+        subtotal: cartTotal,
+        delivery_charge: 0,
+        total: cartTotal,
+        status: 'new',
+        payment_method: 'cod',
+      };
+
+      // Save order to Supabase
+      const { error: orderError } = await supabase
+        .from("orders")
+        .insert([orderRecord]);
+
+      if (orderError) throw orderError;
+
+      // Log to Google Sheets (non-blocking)
+      supabase.functions.invoke('log-order-to-sheet', {
+        body: {
+          storeId: storeData.id,
+          order: orderRecord
+        }
+      }).catch(err => console.error('Failed to log order to sheet:', err));
+
+      // Prepare order details for WhatsApp
+      const orderDetails = {
+        customerName: data.fullName,
+        phone: data.phone,
+        email: data.email || undefined,
+        address: data.address,
+        landmark: data.landmark || undefined,
+        pincode: data.pincode,
+        deliveryTime: deliveryTimeText,
+        cart: cart,
+        subtotal: cartTotal,
+        deliveryCharge: 0,
+        total: cartTotal,
+      };
+
+      // Generate and send WhatsApp message
+      const message = generateOrderMessage(orderDetails);
+      const result = openWhatsApp(message);
+
+      if (!result.success) {
+        toast({
+          title: "WhatsApp Not Configured",
+          description: result.error,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       toast({
-        title: "WhatsApp Not Configured",
-        description: result.error,
+        title: "Order placed successfully!",
+        description: "We'll contact you shortly on WhatsApp to confirm your order.",
+      });
+
+      clearCart();
+      setTimeout(() => {
+        navigate("/home");
+      }, 2000);
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Order failed",
+        description: error.message || "Failed to place order. Please try again.",
         variant: "destructive",
       });
-      return;
+      setIsSubmitting(false);
     }
-
-    toast({
-      title: "Order placed successfully!",
-      description: "We'll contact you shortly on WhatsApp to confirm your order.",
-    });
-
-    clearCart();
-    setTimeout(() => {
-      navigate("/home");
-    }, 2000);
   };
 
   return (

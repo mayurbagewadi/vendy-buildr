@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      orders: {
+        Row: {
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          delivery_address: string
+          delivery_charge: number
+          delivery_landmark: string | null
+          delivery_pincode: string | null
+          delivery_time: string | null
+          id: string
+          items: Json
+          notes: string | null
+          order_number: string
+          payment_method: string
+          status: string
+          store_id: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          delivery_address: string
+          delivery_charge?: number
+          delivery_landmark?: string | null
+          delivery_pincode?: string | null
+          delivery_time?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number: string
+          payment_method?: string
+          status?: string
+          store_id: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          delivery_address?: string
+          delivery_charge?: number
+          delivery_landmark?: string | null
+          delivery_pincode?: string | null
+          delivery_time?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number?: string
+          payment_method?: string
+          status?: string
+          store_id?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -52,7 +126,12 @@ export type Database = {
           created_at: string
           custom_domain: string | null
           description: string | null
+          google_access_token: string | null
+          google_refresh_token: string | null
           google_sheet_connected: boolean | null
+          google_sheet_id: string | null
+          google_sheet_url: string | null
+          google_token_expiry: string | null
           hero_banner_url: string | null
           id: string
           is_active: boolean | null
@@ -69,7 +148,12 @@ export type Database = {
           created_at?: string
           custom_domain?: string | null
           description?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
           google_sheet_connected?: boolean | null
+          google_sheet_id?: string | null
+          google_sheet_url?: string | null
+          google_token_expiry?: string | null
           hero_banner_url?: string | null
           id?: string
           is_active?: boolean | null
@@ -86,7 +170,12 @@ export type Database = {
           created_at?: string
           custom_domain?: string | null
           description?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
           google_sheet_connected?: boolean | null
+          google_sheet_id?: string | null
+          google_sheet_url?: string | null
+          google_token_expiry?: string | null
           hero_banner_url?: string | null
           id?: string
           is_active?: boolean | null

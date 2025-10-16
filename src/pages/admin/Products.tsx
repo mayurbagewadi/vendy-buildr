@@ -29,12 +29,15 @@ import {
   Edit,
   Trash2,
   Filter,
-  Layers3
+  Layers3,
+  ExternalLink,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
 import { deleteFromGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
+import { supabase } from "@/integrations/supabase/client";
 
 type Product = SharedProduct & {
   variantCount?: number;
@@ -48,6 +51,8 @@ const Products = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [googleSheetUrl, setGoogleSheetUrl] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const itemsPerPage = 10;
 
   // Load products function
@@ -63,6 +68,7 @@ const Products = () => {
   useEffect(() => {
     // Initial load
     loadProducts();
+    loadGoogleSheetInfo();
     
     // Listen for storage changes (cross-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
@@ -149,6 +155,60 @@ const Products = () => {
     });
   };
 
+  const loadGoogleSheetInfo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: store } = await supabase
+      .from("stores")
+      .select("google_sheet_url")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (store?.google_sheet_url) {
+      setGoogleSheetUrl(store.google_sheet_url);
+    }
+  };
+
+  const handleSyncProducts = async () => {
+    setSyncing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke('sync-products-to-sheet', {
+        body: { userId: user.id, products }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Products synced",
+        description: `Successfully synced ${data.rowsWritten} product rows to Google Sheets`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Sync failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleOpenSheet = () => {
+    if (googleSheetUrl) {
+      window.open(googleSheetUrl, '_blank');
+    } else {
+      toast({
+        title: "Sheet not configured",
+        description: "Please complete Google Sheets setup in onboarding",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getUniqueCategories = () => {
     const categories = [...new Set(products.map(p => p.category))];
     return categories.sort();
@@ -212,6 +272,27 @@ const Products = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {googleSheetUrl && (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleOpenSheet}
+                  className="touch-target flex-1 sm:flex-initial"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open Product Sheet
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleSyncProducts}
+                  disabled={syncing}
+                  className="touch-target flex-1 sm:flex-initial"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                  Sync to Sheet
+                </Button>
+              </>
+            )}
             <Button onClick={() => navigate("/admin/products/add")} className="touch-target flex-1 sm:flex-initial">
               <Plus className="w-4 h-4 mr-2" />
               Add Product
