@@ -11,7 +11,8 @@ import {
   ShoppingBag,
   Bell,
   User,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShoppingCart
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -132,6 +133,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/products",
       icon: Package,
       current: location.pathname.startsWith("/admin/products"),
+    },
+    {
+      name: "Orders",
+      href: "/admin/orders",
+      icon: ShoppingCart,
+      current: location.pathname === "/admin/orders",
     },
     {
       name: "Google Sheets",

@@ -8,6 +8,7 @@ interface Window {
       };
       oauth2: {
         initTokenClient: (config: any) => any;
+        initCodeClient: (config: any) => any;
       };
     };
   };
