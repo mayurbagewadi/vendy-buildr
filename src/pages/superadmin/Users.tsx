@@ -533,7 +533,7 @@ export default function Users() {
                        <div>
                          <p className="font-medium">{user.store.name}</p>
                          <a 
-                           href={`/home?store=${user.store.slug}`}
+                           href={`/${user.store.slug}`}
                            target="_blank"
                            rel="noopener noreferrer"
                            className="text-sm text-primary hover:underline flex items-center gap-1"
@@ -600,12 +600,42 @@ export default function Users() {
                             View Details
                           </DropdownMenuItem>
                            <DropdownMenuItem
-                             onClick={() => {
-                               // Login as user functionality
-                               toast({
-                                 title: "Login as User",
-                                 description: "This feature will be available soon",
-                               });
+                             onClick={async () => {
+                               try {
+                                 const { data, error } = await supabase.functions.invoke('login-as-user', {
+                                   body: { user_id: user.id }
+                                 });
+
+                                 if (error) throw error;
+
+                                 if (data?.access_token) {
+                                   // Store current super admin session to restore later
+                                   const { data: currentSession } = await supabase.auth.getSession();
+                                   if (currentSession.session) {
+                                     localStorage.setItem('superadmin_session', JSON.stringify(currentSession.session));
+                                   }
+
+                                   // Set user session
+                                   await supabase.auth.setSession({
+                                     access_token: data.access_token,
+                                     refresh_token: data.refresh_token
+                                   });
+
+                                   toast({
+                                     title: "Success",
+                                     description: `Logged in as ${user.email}`,
+                                   });
+
+                                   // Redirect to admin dashboard
+                                   window.location.href = '/admin/dashboard';
+                                 }
+                               } catch (error: any) {
+                                 toast({
+                                   title: "Error",
+                                   description: error.message,
+                                   variant: "destructive",
+                                 });
+                               }
                              }}
                            >
                              <UserCircle className="w-4 h-4 mr-2" />
@@ -617,12 +647,47 @@ export default function Users() {
                            </DropdownMenuItem>
                            {user.store && (
                              <DropdownMenuItem
-                               onClick={() => window.open(`/home?store=${user.store.slug}`, '_blank')}
+                               onClick={() => window.open(`/${user.store.slug}`, '_blank')}
                              >
                                <ExternalLink className="w-4 h-4 mr-2" />
                                Visit Store
                              </DropdownMenuItem>
                            )}
+                           <DropdownMenuItem
+                             onClick={async () => {
+                               const emailSubject = prompt("Enter email subject:");
+                               if (!emailSubject) return;
+
+                               const emailBody = prompt("Enter email message:");
+                               if (!emailBody) return;
+
+                               try {
+                                 const { error } = await supabase.functions.invoke('send-user-email', {
+                                   body: {
+                                     to: user.email,
+                                     subject: emailSubject,
+                                     message: emailBody
+                                   }
+                                 });
+
+                                 if (error) throw error;
+
+                                 toast({
+                                   title: "Email sent",
+                                   description: `Email sent successfully to ${user.email}`,
+                                 });
+                               } catch (error: any) {
+                                 toast({
+                                   title: "Error",
+                                   description: error.message,
+                                   variant: "destructive",
+                                 });
+                               }
+                             }}
+                           >
+                             <Mail className="w-4 h-4 mr-2" />
+                             Send Email
+                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedUser(user);

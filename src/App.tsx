@@ -28,6 +28,7 @@ import SuperAdminUsers from "./pages/superadmin/Users";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import OnboardingCustomize from "./pages/onboarding/Customize";
 import OnboardingComplete from "./pages/onboarding/Complete";
+import Store from "./pages/customer/Store";
 
 
 const queryClient = new QueryClient();
@@ -72,6 +73,8 @@ const App = () => (
             <Route path="/onboarding/complete" element={<OnboardingComplete />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Dynamic Store Route - must be last before 404 */}
+            <Route path="/:slug" element={<Store />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
