@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { PlanFormDialog } from "@/components/superadmin/PlanFormDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SubscriptionPlan {
   id: string;
@@ -19,6 +30,8 @@ interface SubscriptionPlan {
   is_popular: boolean;
   badge_text: string;
   badge_color: string;
+  enable_location_sharing: boolean;
+  enable_analytics: boolean;
 }
 
 const SubscriptionPlansPage = () => {
@@ -26,6 +39,11 @@ const SubscriptionPlansPage = () => {
   const { toast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const superAdminSession = sessionStorage.getItem('superadmin_session');
@@ -64,6 +82,89 @@ const SubscriptionPlansPage = () => {
     }).format(price);
   };
 
+  const handleAddPlan = () => {
+    setDialogMode("add");
+    setSelectedPlan(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditPlan = (plan: SubscriptionPlan) => {
+    setDialogMode("edit");
+    setSelectedPlan(plan);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (planId: string) => {
+    setPlanToDelete(planId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!planToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('subscription_plans')
+        .delete()
+        .eq('id', planToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Plan deleted successfully",
+      });
+      fetchPlans();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete plan",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+    }
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    try {
+      if (dialogMode === "add") {
+        const { error } = await supabase
+          .from('subscription_plans')
+          .insert([values]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Plan created successfully",
+        });
+      } else if (selectedPlan) {
+        const { error } = await supabase
+          .from('subscription_plans')
+          .update(values)
+          .eq('id', selectedPlan.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Plan updated successfully",
+        });
+      }
+
+      setDialogOpen(false);
+      fetchPlans();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${dialogMode} plan`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -85,7 +186,7 @@ const SubscriptionPlansPage = () => {
                 </p>
               </div>
             </div>
-            <Button onClick={() => toast({ title: "Coming soon", description: "Add plan functionality" })}>
+            <Button onClick={handleAddPlan}>
               <Plus className="mr-2 h-4 w-4" />
               Add Plan
             </Button>
@@ -131,13 +232,21 @@ const SubscriptionPlansPage = () => {
                     <div className="space-y-2 text-sm">
                       <p>Max Products: {plan.max_products || 'Unlimited'}</p>
                       <p>Status: {plan.is_active ? 'Active' : 'Inactive'}</p>
+                      <div className="flex gap-2 mt-2">
+                        {plan.enable_location_sharing && (
+                          <Badge variant="secondary">Location</Badge>
+                        )}
+                        {plan.enable_analytics && (
+                          <Badge variant="secondary">Analytics</Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-4">
                       <Button
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => toast({ title: "Coming soon", description: "Edit plan functionality" })}
+                        onClick={() => handleEditPlan(plan)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
@@ -145,7 +254,7 @@ const SubscriptionPlansPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toast({ title: "Coming soon", description: "Delete plan functionality" })}
+                        onClick={() => handleDeleteClick(plan.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -157,6 +266,29 @@ const SubscriptionPlansPage = () => {
           </div>
         )}
       </div>
+
+      <PlanFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleFormSubmit}
+        mode={dialogMode}
+        defaultValues={selectedPlan || undefined}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this subscription plan? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

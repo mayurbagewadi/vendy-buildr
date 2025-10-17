@@ -283,9 +283,6 @@ export default function SuperAdminDashboard() {
               <Settings className="mr-2 h-4 w-4" />
               Platform Settings
             </Button>
-              <Settings className="mr-2 h-4 w-4" />
-              Platform Settings
-            </Button>
           </nav>
         </aside>
 
