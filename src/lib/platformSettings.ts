@@ -4,8 +4,12 @@ export interface PlatformSettings {
   senderEmail: string;
   senderName: string;
   platformName: string;
-  autoCleanupEnabled: boolean;
-  cleanupIntervalMonths: number;
+  autoCleanupOrders: boolean;
+  ordersCleanupMonths: number;
+  autoCleanupActiveLogs: boolean;
+  activeLogsCleanupMonths: number;
+  autoCleanupInactiveLogs: boolean;
+  inactiveLogsCleanupMonths: number;
 }
 
 const PLATFORM_SETTINGS_KEY = 'platform_settings';
@@ -14,8 +18,12 @@ const defaultPlatformSettings: PlatformSettings = {
   senderEmail: 'onboarding@resend.dev',
   senderName: 'Super Admin',
   platformName: 'Vendy Platform',
-  autoCleanupEnabled: false,
-  cleanupIntervalMonths: 6,
+  autoCleanupOrders: false,
+  ordersCleanupMonths: 6,
+  autoCleanupActiveLogs: false,
+  activeLogsCleanupMonths: 6,
+  autoCleanupInactiveLogs: false,
+  inactiveLogsCleanupMonths: 6,
 };
 
 // Get platform settings

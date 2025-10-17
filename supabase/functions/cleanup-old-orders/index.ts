@@ -6,64 +6,122 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get cleanup interval from request body, default to 6 months
-    const { months = 6 } = await req.json().catch(() => ({ months: 6 }));
+    // Get the cleanup configuration from the request body
+    const { 
+      ordersMonths = 6,
+      activeLogsMonths = 6,
+      inactiveLogsMonths = 6,
+      cleanupOrders = true,
+      cleanupActiveLogs = false,
+      cleanupInactiveLogs = false
+    } = await req.json().catch(() => ({}));
     
-    // Calculate cutoff date based on interval
-    const cutoffDateObj = new Date();
-    cutoffDateObj.setMonth(cutoffDateObj.getMonth() - months);
-    const cutoffDate = cutoffDateObj.toISOString();
+    const results = {
+      orders: null as any,
+      activeLogs: null as any,
+      inactiveLogs: null as any
+    };
 
-    console.log(`Cleaning up orders older than: ${cutoffDate}`);
+    // Delete old orders
+    if (cleanupOrders) {
+      const ordersCutoff = new Date();
+      ordersCutoff.setMonth(ordersCutoff.getMonth() - ordersMonths);
 
-    // Delete orders older than 2 months
-    const { data, error } = await supabase
-      .from('orders')
-      .delete()
-      .lt('created_at', cutoffDate)
-      .select('id, order_number, created_at');
+      console.log(`Cleaning up orders older than: ${ordersCutoff.toISOString()}`);
 
-    if (error) {
-      console.error('Error deleting old orders:', error);
-      throw error;
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .delete()
+        .lt('created_at', ordersCutoff.toISOString())
+        .select('id');
+
+      if (ordersError) {
+        console.error('Error deleting old orders:', ordersError);
+        results.orders = { error: ordersError.message };
+      } else {
+        const ordersCount = ordersData?.length || 0;
+        console.log(`Successfully deleted ${ordersCount} orders older than ${ordersMonths} months`);
+        results.orders = { success: true, deleted: ordersCount, cutoffDate: ordersCutoff.toISOString() };
+      }
     }
 
-    const deletedCount = data?.length || 0;
-    console.log(`Successfully deleted ${deletedCount} orders`);
+    // Delete old active logs
+    if (cleanupActiveLogs) {
+      const activeLogsCutoff = new Date();
+      activeLogsCutoff.setMonth(activeLogsCutoff.getMonth() - activeLogsMonths);
+
+      console.log(`Cleaning up active logs older than: ${activeLogsCutoff.toISOString()}`);
+
+      const { data: activeData, error: activeError } = await supabase
+        .from('store_activity_logs')
+        .delete()
+        .eq('status', 'active')
+        .lt('created_at', activeLogsCutoff.toISOString())
+        .select('id');
+
+      if (activeError) {
+        console.error('Error deleting old active logs:', activeError);
+        results.activeLogs = { error: activeError.message };
+      } else {
+        const activeCount = activeData?.length || 0;
+        console.log(`Successfully deleted ${activeCount} active logs older than ${activeLogsMonths} months`);
+        results.activeLogs = { success: true, deleted: activeCount, cutoffDate: activeLogsCutoff.toISOString() };
+      }
+    }
+
+    // Delete old inactive logs
+    if (cleanupInactiveLogs) {
+      const inactiveLogsCutoff = new Date();
+      inactiveLogsCutoff.setMonth(inactiveLogsCutoff.getMonth() - inactiveLogsMonths);
+
+      console.log(`Cleaning up inactive logs older than: ${inactiveLogsCutoff.toISOString()}`);
+
+      const { data: inactiveData, error: inactiveError } = await supabase
+        .from('store_activity_logs')
+        .delete()
+        .eq('status', 'inactive')
+        .lt('created_at', inactiveLogsCutoff.toISOString())
+        .select('id');
+
+      if (inactiveError) {
+        console.error('Error deleting old inactive logs:', inactiveError);
+        results.inactiveLogs = { error: inactiveError.message };
+      } else {
+        const inactiveCount = inactiveData?.length || 0;
+        console.log(`Successfully deleted ${inactiveCount} inactive logs older than ${inactiveLogsMonths} months`);
+        results.inactiveLogs = { success: true, deleted: inactiveCount, cutoffDate: inactiveLogsCutoff.toISOString() };
+      }
+    }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        deletedCount,
-        cutoffDate,
-        deletedOrders: data || [],
+      JSON.stringify({ 
+        success: true, 
+        results
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      { 
         status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error('Cleanup error:', error);
+    console.error('Error in cleanup function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: errorMessage,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      JSON.stringify({ error: errorMessage }),
+      { 
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

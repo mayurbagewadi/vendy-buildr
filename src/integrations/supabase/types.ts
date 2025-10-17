@@ -159,6 +159,44 @@ export type Database = {
         }
         Relationships: []
       }
+      store_activity_logs: {
+        Row: {
+          created_at: string
+          id: string
+          last_admin_visit: string | null
+          last_order_date: string | null
+          reason: string
+          status: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_admin_visit?: string | null
+          last_order_date?: string | null
+          reason: string
+          status: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_admin_visit?: string | null
+          last_order_date?: string | null
+          reason?: string
+          status?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_activity_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           created_at: string

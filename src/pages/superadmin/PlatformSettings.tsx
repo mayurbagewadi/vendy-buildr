@@ -44,23 +44,37 @@ const PlatformSettingsPage = () => {
     }
   };
 
-  const handleManualCleanup = async () => {
+  const handleManualCleanup = async (type: 'orders' | 'activeLogs' | 'inactiveLogs' | 'all') => {
     setIsCleaningUp(true);
     try {
+      const body = {
+        ordersMonths: settings.ordersCleanupMonths,
+        activeLogsMonths: settings.activeLogsCleanupMonths,
+        inactiveLogsMonths: settings.inactiveLogsCleanupMonths,
+        cleanupOrders: type === 'all' || type === 'orders',
+        cleanupActiveLogs: type === 'all' || type === 'activeLogs',
+        cleanupInactiveLogs: type === 'all' || type === 'inactiveLogs',
+      };
+
       const { data, error } = await supabase.functions.invoke('cleanup-old-orders', {
-        body: { months: settings.cleanupIntervalMonths }
+        body
       });
 
       if (error) throw error;
 
+      const messages: string[] = [];
+      if (data.results.orders?.deleted) messages.push(`${data.results.orders.deleted} orders`);
+      if (data.results.activeLogs?.deleted) messages.push(`${data.results.activeLogs.deleted} active logs`);
+      if (data.results.inactiveLogs?.deleted) messages.push(`${data.results.inactiveLogs.deleted} inactive logs`);
+
       toast({
         title: "Cleanup completed",
-        description: `Successfully deleted ${data.deletedCount} old orders.`,
+        description: `Successfully deleted: ${messages.join(', ')}`,
       });
     } catch (error: any) {
       toast({
         title: "Cleanup failed",
-        description: error.message || "Failed to cleanup old orders.",
+        description: error.message || "Failed to cleanup data.",
         variant: "destructive",
       });
     } finally {
@@ -168,41 +182,42 @@ const PlatformSettingsPage = () => {
             </CardContent>
           </Card>
 
+          {/* Orders Cleanup */}
           <Card>
             <CardHeader>
-              <CardTitle>Data Cleanup Settings</CardTitle>
+              <CardTitle>Orders Cleanup</CardTitle>
               <CardDescription>
-                Configure automatic cleanup of old logs and orders for cost optimization
+                Configure automatic cleanup of old orders for cost optimization
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="autoCleanup">Auto Cleanup</Label>
+                  <Label htmlFor="autoCleanupOrders">Auto Cleanup Orders</Label>
                   <p className="text-xs text-muted-foreground">
-                    Automatically delete old orders and logs
+                    Automatically delete old orders
                   </p>
                 </div>
                 <Switch
-                  id="autoCleanup"
-                  checked={settings.autoCleanupEnabled}
+                  id="autoCleanupOrders"
+                  checked={settings.autoCleanupOrders}
                   onCheckedChange={(checked) =>
-                    setSettings({ ...settings, autoCleanupEnabled: checked })
+                    setSettings({ ...settings, autoCleanupOrders: checked })
                   }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cleanupInterval">Cleanup Interval (Months)</Label>
+                <Label htmlFor="ordersCleanupMonths">Cleanup Interval (Months)</Label>
                 <Input
-                  id="cleanupInterval"
+                  id="ordersCleanupMonths"
                   type="number"
                   min="1"
                   max="24"
                   placeholder="6"
-                  value={settings.cleanupIntervalMonths}
+                  value={settings.ordersCleanupMonths}
                   onChange={(e) =>
-                    setSettings({ ...settings, cleanupIntervalMonths: parseInt(e.target.value) || 6 })
+                    setSettings({ ...settings, ordersCleanupMonths: parseInt(e.target.value) || 6 })
                   }
                 />
                 <p className="text-xs text-muted-foreground">
@@ -212,18 +227,162 @@ const PlatformSettingsPage = () => {
 
               <div className="pt-4 border-t">
                 <Button 
-                  onClick={handleManualCleanup} 
+                  onClick={() => handleManualCleanup('orders')} 
                   disabled={isCleaningUp}
                   variant="destructive"
                   className="w-full"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {isCleaningUp ? "Cleaning up..." : "Run Manual Cleanup Now"}
+                  {isCleaningUp ? "Cleaning up..." : "Cleanup Orders Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  This will immediately delete all orders older than {settings.cleanupIntervalMonths} months
+                  Delete all orders older than {settings.ordersCleanupMonths} months
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Logs Cleanup */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Logs Cleanup</CardTitle>
+              <CardDescription>
+                Configure automatic cleanup of active store activity logs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoCleanupActiveLogs">Auto Cleanup Active Logs</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically delete old active store logs
+                  </p>
+                </div>
+                <Switch
+                  id="autoCleanupActiveLogs"
+                  checked={settings.autoCleanupActiveLogs}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, autoCleanupActiveLogs: checked })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="activeLogsCleanupMonths">Cleanup Interval (Months)</Label>
+                <Input
+                  id="activeLogsCleanupMonths"
+                  type="number"
+                  min="1"
+                  max="24"
+                  placeholder="6"
+                  value={settings.activeLogsCleanupMonths}
+                  onChange={(e) =>
+                    setSettings({ ...settings, activeLogsCleanupMonths: parseInt(e.target.value) || 6 })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Active logs older than this many months will be deleted (1-24 months)
+                </p>
+              </div>
+
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={() => handleManualCleanup('activeLogs')} 
+                  disabled={isCleaningUp}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isCleaningUp ? "Cleaning up..." : "Cleanup Active Logs Now"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Delete all active logs older than {settings.activeLogsCleanupMonths} months
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Inactive Logs Cleanup */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Inactive Logs Cleanup</CardTitle>
+              <CardDescription>
+                Configure automatic cleanup of inactive store activity logs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoCleanupInactiveLogs">Auto Cleanup Inactive Logs</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically delete old inactive store logs
+                  </p>
+                </div>
+                <Switch
+                  id="autoCleanupInactiveLogs"
+                  checked={settings.autoCleanupInactiveLogs}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, autoCleanupInactiveLogs: checked })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="inactiveLogsCleanupMonths">Cleanup Interval (Months)</Label>
+                <Input
+                  id="inactiveLogsCleanupMonths"
+                  type="number"
+                  min="1"
+                  max="24"
+                  placeholder="6"
+                  value={settings.inactiveLogsCleanupMonths}
+                  onChange={(e) =>
+                    setSettings({ ...settings, inactiveLogsCleanupMonths: parseInt(e.target.value) || 6 })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Inactive logs older than this many months will be deleted (1-24 months)
+                </p>
+              </div>
+
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={() => handleManualCleanup('inactiveLogs')} 
+                  disabled={isCleaningUp}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isCleaningUp ? "Cleaning up..." : "Cleanup Inactive Logs Now"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Delete all inactive logs older than {settings.inactiveLogsCleanupMonths} months
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cleanup All */}
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Cleanup All Data</CardTitle>
+              <CardDescription>
+                Run a comprehensive cleanup of all old data at once
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => handleManualCleanup('all')} 
+                disabled={isCleaningUp}
+                variant="destructive"
+                className="w-full"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {isCleaningUp ? "Cleaning up..." : "Cleanup All Data Now"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                This will delete orders, active logs, and inactive logs based on their respective interval settings
+              </p>
             </CardContent>
           </Card>
         </div>
