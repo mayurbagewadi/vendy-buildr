@@ -220,13 +220,13 @@ export default function Users() {
         .select("*", { count: "exact", head: true })
         .eq("status", "cancelled");
 
-      // Calculate inactive stores (no orders in last 60 days)
+      // Calculate inactive stores (no orders AND no admin visits in last 60 days)
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
       
       const { data: allStores } = await supabase
         .from("stores")
-        .select("id");
+        .select("id, last_admin_visit");
 
       let inactiveCount = 0;
       if (allStores) {
@@ -238,7 +238,11 @@ export default function Users() {
             .gte("created_at", twoMonthsAgo.toISOString())
             .limit(1);
           
-          if (!recentOrders || recentOrders.length === 0) {
+          const hasRecentOrders = recentOrders && recentOrders.length > 0;
+          const hasRecentAdminVisit = store.last_admin_visit && new Date(store.last_admin_visit) >= twoMonthsAgo;
+          
+          // Inactive if BOTH no recent orders AND no recent admin visits
+          if (!hasRecentOrders && !hasRecentAdminVisit) {
             inactiveCount++;
           }
         }
@@ -438,10 +442,10 @@ export default function Users() {
           <p className="text-sm text-muted-foreground">Cancelled</p>
           <p className="text-2xl font-bold">{quickStats.cancelled}</p>
         </div>
-        <div className="bg-card p-4 rounded-lg border border-orange-500">
+        <div className="bg-card p-4 rounded-lg border border-orange-500 cursor-pointer" onClick={() => setActivityFilter("inactive")}>
           <p className="text-sm text-muted-foreground">Inactive Stores</p>
           <p className="text-2xl font-bold text-orange-500">{quickStats.inactiveStores}</p>
-          <p className="text-xs text-muted-foreground mt-1">No orders in 60 days</p>
+          <p className="text-xs text-muted-foreground mt-1">No activity in 60 days</p>
         </div>
       </div>
 
