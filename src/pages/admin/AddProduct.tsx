@@ -13,9 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { addProduct, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
+import { addProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { generateProductId } from "@/lib/idGenerator";
-import { pushToGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
+import { supabase } from "@/integrations/supabase/client";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -262,19 +262,20 @@ const AddProduct = () => {
       // Use shared utility to add product
       addProduct(productData);
 
-      // Push to Google Sheets if configured (don't wait, async)
-      const scriptUrl = getScriptUrl();
-      if (scriptUrl) {
-        pushToGoogleSheets(productData).catch(error => {
+      // Sync to Google Sheets using edge function
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const allProducts = getProducts();
+        supabase.functions.invoke('sync-products-to-sheet', {
+          body: { userId: user.id, products: allProducts }
+        }).catch(error => {
           console.error('Failed to sync to Google Sheets:', error);
         });
       }
 
       toast({
         title: "Product created successfully",
-        description: scriptUrl 
-          ? `${data.name} has been added and will sync to Google Sheets`
-          : `${data.name} has been added to your catalog`,
+        description: `${data.name} has been added and will sync to Google Sheets`,
       });
 
       navigate("/admin/products");
