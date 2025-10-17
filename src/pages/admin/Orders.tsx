@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 interface Order {
   id: string;
@@ -180,6 +181,68 @@ const Orders = () => {
     }).format(amount);
   };
 
+  const exportToExcel = (month: string, year: string) => {
+    const monthOrders = orders.filter((order) => {
+      const orderDate = new Date(order.created_at);
+      const orderMonth = orderDate.toLocaleDateString("en-US", { month: "long" });
+      const orderYear = orderDate.getFullYear().toString();
+      return orderMonth === month && orderYear === year;
+    });
+
+    if (monthOrders.length === 0) {
+      toast({
+        title: "No Orders",
+        description: `No orders found for ${month} ${year}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = monthOrders.map((order) => ({
+      "Order Number": order.order_number,
+      "Date": formatDate(order.created_at),
+      "Time": formatTime(order.created_at),
+      "Customer Name": order.customer_name,
+      "Phone": order.customer_phone,
+      "Email": order.customer_email || "N/A",
+      "Address": order.delivery_address,
+      "Items Count": Array.isArray(order.items) ? order.items.length : 0,
+      "Items": Array.isArray(order.items) 
+        ? order.items.map((item: any) => `${item.name} (${item.quantity}x)`).join(", ")
+        : "N/A",
+      "Amount": order.total,
+      "Payment Method": order.payment_method,
+      "Status": order.status,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${month}_${year}`);
+    XLSX.writeFile(wb, `Orders_${month}_${year}.xlsx`);
+
+    toast({
+      title: "Export Successful",
+      description: `Downloaded ${monthOrders.length} orders for ${month} ${year}`,
+    });
+  };
+
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.toLocaleDateString("en-US", { month: "long" }),
+      year: now.getFullYear().toString(),
+    };
+  };
+
+  const getPreviousMonthYear = () => {
+    const now = new Date();
+    now.setMonth(now.getMonth() - 1);
+    return {
+      month: now.toLocaleDateString("en-US", { month: "long" }),
+      year: now.getFullYear().toString(),
+    };
+  };
+
   const filteredOrders = getFilteredOrders();
   const todayOrders = orders.filter((order) => {
     const today = new Date();
@@ -194,13 +257,37 @@ const Orders = () => {
           <div>
             <h1 className="text-3xl font-bold">Orders Management</h1>
             <p className="text-muted-foreground mt-1">
-              Track and manage customer orders
+              Track and manage customer orders (Auto-cleanup: Orders older than 2 months)
             </p>
           </div>
-          <Button onClick={loadOrders} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                const prev = getPreviousMonthYear();
+                exportToExcel(prev.month, prev.year);
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Previous Month
+            </Button>
+            <Button 
+              onClick={() => {
+                const curr = getCurrentMonthYear();
+                exportToExcel(curr.month, curr.year);
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Current Month
+            </Button>
+            <Button onClick={loadOrders} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
