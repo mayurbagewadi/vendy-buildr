@@ -29,7 +29,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft } from "lucide-react";
+import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft, UserCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,10 +46,12 @@ interface UserData {
   id: string;
   email: string;
   full_name: string | null;
+  phone: string | null;
   created_at: string;
   store: {
     name: string;
     slug: string;
+    id: string;
   } | null;
   subscription: {
     plan: {
@@ -59,6 +61,7 @@ interface UserData {
     billing_cycle: string;
     trial_ends_at: string | null;
   } | null;
+  totalRevenue: number;
 }
 
 interface QuickStats {
@@ -106,7 +109,7 @@ export default function Users() {
       // First get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, user_id, created_at")
+        .select("id, email, full_name, phone, user_id, created_at")
         .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
@@ -117,7 +120,7 @@ export default function Users() {
           // Get store for this user
           const { data: stores } = await supabase
             .from("stores")
-            .select("name, slug")
+            .select("id, name, slug")
             .eq("user_id", profile.user_id)
             .limit(1);
 
@@ -135,10 +138,19 @@ export default function Users() {
             .eq("user_id", profile.user_id)
             .limit(1);
 
+          // Get total revenue from orders
+          const { data: orders } = await supabase
+            .from("orders")
+            .select("total")
+            .eq("store_id", stores?.[0]?.id || "");
+
+          const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+
           return {
             id: profile.user_id,
             email: profile.email,
             full_name: profile.full_name,
+            phone: profile.phone,
             created_at: profile.created_at,
             store: stores?.[0] || null,
             subscription: subscriptions?.[0]
@@ -149,6 +161,7 @@ export default function Users() {
                   trial_ends_at: subscriptions[0].trial_ends_at,
                 }
               : null,
+            totalRevenue,
           };
         })
       );
@@ -462,6 +475,7 @@ export default function Users() {
               </TableHead>
               <TableHead>User Info</TableHead>
               <TableHead>Store Info</TableHead>
+              <TableHead>Revenue</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created Date</TableHead>
@@ -471,13 +485,13 @@ export default function Users() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : paginatedUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   No users found
                 </TableCell>
               </TableRow>
@@ -499,38 +513,53 @@ export default function Users() {
                           {user.email[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium">{user.email}</p>
-                        {user.full_name && (
-                          <p className="text-sm text-muted-foreground">
-                            {user.full_name}
-                          </p>
-                        )}
-                      </div>
+                       <div>
+                         <p className="font-medium">{user.email}</p>
+                         {user.full_name && (
+                           <p className="text-sm text-muted-foreground">
+                             {user.full_name}
+                           </p>
+                         )}
+                         {user.phone && (
+                           <p className="text-xs text-muted-foreground">
+                             {user.phone}
+                           </p>
+                         )}
+                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {user.store ? (
-                      <div>
-                        <p className="font-medium">{user.store.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {user.store.slug}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">No store</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {user.subscription?.plan?.name || "Free"}
-                    </Badge>
-                    {user.subscription && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {user.subscription.billing_cycle}
-                      </p>
-                    )}
-                  </TableCell>
+                   <TableCell>
+                     {user.store ? (
+                       <div>
+                         <p className="font-medium">{user.store.name}</p>
+                         <a 
+                           href={`/home?store=${user.store.slug}`}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="text-sm text-primary hover:underline flex items-center gap-1"
+                         >
+                           {user.store.slug}
+                           <ExternalLink className="h-3 w-3" />
+                         </a>
+                       </div>
+                     ) : (
+                       <span className="text-muted-foreground">No store</span>
+                     )}
+                   </TableCell>
+                   <TableCell>
+                     <p className="font-medium">₹{user.totalRevenue.toLocaleString()}</p>
+                     <p className="text-xs text-muted-foreground">total revenue</p>
+                   </TableCell>
+                   <TableCell>
+                     <Badge variant="outline">
+                       {user.subscription?.plan?.name || "Free"}
+                     </Badge>
+                     {user.subscription && (
+                       <p className="text-xs text-muted-foreground mt-1">
+                         {user.subscription.billing_cycle}
+                       </p>
+                     )}
+                   </TableCell>
                   <TableCell>{getStatusBadge(user.subscription)}</TableCell>
                   <TableCell>
                     <div>
@@ -570,16 +599,30 @@ export default function Users() {
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          {user.store && (
-                            <DropdownMenuItem>
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Visit Store
-                            </DropdownMenuItem>
-                          )}
+                           <DropdownMenuItem
+                             onClick={() => {
+                               // Login as user functionality
+                               toast({
+                                 title: "Login as User",
+                                 description: "This feature will be available soon",
+                               });
+                             }}
+                           >
+                             <UserCircle className="w-4 h-4 mr-2" />
+                             Login as User
+                           </DropdownMenuItem>
+                           <DropdownMenuItem>
+                             <Edit className="w-4 h-4 mr-2" />
+                             Edit
+                           </DropdownMenuItem>
+                           {user.store && (
+                             <DropdownMenuItem
+                               onClick={() => window.open(`/home?store=${user.store.slug}`, '_blank')}
+                             >
+                               <ExternalLink className="w-4 h-4 mr-2" />
+                               Visit Store
+                             </DropdownMenuItem>
+                           )}
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedUser(user);
