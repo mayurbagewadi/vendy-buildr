@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { addProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { generateProductId } from "@/lib/idGenerator";
 import { supabase } from "@/integrations/supabase/client";
+import { CategorySelector } from "@/components/admin/CategorySelector";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -57,8 +58,7 @@ const AddProduct = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
-  const [customCategory, setCustomCategory] = useState("");
-  const [showCustomCategory, setShowCustomCategory] = useState(false);
+  const [storeId, setStoreId] = useState<string>("");
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -74,28 +74,28 @@ const AddProduct = () => {
     },
   });
 
-  const [categories, setCategories] = useState([
-    "Electronics",
-    "Clothing",
-    "Home & Garden",
-    "Books",
-    "Sports & Outdoors",
-    "Health & Beauty",
-    "Toys & Games",
-    "Food & Beverages",
-    "Other"
-  ]);
+  useEffect(() => {
+    loadStore();
+  }, []);
 
-  const addCustomCategory = () => {
-    if (customCategory.trim() && !categories.includes(customCategory.trim())) {
-      const newCategories = [...categories, customCategory.trim()].sort();
-      setCategories(newCategories);
-      form.setValue("category", customCategory.trim());
-      setCustomCategory("");
-      setShowCustomCategory(false);
+  const loadStore = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: store, error } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+      if (store) setStoreId(store.id);
+    } catch (error: any) {
       toast({
-        title: "Category added",
-        description: `${customCategory.trim()} has been added to categories`,
+        title: "Error loading store",
+        description: error.message,
+        variant: "destructive",
       });
     }
   };
@@ -367,61 +367,13 @@ const AddProduct = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Category</FormLabel>
-                            {!showCustomCategory ? (
-                              <>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {categories.map((category) => (
-                                      <SelectItem key={category} value={category}>
-                                        {category}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  type="button"
-                                  variant="link"
-                                  size="sm"
-                                  className="p-0 h-auto text-xs"
-                                  onClick={() => setShowCustomCategory(true)}
-                                >
-                                  + Add custom category
-                                </Button>
-                              </>
-                            ) : (
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder="Enter custom category"
-                                  value={customCategory}
-                                  onChange={(e) => setCustomCategory(e.target.value)}
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      addCustomCategory();
-                                    }
-                                  }}
-                                />
-                                <Button type="button" size="sm" onClick={addCustomCategory}>
-                                  Add
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setShowCustomCategory(false);
-                                    setCustomCategory("");
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            )}
+                            <FormControl>
+                              <CategorySelector
+                                value={field.value}
+                                onChange={field.onChange}
+                                storeId={storeId}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}

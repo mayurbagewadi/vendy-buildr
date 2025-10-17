@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProductById, updateProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
+import { CategorySelector } from "@/components/admin/CategorySelector";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -55,21 +56,8 @@ const EditProduct = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
-  const [customCategory, setCustomCategory] = useState("");
-  const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [categories, setCategories] = useState([
-    "Electronics",
-    "Clothing",
-    "Home & Garden",
-    "Books",
-    "Sports & Outdoors",
-    "Health & Beauty",
-    "Toys & Games",
-    "Food & Beverages",
-    "Other"
-  ]);
+  const [storeId, setStoreId] = useState<string>("");
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -86,6 +74,10 @@ const EditProduct = () => {
   });
 
   useEffect(() => {
+    loadStoreAndProduct();
+  }, [id, navigate, form]);
+
+  const loadStoreAndProduct = async () => {
     if (!id) {
       toast({
         title: "Error",
@@ -105,6 +97,26 @@ const EditProduct = () => {
       });
       navigate("/admin/products");
       return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: store, error } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+      if (store) setStoreId(store.id);
+    } catch (error: any) {
+      toast({
+        title: "Error loading store",
+        description: error.message,
+        variant: "destructive",
+      });
     }
 
     // Load product data
@@ -131,20 +143,6 @@ const EditProduct = () => {
     }
 
     setIsLoading(false);
-  }, [id, navigate, form]);
-
-  const addCustomCategory = () => {
-    if (customCategory.trim() && !categories.includes(customCategory.trim())) {
-      const newCategories = [...categories, customCategory.trim()].sort();
-      setCategories(newCategories);
-      form.setValue("category", customCategory.trim());
-      setCustomCategory("");
-      setShowCustomCategory(false);
-      toast({
-        title: "Category added",
-        description: `${customCategory.trim()} has been added to categories`,
-      });
-    }
   };
 
   const addImageUrl = () => {
@@ -380,61 +378,13 @@ const EditProduct = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Category</FormLabel>
-                            {!showCustomCategory ? (
-                              <>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {categories.map((category) => (
-                                      <SelectItem key={category} value={category}>
-                                        {category}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  type="button"
-                                  variant="link"
-                                  size="sm"
-                                  className="p-0 h-auto text-xs"
-                                  onClick={() => setShowCustomCategory(true)}
-                                >
-                                  + Add custom category
-                                </Button>
-                              </>
-                            ) : (
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder="Enter custom category"
-                                  value={customCategory}
-                                  onChange={(e) => setCustomCategory(e.target.value)}
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      addCustomCategory();
-                                    }
-                                  }}
-                                />
-                                <Button type="button" size="sm" onClick={addCustomCategory}>
-                                  Add
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setShowCustomCategory(false);
-                                    setCustomCategory("");
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            )}
+                            <FormControl>
+                              <CategorySelector
+                                value={field.value}
+                                onChange={field.onChange}
+                                storeId={storeId}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
