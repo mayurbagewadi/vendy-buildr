@@ -62,6 +62,8 @@ interface UserData {
     trial_ends_at: string | null;
   } | null;
   totalRevenue: number;
+  lastOrderDate: string | null;
+  orderCount: number;
 }
 
 interface QuickStats {
@@ -71,6 +73,7 @@ interface QuickStats {
   paidUsers: number;
   expired: number;
   cancelled: number;
+  inactiveStores: number;
 }
 
 export default function Users() {
@@ -83,11 +86,13 @@ export default function Users() {
     paidUsers: 0,
     expired: 0,
     cancelled: 0,
+    inactiveStores: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activityFilter, setActivityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -138,13 +143,16 @@ export default function Users() {
             .eq("user_id", profile.user_id)
             .limit(1);
 
-          // Get total revenue from orders
+          // Get total revenue and last order date
           const { data: orders } = await supabase
             .from("orders")
-            .select("total")
-            .eq("store_id", stores?.[0]?.id || "");
+            .select("total, created_at")
+            .eq("store_id", stores?.[0]?.id || "")
+            .order("created_at", { ascending: false });
 
           const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+          const lastOrderDate = orders && orders.length > 0 ? orders[0].created_at : null;
+          const orderCount = orders?.length || 0;
 
           return {
             id: profile.user_id,
@@ -162,6 +170,8 @@ export default function Users() {
                 }
               : null,
             totalRevenue,
+            lastOrderDate,
+            orderCount,
           };
         })
       );
@@ -209,6 +219,30 @@ export default function Users() {
         .select("*", { count: "exact", head: true })
         .eq("status", "cancelled");
 
+      // Calculate inactive stores (no orders in last 60 days)
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+      
+      const { data: allStores } = await supabase
+        .from("stores")
+        .select("id");
+
+      let inactiveCount = 0;
+      if (allStores) {
+        for (const store of allStores) {
+          const { data: recentOrders } = await supabase
+            .from("orders")
+            .select("id")
+            .eq("store_id", store.id)
+            .gte("created_at", twoMonthsAgo.toISOString())
+            .limit(1);
+          
+          if (!recentOrders || recentOrders.length === 0) {
+            inactiveCount++;
+          }
+        }
+      }
+
       setQuickStats({
         totalUsers: totalUsers || 0,
         activeStores: activeStores || 0,
@@ -216,6 +250,7 @@ export default function Users() {
         paidUsers: paidUsers || 0,
         expired: expired || 0,
         cancelled: cancelled || 0,
+        inactiveStores: inactiveCount,
       });
     } catch (error: any) {
       console.error("Error fetching stats:", error);
@@ -235,7 +270,27 @@ export default function Users() {
     const matchesStatus =
       statusFilter === "all" || user.subscription?.status === statusFilter;
 
-    return matchesSearch && matchesPlan && matchesStatus;
+    const matchesActivity = () => {
+      if (activityFilter === "all") return true;
+      if (activityFilter === "inactive") {
+        if (!user.store) return false;
+        if (!user.lastOrderDate) return true; // No orders at all
+        
+        const twoMonthsAgo = new Date();
+        twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+        return new Date(user.lastOrderDate) < twoMonthsAgo;
+      }
+      if (activityFilter === "active") {
+        if (!user.store || !user.lastOrderDate) return false;
+        
+        const twoMonthsAgo = new Date();
+        twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+        return new Date(user.lastOrderDate) >= twoMonthsAgo;
+      }
+      return true;
+    };
+
+    return matchesSearch && matchesPlan && matchesStatus && matchesActivity();
   });
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -348,7 +403,7 @@ export default function Users() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <div className="bg-card p-4 rounded-lg border">
           <p className="text-sm text-muted-foreground">Total Users</p>
           <p className="text-2xl font-bold">{quickStats.totalUsers}</p>
@@ -373,11 +428,16 @@ export default function Users() {
           <p className="text-sm text-muted-foreground">Cancelled</p>
           <p className="text-2xl font-bold">{quickStats.cancelled}</p>
         </div>
+        <div className="bg-card p-4 rounded-lg border border-orange-500">
+          <p className="text-sm text-muted-foreground">Inactive Stores</p>
+          <p className="text-2xl font-bold text-orange-500">{quickStats.inactiveStores}</p>
+          <p className="text-xs text-muted-foreground mt-1">No orders in 60 days</p>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-card p-4 rounded-lg border space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div className="md:col-span-2">
             <Input
               placeholder="Search by email, store name, or slug"
@@ -408,6 +468,16 @@ export default function Users() {
               <SelectItem value="trial">Trial</SelectItem>
               <SelectItem value="expired">Expired</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={activityFilter} onValueChange={setActivityFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Activity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Stores</SelectItem>
+              <SelectItem value="active">Active (recent orders)</SelectItem>
+              <SelectItem value="inactive">Inactive (60+ days)</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -506,46 +576,69 @@ export default function Users() {
                       }
                     />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {user.email[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                       <div>
-                         <p className="font-medium">{user.email}</p>
-                         {user.full_name && (
-                           <p className="text-sm text-muted-foreground">
-                             {user.full_name}
-                           </p>
-                         )}
-                         {user.phone && (
-                           <p className="text-xs text-muted-foreground">
-                             {user.phone}
-                           </p>
-                         )}
-                       </div>
-                    </div>
-                  </TableCell>
                    <TableCell>
-                     {user.store ? (
-                       <div>
-                         <p className="font-medium">{user.store.name}</p>
-                         <a 
-                           href={`/${user.store.slug}`}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-sm text-primary hover:underline flex items-center gap-1"
-                         >
-                           {user.store.slug}
-                           <ExternalLink className="h-3 w-3" />
-                         </a>
-                       </div>
-                     ) : (
-                       <span className="text-muted-foreground">No store</span>
-                     )}
+                     <div className="flex items-center gap-3">
+                       <Avatar>
+                         <AvatarFallback>
+                           {user.email[0].toUpperCase()}
+                         </AvatarFallback>
+                       </Avatar>
+                        <div>
+                          <p className="font-medium">{user.email}</p>
+                          {user.full_name && (
+                            <p className="text-sm text-muted-foreground">
+                              {user.full_name}
+                            </p>
+                          )}
+                          {user.phone && (
+                            <p className="text-xs text-muted-foreground">
+                              {user.phone}
+                            </p>
+                          )}
+                        </div>
+                     </div>
                    </TableCell>
+                    <TableCell>
+                      {user.store ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{user.store.name}</p>
+                            {(() => {
+                              const twoMonthsAgo = new Date();
+                              twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+                              const isInactive = !user.lastOrderDate || new Date(user.lastOrderDate) < twoMonthsAgo;
+                              
+                              if (isInactive) {
+                                return (
+                                  <Badge variant="outline" className="border-orange-500 text-orange-500 text-xs">
+                                    Inactive
+                                  </Badge>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                          <a 
+                            href={`/${user.store.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            {user.store.slug}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                          <p className="text-xs text-muted-foreground">
+                            {user.orderCount} orders
+                            {user.lastOrderDate && (
+                              <> • Last: {formatDistanceToNow(new Date(user.lastOrderDate), { addSuffix: true })}</>
+                            )}
+                            {!user.lastOrderDate && <> • No orders yet</>}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">No store</span>
+                      )}
+                    </TableCell>
                    <TableCell>
                      <p className="font-medium">₹{user.totalRevenue.toLocaleString()}</p>
                      <p className="text-xs text-muted-foreground">total revenue</p>
