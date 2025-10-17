@@ -343,28 +343,97 @@ export default function Users() {
     }
   };
 
-  const handleExport = () => {
-    const csvData = filteredUsers.map((user) => ({
-      Email: user.email,
-      Name: user.full_name || "",
-      "Store Name": user.store?.name || "",
-      "Store Slug": user.store?.slug || "",
-      Plan: user.subscription?.plan?.name || "Free",
-      Status: user.subscription?.status || "None",
-      "Joined Date": new Date(user.created_at).toLocaleDateString(),
-    }));
+  const handleExport = async () => {
+    try {
+      // Import xlsx dynamically
+      const XLSX = await import('xlsx');
+      
+      // Fetch complete store details including whatsapp number
+      const enrichedUsers = await Promise.all(
+        filteredUsers.map(async (user) => {
+          let storeDetails = null;
+          if (user.store?.id) {
+            const { data } = await supabase
+              .from('stores')
+              .select('whatsapp_number, description, hero_banner_url, logo_url, custom_domain, social_links')
+              .eq('id', user.store.id)
+              .single();
+            storeDetails = data;
+          }
+          
+          return {
+            'User ID': user.id,
+            'Email': user.email,
+            'Full Name': user.full_name || 'N/A',
+            'Phone': user.phone || 'N/A',
+            'Store Name': user.store?.name || 'No Store',
+            'Store Slug': user.store?.slug || 'N/A',
+            'Store WhatsApp': storeDetails?.whatsapp_number || 'N/A',
+            'Store Description': storeDetails?.description || 'N/A',
+            'Custom Domain': storeDetails?.custom_domain || 'N/A',
+            'Store Logo': storeDetails?.logo_url || 'N/A',
+            'Hero Banner': storeDetails?.hero_banner_url || 'N/A',
+            'Social Links': storeDetails?.social_links ? JSON.stringify(storeDetails.social_links) : 'N/A',
+            'Total Orders': user.orderCount,
+            'Total Revenue': `₹${user.totalRevenue}`,
+            'Last Order Date': user.lastOrderDate ? new Date(user.lastOrderDate).toLocaleString() : 'No orders',
+            'Last Admin Visit': user.store?.last_admin_visit ? new Date(user.store.last_admin_visit).toLocaleString() : 'No visits',
+            'Subscription Plan': user.subscription?.plan?.name || 'Free',
+            'Plan Status': user.subscription?.status || 'None',
+            'Billing Cycle': user.subscription?.billing_cycle || 'N/A',
+            'Trial Ends': user.subscription?.trial_ends_at ? new Date(user.subscription.trial_ends_at).toLocaleDateString() : 'N/A',
+            'Joined Date': new Date(user.created_at).toLocaleString(),
+          };
+        })
+      );
 
-    const csv = [
-      Object.keys(csvData[0]).join(","),
-      ...csvData.map((row) => Object.values(row).join(",")),
-    ].join("\n");
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(enrichedUsers);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 36 }, // User ID
+        { wch: 30 }, // Email
+        { wch: 20 }, // Full Name
+        { wch: 15 }, // Phone
+        { wch: 25 }, // Store Name
+        { wch: 20 }, // Store Slug
+        { wch: 15 }, // WhatsApp
+        { wch: 40 }, // Description
+        { wch: 25 }, // Custom Domain
+        { wch: 50 }, // Logo URL
+        { wch: 50 }, // Banner URL
+        { wch: 30 }, // Social Links
+        { wch: 12 }, // Orders
+        { wch: 15 }, // Revenue
+        { wch: 20 }, // Last Order
+        { wch: 20 }, // Last Visit
+        { wch: 15 }, // Plan
+        { wch: 12 }, // Status
+        { wch: 12 }, // Cycle
+        { wch: 15 }, // Trial
+        { wch: 20 }, // Joined
+      ];
+      ws['!cols'] = colWidths;
 
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `users_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Users');
+
+      // Generate Excel file
+      XLSX.writeFile(wb, `users_export_${new Date().toISOString().split("T")[0]}.xlsx`);
+
+      toast({
+        title: "Success",
+        description: `Exported ${enrichedUsers.length} users to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (subscription: UserData["subscription"]) => {
