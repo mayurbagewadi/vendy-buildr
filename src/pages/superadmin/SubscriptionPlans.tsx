@@ -1,0 +1,164 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  monthly_price: number;
+  yearly_price: number;
+  max_products: number;
+  is_active: boolean;
+  is_popular: boolean;
+  badge_text: string;
+  badge_color: string;
+}
+
+const SubscriptionPlansPage = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const superAdminSession = sessionStorage.getItem('superadmin_session');
+    if (!superAdminSession) {
+      navigate('/superadmin/login');
+      return;
+    }
+    fetchPlans();
+  }, [navigate]);
+
+  const fetchPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .order('display_order');
+
+      if (error) throw error;
+      setPlans(data || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load subscription plans",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/superadmin/dashboard')}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Subscription Plans</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage subscription plans and pricing
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => toast({ title: "Coming soon", description: "Add plan functionality" })}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Plan
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="container mx-auto px-4 py-8">
+        {loading ? (
+          <div className="text-center py-12">Loading plans...</div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {plans.map((plan) => (
+              <Card key={plan.id} className={plan.is_popular ? "border-primary" : ""}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle>{plan.name}</CardTitle>
+                      <CardDescription className="mt-2">{plan.description}</CardDescription>
+                    </div>
+                    {plan.is_popular && (
+                      <Badge variant="default">Popular</Badge>
+                    )}
+                  </div>
+                  {plan.badge_text && (
+                    <Badge variant="outline" className="w-fit">
+                      {plan.badge_text}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-3xl font-bold">{formatPrice(plan.monthly_price)}</p>
+                      <p className="text-sm text-muted-foreground">per month</p>
+                      {plan.yearly_price && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatPrice(plan.yearly_price)}/year
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p>Max Products: {plan.max_products || 'Unlimited'}</p>
+                      <p>Status: {plan.is_active ? 'Active' : 'Inactive'}</p>
+                    </div>
+                    <div className="flex gap-2 pt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => toast({ title: "Coming soon", description: "Edit plan functionality" })}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toast({ title: "Coming soon", description: "Delete plan functionality" })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionPlansPage;

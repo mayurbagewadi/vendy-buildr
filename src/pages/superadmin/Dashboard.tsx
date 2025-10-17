@@ -254,7 +254,7 @@ export default function SuperAdminDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start"
-              onClick={() => toast({ title: "Coming Soon", description: "Subscription plans management will be available soon" })}
+              onClick={() => navigate('/superadmin/subscription-plans')}
             >
               <CreditCard className="mr-2 h-4 w-4" />
               Subscription Plans
@@ -262,7 +262,7 @@ export default function SuperAdminDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start"
-              onClick={() => toast({ title: "Coming Soon", description: "Transactions management will be available soon" })}
+              onClick={() => navigate('/superadmin/transactions')}
             >
               <DollarSign className="mr-2 h-4 w-4" />
               Transactions
@@ -270,7 +270,7 @@ export default function SuperAdminDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start"
-              onClick={() => toast({ title: "Coming Soon", description: "Custom domains management will be available soon" })}
+              onClick={() => navigate('/superadmin/custom-domains')}
             >
               <Globe className="mr-2 h-4 w-4" />
               Custom Domains
@@ -278,8 +278,11 @@ export default function SuperAdminDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start"
-              onClick={() => toast({ title: "Coming Soon", description: "Platform settings will be available soon" })}
+              onClick={() => navigate('/superadmin/settings')}
             >
+              <Settings className="mr-2 h-4 w-4" />
+              Platform Settings
+            </Button>
               <Settings className="mr-2 h-4 w-4" />
               Platform Settings
             </Button>

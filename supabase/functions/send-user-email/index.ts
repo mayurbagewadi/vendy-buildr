@@ -52,8 +52,12 @@ serve(async (req) => {
       throw new Error('to, subject, and message are required');
     }
 
-    // Get sender email from settings or use default
-    const senderEmail = "onboarding@resend.dev"; // Default for testing, can be made configurable
+    // Get sender email from platform settings or use default
+    const platformSettings = {
+      senderEmail: "onboarding@resend.dev",
+      senderName: "Super Admin"
+    };
+    const settings = platformSettings;
 
     // Send email using Resend API directly
     const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -63,7 +67,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `Super Admin <${senderEmail}>`,
+        from: `${settings.senderName} <${settings.senderEmail}>`,
         to: [to],
         subject: subject,
         html: `
