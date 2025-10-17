@@ -380,7 +380,7 @@ const PlatformSettingsPage = () => {
             <CardContent>
               <Button 
                 onClick={() => handleManualCleanup('all')} 
-                disabled={isCleaningUp}
+                disabled={isCleaningUp || !settings.autoCleanupOrders || !settings.autoCleanupActiveLogs || !settings.autoCleanupInactiveLogs}
                 variant="destructive"
                 className="w-full"
               >
@@ -388,7 +388,9 @@ const PlatformSettingsPage = () => {
                 {isCleaningUp ? "Cleaning up..." : "Cleanup All Data Now"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                This will delete ALL orders, active logs, and inactive logs regardless of age
+                {(settings.autoCleanupOrders && settings.autoCleanupActiveLogs && settings.autoCleanupInactiveLogs)
+                  ? "This will delete ALL orders, active logs, and inactive logs regardless of age"
+                  : "Enable all three auto-cleanup toggles above to use this feature"}
               </p>
             </CardContent>
           </Card>
