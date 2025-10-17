@@ -103,21 +103,43 @@ const GoogleSheets = () => {
 
   const handleOAuthCallback = async (code: string, userId: string) => {
     try {
+      console.log('Starting OAuth callback with code and userId');
+      
       // Exchange code for tokens
       const { data: tokenData, error: tokenError } = await supabase.functions.invoke('google-oauth-callback', {
         body: { code, userId }
       });
 
-      if (tokenError) throw tokenError;
-      if (!tokenData.success) throw new Error('Failed to exchange OAuth code');
+      console.log('Token exchange response:', { tokenData, tokenError });
+
+      if (tokenError) {
+        console.error('Token error:', tokenError);
+        throw new Error(tokenError.message || 'Failed to exchange OAuth code');
+      }
+      
+      if (!tokenData || tokenData.error) {
+        throw new Error(tokenData?.error || 'Failed to exchange OAuth code');
+      }
+
+      console.log('Starting sheet creation for store:', storeName);
 
       // Create Google Sheet automatically
       const { data: sheetData, error: sheetError } = await supabase.functions.invoke('create-google-sheet', {
         body: { userId, storeName }
       });
 
-      if (sheetError) throw sheetError;
-      if (!sheetData.success) throw new Error('Failed to create Google Sheet');
+      console.log('Sheet creation response:', { sheetData, sheetError });
+
+      if (sheetError) {
+        console.error('Sheet error:', sheetError);
+        throw new Error(sheetError.message || 'Failed to create Google Sheet');
+      }
+      
+      if (!sheetData || sheetData.error) {
+        throw new Error(sheetData?.error || 'Failed to create Google Sheet');
+      }
+
+      console.log('Sheet created successfully:', sheetData.spreadsheetUrl);
 
       setSheetUrl(sheetData.spreadsheetUrl);
       setSheetCreated(true);
