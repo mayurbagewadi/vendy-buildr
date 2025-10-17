@@ -251,19 +251,35 @@ export default function SuperAdminDashboard() {
               <Users className="mr-2 h-4 w-4" />
               Users & Stores
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => toast({ title: "Coming Soon", description: "Subscription plans management will be available soon" })}
+            >
               <CreditCard className="mr-2 h-4 w-4" />
               Subscription Plans
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => toast({ title: "Coming Soon", description: "Transactions management will be available soon" })}
+            >
               <DollarSign className="mr-2 h-4 w-4" />
               Transactions
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => toast({ title: "Coming Soon", description: "Custom domains management will be available soon" })}
+            >
               <Globe className="mr-2 h-4 w-4" />
               Custom Domains
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => toast({ title: "Coming Soon", description: "Platform settings will be available soon" })}
+            >
               <Settings className="mr-2 h-4 w-4" />
               Platform Settings
             </Button>

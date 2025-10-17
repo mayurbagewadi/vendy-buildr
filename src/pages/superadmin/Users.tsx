@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical } from "lucide-react";
+import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ interface QuickStats {
 }
 
 export default function Users() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>([]);
   const [quickStats, setQuickStats] = useState<QuickStats>({
     totalUsers: 0,
@@ -101,48 +103,57 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // First get all profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select(`
-          id,
-          email,
-          full_name,
-          status,
-          user_id,
-          created_at,
-          stores (
-            name,
-            slug
-          ),
-          subscriptions (
-            status,
-            billing_cycle,
-            trial_ends_at,
-            subscription_plans (
-              name
-            )
-          )
-        `)
+        .select("id, email, full_name, status, user_id, created_at")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      const formattedUsers = data?.map((user: any) => ({
-        id: user.user_id,
-        email: user.email,
-        full_name: user.full_name,
-        status: user.status,
-        created_at: user.created_at,
-        store: user.stores?.[0] || null,
-        subscription: user.subscriptions?.[0]
-          ? {
-              plan: user.subscriptions[0].subscription_plans,
-              status: user.subscriptions[0].status,
-              billing_cycle: user.subscriptions[0].billing_cycle,
-              trial_ends_at: user.subscriptions[0].trial_ends_at,
-            }
-          : null,
-      })) || [];
+      // Then get stores and subscriptions for each user
+      const formattedUsers = await Promise.all(
+        (profiles || []).map(async (profile: any) => {
+          // Get store for this user
+          const { data: stores } = await supabase
+            .from("stores")
+            .select("name, slug")
+            .eq("user_id", profile.user_id)
+            .limit(1);
+
+          // Get subscription for this user
+          const { data: subscriptions } = await supabase
+            .from("subscriptions")
+            .select(`
+              status,
+              billing_cycle,
+              trial_ends_at,
+              subscription_plans (
+                name
+              )
+            `)
+            .eq("user_id", profile.user_id)
+            .limit(1);
+
+          return {
+            id: profile.user_id,
+            email: profile.email,
+            full_name: profile.full_name,
+            status: profile.status,
+            created_at: profile.created_at,
+            store: stores?.[0] || null,
+            subscription: subscriptions?.[0]
+              ? {
+                  plan: subscriptions[0].subscription_plans,
+                  status: subscriptions[0].status,
+                  billing_cycle: subscriptions[0].billing_cycle,
+                  trial_ends_at: subscriptions[0].trial_ends_at,
+                }
+              : null,
+          };
+        })
+      );
 
       setUsers(formattedUsers);
     } catch (error: any) {
@@ -310,9 +321,14 @@ export default function Users() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Users & Stores Management</h1>
-          <p className="text-muted-foreground">Manage all users and their stores</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/dashboard')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Users & Stores Management</h1>
+            <p className="text-muted-foreground">Manage all users and their stores</p>
+          </div>
         </div>
         <Button>
           <UserPlus className="w-4 h-4 mr-2" />
