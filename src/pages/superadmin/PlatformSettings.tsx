@@ -48,9 +48,9 @@ const PlatformSettingsPage = () => {
     setIsCleaningUp(true);
     try {
       const body = {
-        ordersMonths: settings.ordersCleanupMonths,
-        activeLogsMonths: settings.activeLogsCleanupMonths,
-        inactiveLogsMonths: settings.inactiveLogsCleanupMonths,
+        ordersMonths: type === 'all' ? 9999 : settings.ordersCleanupMonths,
+        activeLogsMonths: type === 'all' ? 9999 : settings.activeLogsCleanupMonths,
+        inactiveLogsMonths: type === 'all' ? 9999 : settings.inactiveLogsCleanupMonths,
         cleanupOrders: type === 'all' || type === 'orders',
         cleanupActiveLogs: type === 'all' || type === 'activeLogs',
         cleanupInactiveLogs: type === 'all' || type === 'inactiveLogs',
@@ -381,7 +381,7 @@ const PlatformSettingsPage = () => {
                 {isCleaningUp ? "Cleaning up..." : "Cleanup All Data Now"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                This will delete orders, active logs, and inactive logs based on their respective interval settings
+                This will delete ALL orders, active logs, and inactive logs regardless of age
               </p>
             </CardContent>
           </Card>
