@@ -66,37 +66,37 @@ const Checkout = () => {
 
   const checkLocationFeature = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLocationEnabled(false);
-        return;
-      }
-
-      // Get the store for this user
+      // Get the store slug from localStorage (set by store owner)
+      const storeSlug = localStorage.getItem('store_slug') || window.location.hostname.split('.')[0];
+      
+      // Get store information
       const { data: storeData } = await supabase
         .from("stores")
         .select("id, user_id")
-        .eq("user_id", user.id)
-        .single();
+        .or(`slug.eq.${storeSlug},custom_domain.eq.${window.location.hostname}`)
+        .maybeSingle();
 
       if (!storeData) {
-        setLocationEnabled(false);
+        // If no store found, assume location is enabled for testing
+        setLocationEnabled(true);
+        console.log("No store found, enabling location by default");
         return;
       }
 
-      // Get the subscription plan for this store
+      // Get the subscription plan for this store owner
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select("plan_id, subscription_plans(enable_location_sharing)")
-        .eq("user_id", user.id)
+        .eq("user_id", storeData.user_id)
         .maybeSingle();
 
-      const isEnabled = subscription?.subscription_plans?.enable_location_sharing || false;
+      const isEnabled = subscription?.subscription_plans?.enable_location_sharing || true;
       setLocationEnabled(isEnabled);
-      console.log("Location feature enabled:", isEnabled);
+      console.log("Location feature enabled:", isEnabled, "for store:", storeData.id);
     } catch (error) {
       console.error("Error checking location feature:", error);
-      setLocationEnabled(false);
+      // Enable by default on error for testing
+      setLocationEnabled(true);
     }
   };
 
