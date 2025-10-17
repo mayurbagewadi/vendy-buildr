@@ -229,7 +229,7 @@ const PlatformSettingsPage = () => {
               <div className="pt-4 border-t">
                 <Button 
                   onClick={() => handleManualCleanup('orders')} 
-                  disabled={isCleaningUp}
+                  disabled={isCleaningUp || !settings.autoCleanupOrders}
                   variant="destructive"
                   className="w-full"
                 >
@@ -237,7 +237,9 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Orders Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete ALL orders from the database
+                  {settings.autoCleanupOrders 
+                    ? "Delete ALL orders from the database" 
+                    : "Enable auto-cleanup toggle above to use manual cleanup"}
                 </p>
               </div>
             </CardContent>
@@ -289,7 +291,7 @@ const PlatformSettingsPage = () => {
               <div className="pt-4 border-t">
                 <Button 
                   onClick={() => handleManualCleanup('activeLogs')} 
-                  disabled={isCleaningUp}
+                  disabled={isCleaningUp || !settings.autoCleanupActiveLogs}
                   variant="destructive"
                   className="w-full"
                 >
@@ -297,7 +299,9 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Active Logs Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete ALL active logs from the database
+                  {settings.autoCleanupActiveLogs 
+                    ? "Delete ALL active logs from the database" 
+                    : "Enable auto-cleanup toggle above to use manual cleanup"}
                 </p>
               </div>
             </CardContent>
@@ -349,7 +353,7 @@ const PlatformSettingsPage = () => {
               <div className="pt-4 border-t">
                 <Button 
                   onClick={() => handleManualCleanup('inactiveLogs')} 
-                  disabled={isCleaningUp}
+                  disabled={isCleaningUp || !settings.autoCleanupInactiveLogs}
                   variant="destructive"
                   className="w-full"
                 >
@@ -357,7 +361,9 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Inactive Logs Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete ALL inactive logs from the database
+                  {settings.autoCleanupInactiveLogs 
+                    ? "Delete ALL inactive logs from the database" 
+                    : "Enable auto-cleanup toggle above to use manual cleanup"}
                 </p>
               </div>
             </CardContent>
