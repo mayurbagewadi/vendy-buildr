@@ -16,10 +16,13 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Calculate date 2 months ago
-    const twoMonthsAgo = new Date();
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-    const cutoffDate = twoMonthsAgo.toISOString();
+    // Get cleanup interval from request body, default to 6 months
+    const { months = 6 } = await req.json().catch(() => ({ months: 6 }));
+    
+    // Calculate cutoff date based on interval
+    const cutoffDateObj = new Date();
+    cutoffDateObj.setMonth(cutoffDateObj.getMonth() - months);
+    const cutoffDate = cutoffDateObj.toISOString();
 
     console.log(`Cleaning up orders older than: ${cutoffDate}`);
 

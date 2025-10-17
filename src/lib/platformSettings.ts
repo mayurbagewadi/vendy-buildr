@@ -4,6 +4,8 @@ export interface PlatformSettings {
   senderEmail: string;
   senderName: string;
   platformName: string;
+  autoCleanupEnabled: boolean;
+  cleanupIntervalMonths: number;
 }
 
 const PLATFORM_SETTINGS_KEY = 'platform_settings';
@@ -12,6 +14,8 @@ const defaultPlatformSettings: PlatformSettings = {
   senderEmail: 'onboarding@resend.dev',
   senderName: 'Super Admin',
   platformName: 'Vendy Platform',
+  autoCleanupEnabled: false,
+  cleanupIntervalMonths: 6,
 };
 
 // Get platform settings
