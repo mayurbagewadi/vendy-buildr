@@ -47,10 +47,11 @@ const PlatformSettingsPage = () => {
   const handleManualCleanup = async (type: 'orders' | 'activeLogs' | 'inactiveLogs' | 'all') => {
     setIsCleaningUp(true);
     try {
+      // All manual cleanup buttons delete ALL data regardless of age
       const body = {
-        ordersMonths: type === 'all' ? 9999 : settings.ordersCleanupMonths,
-        activeLogsMonths: type === 'all' ? 9999 : settings.activeLogsCleanupMonths,
-        inactiveLogsMonths: type === 'all' ? 9999 : settings.inactiveLogsCleanupMonths,
+        ordersMonths: 9999,
+        activeLogsMonths: 9999,
+        inactiveLogsMonths: 9999,
         cleanupOrders: type === 'all' || type === 'orders',
         cleanupActiveLogs: type === 'all' || type === 'activeLogs',
         cleanupInactiveLogs: type === 'all' || type === 'inactiveLogs',
@@ -221,7 +222,7 @@ const PlatformSettingsPage = () => {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Orders older than this many months will be deleted (1-24 months)
+                  Auto-cleanup will delete orders older than this many months (1-24 months)
                 </p>
               </div>
 
@@ -236,7 +237,7 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Orders Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete all orders older than {settings.ordersCleanupMonths} months
+                  Delete ALL orders from the database
                 </p>
               </div>
             </CardContent>
@@ -281,7 +282,7 @@ const PlatformSettingsPage = () => {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Active logs older than this many months will be deleted (1-24 months)
+                  Auto-cleanup will delete active logs older than this many months (1-24 months)
                 </p>
               </div>
 
@@ -296,7 +297,7 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Active Logs Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete all active logs older than {settings.activeLogsCleanupMonths} months
+                  Delete ALL active logs from the database
                 </p>
               </div>
             </CardContent>
@@ -341,7 +342,7 @@ const PlatformSettingsPage = () => {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Inactive logs older than this many months will be deleted (1-24 months)
+                  Auto-cleanup will delete inactive logs older than this many months (1-24 months)
                 </p>
               </div>
 
@@ -356,7 +357,7 @@ const PlatformSettingsPage = () => {
                   {isCleaningUp ? "Cleaning up..." : "Cleanup Inactive Logs Now"}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Delete all inactive logs older than {settings.inactiveLogsCleanupMonths} months
+                  Delete ALL inactive logs from the database
                 </p>
               </div>
             </CardContent>
