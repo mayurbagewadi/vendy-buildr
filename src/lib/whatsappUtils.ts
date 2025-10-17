@@ -58,6 +58,8 @@ export interface OrderDetails {
   landmark?: string;
   pincode: string;
   deliveryTime: string;
+  latitude?: number;
+  longitude?: number;
   cart: CartItem[];
   subtotal: number;
   deliveryCharge: number;
@@ -85,7 +87,14 @@ export const generateOrderMessage = (order: OrderDetails): string => {
     message += `Landmark: ${order.landmark}\n`;
   }
   message += `PIN Code: ${order.pincode}\n`;
-  message += `Preferred Time: ${order.deliveryTime}\n\n`;
+  message += `Preferred Time: ${order.deliveryTime}\n`;
+  
+  // Add location link if coordinates are provided
+  if (order.latitude && order.longitude) {
+    const mapsUrl = `https://www.google.com/maps?q=${order.latitude},${order.longitude}`;
+    message += `📍 Location: ${mapsUrl}\n`;
+  }
+  message += `\n`;
 
   message += `📦 *ORDER ITEMS*\n`;
   message += `━━━━━━━━━━━━━━━━\n`;

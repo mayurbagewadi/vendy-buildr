@@ -67,17 +67,36 @@ const Checkout = () => {
   const checkLocationFeature = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLocationEnabled(false);
+        return;
+      }
 
+      // Get the store for this user
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!storeData) {
+        setLocationEnabled(false);
+        return;
+      }
+
+      // Get the subscription plan for this store
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select("plan_id, subscription_plans(enable_location_sharing)")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      setLocationEnabled(subscription?.subscription_plans?.enable_location_sharing || false);
+      const isEnabled = subscription?.subscription_plans?.enable_location_sharing || false;
+      setLocationEnabled(isEnabled);
+      console.log("Location feature enabled:", isEnabled);
     } catch (error) {
       console.error("Error checking location feature:", error);
+      setLocationEnabled(false);
     }
   };
 
@@ -176,6 +195,8 @@ const Checkout = () => {
         landmark: data.landmark || undefined,
         pincode: data.pincode,
         deliveryTime: deliveryTimeText,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
         cart: cart,
         subtotal: cartTotal,
         deliveryCharge: 0,
