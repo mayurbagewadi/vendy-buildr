@@ -46,7 +46,6 @@ interface UserData {
   id: string;
   email: string;
   full_name: string | null;
-  status: string;
   created_at: string;
   store: {
     name: string;
@@ -107,7 +106,7 @@ export default function Users() {
       // First get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, status, user_id, created_at")
+        .select("id, email, full_name, user_id, created_at")
         .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
@@ -140,7 +139,6 @@ export default function Users() {
             id: profile.user_id,
             email: profile.email,
             full_name: profile.full_name,
-            status: profile.status,
             created_at: profile.created_at,
             store: stores?.[0] || null,
             subscription: subscriptions?.[0]
