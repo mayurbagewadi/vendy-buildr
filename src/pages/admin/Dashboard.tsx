@@ -16,6 +16,7 @@ import {
 import AdminLayout from "@/components/admin/AdminLayout";
 import { toast } from "@/hooks/use-toast";
 import { getProducts, initializeProducts } from "@/lib/productData";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -37,6 +38,27 @@ const AdminDashboard = () => {
   useEffect(() => {
     // Initialize products with seed data if empty
     initializeProducts();
+    
+    // Track admin panel visit
+    const updateAdminVisit = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: stores } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+        
+        if (stores && stores.length > 0) {
+          await supabase
+            .from('stores')
+            .update({ last_admin_visit: new Date().toISOString() })
+            .eq('id', stores[0].id);
+        }
+      }
+    };
+    
+    updateAdminVisit();
     
     // Load store name from localStorage
     const storeSettings = localStorage.getItem("storeSettings");

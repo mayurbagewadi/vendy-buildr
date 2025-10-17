@@ -173,6 +173,7 @@ export type Database = {
           hero_banner_url: string | null
           id: string
           is_active: boolean | null
+          last_admin_visit: string | null
           last_sheet_sync: string | null
           logo_url: string | null
           name: string
@@ -195,6 +196,7 @@ export type Database = {
           hero_banner_url?: string | null
           id?: string
           is_active?: boolean | null
+          last_admin_visit?: string | null
           last_sheet_sync?: string | null
           logo_url?: string | null
           name: string
@@ -217,6 +219,7 @@ export type Database = {
           hero_banner_url?: string | null
           id?: string
           is_active?: boolean | null
+          last_admin_visit?: string | null
           last_sheet_sync?: string | null
           logo_url?: string | null
           name?: string

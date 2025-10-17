@@ -52,6 +52,7 @@ interface UserData {
     name: string;
     slug: string;
     id: string;
+    last_admin_visit: string | null;
   } | null;
   subscription: {
     plan: {
@@ -125,7 +126,7 @@ export default function Users() {
           // Get store for this user
           const { data: stores } = await supabase
             .from("stores")
-            .select("id, name, slug")
+            .select("id, name, slug, last_admin_visit")
             .eq("user_id", profile.user_id)
             .limit(1);
 
@@ -274,18 +275,27 @@ export default function Users() {
       if (activityFilter === "all") return true;
       if (activityFilter === "inactive") {
         if (!user.store) return false;
-        if (!user.lastOrderDate) return true; // No orders at all
         
         const twoMonthsAgo = new Date();
         twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
-        return new Date(user.lastOrderDate) < twoMonthsAgo;
+        
+        const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+        const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+        
+        // Inactive if BOTH no recent orders AND no recent admin visits
+        return !hasRecentOrders && !hasRecentAdminVisit;
       }
       if (activityFilter === "active") {
-        if (!user.store || !user.lastOrderDate) return false;
+        if (!user.store) return false;
         
         const twoMonthsAgo = new Date();
         twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
-        return new Date(user.lastOrderDate) >= twoMonthsAgo;
+        
+        const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+        const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+        
+        // Active if EITHER recent orders OR recent admin visits
+        return hasRecentOrders || hasRecentAdminVisit;
       }
       return true;
     };
@@ -598,47 +608,68 @@ export default function Users() {
                         </div>
                      </div>
                    </TableCell>
-                    <TableCell>
-                      {user.store ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{user.store.name}</p>
-                            {(() => {
-                              const twoMonthsAgo = new Date();
-                              twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
-                              const isInactive = !user.lastOrderDate || new Date(user.lastOrderDate) < twoMonthsAgo;
-                              
-                              if (isInactive) {
-                                return (
-                                  <Badge variant="outline" className="border-orange-500 text-orange-500 text-xs">
-                                    Inactive
-                                  </Badge>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
-                          <a 
-                            href={`/${user.store.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex items-center gap-1"
-                          >
-                            {user.store.slug}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                          <p className="text-xs text-muted-foreground">
-                            {user.orderCount} orders
-                            {user.lastOrderDate && (
-                              <> • Last: {formatDistanceToNow(new Date(user.lastOrderDate), { addSuffix: true })}</>
-                            )}
-                            {!user.lastOrderDate && <> • No orders yet</>}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">No store</span>
-                      )}
-                    </TableCell>
+                     <TableCell>
+                       {user.store ? (
+                         <div className="space-y-1">
+                           <div className="flex items-center gap-2">
+                             <p className="font-medium">{user.store.name}</p>
+                             {(() => {
+                               const twoMonthsAgo = new Date();
+                               twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+                               
+                               const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+                               const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+                               const isInactive = !hasRecentOrders && !hasRecentAdminVisit;
+                               
+                               if (isInactive) {
+                                 // Calculate days inactive
+                                 const lastActivity = [user.lastOrderDate, user.store.last_admin_visit]
+                                   .filter(Boolean)
+                                   .map(d => new Date(d!))
+                                   .sort((a, b) => b.getTime() - a.getTime())[0];
+                                 
+                                 const daysInactive = lastActivity 
+                                   ? Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+                                   : null;
+                                 
+                                 return (
+                                   <Badge variant="outline" className="border-orange-500 text-orange-500 text-xs">
+                                     Inactive {daysInactive ? `${daysInactive}d` : ''}
+                                   </Badge>
+                                 );
+                               }
+                               return null;
+                             })()}
+                           </div>
+                           <a 
+                             href={`/${user.store.slug}`}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="text-sm text-primary hover:underline flex items-center gap-1"
+                           >
+                             {user.store.slug}
+                             <ExternalLink className="h-3 w-3" />
+                           </a>
+                           <div className="text-xs text-muted-foreground space-y-0.5">
+                             <p>
+                               {user.orderCount} orders
+                               {user.lastOrderDate && (
+                                 <> • Last: {formatDistanceToNow(new Date(user.lastOrderDate), { addSuffix: true })}</>
+                               )}
+                               {!user.lastOrderDate && <> • No orders yet</>}
+                             </p>
+                             {user.store.last_admin_visit && (
+                               <p>Admin visit: {formatDistanceToNow(new Date(user.store.last_admin_visit), { addSuffix: true })}</p>
+                             )}
+                             {!user.store.last_admin_visit && (
+                               <p>No admin visits tracked</p>
+                             )}
+                           </div>
+                         </div>
+                       ) : (
+                         <span className="text-muted-foreground">No store</span>
+                       )}
+                     </TableCell>
                    <TableCell>
                      <p className="font-medium">₹{user.totalRevenue.toLocaleString()}</p>
                      <p className="text-xs text-muted-foreground">total revenue</p>
