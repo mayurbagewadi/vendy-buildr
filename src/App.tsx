@@ -14,7 +14,6 @@ import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
 import Orders from "./pages/admin/Orders";
-import GoogleSheetsSync from "./pages/admin/GoogleSheetsSync";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import ProductDetail from "./pages/customer/ProductDetail";
@@ -25,7 +24,6 @@ import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
-import OnboardingGoogleSheets from "./pages/onboarding/GoogleSheets";
 import OnboardingCustomize from "./pages/onboarding/Customize";
 import OnboardingComplete from "./pages/onboarding/Complete";
 
@@ -58,7 +56,6 @@ const App = () => (
             <Route path="/admin/products/edit/:id" element={<EditProduct />} />
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
-            <Route path="/admin/google-sheets" element={<GoogleSheetsSync />} />
             
             {/* Super Admin Routes */}
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
@@ -67,7 +64,6 @@ const App = () => (
             
             {/* Onboarding Routes */}
             <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
-            <Route path="/onboarding/google-sheets" element={<OnboardingGoogleSheets />} />
             <Route path="/onboarding/customize" element={<OnboardingCustomize />} />
             <Route path="/onboarding/complete" element={<OnboardingComplete />} />
             

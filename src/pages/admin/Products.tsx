@@ -36,7 +36,6 @@ import {
 import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
-import { deleteFromGoogleSheets, getScriptUrl } from "@/lib/googleSheetsSync";
 import { supabase } from "@/integrations/supabase/client";
 
 type Product = SharedProduct & {
@@ -51,8 +50,6 @@ const Products = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [googleSheetUrl, setGoogleSheetUrl] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const itemsPerPage = 10;
 
   // Load products function
@@ -68,7 +65,6 @@ const Products = () => {
   useEffect(() => {
     // Initial load
     loadProducts();
-    loadGoogleSheetInfo();
     
     // Listen for storage changes (cross-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
@@ -129,101 +125,17 @@ const Products = () => {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    // Use shared utility to delete product
     deleteProductUtil(productId);
-    
-    // Reload products
     const loadedProducts = getProducts().map(p => ({
       ...p,
       variantCount: p.variants?.length || 0,
     }));
     setProducts(loadedProducts);
     
-    // Delete from Google Sheets if configured (don't wait, async)
-    const scriptUrl = getScriptUrl();
-    if (scriptUrl) {
-      deleteFromGoogleSheets(productId).catch(error => {
-        console.error('Failed to delete from Google Sheets:', error);
-      });
-    }
-    
     toast({
       title: "Product deleted",
-      description: scriptUrl 
-        ? "Product removed and will sync to Google Sheets"
-        : "Product removed from catalog",
+      description: "Product removed from catalog",
     });
-  };
-
-  const loadGoogleSheetInfo = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: store } = await supabase
-      .from("stores")
-      .select("google_sheet_url, google_sheet_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (store?.google_sheet_url) {
-      setGoogleSheetUrl(store.google_sheet_url);
-    } else if (store?.google_sheet_id) {
-      // Build the URL from the sheet ID if URL is not set
-      setGoogleSheetUrl(`https://docs.google.com/spreadsheets/d/${store.google_sheet_id}`);
-    }
-  };
-
-  const handleSyncProducts = async () => {
-    setSyncing(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Check if sheet is configured
-      const { data: store } = await supabase
-        .from("stores")
-        .select("google_sheet_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!store?.google_sheet_id) {
-        throw new Error("Please complete Google Sheets setup first");
-      }
-
-      const { data, error } = await supabase.functions.invoke('sync-products-to-sheet', {
-        body: { userId: user.id, products }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Products synced",
-        description: `Successfully synced ${data.rowsWritten} product rows to Google Sheets`,
-      });
-      
-      // Reload sheet info after sync
-      await loadGoogleSheetInfo();
-    } catch (error: any) {
-      toast({
-        title: "Sync failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleOpenSheet = () => {
-    if (googleSheetUrl) {
-      window.open(googleSheetUrl, '_blank');
-    } else {
-      toast({
-        title: "Sheet not configured",
-        description: "Please complete Google Sheets setup in onboarding",
-        variant: "destructive",
-      });
-    }
   };
 
   const getUniqueCategories = () => {
@@ -257,29 +169,6 @@ const Products = () => {
   return (
     <AdminLayout>
       <div className="space-y-4 lg:space-y-6">
-        {/* Sync Status Bar */}
-        <Card className="border-l-4 border-l-success bg-success/5">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1">
-                <Package className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground text-sm">Synced with Google Sheets</p>
-                  <p className="text-xs text-muted-foreground">Last sync: 2 minutes ago • Products: {products.length} • Status: ✓ All in sync</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">Auto-sync:</span>
-                  <div className="w-10 h-5 bg-primary rounded-full flex items-center px-0.5">
-                    <div className="w-4 h-4 bg-white rounded-full ml-auto" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -289,23 +178,6 @@ const Products = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleOpenSheet}
-              className="touch-target flex-1 sm:flex-initial"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open Product Sheet
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleSyncProducts}
-              disabled={syncing}
-              className="touch-target flex-1 sm:flex-initial"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-              Sync to Sheet
-            </Button>
             <Button onClick={() => navigate("/admin/products/add")} className="touch-target flex-1 sm:flex-initial">
               <Plus className="w-4 h-4 mr-2" />
               Add Product

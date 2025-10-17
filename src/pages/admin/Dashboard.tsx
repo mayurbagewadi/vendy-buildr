@@ -197,61 +197,30 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        {/* Store URL & Google Sheets Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Store URL Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5" />
-                Your Store URL
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-mono text-foreground break-all">techstore.yourplatform.com</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
-                  <Package className="w-4 h-4 mr-2" />
-                  Copy Link
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Generate QR
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Google Sheets Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Google Sheets
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                <p className="text-sm font-medium text-foreground">Connected</p>
-              </div>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>Last synced: 2 minutes ago</p>
-                <p>Products in sheet: {stats.totalProducts}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" className="flex-1">
-                  Sync Now
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  Configure
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Store URL Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Your Store URL
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm font-mono text-foreground break-all">techstore.yourplatform.com</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+                <Package className="w-4 h-4 mr-2" />
+                Copy Link
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+                <Eye className="w-4 h-4 mr-2" />
+                Generate QR
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <Card className="admin-card">
@@ -302,17 +271,16 @@ const AdminDashboard = () => {
                 <Star className="w-5 h-5 text-primary" />
                 Getting Started
               </CardTitle>
-              <span className="text-sm text-muted-foreground">3/5 complete</span>
+              <span className="text-sm text-muted-foreground">2/4 complete</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2 mt-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: '60%' }} />
+              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: '50%' }} />
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {[
               { done: true, text: "Create account" },
               { done: true, text: "Set up store" },
-              { done: true, text: "Connect Google Sheets" },
               { done: false, text: "Add first product" },
               { done: false, text: "Customize store appearance" }
             ].map((item, i) => (

@@ -262,20 +262,9 @@ const AddProduct = () => {
       // Use shared utility to add product
       addProduct(productData);
 
-      // Sync to Google Sheets using edge function
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const allProducts = getProducts();
-        supabase.functions.invoke('sync-products-to-sheet', {
-          body: { userId: user.id, products: allProducts }
-        }).catch(error => {
-          console.error('Failed to sync to Google Sheets:', error);
-        });
-      }
-
       toast({
         title: "Product created successfully",
-        description: `${data.name} has been added and will sync to Google Sheets`,
+        description: `${data.name} has been added to your catalog`,
       });
 
       navigate("/admin/products");
