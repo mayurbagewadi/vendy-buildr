@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FeatureManagement } from "@/components/superadmin/FeatureManagement";
 
 interface DashboardStats {
   totalUsers: number;
@@ -391,6 +392,9 @@ export default function SuperAdminDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Feature Management */}
+          <FeatureManagement />
 
           {/* Recent Activity */}
           <Card>

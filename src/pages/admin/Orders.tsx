@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download } from "lucide-react";
+import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
+import { EditOrderModal } from "@/components/admin/EditOrderModal";
 
 interface Order {
   id: string;
@@ -19,10 +21,18 @@ interface Order {
   customer_phone: string;
   customer_email?: string;
   delivery_address: string;
+  delivery_landmark?: string;
+  delivery_pincode?: string;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
+  delivery_time?: string;
   items: any;
+  subtotal: number;
+  delivery_charge: number;
   total: number;
   status: string;
   payment_method: string;
+  notes?: string;
   created_at: string;
 }
 
@@ -34,6 +44,9 @@ const Orders = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -243,6 +256,47 @@ const Orders = () => {
     };
   };
 
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setViewModalOpen(true);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateOrder = async (orderId: string, updates: Partial<Order>) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Order updated successfully",
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShipOrder = async (order: Order) => {
+    await handleUpdateOrder(order.id, { status: "delivered" });
+  };
+
+  const handleCancelOrder = async (order: Order) => {
+    await handleUpdateOrder(order.id, { status: "cancelled" });
+  };
+
   const filteredOrders = getFilteredOrders();
   const todayOrders = orders.filter((order) => {
     const today = new Date();
@@ -390,6 +444,7 @@ const Orders = () => {
                     <TableHead>Items</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -413,6 +468,48 @@ const Orders = () => {
                         {formatCurrency(order.total)}
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewOrder(order)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditOrder(order)}
+                            title="Edit Order"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {order.status !== "delivered" && order.status !== "cancelled" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleShipOrder(order)}
+                              title="Mark as Delivered"
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <Truck className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {order.status !== "cancelled" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCancelOrder(order)}
+                              title="Cancel Order"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -426,6 +523,19 @@ const Orders = () => {
             </div>
           )}
         </Card>
+
+        {/* Modals */}
+        <OrderDetailModal
+          order={selectedOrder}
+          open={viewModalOpen}
+          onClose={() => setViewModalOpen(false)}
+        />
+        <EditOrderModal
+          order={selectedOrder}
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSave={handleUpdateOrder}
+        />
       </div>
     </AdminLayout>
   );

@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -23,6 +55,8 @@ export type Database = {
           delivery_address: string
           delivery_charge: number
           delivery_landmark: string | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
           delivery_pincode: string | null
           delivery_time: string | null
           id: string
@@ -44,6 +78,8 @@ export type Database = {
           delivery_address: string
           delivery_charge?: number
           delivery_landmark?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
           id?: string
@@ -65,6 +101,8 @@ export type Database = {
           delivery_address?: string
           delivery_charge?: number
           delivery_landmark?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
           id?: string
@@ -197,6 +235,8 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number | null
+          enable_analytics: boolean | null
+          enable_location_sharing: boolean | null
           features: Json | null
           id: string
           is_active: boolean | null
@@ -215,6 +255,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          enable_analytics?: boolean | null
+          enable_location_sharing?: boolean | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
@@ -233,6 +275,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          enable_analytics?: boolean | null
+          enable_location_sharing?: boolean | null
           features?: Json | null
           id?: string
           is_active?: boolean | null

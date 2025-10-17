@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,7 @@ import { ChevronRight, MessageCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { LocationPicker } from "@/components/customer/LocationPicker";
 import {
   Form,
   FormControl,
@@ -43,6 +44,8 @@ const Checkout = () => {
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -56,6 +59,31 @@ const Checkout = () => {
       deliveryTime: "anytime",
     },
   });
+
+  useEffect(() => {
+    checkLocationFeature();
+  }, []);
+
+  const checkLocationFeature = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select("plan_id, subscription_plans(enable_location_sharing)")
+        .eq("user_id", user.id)
+        .single();
+
+      setLocationEnabled(subscription?.subscription_plans?.enable_location_sharing || false);
+    } catch (error) {
+      console.error("Error checking location feature:", error);
+    }
+  };
+
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    setLocation({ latitude, longitude });
+  };
 
   if (cart.length === 0) {
     return (
@@ -114,6 +142,8 @@ const Checkout = () => {
         delivery_landmark: data.landmark || null,
         delivery_pincode: data.pincode,
         delivery_time: deliveryTimeText,
+        delivery_latitude: location?.latitude || null,
+        delivery_longitude: location?.longitude || null,
         items: cart as any,
         subtotal: cartTotal,
         delivery_charge: 0,
@@ -343,6 +373,17 @@ const Checkout = () => {
                           </FormItem>
                         )}
                       />
+
+                      {/* Location Sharing (if enabled) */}
+                      {locationEnabled && (
+                        <div className="space-y-2">
+                          <Label>Share Your Location (Optional)</Label>
+                          <LocationPicker onLocationSelect={handleLocationSelect} />
+                          {location && (
+                            <p className="text-sm text-success">✓ Location captured successfully</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
