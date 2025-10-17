@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.log-order-to-sheet]
 verify_jwt = false
+
+[functions.sync-sheet-to-db]
+verify_jwt = false
