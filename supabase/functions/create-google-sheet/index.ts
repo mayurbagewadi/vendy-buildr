@@ -28,10 +28,14 @@ async function getAccessToken() {
   const encodedClaim = btoa(JSON.stringify(claim)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   const signatureInput = `${encodedHeader}.${encodedClaim}`;
 
-  const privateKey = serviceAccount.private_key;
+  // Replace literal \n with actual newlines, then extract the key content
+  const privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
   const pemHeader = '-----BEGIN PRIVATE KEY-----';
   const pemFooter = '-----END PRIVATE KEY-----';
-  const pemContents = privateKey.substring(pemHeader.length, privateKey.length - pemFooter.length).replace(/\s/g, '');
+  const pemContents = privateKey
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
   const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
 
   const cryptoKey = await crypto.subtle.importKey(
@@ -84,10 +88,14 @@ async function getDriveAccessToken(serviceAccountJson: string): Promise<string> 
   const encodedClaim = btoa(JSON.stringify(claim)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   const signatureInput = `${encodedHeader}.${encodedClaim}`;
 
-  const privateKey = serviceAccount.private_key;
+  // Replace literal \n with actual newlines, then extract the key content
+  const privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
   const pemHeader = '-----BEGIN PRIVATE KEY-----';
   const pemFooter = '-----END PRIVATE KEY-----';
-  const pemContents = privateKey.substring(pemHeader.length, privateKey.length - pemFooter.length).replace(/\s/g, '');
+  const pemContents = privateKey
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
   const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
 
   const cryptoKey = await crypto.subtle.importKey(
