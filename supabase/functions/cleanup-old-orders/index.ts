@@ -35,10 +35,17 @@ Deno.serve(async (req) => {
 
     // Delete old orders
     if (cleanupOrders) {
-      const ordersCutoff = new Date();
-      ordersCutoff.setMonth(ordersCutoff.getMonth() - ordersMonths);
-
-      console.log(`Cleaning up orders older than: ${ordersCutoff.toISOString()}`);
+      let ordersCutoff: Date;
+      
+      // If months is very high (9999), delete ALL orders by using future date
+      if (ordersMonths >= 9999) {
+        ordersCutoff = new Date('2099-12-31');
+        console.log('Cleaning up ALL orders (no date restriction)');
+      } else {
+        ordersCutoff = new Date();
+        ordersCutoff.setMonth(ordersCutoff.getMonth() - ordersMonths);
+        console.log(`Cleaning up orders older than: ${ordersCutoff.toISOString()}`);
+      }
 
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -58,10 +65,17 @@ Deno.serve(async (req) => {
 
     // Delete old active logs
     if (cleanupActiveLogs) {
-      const activeLogsCutoff = new Date();
-      activeLogsCutoff.setMonth(activeLogsCutoff.getMonth() - activeLogsMonths);
-
-      console.log(`Cleaning up active logs older than: ${activeLogsCutoff.toISOString()}`);
+      let activeLogsCutoff: Date;
+      
+      // If months is very high (9999), delete ALL active logs by using future date
+      if (activeLogsMonths >= 9999) {
+        activeLogsCutoff = new Date('2099-12-31');
+        console.log('Cleaning up ALL active logs (no date restriction)');
+      } else {
+        activeLogsCutoff = new Date();
+        activeLogsCutoff.setMonth(activeLogsCutoff.getMonth() - activeLogsMonths);
+        console.log(`Cleaning up active logs older than: ${activeLogsCutoff.toISOString()}`);
+      }
 
       const { data: activeData, error: activeError } = await supabase
         .from('store_activity_logs')
@@ -82,10 +96,17 @@ Deno.serve(async (req) => {
 
     // Delete old inactive logs
     if (cleanupInactiveLogs) {
-      const inactiveLogsCutoff = new Date();
-      inactiveLogsCutoff.setMonth(inactiveLogsCutoff.getMonth() - inactiveLogsMonths);
-
-      console.log(`Cleaning up inactive logs older than: ${inactiveLogsCutoff.toISOString()}`);
+      let inactiveLogsCutoff: Date;
+      
+      // If months is very high (9999), delete ALL inactive logs by using future date
+      if (inactiveLogsMonths >= 9999) {
+        inactiveLogsCutoff = new Date('2099-12-31');
+        console.log('Cleaning up ALL inactive logs (no date restriction)');
+      } else {
+        inactiveLogsCutoff = new Date();
+        inactiveLogsCutoff.setMonth(inactiveLogsCutoff.getMonth() - inactiveLogsMonths);
+        console.log(`Cleaning up inactive logs older than: ${inactiveLogsCutoff.toISOString()}`);
+      }
 
       const { data: inactiveData, error: inactiveError } = await supabase
         .from('store_activity_logs')
