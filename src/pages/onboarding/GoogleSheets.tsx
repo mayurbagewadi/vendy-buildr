@@ -67,12 +67,22 @@ const GoogleSheets = () => {
   };
 
   const handleConnectGoogleSheets = async () => {
-    setLoading(true);
-    setStep('creating');
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      setLoading(true);
+
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        setLoading(false);
+        setStep('connect');
+        toast({
+          title: "Connection timeout",
+          description: "Please try again. Make sure to complete the Google authorization.",
+          variant: "destructive",
+        });
+      }, 60000); // 60 second timeout
 
       // Initialize Google OAuth client
       const client = window.google.accounts.oauth2.initCodeClient({
@@ -80,17 +90,50 @@ const GoogleSheets = () => {
         scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
         ux_mode: 'popup',
         callback: async (response: any) => {
+          clearTimeout(timeoutId);
+          
+          if (response.error) {
+            console.error('OAuth error:', response);
+            setLoading(false);
+            setStep('connect');
+            toast({
+              title: "Authorization failed",
+              description: response.error_description || "Failed to authorize with Google",
+              variant: "destructive",
+            });
+            return;
+          }
+          
           if (response.code) {
+            setStep('creating');
             await handleOAuthCallback(response.code, user.id);
           } else {
-            throw new Error('Failed to get authorization code');
+            clearTimeout(timeoutId);
+            setLoading(false);
+            setStep('connect');
+            toast({
+              title: "Authorization failed",
+              description: "No authorization code received from Google",
+              variant: "destructive",
+            });
           }
         },
+        error_callback: (error: any) => {
+          clearTimeout(timeoutId);
+          console.error('OAuth error callback:', error);
+          setLoading(false);
+          setStep('connect');
+          toast({
+            title: "Authorization failed",
+            description: "Failed to connect to Google. Please try again.",
+            variant: "destructive",
+          });
+        }
       });
 
       client.requestCode();
     } catch (error: any) {
-      console.error('OAuth error:', error);
+      console.error('OAuth initialization error:', error);
       toast({
         title: "Connection failed",
         description: error.message || "Failed to connect to Google Sheets",
