@@ -161,12 +161,15 @@ const Products = () => {
 
     const { data: store } = await supabase
       .from("stores")
-      .select("google_sheet_url")
+      .select("google_sheet_url, google_sheet_id")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (store?.google_sheet_url) {
       setGoogleSheetUrl(store.google_sheet_url);
+    } else if (store?.google_sheet_id) {
+      // Build the URL from the sheet ID if URL is not set
+      setGoogleSheetUrl(`https://docs.google.com/spreadsheets/d/${store.google_sheet_id}`);
     }
   };
 
@@ -175,6 +178,17 @@ const Products = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Check if sheet is configured
+      const { data: store } = await supabase
+        .from("stores")
+        .select("google_sheet_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!store?.google_sheet_id) {
+        throw new Error("Please complete Google Sheets setup first");
+      }
 
       const { data, error } = await supabase.functions.invoke('sync-products-to-sheet', {
         body: { userId: user.id, products }
@@ -186,6 +200,9 @@ const Products = () => {
         title: "Products synced",
         description: `Successfully synced ${data.rowsWritten} product rows to Google Sheets`,
       });
+      
+      // Reload sheet info after sync
+      await loadGoogleSheetInfo();
     } catch (error: any) {
       toast({
         title: "Sync failed",
@@ -272,27 +289,23 @@ const Products = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {googleSheetUrl && (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={handleOpenSheet}
-                  className="touch-target flex-1 sm:flex-initial"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Open Product Sheet
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleSyncProducts}
-                  disabled={syncing}
-                  className="touch-target flex-1 sm:flex-initial"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                  Sync to Sheet
-                </Button>
-              </>
-            )}
+            <Button 
+              variant="outline" 
+              onClick={handleOpenSheet}
+              className="touch-target flex-1 sm:flex-initial"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open Product Sheet
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleSyncProducts}
+              disabled={syncing}
+              className="touch-target flex-1 sm:flex-initial"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              Sync to Sheet
+            </Button>
             <Button onClick={() => navigate("/admin/products/add")} className="touch-target flex-1 sm:flex-initial">
               <Plus className="w-4 h-4 mr-2" />
               Add Product
