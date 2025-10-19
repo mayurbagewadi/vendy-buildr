@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -59,7 +60,7 @@ export const PlanFormDialog = ({
 }: PlanFormDialogProps) => {
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
-    defaultValues: defaultValues || {
+    defaultValues: {
       name: "",
       slug: "",
       description: "",
@@ -76,6 +77,30 @@ export const PlanFormDialog = ({
       enable_analytics: false,
     },
   });
+
+  // Reset form with new values when dialog opens or defaultValues change
+  useEffect(() => {
+    if (open && defaultValues) {
+      form.reset(defaultValues);
+    } else if (open && !defaultValues) {
+      form.reset({
+        name: "",
+        slug: "",
+        description: "",
+        monthly_price: 0,
+        yearly_price: 0,
+        max_products: undefined,
+        trial_days: 14,
+        is_active: true,
+        is_popular: false,
+        badge_text: "",
+        badge_color: "",
+        display_order: 0,
+        enable_location_sharing: false,
+        enable_analytics: false,
+      });
+    }
+  }, [open, defaultValues, form]);
 
   const handleSubmit = async (values: PlanFormValues) => {
     await onSubmit(values);
