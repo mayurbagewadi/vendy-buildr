@@ -184,7 +184,7 @@ const Home = () => {
                 </Button>
               </Link>
               <Link to="/pricing">
-                <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
                   View Pricing Plans
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
