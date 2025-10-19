@@ -60,7 +60,7 @@ const Header = () => {
             <Link to="/home#categories" className="text-foreground hover:text-primary transition-colors">
               Categories
             </Link>
-            <Link to="/home#pricing" className="text-foreground hover:text-primary transition-colors">
+            <Link to="/pricing" className="text-foreground hover:text-primary transition-colors">
               Pricing
             </Link>
             <Link to="/home#about" className="text-foreground hover:text-primary transition-colors">
@@ -160,7 +160,7 @@ const Header = () => {
               Categories
             </Link>
             <Link
-              to="/home#pricing"
+              to="/pricing"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >

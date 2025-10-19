@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
-import PricingSection from "@/components/customer/PricingSection";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Package } from "lucide-react";
@@ -168,9 +167,6 @@ const Home = () => {
           </section>
         )}
 
-        {/* Pricing Section */}
-        <PricingSection />
-
         {/* CTA Section */}
         <section className="py-20 bg-primary text-primary-foreground">
           <div className="container mx-auto px-4 text-center">
@@ -180,12 +176,20 @@ const Home = () => {
             <p className="text-xl mb-8 opacity-90">
               Explore thousands of products and great deals
             </p>
-            <Link to="/products">
-              <Button size="lg" variant="secondary">
-                Browse Products
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/products">
+                <Button size="lg" variant="secondary">
+                  Browse Products
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+              <Link to="/pricing">
+                <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                  View Pricing Plans
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       </main>
