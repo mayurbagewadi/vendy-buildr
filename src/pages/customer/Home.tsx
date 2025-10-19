@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
+import PricingSection from "@/components/customer/PricingSection";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Package } from "lucide-react";
@@ -166,6 +167,9 @@ const Home = () => {
             </div>
           </section>
         )}
+
+        {/* Pricing Section */}
+        <PricingSection />
 
         {/* CTA Section */}
         <section className="py-20 bg-primary text-primary-foreground">
