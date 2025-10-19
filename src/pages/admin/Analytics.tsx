@@ -34,11 +34,18 @@ const Analytics = () => {
       }
 
       // Check if user's plan has analytics enabled
-      const { data: subscription } = await supabase
+      const { data: subscription, error: subError } = await supabase
         .from("subscriptions")
-        .select("plan_id, subscription_plans(enable_analytics)")
+        .select("plan_id, status, subscription_plans(enable_analytics)")
         .eq("user_id", session.user.id)
-        .single();
+        .maybeSingle();
+
+      // Check if subscription exists and is active
+      if (!subscription || subError) {
+        setHasAccess(false);
+        setLoading(false);
+        return;
+      }
 
       const analyticsEnabled = subscription?.subscription_plans?.enable_analytics;
 
@@ -154,7 +161,7 @@ const Analytics = () => {
           <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-2xl font-bold mb-2">Analytics Not Available</h2>
           <p className="text-muted-foreground mb-6">
-            Upgrade your subscription plan to access detailed analytics and insights.
+            You need a subscription plan with analytics enabled to access this feature.
           </p>
         </div>
       </AdminLayout>
