@@ -39,6 +39,7 @@ import {
 import { UserDetailModal } from "@/components/superadmin/UserDetailModal";
 import { SuspendAccountModal } from "@/components/superadmin/SuspendAccountModal";
 import { DeleteAccountModal } from "@/components/superadmin/DeleteAccountModal";
+import { AssignPlanModal } from "@/components/superadmin/AssignPlanModal";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -102,6 +103,7 @@ export default function Users() {
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -838,10 +840,15 @@ export default function Users() {
                              <UserCircle className="w-4 h-4 mr-2" />
                              Login as User
                            </DropdownMenuItem>
-                           <DropdownMenuItem>
-                             <Edit className="w-4 h-4 mr-2" />
-                             Edit
-                           </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowAssignPlanModal(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Assign Plan
+                            </DropdownMenuItem>
                            {user.store && (
                              <DropdownMenuItem
                                onClick={() => window.open(`/${user.store.slug}`, '_blank')}
@@ -981,6 +988,17 @@ export default function Users() {
             onClose={() => {
               setShowDeleteModal(false);
               setSelectedUser(null);
+            }}
+            onSuccess={fetchUsers}
+          />
+          <AssignPlanModal
+            userId={selectedUser.id}
+            userEmail={selectedUser.email}
+            currentSubscription={selectedUser.subscription}
+            open={showAssignPlanModal}
+            onOpenChange={(open) => {
+              setShowAssignPlanModal(open);
+              if (!open) setSelectedUser(null);
             }}
             onSuccess={fetchUsers}
           />
