@@ -70,6 +70,7 @@ const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEMO_CATEGORIES);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
 
   // Load products and categories
   const loadProducts = async () => {
@@ -77,6 +78,9 @@ const Home = () => {
     
     const products = JSON.parse(localStorage.getItem("products") || "[]");
     const publishedProducts = products.filter((p: Product) => p.status === "published");
+    
+    // Store all published products
+    setAllProducts(publishedProducts);
     
     // Featured products (first 4)
     setFeaturedProducts(publishedProducts.slice(0, 4));
@@ -195,27 +199,27 @@ const Home = () => {
             </div>
             
             {/* Horizontal Scrollable Layout */}
-            <div className="relative">
-              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
-                {categories.map((category, index) => (
-                  <div 
-                    key={category.id}
-                    className="flex-shrink-0 w-64 transform transition-all duration-300 hover:scale-105 hover:z-10 snap-center"
-                    style={{
-                      animationDelay: `${index * 100}ms`
-                    }}
-                  >
-                    <CategoryCard
-                      name={category.name}
-                      image_url={category.image_url}
-                    />
-                  </div>
-                ))}
+            <div className="relative px-4">
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-4">
+                {categories.map((category, index) => {
+                  const productCount = allProducts.filter(p => p.category === category.name).length;
+                  return (
+                    <div 
+                      key={category.id}
+                      className="flex-shrink-0 w-48 transform transition-all duration-300 hover:scale-105 hover:z-10 snap-center"
+                      style={{
+                        animationDelay: `${index * 100}ms`
+                      }}
+                    >
+                      <CategoryCard
+                        name={category.name}
+                        image_url={category.image_url}
+                        productCount={productCount}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              
-              {/* Gradient Fade Edges */}
-              <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-background to-transparent pointer-events-none" />
-              <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-background to-transparent pointer-events-none" />
             </div>
           </div>
         </section>

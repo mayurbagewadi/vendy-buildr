@@ -37,12 +37,12 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
             )}
             
             {/* Category Name Overlay */}
-            <div className="absolute inset-x-0 bottom-0 p-4 transform translate-y-0 transition-transform duration-500">
-              <h3 className="font-bold text-lg md:text-xl text-foreground drop-shadow-lg group-hover:text-primary transition-colors duration-300">
+            <div className="absolute inset-x-0 bottom-0 p-3 transform translate-y-0 transition-transform duration-500">
+              <h3 className="font-bold text-base md:text-lg text-foreground drop-shadow-lg transition-colors duration-300">
                 {name}
               </h3>
-              {productCount > 0 && (
-                <p className="text-xs md:text-sm text-muted-foreground mt-1 opacity-90">
+              {productCount !== undefined && (
+                <p className="text-xs text-muted-foreground mt-1 opacity-90 group-hover:text-primary transition-colors duration-300">
                   {productCount} {productCount === 1 ? 'product' : 'products'}
                 </p>
               )}
