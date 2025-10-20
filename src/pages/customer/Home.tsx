@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
+import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ArrowRight, Package } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { initializeProducts } from "@/lib/productData";
 
 interface Product {
@@ -18,13 +19,20 @@ interface Product {
   createdAt: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  image_url?: string | null;
+  store_id: string;
+}
+
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Load products and categories
-  const loadProducts = () => {
+  const loadProducts = async () => {
     initializeProducts();
     
     const products = JSON.parse(localStorage.getItem("products") || "[]");
@@ -39,9 +47,31 @@ const Home = () => {
     );
     setNewArrivals(sorted.slice(0, 4));
     
-    // Unique categories - always extract from current products
-    const uniqueCategories = [...new Set(publishedProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
-    setCategories(uniqueCategories);
+    // Load categories from database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: store } = await supabase
+          .from("stores")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (store) {
+          const { data: categoriesData } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("store_id", store.id)
+            .order("name");
+
+          if (categoriesData) {
+            setCategories(categoriesData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    }
   };
 
   useEffect(() => {
@@ -137,13 +167,13 @@ const Home = () => {
                 <h2 className="text-3xl font-bold text-foreground mb-2">Shop by Category</h2>
                 <p className="text-muted-foreground">Browse our wide range of categories</p>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {categories.map((category) => (
-                  <Link key={category} to={`/products?category=${encodeURIComponent(category)}`}>
-                    <Card className="px-6 py-3 hover:shadow-lg transition-shadow cursor-pointer whitespace-nowrap min-w-fit">
-                      <h3 className="font-semibold text-foreground">{category}</h3>
-                    </Card>
-                  </Link>
+                  <CategoryCard
+                    key={category.id}
+                    name={category.name}
+                    image_url={category.image_url}
+                  />
                 ))}
               </div>
             </div>

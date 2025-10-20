@@ -22,11 +22,13 @@ interface Category {
   name: string;
   store_id: string;
   created_at: string;
+  image_url?: string | null;
 }
 
 export function CategoryManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -93,7 +95,11 @@ export function CategoryManager() {
       setIsAdding(true);
       const { error } = await supabase
         .from("categories")
-        .insert([{ name: newCategoryName.trim(), store_id: storeId }]);
+        .insert([{ 
+          name: newCategoryName.trim(), 
+          store_id: storeId,
+          image_url: newCategoryImage.trim() || null
+        }]);
 
       if (error) throw error;
 
@@ -102,6 +108,7 @@ export function CategoryManager() {
         description: "Category added successfully",
       });
       setNewCategoryName("");
+      setNewCategoryImage("");
       loadCategories();
     } catch (error: any) {
       toast({
@@ -148,16 +155,22 @@ export function CategoryManager() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Add Category Form */}
-        <div className="flex gap-2">
+        <div className="space-y-2">
           <Input
             placeholder="Enter category name..."
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleAddCategory()}
+            onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleAddCategory()}
           />
-          <Button onClick={handleAddCategory} disabled={isAdding}>
+          <Input
+            placeholder="Enter Google Drive image URL (optional)..."
+            value={newCategoryImage}
+            onChange={(e) => setNewCategoryImage(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleAddCategory()}
+          />
+          <Button onClick={handleAddCategory} disabled={isAdding} className="w-full">
             {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            <span className="ml-2">Add</span>
+            <span className="ml-2">Add Category</span>
           </Button>
         </div>
 

@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
+import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -29,11 +29,18 @@ interface StoreData {
   whatsapp_number: string | null;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  image_url?: string | null;
+  store_id: string;
+}
+
 const Store = () => {
   const { slug } = useParams<{ slug: string }>();
   const [store, setStore] = useState<StoreData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,10 +71,20 @@ const Store = () => {
 
       setStore(storeData);
 
+      // Fetch categories for this store
+      const { data: categoriesData } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("store_id", storeData.id)
+        .order("name");
+
+      if (categoriesData) {
+        setCategories(categoriesData);
+      }
+
       // TODO: Fetch products from database when products table is properly linked
       // For now, showing message that store exists but no products yet
       setProducts([]);
-      setCategories([]);
     } catch (error: any) {
       console.error("Error loading store:", error);
       toast({
@@ -135,6 +152,28 @@ const Store = () => {
             </div>
           </div>
         </section>
+
+        {/* Categories Section */}
+        {categories.length > 0 && (
+          <section className="py-16 bg-muted/50">
+            <div className="container mx-auto px-4">
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-foreground mb-2">Shop by Category</h2>
+                <p className="text-muted-foreground">Browse our categories</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {categories.map((category) => (
+                  <CategoryCard
+                    key={category.id}
+                    name={category.name}
+                    image_url={category.image_url}
+                    slug={store?.slug}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Products Section */}
         <section className="py-16">
