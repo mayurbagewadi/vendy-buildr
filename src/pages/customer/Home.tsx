@@ -194,21 +194,28 @@ const Home = () => {
               </p>
             </div>
             
-            {/* Creative Grid Layout */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-7xl mx-auto">
-              {categories.map((category, index) => (
-                <div 
-                  key={category.id}
-                  className={`${
-                    index === 0 || index === 5 ? 'md:col-span-2' : ''
-                  } transform transition-all duration-300 hover:scale-105`}
-                >
-                  <CategoryCard
-                    name={category.name}
-                    image_url={category.image_url}
-                  />
-                </div>
-              ))}
+            {/* Horizontal Scrollable Layout */}
+            <div className="relative">
+              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+                {categories.map((category, index) => (
+                  <div 
+                    key={category.id}
+                    className="flex-shrink-0 w-64 transform transition-all duration-300 hover:scale-105 hover:z-10 snap-center"
+                    style={{
+                      animationDelay: `${index * 100}ms`
+                    }}
+                  >
+                    <CategoryCard
+                      name={category.name}
+                      image_url={category.image_url}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Gradient Fade Edges */}
+              <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+              <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-background to-transparent pointer-events-none" />
             </div>
           </div>
         </section>
