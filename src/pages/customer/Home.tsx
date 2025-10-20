@@ -26,10 +26,50 @@ interface Category {
   store_id: string;
 }
 
+// Demo categories with images
+const DEMO_CATEGORIES: Category[] = [
+  {
+    id: "demo-1",
+    name: "Electronics",
+    image_url: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400",
+    store_id: "demo"
+  },
+  {
+    id: "demo-2",
+    name: "Fashion",
+    image_url: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400",
+    store_id: "demo"
+  },
+  {
+    id: "demo-3",
+    name: "Home & Living",
+    image_url: "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=400",
+    store_id: "demo"
+  },
+  {
+    id: "demo-4",
+    name: "Beauty",
+    image_url: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400",
+    store_id: "demo"
+  },
+  {
+    id: "demo-5",
+    name: "Sports",
+    image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400",
+    store_id: "demo"
+  },
+  {
+    id: "demo-6",
+    name: "Books",
+    image_url: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400",
+    store_id: "demo"
+  }
+];
+
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(DEMO_CATEGORIES);
 
   // Load products and categories
   const loadProducts = async () => {
@@ -47,7 +87,7 @@ const Home = () => {
     );
     setNewArrivals(sorted.slice(0, 4));
     
-    // Load categories from database
+    // Load categories from database or use demo
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -64,13 +104,20 @@ const Home = () => {
             .eq("store_id", store.id)
             .order("name");
 
-          if (categoriesData) {
+          if (categoriesData && categoriesData.length > 0) {
             setCategories(categoriesData);
+          } else {
+            setCategories(DEMO_CATEGORIES);
           }
+        } else {
+          setCategories(DEMO_CATEGORIES);
         }
+      } else {
+        setCategories(DEMO_CATEGORIES);
       }
     } catch (error) {
       console.error("Error loading categories:", error);
+      setCategories(DEMO_CATEGORIES);
     }
   };
 
@@ -131,9 +178,43 @@ const Home = () => {
           </div>
         </section>
 
+        {/* Categories - Right after banner */}
+        <section id="categories" className="py-20 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
+          {/* Decorative Elements */}
+          <div className="absolute top-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+                Shop by Category
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Explore our curated collections designed just for you
+              </p>
+            </div>
+            
+            {/* Creative Grid Layout */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-7xl mx-auto">
+              {categories.map((category, index) => (
+                <div 
+                  key={category.id}
+                  className={`${
+                    index === 0 || index === 5 ? 'md:col-span-2' : ''
+                  } transform transition-all duration-300 hover:scale-105`}
+                >
+                  <CategoryCard
+                    name={category.name}
+                    image_url={category.image_url}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Featured Products */}
-        <section className="py-16">
+        <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-center mb-8">
               <div>
@@ -158,27 +239,6 @@ const Home = () => {
             )}
           </div>
         </section>
-
-        {/* Categories */}
-        {categories.length > 0 && (
-          <section id="categories" className="py-16 bg-muted/50">
-            <div className="container mx-auto px-4">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-foreground mb-2">Shop by Category</h2>
-                <p className="text-muted-foreground">Browse our wide range of categories</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {categories.map((category) => (
-                  <CategoryCard
-                    key={category.id}
-                    name={category.name}
-                    image_url={category.image_url}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* New Arrivals */}
         {newArrivals.length > 0 && (

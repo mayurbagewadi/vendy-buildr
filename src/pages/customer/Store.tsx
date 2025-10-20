@@ -153,22 +153,41 @@ const Store = () => {
           </div>
         </section>
 
-        {/* Categories Section */}
+        {/* Categories Section - Right after banner */}
         {categories.length > 0 && (
-          <section className="py-16 bg-muted/50">
-            <div className="container mx-auto px-4">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-foreground mb-2">Shop by Category</h2>
-                <p className="text-muted-foreground">Browse our categories</p>
+          <section className="py-20 bg-gradient-to-b from-primary/5 via-muted/30 to-background relative overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
+            <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
+            
+            <div className="container mx-auto px-4 relative z-10">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+                  Explore Our Collections
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Discover amazing products across different categories
+                </p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {categories.map((category) => (
-                  <CategoryCard
+              
+              {/* Dynamic Grid Layout */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-7xl mx-auto">
+                {categories.map((category, index) => (
+                  <div 
                     key={category.id}
-                    name={category.name}
-                    image_url={category.image_url}
-                    slug={store?.slug}
-                  />
+                    className={`${
+                      index % 7 === 0 || index % 7 === 6 ? 'md:col-span-2' : ''
+                    } transform transition-all duration-300 hover:scale-105 hover:z-10`}
+                    style={{
+                      animationDelay: `${index * 100}ms`
+                    }}
+                  >
+                    <CategoryCard
+                      name={category.name}
+                      image_url={category.image_url}
+                      slug={store?.slug}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
