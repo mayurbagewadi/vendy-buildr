@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -168,6 +169,21 @@ export function CategoryManager() {
             onChange={(e) => setNewCategoryImage(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleAddCategory()}
           />
+          {newCategoryImage && (
+            <div className="border rounded-lg p-2 bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-2">Image Preview:</p>
+              <img 
+                src={convertToDirectImageUrl(newCategoryImage) || ''} 
+                alt="Preview" 
+                className="w-24 h-24 object-cover rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <p className="text-xs text-destructive mt-1 hidden">Failed to load image. Please check the URL.</p>
+            </div>
+          )}
           <Button onClick={handleAddCategory} disabled={isAdding} className="w-full">
             {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             <span className="ml-2">Add Category</span>

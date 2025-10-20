@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Package } from "lucide-react";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 interface CategoryCardProps {
   name: string;
@@ -13,6 +14,8 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
   const categoryLink = slug 
     ? `/store/${slug}?category=${encodeURIComponent(name)}`
     : `/products?category=${encodeURIComponent(name)}`;
+  
+  const directImageUrl = convertToDirectImageUrl(image_url);
 
   return (
     <Link to={categoryLink}>
@@ -20,10 +23,10 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
         <CardContent className="p-0 relative">
           {/* Image Container with Gradient Overlay */}
           <div className="relative aspect-square overflow-hidden">
-            {image_url ? (
+            {directImageUrl ? (
               <>
                 <img
-                  src={image_url}
+                  src={directImageUrl}
                   alt={name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-90 group-hover:brightness-100"
                 />
