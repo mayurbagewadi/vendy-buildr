@@ -70,6 +70,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       console.log('[AdminLayout] User authenticated:', session.user.email);
 
+      // Check if user has admin role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'admin');
+
+      if (!roles || roles.length === 0) {
+        console.log('[AdminLayout] User is not an admin');
+        toast({
+          title: "Access Denied",
+          description: "You need admin privileges to access this area",
+        });
+        navigate("/");
+        return;
+      }
+
       // Load store data
       const { data: store, error } = await supabase
         .from('stores')
@@ -92,6 +109,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     };
 
     checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        navigate('/auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   useEffect(() => {

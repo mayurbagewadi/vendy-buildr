@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,10 +53,8 @@ serve(async (req) => {
       );
     }
 
-    // In production, you should use bcrypt or similar to hash passwords
-    // For now, we're doing a simple comparison (NOT SECURE FOR PRODUCTION)
-    // TODO: Implement proper password hashing with bcrypt
-    const passwordMatch = admin.password_hash === password;
+    // Use bcrypt to compare password with hash
+    const passwordMatch = await bcrypt.compare(password, admin.password_hash);
 
     if (!passwordMatch) {
       console.log('Invalid password for super admin:', email);

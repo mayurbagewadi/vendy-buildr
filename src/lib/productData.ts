@@ -1,4 +1,5 @@
-// Shared product data utility for admin and customer sections
+// Product data utility using Supabase database
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Variant {
   name: string;
@@ -12,180 +13,205 @@ export interface Product {
   description: string;
   category: string;
   basePrice?: number;
+  base_price?: number;
   priceRange?: string;
+  price_range?: string;
   stock?: number;
   sku?: string;
   status: 'published' | 'draft' | 'inactive';
   images: string[];
   videoUrl?: string;
+  video_url?: string;
   variants?: Variant[];
   createdAt?: string;
+  created_at?: string;
   updatedAt?: string;
+  updated_at?: string;
+  store_id?: string;
 }
 
-const STORAGE_KEY = 'products';
+// Get current store ID from session
+const getStoreId = async (): Promise<string | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
 
-// Seed data for demo purposes
-const seedProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Premium Organic Coffee Beans',
-    description: 'High-quality organic coffee beans sourced from sustainable farms. Perfect for espresso and drip coffee.',
-    category: 'Beverages',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=800'],
-    variants: [
-      { name: '250g', price: 299, sku: 'COF-250' },
-      { name: '500g', price: 549, sku: 'COF-500' },
-      { name: '1kg', price: 999, sku: 'COF-1KG' }
-    ],
-    priceRange: '₹299 - ₹999',
-    stock: 50,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    name: 'Artisan Sourdough Bread',
-    description: 'Handcrafted sourdough bread made with traditional techniques and natural ingredients.',
-    category: 'Bakery',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1549931319-a545dcf3bc4c?w=800'],
-    basePrice: 150,
-    priceRange: '₹150',
-    stock: 30,
-    sku: 'BRD-SRD-001',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '3',
-    name: 'Fresh Organic Vegetables Mix',
-    description: 'A curated mix of fresh, organic vegetables delivered directly from local farms.',
-    category: 'Groceries',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800'],
-    variants: [
-      { name: '1kg Pack', price: 199, sku: 'VEG-1KG' },
-      { name: '3kg Pack', price: 549, sku: 'VEG-3KG' },
-      { name: '5kg Pack', price: 849, sku: 'VEG-5KG' }
-    ],
-    priceRange: '₹199 - ₹849',
-    stock: 100,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '4',
-    name: 'Premium Extra Virgin Olive Oil',
-    description: 'Cold-pressed extra virgin olive oil from Mediterranean groves. Perfect for cooking and salads.',
-    category: 'Groceries',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=800'],
-    variants: [
-      { name: '250ml', price: 399, sku: 'OIL-250' },
-      { name: '500ml', price: 749, sku: 'OIL-500' },
-      { name: '1L', price: 1399, sku: 'OIL-1L' }
-    ],
-    priceRange: '₹399 - ₹1,399',
-    stock: 40,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '5',
-    name: 'Handmade Dark Chocolate Bar',
-    description: 'Rich 70% dark chocolate made with premium cocoa beans. No artificial additives.',
-    category: 'Beverages',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=800'],
-    basePrice: 250,
-    priceRange: '₹250',
-    stock: 60,
-    sku: 'CHC-DRK-001',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '6',
-    name: 'Organic Green Tea Collection',
-    description: 'Premium green tea collection with jasmine, mint, and classic varieties.',
-    category: 'Beverages',
-    status: 'published',
-    images: ['https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=800'],
-    variants: [
-      { name: '25 Tea Bags', price: 299, sku: 'TEA-25' },
-      { name: '50 Tea Bags', price: 549, sku: 'TEA-50' },
-      { name: '100 Tea Bags', price: 999, sku: 'TEA-100' }
-    ],
-    priceRange: '₹299 - ₹999',
-    stock: 75,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+  const { data: store } = await supabase
+    .from('stores')
+    .select('id')
+    .eq('user_id', session.user.id)
+    .maybeSingle();
 
-// Initialize products with seed data if none exist
-export const initializeProducts = (): void => {
-  const existingProducts = localStorage.getItem(STORAGE_KEY);
-  if (!existingProducts || JSON.parse(existingProducts).length === 0) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedProducts));
-  }
+  return store?.id || null;
 };
 
-// Get all products
-export const getProducts = (): Product[] => {
-  const products = localStorage.getItem(STORAGE_KEY);
-  return products ? JSON.parse(products) : [];
+// Initialize products - no longer needed with database
+export const initializeProducts = (): void => {
+  console.log('Products are now stored in Supabase database');
+};
+
+// Get all products for the current store
+export const getProducts = async (): Promise<Product[]> => {
+  const storeId = await getStoreId();
+  if (!storeId) return [];
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+
+  return (data || []) as unknown as Product[];
 };
 
 // Get published products (for customer view)
-export const getPublishedProducts = (): Product[] => {
-  return getProducts().filter(p => p.status === 'published');
+export const getPublishedProducts = async (storeId?: string): Promise<Product[]> => {
+  if (!storeId) {
+    const currentStoreId = await getStoreId();
+    if (!currentStoreId) return [];
+    storeId = currentStoreId;
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('store_id', storeId)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching published products:', error);
+    return [];
+  }
+
+  return (data || []) as unknown as Product[];
 };
 
 // Get product by ID
-export const getProductById = (id: string): Product | null => {
-  const products = getProducts();
-  return products.find(p => p.id === id) || null;
+export const getProductById = async (id: string): Promise<Product | null> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching product:', error);
+    return null;
+  }
+
+  return data as unknown as Product | null;
 };
 
-// Save products
-export const saveProducts = (products: Product[]): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  // Trigger storage event for same-window updates
-  window.dispatchEvent(new StorageEvent('storage', {
-    key: STORAGE_KEY,
-    newValue: JSON.stringify(products),
-  }));
+// Save products - no longer needed with database
+export const saveProducts = async (products: Product[]): Promise<void> => {
+  console.warn('saveProducts is deprecated - use addProduct or updateProduct instead');
 };
 
 // Add product
-export const addProduct = (product: Product): void => {
-  const products = getProducts();
-  products.push(product);
-  saveProducts(products);
+export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> => {
+  const storeId = await getStoreId();
+  if (!storeId) {
+    throw new Error('No store found for current user');
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .insert([{
+      store_id: storeId,
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      base_price: product.basePrice || product.base_price,
+      price_range: product.priceRange || product.price_range,
+      stock: product.stock || 0,
+      sku: product.sku,
+      status: product.status || 'draft',
+      images: product.images || [],
+      video_url: product.videoUrl || product.video_url,
+      variants: (product.variants || []) as any,
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding product:', error);
+    throw error;
+  }
+
+  return data as unknown as Product;
 };
 
 // Update product
-export const updateProduct = (id: string, updatedProduct: Product): void => {
-  const products = getProducts();
-  const index = products.findIndex(p => p.id === id);
-  if (index !== -1) {
-    products[index] = updatedProduct;
-    saveProducts(products);
+export const updateProduct = async (id: string, product: Partial<Product>): Promise<Product | null> => {
+  const updateData: any = {};
+  
+  if (product.name !== undefined) updateData.name = product.name;
+  if (product.description !== undefined) updateData.description = product.description;
+  if (product.category !== undefined) updateData.category = product.category;
+  if (product.basePrice !== undefined || product.base_price !== undefined) {
+    updateData.base_price = product.basePrice || product.base_price;
   }
+  if (product.priceRange !== undefined || product.price_range !== undefined) {
+    updateData.price_range = product.priceRange || product.price_range;
+  }
+  if (product.stock !== undefined) updateData.stock = product.stock;
+  if (product.sku !== undefined) updateData.sku = product.sku;
+  if (product.status !== undefined) updateData.status = product.status;
+  if (product.images !== undefined) updateData.images = product.images;
+  if (product.videoUrl !== undefined || product.video_url !== undefined) {
+    updateData.video_url = product.videoUrl || product.video_url;
+  }
+  if (product.variants !== undefined) updateData.variants = product.variants as any;
+
+  const { data, error } = await supabase
+    .from('products')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
+
+  return data as unknown as Product;
 };
 
 // Delete product
-export const deleteProduct = (id: string): void => {
-  const products = getProducts().filter(p => p.id !== id);
-  saveProducts(products);
+export const deleteProduct = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting product:', error);
+    throw error;
+  }
 };
 
 // Get unique categories
-export const getCategories = (): string[] => {
-  const products = getProducts();
-  const categories = products.map(p => p.category);
-  return Array.from(new Set(categories)).filter(Boolean);
+export const getCategories = async (): Promise<string[]> => {
+  const storeId = await getStoreId();
+  if (!storeId) return [];
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('category')
+    .eq('store_id', storeId)
+    .not('category', 'is', null);
+
+  if (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+
+  const categories = data.map(p => p.category).filter(Boolean);
+  return Array.from(new Set(categories));
 };

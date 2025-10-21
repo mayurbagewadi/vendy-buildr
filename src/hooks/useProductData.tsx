@@ -20,13 +20,13 @@ export const useProductData = (publishedOnly = false) => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const loadProducts = useCallback(() => {
+  const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       // Initialize products with seed data if empty
       initializeProducts();
-      const data = publishedOnly ? getPublishedProducts() : getProducts();
+      const data = await (publishedOnly ? getPublishedProducts() : getProducts());
       setProducts(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load products';
@@ -62,8 +62,8 @@ export const useProductData = (publishedOnly = false) => {
         throw new Error(validationErrors.join(', '));
       }
 
-      addProductUtil(product);
-      loadProducts();
+      await addProductUtil(product);
+      await loadProducts();
       toast({
         title: 'Success',
         description: 'Product added successfully',
@@ -87,8 +87,8 @@ export const useProductData = (publishedOnly = false) => {
         throw new Error(validationErrors.join(', '));
       }
 
-      updateProductUtil(id, product);
-      loadProducts();
+      await updateProductUtil(id, product);
+      await loadProducts();
       toast({
         title: 'Success',
         description: 'Product updated successfully',
@@ -107,8 +107,8 @@ export const useProductData = (publishedOnly = false) => {
 
   const deleteProduct = useCallback(async (id: string) => {
     try {
-      deleteProductUtil(id);
-      loadProducts();
+      await deleteProductUtil(id);
+      await loadProducts();
       toast({
         title: 'Success',
         description: 'Product deleted successfully',
@@ -125,8 +125,8 @@ export const useProductData = (publishedOnly = false) => {
     }
   }, [loadProducts, toast]);
 
-  const getProduct = useCallback((id: string) => {
-    return getProductById(id);
+  const getProduct = useCallback(async (id: string) => {
+    return await getProductById(id);
   }, []);
 
   const refresh = useCallback(() => {
