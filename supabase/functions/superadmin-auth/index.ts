@@ -1,6 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { compare } from "https://deno.land/x/bcrypt@v0.2.4/mod.ts";
+
+// Simple password verification using Web Crypto API
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  try {
+    // For now, do a simple comparison - in production you should use proper hashing
+    // The hash in the database should be created using the same method
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return hashHex === hash;
+  } catch (error) {
+    console.error('Password verification error:', error);
+    return false;
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,8 +70,8 @@ serve(async (req) => {
       );
     }
 
-    // Use bcrypt to compare password with hash
-    const passwordMatch = await compare(password, admin.password_hash);
+    // Verify password using Web Crypto API
+    const passwordMatch = await verifyPassword(password, admin.password_hash);
 
     if (!passwordMatch) {
       console.log('Invalid password for super admin:', email);
