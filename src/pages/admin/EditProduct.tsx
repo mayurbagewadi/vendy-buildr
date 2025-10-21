@@ -88,7 +88,7 @@ const EditProduct = () => {
       return;
     }
 
-    const product = getProductById(id);
+    const product = await getProductById(id);
     if (!product) {
       toast({
         title: "Product not found",
@@ -124,14 +124,14 @@ const EditProduct = () => {
       name: product.name,
       description: product.description,
       category: product.category,
-      basePrice: product.basePrice?.toString() || "",
+      basePrice: product.basePrice?.toString() || product.base_price?.toString() || "",
       baseSku: product.sku || "",
       baseStock: product.stock?.toString() || "",
       status: product.status,
     });
 
     setImageUrls(product.images || []);
-    setVideoUrl(product.videoUrl || "");
+    setVideoUrl(product.videoUrl || product.video_url || "");
     
     if (product.variants) {
       setVariants(product.variants.map((v, idx) => ({
@@ -253,11 +253,11 @@ const EditProduct = () => {
           sku: v.sku,
         })),
         priceRange: getPriceRange() || `₹${parseFloat(data.basePrice).toFixed(2)}`,
-        createdAt: getProductById(id)?.createdAt || new Date().toISOString(),
+        createdAt: (await getProductById(id))?.createdAt || (await getProductById(id))?.created_at || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      updateProduct(id, productData);
+      await updateProduct(id, productData);
 
       toast({
         title: "Product updated successfully",

@@ -53,8 +53,8 @@ const Products = () => {
   const itemsPerPage = 10;
 
   // Load products function
-  const loadProducts = () => {
-    const loadedProducts = getProducts().map(p => ({
+  const loadProducts = async () => {
+    const loadedProducts = (await getProducts()).map(p => ({
       ...p,
       variantCount: p.variants?.length || 0,
     }));
@@ -125,8 +125,8 @@ const Products = () => {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    deleteProductUtil(productId);
-    const loadedProducts = getProducts().map(p => ({
+    await deleteProductUtil(productId);
+    const loadedProducts = (await getProducts()).map(p => ({
       ...p,
       variantCount: p.variants?.length || 0,
     }));

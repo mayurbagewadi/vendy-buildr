@@ -70,38 +70,42 @@ const AdminDashboard = () => {
     }
 
     // Load real product data
-    const products = getProducts();
-    const activeProducts = products.filter(p => p.status === 'published').length;
-    
-    setStats({
-      totalProducts: products.length,
-      activeProducts: activeProducts,
-      totalOrders: 156, // Demo data
-      totalCustomers: 89, // Demo data
-    });
+    const loadProductStats = async () => {
+      const products = await getProducts();
+      const activeProducts = products.filter(p => p.status === 'published').length;
+      
+      setStats({
+        totalProducts: products.length,
+        activeProducts: activeProducts,
+        totalOrders: 156, // Demo data
+        totalCustomers: 89, // Demo data
+      });
 
-    // Demo recent activity
-    const demoActivity = [
-      {
-        id: '1',
-        action: 'Product published',
-        product: products[0]?.name || 'Sample Product',
-        time: '2 hours ago'
-      },
-      {
-        id: '2',
-        action: 'New order received',
-        product: products[1]?.name || 'Sample Product',
-        time: '5 hours ago'
-      },
-      {
-        id: '3',
-        action: 'Product updated',
-        product: products[2]?.name || 'Sample Product',
-        time: '1 day ago'
-      }
-    ];
-    setRecentActivity(demoActivity);
+      // Demo recent activity
+      const demoActivity = [
+        {
+          id: '1',
+          action: 'Product published',
+          product: products[0]?.name || 'Sample Product',
+          time: '2 hours ago'
+        },
+        {
+          id: '2',
+          action: 'New order received',
+          product: products[1]?.name || 'Sample Product',
+          time: '5 hours ago'
+        },
+        {
+          id: '3',
+          action: 'Product updated',
+          product: products[2]?.name || 'Sample Product',
+          time: '1 day ago'
+        }
+      ];
+      setRecentActivity(demoActivity);
+    };
+
+    loadProductStats();
 
     // Show demo notification
     toast({
