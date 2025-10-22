@@ -70,26 +70,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       console.log('[AdminLayout] User authenticated:', session.user.email);
 
-      // Check if user has admin or super_admin role
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .in('role', ['admin', 'super_admin']);
-
-      if (!roles || roles.length === 0) {
-        console.log('[AdminLayout] User is not an admin');
-        toast({
-          title: "Access Denied",
-          description: "You need admin privileges to access this area",
-        });
-        navigate("/");
-        return;
-      }
-
-      console.log('[AdminLayout] User has role:', roles[0].role);
-
-      // Load store data
+      // Load store data - store owners are automatically admins of their own store
       const { data: store, error } = await supabase
         .from('stores')
         .select('*')
