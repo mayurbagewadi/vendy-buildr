@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { getSettings, saveSettings } from "@/lib/settingsData";
+
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminSettings = () => {
@@ -34,51 +34,46 @@ const AdminSettings = () => {
 
   useEffect(() => {
     const loadSettings = async () => {
-      // Load existing settings from centralized settings
-      const settings = getSettings();
-      
-      // Load additional settings from old localStorage format for backward compatibility
-      const oldSettings = localStorage.getItem("storeSettings");
-      const extraData = oldSettings ? JSON.parse(oldSettings) : {};
-      
-      // Try to load phone from profiles table
-      let phoneFromDb = extraData.phone || "";
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('phone')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (profile?.phone) {
-            phoneFromDb = profile.phone;
-          }
-        }
+        if (!user) return;
+
+        // Load from stores table
+        const { data: store } = await supabase
+          .from('stores')
+          .select('name, description, logo_url, hero_banner_url, whatsapp_number, social_links')
+          .eq('user_id', user.id)
+          .single();
+
+        // Load phone from profiles table
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone, email')
+          .eq('user_id', user.id)
+          .single();
+
+        setFormData({
+          storeName: store?.name || "",
+          tagline: store?.description || "",
+          logoUrl: store?.logo_url || "",
+          heroImageUrl: store?.hero_banner_url || "",
+          phone: profile?.phone || "",
+          email: profile?.email || "",
+          address: "",
+          whatsappNumber: store?.whatsapp_number || "",
+          currency: "INR",
+          currencySymbol: "₹",
+          deliveryAreas: "",
+          returnPolicy: "",
+          shippingPolicy: "",
+          termsConditions: "",
+          facebook: (store?.social_links as any)?.facebook || "",
+          instagram: (store?.social_links as any)?.instagram || "",
+          twitter: (store?.social_links as any)?.twitter || "",
+        });
       } catch (error) {
-        console.error('Error loading phone from profiles:', error);
+        console.error('Error loading settings:', error);
       }
-      
-      setFormData({
-        storeName: settings.storeName,
-        tagline: extraData.tagline || "",
-        logoUrl: extraData.logoUrl || "",
-        heroImageUrl: extraData.heroImageUrl || "",
-        phone: phoneFromDb,
-        email: settings.email || "",
-        address: settings.address || "",
-        whatsappNumber: settings.whatsappNumber,
-        currency: settings.currency || "INR",
-        currencySymbol: settings.currencySymbol || "₹",
-        deliveryAreas: extraData.deliveryAreas || "",
-        returnPolicy: extraData.returnPolicy || "",
-        shippingPolicy: extraData.shippingPolicy || "",
-        termsConditions: extraData.termsConditions || "",
-        facebook: extraData.facebook || "",
-        instagram: extraData.instagram || "",
-        twitter: extraData.twitter || "",
-      });
     };
     
     loadSettings();
@@ -127,31 +122,43 @@ const AdminSettings = () => {
         return;
       }
 
-      // Save to centralized settings
-      const settings = getSettings();
-      saveSettings({
-        ...settings,
-        storeName: formData.storeName,
-        whatsappNumber: formData.whatsappNumber,
-        email: formData.email,
-        address: formData.address,
-        currency: formData.currency,
-        currencySymbol: formData.currencySymbol,
-      });
-
-      // Save additional fields to old format for backward compatibility
-      localStorage.setItem("storeSettings", JSON.stringify(formData));
-
-      // Save phone number to profiles table for superadmin visibility
+      // Save to Supabase
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && formData.phone) {
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Update stores table
+      const { error: storeError } = await supabase
+        .from('stores')
+        .update({
+          name: formData.storeName,
+          description: formData.tagline || null,
+          logo_url: formData.logoUrl || null,
+          hero_banner_url: formData.heroImageUrl || null,
+          whatsapp_number: formData.whatsappNumber,
+          social_links: {
+            facebook: formData.facebook || null,
+            instagram: formData.instagram || null,
+            twitter: formData.twitter || null,
+          }
+        })
+        .eq('user_id', user.id);
+
+      if (storeError) throw storeError;
+
+      // Update profiles table
+      if (formData.phone || formData.email) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ phone: formData.phone })
+          .update({
+            phone: formData.phone || null,
+            email: formData.email || null,
+          })
           .eq('user_id', user.id);
-        
+
         if (profileError) {
-          console.error('Error updating profile phone:', profileError);
+          console.error('Error updating profile:', profileError);
         }
       }
       

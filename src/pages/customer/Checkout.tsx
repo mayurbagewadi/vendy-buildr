@@ -66,8 +66,8 @@ const Checkout = () => {
 
   const checkLocationFeature = async () => {
     try {
-      // Get the store slug from localStorage (set by store owner)
-      const storeSlug = localStorage.getItem('store_slug') || window.location.hostname.split('.')[0];
+      // Get the store slug from hostname or pathname
+      const storeSlug = window.location.hostname.split('.')[0];
       
       // Get store information
       const { data: storeData } = await supabase
@@ -135,8 +135,8 @@ const Checkout = () => {
     }[data.deliveryTime];
 
     try {
-      // Get store info
-      const storeSlug = localStorage.getItem('store_slug') || window.location.hostname.split('.')[0];
+      // Get store info from hostname or pathname
+      const storeSlug = window.location.hostname.split('.')[0];
       
       const { data: storeData } = await supabase
         .from("stores")
@@ -243,7 +243,7 @@ const Checkout = () => {
 
       // Generate and send WhatsApp message
       const message = generateOrderMessage(orderDetails);
-      const result = openWhatsApp(message);
+      const result = await openWhatsApp(message);
 
       if (!result.success) {
         toast({

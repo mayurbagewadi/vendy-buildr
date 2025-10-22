@@ -2,7 +2,16 @@
 
 import { Product, Variant } from './productData';
 import { CartItem } from './cartUtils';
-import { StoreSettings } from './settingsData';
+
+// Minimal store settings interface for validation
+interface StoreSettings {
+  storeName?: string;
+  whatsappNumber?: string;
+  email?: string;
+  deliveryCharge?: number;
+  freeShippingThreshold?: number;
+  taxRate?: number;
+}
 
 export class ValidationError extends Error {
   constructor(message: string) {

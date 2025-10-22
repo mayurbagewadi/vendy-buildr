@@ -103,14 +103,23 @@ const AdminDashboard = () => {
     
     fetchSubscription();
     
-    // Load store name from localStorage
-    const storeSettings = localStorage.getItem("storeSettings");
-    if (storeSettings) {
-      const settings = JSON.parse(storeSettings);
-      if (settings.storeName) {
-        setStoreName(settings.storeName);
+    // Load store name from database
+    const loadStoreName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('name')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (store?.name) {
+          setStoreName(store.name);
+        }
       }
-    }
+    };
+    
+    loadStoreName();
 
     // Load real product data
     const loadProductStats = async () => {

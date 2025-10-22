@@ -1,8 +1,9 @@
 import { CartItem } from "./cartUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 // Validate if WhatsApp number is properly configured
-export const isWhatsAppConfigured = (): boolean => {
-  const number = getWhatsAppNumber();
+export const isWhatsAppConfigured = async (): Promise<boolean> => {
+  const number = await getWhatsAppNumber();
   const formattedNumber = formatWhatsAppNumber(number);
 
   // Check if number is empty, default, or invalid
@@ -13,35 +14,24 @@ export const isWhatsAppConfigured = (): boolean => {
   return true;
 };
 
-// Get WhatsApp business number from settings
-export const getWhatsAppNumber = (): string => {
-  // Try multiple storage keys for backward compatibility
-  const savedNumber = localStorage.getItem("whatsapp_business_number");
-  if (savedNumber) return savedNumber;
-
-  // Try store_settings (new format)
+// Get WhatsApp business number from database
+// Note: This function now requires async/await in the calling context
+export const getWhatsAppNumber = async (): Promise<string> => {
   try {
-    const settings = localStorage.getItem("store_settings");
-    if (settings) {
-      const parsed = JSON.parse(settings);
-      return parsed.whatsappNumber || "919876543210";
-    }
-  } catch (error) {
-    console.error("Error reading WhatsApp number from settings:", error);
-  }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return "919876543210";
 
-  // Try storeSettings (old format)
-  try {
-    const oldSettings = localStorage.getItem("storeSettings");
-    if (oldSettings) {
-      const parsed = JSON.parse(oldSettings);
-      return parsed.whatsapp || "919876543210";
-    }
-  } catch (error) {
-    console.error("Error reading WhatsApp number from old settings:", error);
-  }
+    const { data: store } = await supabase
+      .from('stores')
+      .select('whatsapp_number')
+      .eq('user_id', user.id)
+      .single();
 
-  return "919876543210"; // Default Indian format
+    return store?.whatsapp_number || "919876543210";
+  } catch (error) {
+    console.error("Error fetching WhatsApp number:", error);
+    return "919876543210";
+  }
 };
 
 // Format phone number for WhatsApp (remove spaces, dashes, etc.)
@@ -155,9 +145,9 @@ export const generateSupportMessage = (): string => {
 };
 
 // Open WhatsApp with pre-filled message
-export const openWhatsApp = (message: string, phoneNumber?: string): { success: boolean; error?: string } => {
+export const openWhatsApp = async (message: string, phoneNumber?: string): Promise<{ success: boolean; error?: string }> => {
   // If phoneNumber is not provided, check if WhatsApp is configured
-  if (!phoneNumber && !isWhatsAppConfigured()) {
+  if (!phoneNumber && !(await isWhatsAppConfigured())) {
     return {
       success: false,
       error:
@@ -165,7 +155,7 @@ export const openWhatsApp = (message: string, phoneNumber?: string): { success: 
     };
   }
 
-  const number = phoneNumber || getWhatsAppNumber();
+  const number = phoneNumber || (await getWhatsAppNumber());
   const formattedNumber = formatWhatsAppNumber(number);
 
   // Additional validation for the specific number being used

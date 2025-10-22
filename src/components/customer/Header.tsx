@@ -21,9 +21,9 @@ const Header = () => {
     }
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     const message = generateGeneralInquiryMessage();
-    const result = openWhatsApp(message);
+    const result = await openWhatsApp(message);
     
     if (!result.success) {
       toast({

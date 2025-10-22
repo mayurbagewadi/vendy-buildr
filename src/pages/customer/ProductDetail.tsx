@@ -146,9 +146,9 @@ const ProductDetail = () => {
     });
   };
 
-  const handleBuyWhatsApp = () => {
+  const handleBuyWhatsApp = async () => {
     const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
-    const result = openWhatsApp(message);
+    const result = await openWhatsApp(message);
 
     if (!result.success) {
       toast({
@@ -165,7 +165,7 @@ const ProductDetail = () => {
     });
   };
 
-  const handleProductInquiry = () => {
+  const handleProductInquiry = async () => {
     const inquiry = {
       productName: product.name,
       productId: product.id,
@@ -173,7 +173,7 @@ const ProductDetail = () => {
     };
 
     const message = generateProductInquiryMessage(inquiry);
-    const result = openWhatsApp(message);
+    const result = await openWhatsApp(message);
 
     if (!result.success) {
       toast({
