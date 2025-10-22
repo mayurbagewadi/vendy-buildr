@@ -213,13 +213,6 @@ const Checkout = () => {
           .eq("user_id", storeData.user_id);
       }
 
-      // Log to Google Sheets (non-blocking)
-      supabase.functions.invoke('log-order-to-sheet', {
-        body: {
-          storeId: storeData.id,
-          order: orderRecord
-        }
-      }).catch(err => console.error('Failed to log order to sheet:', err));
 
       // Send order email notification (non-blocking)
       if (insertedOrder?.id) {

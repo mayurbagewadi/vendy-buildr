@@ -186,7 +186,7 @@ export const openWhatsApp = (message: string, phoneNumber?: string): { success: 
   return { success: true };
 };
 
-// Export order data for Google Sheets tracking
+// Prepare order data for export
 export const prepareOrderDataForSheets = (order: OrderDetails) => {
   const orderId = `ORD${Date.now()}`;
   const itemsList = order.cart

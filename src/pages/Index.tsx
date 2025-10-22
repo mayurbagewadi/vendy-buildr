@@ -10,7 +10,6 @@ import {
   Smartphone,
   BarChart3,
   Package,
-  FileSpreadsheet,
   Check,
   Crown,
   TrendingUp,
@@ -29,9 +28,9 @@ const Index = () => {
       gradient: "from-amber-500 to-orange-500"
     },
     {
-      icon: FileSpreadsheet,
-      title: "Google Sheets Powered",
-      description: "Manage your catalog effortlessly with familiar spreadsheet tools.",
+      icon: Package,
+      title: "Smart Inventory",
+      description: "Manage your product catalog efficiently with our intuitive interface.",
       gradient: "from-emerald-500 to-teal-500"
     },
     {
@@ -68,8 +67,8 @@ const Index = () => {
     },
     {
       number: "02",
-      title: "Connect Sheets",
-      description: "Link your Google Sheets product catalog"
+      title: "Add Products",
+      description: "Build your product catalog easily"
     },
     {
       number: "03",

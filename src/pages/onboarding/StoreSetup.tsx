@@ -124,10 +124,10 @@ const StoreSetup = () => {
 
       toast({
         title: "Store created!",
-        description: "Let's connect your product sheet next."
+        description: "Let's customize your store next."
       });
 
-      navigate("/onboarding/google-sheets");
+      navigate("/onboarding/customize");
     } catch (error: any) {
       toast({
         title: "Error",

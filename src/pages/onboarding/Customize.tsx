@@ -300,7 +300,7 @@ const Customize = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 md:p-8 border-t">
             <Button
               variant="ghost"
-              onClick={() => navigate("/onboarding/google-sheets")}
+              onClick={() => navigate("/onboarding/store-setup")}
               className="order-2 sm:order-1"
             >
               <ArrowLeft className="w-4 h-4" />
