@@ -239,7 +239,7 @@ const Pricing = () => {
                       <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
                     )}
                     <div className="flex items-baseline gap-2 mb-2">
-                      <span className="text-5xl font-bold text-foreground tracking-tight">
+                      <span className="text-5xl font-semibold text-foreground tracking-tight">
                         ₹{price.toLocaleString()}
                       </span>
                       <span className="text-lg text-muted-foreground font-medium">
@@ -272,8 +272,8 @@ const Pricing = () => {
                     </p>
                     {features.map((feature, index) => (
                       <div key={index} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Check className="w-3 h-3 text-primary" />
+                        <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check className="w-3 h-3 text-green-500" />
                         </div>
                         <span className="text-sm text-foreground font-medium leading-relaxed">{feature}</span>
                       </div>
