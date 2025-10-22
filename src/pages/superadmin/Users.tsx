@@ -128,17 +128,18 @@ export default function Users() {
       }
 
       // Check if user has super_admin role
-      const { data: roles } = await supabase
+      const { data: roles, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .eq('role', 'super_admin')
-        .single();
+        .eq('role', 'super_admin');
 
-      if (!roles) {
+      console.log('Role check:', { userId: user.id, roles, roleError });
+
+      if (roleError || !roles || roles.length === 0) {
         toast({
           title: "Access Denied",
-          description: "You need admin privileges to access this area",
+          description: roleError?.message || "You need admin privileges to access this area",
           variant: "destructive"
         });
         navigate('/superadmin/login');
