@@ -109,7 +109,7 @@ const Index = () => {
             <Link to="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
-            <Link to="/home" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/demo" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Demo Store
             </Link>
           </nav>
@@ -168,7 +168,7 @@ const Index = () => {
                   Start Building Free
                 </Button>
               </Link>
-              <Link to="/home" className="w-full sm:w-auto">
+              <Link to="/demo" className="w-full sm:w-auto">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-10 text-base border-2 hover:bg-muted/50 font-semibold">
                   <Globe className="w-5 h-5 mr-2" />
                   Explore Demo Store
@@ -330,7 +330,7 @@ const Index = () => {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/home" className="w-full sm:w-auto">
+                <Link to="/demo" className="w-full sm:w-auto">
                   <Button 
                     size="lg" 
                     variant="outline"
