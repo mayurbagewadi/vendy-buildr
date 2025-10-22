@@ -106,9 +106,21 @@ export default function Users() {
   const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
 
   useEffect(() => {
+    // Check super admin authentication
+    const session = sessionStorage.getItem('superadmin_session');
+    if (!session) {
+      toast({
+        title: "Access Denied",
+        description: "You need admin privileges to access this area",
+        variant: "destructive"
+      });
+      navigate('/superadmin/login');
+      return;
+    }
+    
     fetchUsers();
     fetchQuickStats();
-  }, []);
+  }, [navigate]);
 
   const fetchUsers = async () => {
     try {
