@@ -137,17 +137,12 @@ const SubscriptionPage = () => {
     return Math.min((used / limit) * 100, 100);
   };
 
-  const handleUpgrade = (planId: string, planName: string) => {
-    toast.info(
-      `To upgrade to ${planName}, please contact our support team`,
-      {
-        description: "We'll help you with the upgrade process",
-        action: {
-          label: "Contact Support",
-          onClick: () => window.open("mailto:support@example.com?subject=Upgrade to " + planName, "_blank")
-        }
-      }
-    );
+  const handleUpgrade = () => {
+    navigate("/pricing");
+  };
+
+  const handleViewPlans = () => {
+    navigate("/pricing");
   };
 
   if (loading) {
@@ -165,6 +160,9 @@ const SubscriptionPage = () => {
           <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
           <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
         </div>
+        <Button onClick={handleViewPlans} variant="outline">
+          View All Plans
+        </Button>
       </div>
 
       {/* Current Plan */}
@@ -327,11 +325,11 @@ const SubscriptionPage = () => {
                   className="w-full"
                   variant={isCurrentPlan ? "outline" : "default"}
                   disabled={isCurrentPlan}
-                  onClick={() => !isCurrentPlan && handleUpgrade(plan.id, plan.name)}
+                  onClick={() => !isCurrentPlan && handleUpgrade()}
                 >
                   {isCurrentPlan ? "Current Plan" : (
                     <>
-                      Upgrade <ArrowUpRight className="w-4 h-4 ml-2" />
+                      Upgrade Now <ArrowUpRight className="w-4 h-4 ml-2" />
                     </>
                   )}
                 </Button>

@@ -27,9 +27,15 @@ interface SubscriptionPlan {
   enable_order_emails: boolean;
 }
 
+interface UserSubscription {
+  plan_id: string;
+  status: string;
+}
+
 const PricingSection = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
@@ -39,6 +45,7 @@ const PricingSection = () => {
 
   const fetchPlans = async () => {
     try {
+      // Fetch plans
       const { data, error } = await supabase
         .from("subscription_plans")
         .select("*")
@@ -53,6 +60,21 @@ const PricingSection = () => {
       }));
       
       setPlans(formattedPlans as SubscriptionPlan[]);
+
+      // Fetch current user's subscription if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: subscription, error: subError } = await supabase
+          .from("subscriptions")
+          .select("plan_id, status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!subError && subscription) {
+          setCurrentSubscription(subscription as UserSubscription);
+        }
+      }
     } catch (error) {
       console.error("Error fetching plans:", error);
     } finally {
@@ -144,17 +166,30 @@ const PricingSection = () => {
               ? plan.yearly_price / 12
               : plan.monthly_price;
 
+            const isCurrentPlan = currentSubscription?.plan_id === plan.id;
+
             return (
               <Card
                 key={plan.id}
                 className={`relative p-8 flex flex-col ${
-                  plan.is_popular
+                  isCurrentPlan
+                    ? "border-primary shadow-lg ring-2 ring-primary"
+                    : plan.is_popular
                     ? "border-primary shadow-lg scale-105"
                     : "border-border"
                 }`}
               >
+                {/* Current Plan Badge */}
+                {isCurrentPlan && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                      Your Current Plan
+                    </Badge>
+                  </div>
+                )}
+
                 {/* Popular Badge */}
-                {plan.is_popular && (
+                {plan.is_popular && !isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground px-4 py-1">
                       Most Popular
@@ -163,7 +198,7 @@ const PricingSection = () => {
                 )}
 
                 {/* Custom Badge */}
-                {plan.badge_text && !plan.is_popular && (
+                {plan.badge_text && !plan.is_popular && !isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge 
                       className="px-4 py-1"
@@ -265,11 +300,12 @@ const PricingSection = () => {
 
                 <Button 
                   className="w-full" 
-                  variant={plan.is_popular ? "default" : "outline"}
+                  variant={isCurrentPlan ? "outline" : plan.is_popular ? "default" : "outline"}
                   size="lg"
                   onClick={() => handleGetStarted(plan.id, plan.name)}
+                  disabled={isCurrentPlan}
                 >
-                  Get Started
+                  {isCurrentPlan ? "Current Plan" : "Get Started"}
                 </Button>
               </Card>
             );
