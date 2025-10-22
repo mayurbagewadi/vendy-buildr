@@ -38,6 +38,7 @@ const planFormSchema = z.object({
   monthly_price: z.coerce.number().min(0, "Price must be 0 or greater"),
   yearly_price: z.coerce.number().min(0, "Price must be 0 or greater").optional(),
   max_products: z.coerce.number().optional(),
+  whatsapp_orders_limit: z.coerce.number().optional(),
   trial_days: z.coerce.number().min(0).default(14),
   is_active: z.boolean().default(true),
   is_popular: z.boolean().default(false),
@@ -75,6 +76,7 @@ export const PlanFormDialog = ({
       monthly_price: 0,
       yearly_price: 0,
       max_products: undefined,
+      whatsapp_orders_limit: undefined,
       trial_days: 14,
       is_active: true,
       is_popular: false,
@@ -99,6 +101,7 @@ export const PlanFormDialog = ({
         monthly_price: 0,
         yearly_price: 0,
         max_products: undefined,
+        whatsapp_orders_limit: undefined,
         trial_days: 14,
         is_active: true,
         is_popular: false,
@@ -282,6 +285,40 @@ export const PlanFormDialog = ({
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="whatsapp_orders_limit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      WhatsApp Orders Limit
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">Maximum number of orders store owners can receive via WhatsApp per billing period.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="Leave empty for unlimited" 
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Empty = Unlimited
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

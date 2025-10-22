@@ -15,6 +15,7 @@ import EditProduct from "./pages/admin/EditProduct";
 import Orders from "./pages/admin/Orders";
 import Analytics from "./pages/admin/Analytics";
 import Categories from "./pages/admin/Categories";
+import Subscription from "./pages/admin/Subscription";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import ProductDetail from "./pages/customer/ProductDetail";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/admin/categories" element={<Categories />} />
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/analytics" element={<Analytics />} />
+            <Route path="/admin/subscription" element={<Subscription />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             
             {/* Super Admin Routes */}

@@ -354,6 +354,7 @@ export type Database = {
           slug: string
           trial_days: number | null
           updated_at: string
+          whatsapp_orders_limit: number | null
           yearly_price: number | null
         }
         Insert: {
@@ -375,6 +376,7 @@ export type Database = {
           slug: string
           trial_days?: number | null
           updated_at?: string
+          whatsapp_orders_limit?: number | null
           yearly_price?: number | null
         }
         Update: {
@@ -396,6 +398,7 @@ export type Database = {
           slug?: string
           trial_days?: number | null
           updated_at?: string
+          whatsapp_orders_limit?: number | null
           yearly_price?: number | null
         }
         Relationships: []
@@ -405,6 +408,8 @@ export type Database = {
           billing_cycle: string
           cancelled_at: string | null
           created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
           id: string
           next_billing_at: string | null
           payment_gateway: string | null
@@ -414,11 +419,14 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           user_id: string
+          whatsapp_orders_used: number | null
         }
         Insert: {
           billing_cycle?: string
           cancelled_at?: string | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
           next_billing_at?: string | null
           payment_gateway?: string | null
@@ -428,11 +436,14 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           user_id: string
+          whatsapp_orders_used?: number | null
         }
         Update: {
           billing_cycle?: string
           cancelled_at?: string | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
           next_billing_at?: string | null
           payment_gateway?: string | null
@@ -442,6 +453,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp_orders_used?: number | null
         }
         Relationships: [
           {
