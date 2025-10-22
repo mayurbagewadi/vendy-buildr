@@ -188,7 +188,7 @@ const PricingSection = () => {
                         <span className="text-foreground">{feature}</span>
                       </li>
                     ))}
-                  {plan.max_products && plan.max_products > 0 && (
+                  {(plan.max_products ?? 0) > 0 && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-foreground">
@@ -196,7 +196,7 @@ const PricingSection = () => {
                       </span>
                     </li>
                   )}
-                  {plan.trial_days && plan.trial_days > 0 && (
+                  {(plan.trial_days ?? 0) > 0 && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-foreground">
