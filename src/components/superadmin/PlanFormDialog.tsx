@@ -38,6 +38,7 @@ const planFormSchema = z.object({
   monthly_price: z.coerce.number().min(0, "Price must be 0 or greater"),
   yearly_price: z.coerce.number().min(0, "Price must be 0 or greater").optional(),
   max_products: z.coerce.number().optional(),
+  enable_whatsapp_orders: z.boolean().default(false),
   whatsapp_orders_limit: z.coerce.number().optional(),
   trial_days: z.coerce.number().min(0).default(14),
   is_active: z.boolean().default(true),
@@ -76,6 +77,7 @@ export const PlanFormDialog = ({
       monthly_price: 0,
       yearly_price: 0,
       max_products: undefined,
+      enable_whatsapp_orders: false,
       whatsapp_orders_limit: undefined,
       trial_days: 14,
       is_active: true,
@@ -101,6 +103,7 @@ export const PlanFormDialog = ({
         monthly_price: 0,
         yearly_price: 0,
         max_products: undefined,
+        enable_whatsapp_orders: false,
         whatsapp_orders_limit: undefined,
         trial_days: 14,
         is_active: true,
@@ -288,37 +291,57 @@ export const PlanFormDialog = ({
 
               <FormField
                 control={form.control}
-                name="whatsapp_orders_limit"
+                name="enable_whatsapp_orders"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      WhatsApp Orders Limit
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Maximum number of orders store owners can receive via WhatsApp per billing period.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </FormLabel>
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">WhatsApp Orders Limit</FormLabel>
+                      <FormDescription>
+                        Set a monthly limit for WhatsApp orders
+                      </FormDescription>
+                    </div>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Leave empty for unlimited" 
-                        {...field}
-                        value={field.value || ""}
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Empty = Unlimited
-                    </FormDescription>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {form.watch("enable_whatsapp_orders") && (
+                <FormField
+                  control={form.control}
+                  name="whatsapp_orders_limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        WhatsApp Orders per Month
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">Maximum number of orders store owners can receive via WhatsApp per billing period.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Enter number of orders" 
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

@@ -26,6 +26,7 @@ interface SubscriptionPlan {
   monthly_price: number;
   yearly_price: number;
   max_products: number;
+  whatsapp_orders_limit: number | null;
   is_active: boolean;
   is_popular: boolean;
   badge_text: string;
@@ -113,7 +114,12 @@ const SubscriptionPlansPage = () => {
 
   const handleEditPlan = (plan: SubscriptionPlan) => {
     setDialogMode("edit");
-    setSelectedPlan(plan);
+    // Add enable_whatsapp_orders based on whether limit exists
+    const planWithToggle = {
+      ...plan,
+      enable_whatsapp_orders: plan.whatsapp_orders_limit !== null,
+    };
+    setSelectedPlan(planWithToggle as any);
     setDialogOpen(true);
   };
 
@@ -152,10 +158,19 @@ const SubscriptionPlansPage = () => {
 
   const handleFormSubmit = async (values: any) => {
     try {
+      // If WhatsApp orders is disabled, set limit to null
+      const submitData = {
+        ...values,
+        whatsapp_orders_limit: values.enable_whatsapp_orders ? values.whatsapp_orders_limit : null,
+      };
+      
+      // Remove the enable_whatsapp_orders field as it's not in the database
+      delete submitData.enable_whatsapp_orders;
+
       if (dialogMode === "add") {
         const { error } = await supabase
           .from('subscription_plans')
-          .insert([values]);
+          .insert([submitData]);
 
         if (error) throw error;
 
@@ -166,7 +181,7 @@ const SubscriptionPlansPage = () => {
       } else if (selectedPlan) {
         const { error } = await supabase
           .from('subscription_plans')
-          .update(values)
+          .update(submitData)
           .eq('id', selectedPlan.id);
 
         if (error) throw error;
@@ -254,6 +269,7 @@ const SubscriptionPlansPage = () => {
                     </div>
                     <div className="space-y-2 text-sm">
                       <p>Max Products: {plan.max_products || 'Unlimited'}</p>
+                      <p>WhatsApp Orders: {plan.whatsapp_orders_limit || 'Unlimited'}</p>
                       <p>Status: {plan.is_active ? 'Active' : 'Inactive'}</p>
                       <div className="flex gap-2 mt-2">
                         {plan.enable_location_sharing && (
