@@ -354,6 +354,7 @@ export type Database = {
           slug: string
           trial_days: number | null
           updated_at: string
+          website_orders_limit: number | null
           whatsapp_orders_limit: number | null
           yearly_price: number | null
         }
@@ -376,6 +377,7 @@ export type Database = {
           slug: string
           trial_days?: number | null
           updated_at?: string
+          website_orders_limit?: number | null
           whatsapp_orders_limit?: number | null
           yearly_price?: number | null
         }
@@ -398,6 +400,7 @@ export type Database = {
           slug?: string
           trial_days?: number | null
           updated_at?: string
+          website_orders_limit?: number | null
           whatsapp_orders_limit?: number | null
           yearly_price?: number | null
         }
@@ -419,6 +422,7 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           user_id: string
+          website_orders_used: number | null
           whatsapp_orders_used: number | null
         }
         Insert: {
@@ -436,6 +440,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           user_id: string
+          website_orders_used?: number | null
           whatsapp_orders_used?: number | null
         }
         Update: {
@@ -453,6 +458,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
+          website_orders_used?: number | null
           whatsapp_orders_used?: number | null
         }
         Relationships: [

@@ -40,6 +40,8 @@ const planFormSchema = z.object({
   max_products: z.coerce.number().optional(),
   enable_whatsapp_orders: z.boolean().default(false),
   whatsapp_orders_limit: z.coerce.number().optional(),
+  enable_website_orders: z.boolean().default(false),
+  website_orders_limit: z.coerce.number().optional(),
   trial_days: z.coerce.number().min(0).default(14),
   is_active: z.boolean().default(true),
   is_popular: z.boolean().default(false),
@@ -79,6 +81,8 @@ export const PlanFormDialog = ({
       max_products: undefined,
       enable_whatsapp_orders: false,
       whatsapp_orders_limit: undefined,
+      enable_website_orders: false,
+      website_orders_limit: undefined,
       trial_days: 14,
       is_active: true,
       is_popular: false,
@@ -105,6 +109,8 @@ export const PlanFormDialog = ({
         max_products: undefined,
         enable_whatsapp_orders: false,
         whatsapp_orders_limit: undefined,
+        enable_website_orders: false,
+        website_orders_limit: undefined,
         trial_days: 14,
         is_active: true,
         is_popular: false,
@@ -354,6 +360,60 @@ export const PlanFormDialog = ({
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="max-w-xs">Maximum number of orders store owners can receive via WhatsApp per billing period.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Enter number of orders" 
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="enable_website_orders"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Website Orders Limit</FormLabel>
+                      <FormDescription>
+                        Set a monthly limit for website orders
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("enable_website_orders") && (
+                <FormField
+                  control={form.control}
+                  name="website_orders_limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        Website Orders per Month
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">Maximum number of orders store owners can receive via website per billing period.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
