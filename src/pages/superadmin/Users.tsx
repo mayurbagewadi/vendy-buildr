@@ -76,6 +76,7 @@ interface QuickStats {
   expired: number;
   cancelled: number;
   inactiveStores: number;
+  noStore: number;
 }
 
 export default function Users() {
@@ -89,12 +90,13 @@ export default function Users() {
     expired: 0,
     cancelled: 0,
     inactiveStores: 0,
+    noStore: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [activityFilter, setActivityFilter] = useState("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | "active" | "inactive" | "no-store">("all");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -292,6 +294,18 @@ export default function Users() {
         }
       }
 
+      // Count users without stores
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("user_id");
+      
+      const { data: storesWithUsers } = await supabase
+        .from("stores")
+        .select("user_id");
+      
+      const userIdsWithStores = new Set(storesWithUsers?.map(s => s.user_id) || []);
+      const noStoreCount = (allProfiles || []).filter(p => !userIdsWithStores.has(p.user_id)).length;
+
       setQuickStats({
         totalUsers: totalUsers || 0,
         activeStores: activeStores || 0,
@@ -300,6 +314,7 @@ export default function Users() {
         expired: expired || 0,
         cancelled: cancelled || 0,
         inactiveStores: inactiveCount,
+        noStore: noStoreCount,
       });
     } catch (error: any) {
       console.error("Error fetching stats:", error);
@@ -321,6 +336,9 @@ export default function Users() {
 
     const matchesActivity = () => {
       if (activityFilter === "all") return true;
+      if (activityFilter === "no-store") {
+        return !user.store;
+      }
       if (activityFilter === "inactive") {
         if (!user.store) return false;
         
@@ -530,7 +548,7 @@ export default function Users() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <div className="bg-card p-4 rounded-lg border">
           <p className="text-sm text-muted-foreground">Total Users</p>
           <p className="text-2xl font-bold">{quickStats.totalUsers}</p>
@@ -538,6 +556,11 @@ export default function Users() {
         <div className="bg-card p-4 rounded-lg border">
           <p className="text-sm text-muted-foreground">Active Stores</p>
           <p className="text-2xl font-bold">{quickStats.activeStores}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border border-yellow-500 cursor-pointer" onClick={() => setActivityFilter("no-store")}>
+          <p className="text-sm text-muted-foreground">No Store</p>
+          <p className="text-2xl font-bold text-yellow-600">{quickStats.noStore}</p>
+          <p className="text-xs text-muted-foreground mt-1">Not created store</p>
         </div>
         <div className="bg-card p-4 rounded-lg border">
           <p className="text-sm text-muted-foreground">Trial Users</p>
@@ -597,12 +620,13 @@ export default function Users() {
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={activityFilter} onValueChange={setActivityFilter}>
+          <Select value={activityFilter} onValueChange={(value) => setActivityFilter(value as "all" | "active" | "inactive" | "no-store")}>
             <SelectTrigger>
               <SelectValue placeholder="Activity" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Stores</SelectItem>
+              <SelectItem value="all">All Users</SelectItem>
+              <SelectItem value="no-store">No Store Created</SelectItem>
               <SelectItem value="active">Active (recent orders)</SelectItem>
               <SelectItem value="inactive">Inactive (60+ days)</SelectItem>
             </SelectContent>
@@ -783,9 +807,13 @@ export default function Users() {
                              )}
                            </div>
                          </div>
-                       ) : (
-                         <span className="text-muted-foreground">No store</span>
-                       )}
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-50">
+                              No Store Created
+                            </Badge>
+                          </div>
+                        )}
                      </TableCell>
                    <TableCell>
                      <p className="font-medium">₹{user.totalRevenue.toLocaleString()}</p>
