@@ -142,8 +142,14 @@ const Checkout = () => {
       // Get store ID from cart items
       const storeId = cart[0]?.storeId;
       
-      if (!storeId) {
-        throw new Error("Store information not found in cart");
+      if (!storeId || storeId.trim() === '') {
+        toast({
+          title: "Cart Error",
+          description: "Your cart contains invalid items. Please clear your cart and add products again.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
       }
       
       const { data: storeData } = await supabase

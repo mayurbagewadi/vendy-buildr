@@ -132,6 +132,17 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     if (!product) return;
 
+    const storeId = product.storeId || product.store_id;
+    
+    if (!storeId) {
+      toast({
+        title: "Error",
+        description: "Unable to add product to cart. Store information is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     addToCart({
       productId: product.id,
       productName: product.name,
@@ -140,7 +151,7 @@ const ProductDetail = () => {
       price: currentPrice,
       quantity: quantity,
       sku: currentVariant?.sku || baseSku,
-      storeId: product.storeId || product.store_id || '',
+      storeId: storeId,
     });
 
     toast({
