@@ -180,13 +180,13 @@ const PricingSection = () => {
 
                 {/* Features */}
                 <ul className="space-y-3 mb-8 flex-1">
-                  {plan.features.map((feature, index) => (
+                  {plan.features.filter(f => f && f.trim() !== '' && f !== '0').map((feature, index) => (
                     <li key={index} className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-foreground">{feature}</span>
                     </li>
                   ))}
-                  {plan.max_products && (
+                  {plan.max_products && plan.max_products > 0 && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-foreground">
