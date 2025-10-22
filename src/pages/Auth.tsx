@@ -19,15 +19,15 @@ export default function Auth() {
       
       if (session) {
         setHasSession(true);
-        setIsLoading(false);
         // Check if user has completed onboarding
-        const { data: store } = await supabase
+        const { data: store, error } = await supabase
           .from('stores')
           .select('*')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        console.log('[Auth] Store found:', store ? 'Yes' : 'No');
+        console.log('[Auth] Store query error:', error);
+        console.log('[Auth] Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
           console.log('[Auth] Redirecting to onboarding');
@@ -36,6 +36,7 @@ export default function Auth() {
           console.log('[Auth] Redirecting to admin dashboard');
           navigate("/admin/dashboard");
         }
+        setIsLoading(false);
       }
     });
 
@@ -50,13 +51,14 @@ export default function Auth() {
         });
 
         // Check if user has completed onboarding
-        const { data: store } = await supabase
+        const { data: store, error } = await supabase
           .from('stores')
           .select('*')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No');
+        console.log('[Auth] After sign in - Query error:', error);
+        console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
           console.log('[Auth] New user - redirecting to onboarding');
