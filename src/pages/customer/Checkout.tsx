@@ -172,9 +172,11 @@ const Checkout = () => {
       };
 
       // Save order to Supabase
-      const { error: orderError } = await supabase
+      const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
-        .insert([orderRecord]);
+        .insert([orderRecord])
+        .select('id')
+        .single();
 
       if (orderError) throw orderError;
 
@@ -185,6 +187,16 @@ const Checkout = () => {
           order: orderRecord
         }
       }).catch(err => console.error('Failed to log order to sheet:', err));
+
+      // Send order email notification (non-blocking)
+      if (insertedOrder?.id) {
+        supabase.functions.invoke('send-order-email', {
+          body: {
+            orderId: insertedOrder.id,
+            storeId: storeData.id
+          }
+        }).catch(err => console.error('Failed to send order email:', err));
+      }
 
       // Prepare order details for WhatsApp
       const orderDetails = {

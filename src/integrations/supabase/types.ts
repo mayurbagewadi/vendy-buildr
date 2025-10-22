@@ -343,6 +343,7 @@ export type Database = {
           display_order: number | null
           enable_analytics: boolean | null
           enable_location_sharing: boolean | null
+          enable_order_emails: boolean | null
           features: Json | null
           id: string
           is_active: boolean | null
@@ -363,6 +364,7 @@ export type Database = {
           display_order?: number | null
           enable_analytics?: boolean | null
           enable_location_sharing?: boolean | null
+          enable_order_emails?: boolean | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
@@ -383,6 +385,7 @@ export type Database = {
           display_order?: number | null
           enable_analytics?: boolean | null
           enable_location_sharing?: boolean | null
+          enable_order_emails?: boolean | null
           features?: Json | null
           id?: string
           is_active?: boolean | null

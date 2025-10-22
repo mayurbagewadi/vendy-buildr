@@ -46,6 +46,7 @@ const planFormSchema = z.object({
   display_order: z.coerce.number().default(0),
   enable_location_sharing: z.boolean().default(false),
   enable_analytics: z.boolean().default(false),
+  enable_order_emails: z.boolean().default(false),
 });
 
 type PlanFormValues = z.infer<typeof planFormSchema>;
@@ -82,6 +83,7 @@ export const PlanFormDialog = ({
       display_order: 0,
       enable_location_sharing: false,
       enable_analytics: false,
+      enable_order_emails: false,
     },
   });
 
@@ -105,6 +107,7 @@ export const PlanFormDialog = ({
         display_order: 0,
         enable_location_sharing: false,
         enable_analytics: false,
+        enable_order_emails: false,
       });
     }
   }, [open, defaultValues, form]);
@@ -346,6 +349,27 @@ export const PlanFormDialog = ({
                       <FormLabel className="text-base">Analytics</FormLabel>
                       <FormDescription>
                         Access to analytics dashboard and reports
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="enable_order_emails"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Order Email Notifications</FormLabel>
+                      <FormDescription>
+                        Send email notifications to store owners when new orders arrive
                       </FormDescription>
                     </div>
                     <FormControl>
