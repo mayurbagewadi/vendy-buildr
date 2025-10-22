@@ -138,14 +138,10 @@ const SubscriptionPage = () => {
   };
 
   const handleUpgrade = () => {
-    alert("Upgrade button clicked!");
-    console.log("Upgrade button clicked, navigating to /pricing");
     navigate("/pricing");
   };
 
   const handleViewPlans = () => {
-    alert("View Plans button clicked!");
-    console.log("View Plans button clicked, navigating to /pricing");
     navigate("/pricing");
   };
 
