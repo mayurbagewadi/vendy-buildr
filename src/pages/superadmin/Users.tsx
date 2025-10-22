@@ -106,20 +106,51 @@ export default function Users() {
   const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
 
   useEffect(() => {
-    // Check super admin authentication
-    const session = sessionStorage.getItem('superadmin_session');
-    if (!session) {
-      toast({
-        title: "Access Denied",
-        description: "You need admin privileges to access this area",
-        variant: "destructive"
-      });
-      navigate('/superadmin/login');
-      return;
-    }
-    
-    fetchUsers();
-    fetchQuickStats();
+    const checkAuth = async () => {
+      // Check for superadmin session first
+      const session = sessionStorage.getItem('superadmin_session');
+      if (session) {
+        fetchUsers();
+        fetchQuickStats();
+        return;
+      }
+
+      // If no superadmin session, check if user is authenticated with super_admin role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Access Denied",
+          description: "You need admin privileges to access this area",
+          variant: "destructive"
+        });
+        navigate('/superadmin/login');
+        return;
+      }
+
+      // Check if user has super_admin role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .single();
+
+      if (!roles) {
+        toast({
+          title: "Access Denied",
+          description: "You need admin privileges to access this area",
+          variant: "destructive"
+        });
+        navigate('/superadmin/login');
+        return;
+      }
+
+      // User is authenticated with super_admin role, proceed
+      fetchUsers();
+      fetchQuickStats();
+    };
+
+    checkAuth();
   }, [navigate]);
 
   const fetchUsers = async () => {
