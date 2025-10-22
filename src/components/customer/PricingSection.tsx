@@ -171,7 +171,7 @@ const PricingSection = () => {
                       /{billingCycle === "yearly" ? "year" : "month"}
                     </span>
                   </div>
-                  {billingCycle === "yearly" && plan.yearly_price && (
+                  {billingCycle === "yearly" && (plan.yearly_price ?? 0) > 0 && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {formatPrice(pricePerMonth)}/month billed annually
                     </p>
