@@ -162,37 +162,45 @@ const Pricing = () => {
               return (
                 <Card
                   key={plan.id}
-                  className={`relative p-8 transition-all duration-300 ${
+                  className={`relative p-8 transition-all duration-300 bg-card ${
                     plan.is_popular
-                      ? "border-primary shadow-xl scale-105"
-                      : "hover:shadow-lg hover:-translate-y-1"
+                      ? "border-2 border-primary shadow-2xl scale-105"
+                      : "border hover:shadow-lg hover:-translate-y-1"
                   }`}
                 >
                   {plan.is_popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                      <Badge className="bg-primary text-primary-foreground px-4 py-1.5 text-sm font-semibold shadow-lg">
                         Most Popular
                       </Badge>
                     </div>
                   )}
 
-                  <div className="mb-6">
-                    <h3 className="font-playfair text-2xl font-bold text-foreground mb-2">
+                  <div className="mb-8">
+                    <h3 className="font-playfair text-3xl font-bold text-foreground mb-4 tracking-tight">
                       {plan.name}
                     </h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-foreground">
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-5xl font-bold text-foreground tracking-tight">
                         ${price}
                       </span>
-                      <span className="text-muted-foreground">
-                        /{billingCycle === "monthly" ? "mo" : "yr"}
+                      <span className="text-lg text-muted-foreground font-medium">
+                        /{billingCycle === "monthly" ? "month" : "year"}
                       </span>
                     </div>
+                    {billingCycle === "yearly" && plan.yearly_price && (
+                      <p className="text-sm text-muted-foreground">
+                        ${Math.round(plan.yearly_price / 12)}/month billed annually
+                      </p>
+                    )}
                   </div>
 
-                  <Link to="/auth" className="block mb-6">
+                  <Link to="/auth" className="block mb-8">
                     <Button
-                      className="w-full"
+                      size="lg"
+                      className={`w-full font-semibold ${
+                        plan.is_popular ? "shadow-lg" : ""
+                      }`}
                       variant={plan.is_popular ? "default" : "outline"}
                     >
                       Get Started
@@ -200,16 +208,21 @@ const Pricing = () => {
                     </Button>
                   </Link>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4 pt-6 border-t">
+                    <p className="text-sm font-semibold text-foreground mb-4">
+                      Everything included:
+                    </p>
                     {plan.features && plan.features.length > 0 ? (
                       plan.features.map((feature, index) => (
                         <div key={index} className="flex items-start gap-3">
-                          <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                          <span className="text-sm text-muted-foreground">{feature}</span>
+                          <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3 h-3 text-primary" />
+                          </div>
+                          <span className="text-sm text-foreground font-medium leading-relaxed">{feature}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No features listed</p>
+                      <p className="text-sm text-muted-foreground italic">Contact us for custom features</p>
                     )}
                   </div>
                 </Card>
