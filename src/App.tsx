@@ -7,7 +7,6 @@ import { CartProvider } from "@/contexts/CartContext";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
 import Products from "./pages/admin/Products";
@@ -58,7 +57,6 @@ const App = () => (
             <Route path="/pricing" element={<Pricing />} />
             
             {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/products" element={<Products />} />
             <Route path="/admin/products/add" element={<AddProduct />} />
