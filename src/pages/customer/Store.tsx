@@ -59,7 +59,7 @@ const Store = () => {
         .select("*")
         .eq("slug", slug)
         .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
       if (storeError) throw storeError;
       if (!storeData) {
