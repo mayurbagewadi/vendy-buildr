@@ -103,11 +103,6 @@ const Pricing = () => {
       features.push(`${plan.trial_days}-day free trial`);
     }
     
-    // Standard features for all plans
-    features.push('WhatsApp integration');
-    features.push('Google Sheets sync');
-    features.push('Custom domain support');
-    
     return features;
   };
 
