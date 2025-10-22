@@ -9,12 +9,14 @@ interface ProductCardProps {
   name: string;
   category: string;
   priceRange?: string;
+  price_range?: string;
   images: string[];
   status: string;
 }
 
-const ProductCard = ({ id, name, category, priceRange, images, status }: ProductCardProps) => {
+const ProductCard = ({ id, name, category, priceRange, price_range, images, status }: ProductCardProps) => {
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
+  const displayPrice = priceRange || price_range || 'Price on request';
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
@@ -38,7 +40,7 @@ const ProductCard = ({ id, name, category, priceRange, images, status }: Product
           <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
             {name}
           </h3>
-          <p className="text-lg font-bold text-primary">{priceRange || 'Price on request'}</p>
+          <p className="text-lg font-bold text-primary">{displayPrice}</p>
         </Link>
       </CardContent>
       <CardFooter className="p-4 pt-0">
