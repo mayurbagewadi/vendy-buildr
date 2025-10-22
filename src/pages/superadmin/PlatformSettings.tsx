@@ -18,11 +18,31 @@ const PlatformSettingsPage = () => {
   const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   useEffect(() => {
-    // Check if super admin is logged in
-    const superAdminSession = sessionStorage.getItem('superadmin_session');
-    if (!superAdminSession) {
-      navigate('/superadmin/login');
-    }
+    const checkAuth = async () => {
+      const superAdminSession = sessionStorage.getItem('superadmin_session');
+      if (superAdminSession) {
+        return;
+      }
+
+      // Check Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/superadmin/login');
+        return;
+      }
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin');
+
+      if (!roles || roles.length === 0) {
+        navigate('/superadmin/login');
+      }
+    };
+
+    checkAuth();
   }, [navigate]);
 
   const handleSave = () => {

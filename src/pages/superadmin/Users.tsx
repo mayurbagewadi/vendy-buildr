@@ -134,8 +134,6 @@ export default function Users() {
         .eq('user_id', user.id)
         .eq('role', 'super_admin');
 
-      console.log('Role check:', { userId: user.id, roles, roleError });
-
       if (roleError || !roles || roles.length === 0) {
         toast({
           title: "Access Denied",

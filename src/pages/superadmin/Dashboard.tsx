@@ -70,18 +70,52 @@ export default function SuperAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if super admin is logged in
-    const session = sessionStorage.getItem('superadmin_session');
-    if (!session) {
-      navigate('/superadmin/login');
-      return;
-    }
+    const initializeAuth = async () => {
+      // First check for superadmin session
+      const session = sessionStorage.getItem('superadmin_session');
+      if (session) {
+        const sessionData = JSON.parse(session);
+        setAdminName(sessionData.fullName);
+        loadDashboardData();
+        return;
+      }
 
-    const sessionData = JSON.parse(session);
-    setAdminName(sessionData.fullName);
+      // If no superadmin session, check Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/superadmin/login');
+        return;
+      }
 
-    // Load dashboard data
-    loadDashboardData();
+      // Check if user has super_admin role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin');
+
+      if (!roles || roles.length === 0) {
+        toast({
+          title: "Access Denied",
+          description: "You need super admin privileges",
+          variant: "destructive"
+        });
+        navigate('/superadmin/login');
+        return;
+      }
+
+      // Get profile name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', user.id)
+        .single();
+
+      setAdminName(profile?.full_name || profile?.email || user.email || 'Super Admin');
+      loadDashboardData();
+    };
+
+    initializeAuth();
 
     // Auto-refresh every 60 seconds
     const interval = setInterval(loadDashboardData, 60000);
