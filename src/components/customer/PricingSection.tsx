@@ -91,6 +91,7 @@ const PricingSection = () => {
   };
 
   const handleGetStarted = async (planId: string, planName: string) => {
+    alert(`Get Started clicked for plan: ${planName}`);
     console.log("Get Started clicked for plan:", planName, planId);
     
     const { data: { user } } = await supabase.auth.getUser();
