@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
@@ -236,7 +236,11 @@ const Store = () => {
         </section>
       </main>
 
-      <Footer />
+      <StoreFooter 
+        storeName={store.name}
+        storeDescription={store.description}
+        whatsappNumber={store.whatsapp_number}
+      />
     </div>
   );
 };
