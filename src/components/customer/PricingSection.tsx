@@ -199,16 +199,26 @@ const PricingSection = () => {
                       <span className="text-foreground">Up to {plan.max_products} products</span>
                     </li>
                   )}
-                  {(plan.whatsapp_orders_limit ?? 0) > 0 && (
+                  {plan.whatsapp_orders_limit !== null && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-foreground">{plan.whatsapp_orders_limit} WhatsApp orders/month</span>
+                      <span className="text-foreground">
+                        {plan.whatsapp_orders_limit === 0 
+                          ? 'Unlimited WhatsApp orders/month'
+                          : `${plan.whatsapp_orders_limit} WhatsApp orders/month`
+                        }
+                      </span>
                     </li>
                   )}
-                  {(plan.website_orders_limit ?? 0) > 0 && (
+                  {plan.website_orders_limit !== null && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-foreground">{plan.website_orders_limit} Website orders/month</span>
+                      <span className="text-foreground">
+                        {plan.website_orders_limit === 0 
+                          ? 'Unlimited Website orders/month'
+                          : `${plan.website_orders_limit} Website orders/month`
+                        }
+                      </span>
                     </li>
                   )}
                   {plan.enable_location_sharing && (

@@ -367,11 +367,14 @@ export const PlanFormDialog = ({
                       <FormControl>
                         <Input 
                           type="number" 
-                          placeholder="Enter number of orders" 
+                          placeholder="Leave empty for unlimited" 
                           {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Empty = Unlimited
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -421,11 +424,14 @@ export const PlanFormDialog = ({
                       <FormControl>
                         <Input 
                           type="number" 
-                          placeholder="Enter number of orders" 
+                          placeholder="Leave empty for unlimited" 
                           {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Empty = Unlimited
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

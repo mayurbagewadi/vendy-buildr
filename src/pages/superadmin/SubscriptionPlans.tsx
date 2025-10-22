@@ -160,11 +160,15 @@ const SubscriptionPlansPage = () => {
 
   const handleFormSubmit = async (values: any) => {
     try {
-      // If orders limits are disabled, set to null
+      // If orders limits are disabled, set to null; if enabled but empty, set to 0 (unlimited)
       const submitData = {
         ...values,
-        whatsapp_orders_limit: values.enable_whatsapp_orders ? values.whatsapp_orders_limit : null,
-        website_orders_limit: values.enable_website_orders ? values.website_orders_limit : null,
+        whatsapp_orders_limit: values.enable_whatsapp_orders 
+          ? (values.whatsapp_orders_limit || 0) 
+          : null,
+        website_orders_limit: values.enable_website_orders 
+          ? (values.website_orders_limit || 0) 
+          : null,
       };
       
       // Remove the enable fields as they're not in the database
