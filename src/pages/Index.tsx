@@ -117,7 +117,7 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <Link to="/auth" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="font-medium">
-                Sign In
+                Login
               </Button>
             </Link>
             <Link to="/auth">
