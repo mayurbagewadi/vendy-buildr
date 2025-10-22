@@ -28,6 +28,7 @@ const AdminDashboard = () => {
   });
 
   const [storeName, setStoreName] = useState("Your Store");
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
   const [recentActivity, setRecentActivity] = useState<Array<{
     id: string;
     action: string;
@@ -59,6 +60,28 @@ const AdminDashboard = () => {
     };
     
     updateAdminVisit();
+    
+    // Fetch subscription and calculate trial days
+    const fetchSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('trial_ends_at')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (subscription?.trial_ends_at) {
+          const trialEndDate = new Date(subscription.trial_ends_at);
+          const today = new Date();
+          const diffTime = trialEndDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          setTrialDaysRemaining(diffDays > 0 ? diffDays : 0);
+        }
+      }
+    };
+    
+    fetchSubscription();
     
     // Load store name from localStorage
     const storeSettings = localStorage.getItem("storeSettings");
@@ -170,25 +193,29 @@ const AdminDashboard = () => {
     <AdminLayout>
       <div className="space-y-4 lg:space-y-6">
         {/* Trial Status Alert */}
-        <Card className="border-l-4 border-l-warning bg-warning/5">
-          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm">Trial Status</p>
-                <p className="text-sm text-muted-foreground">Your free trial ends in 11 days</p>
+        {trialDaysRemaining !== null && trialDaysRemaining > 0 && (
+          <Card className="border-l-4 border-l-warning bg-warning/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-sm">Trial Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your free trial ends in {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-2 sm:ml-auto">
-              <Button size="sm" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
-                Upgrade Now
-              </Button>
-              <Button size="sm" variant="outline" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
-                View Plans
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex flex-wrap gap-2 sm:ml-auto">
+                <Button size="sm" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
+                  Upgrade Now
+                </Button>
+                <Button size="sm" variant="outline" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
+                  View Plans
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
