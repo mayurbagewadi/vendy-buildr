@@ -7,16 +7,17 @@ import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { initializeProducts } from "@/lib/productData";
+import { getPublishedProducts } from "@/lib/productData";
+import type { Product as ProductType } from "@/lib/productData";
 
 interface Product {
   id: string;
   name: string;
   category: string;
-  priceRange: string;
+  price_range?: string;
   images: string[];
   status: string;
-  createdAt: string;
+  created_at?: string;
 }
 
 interface Category {
@@ -74,22 +75,37 @@ const Home = () => {
 
   // Load products and categories
   const loadProducts = async () => {
-    initializeProducts();
-    
-    const products = JSON.parse(localStorage.getItem("products") || "[]");
-    const publishedProducts = products.filter((p: Product) => p.status === "published");
-    
-    // Store all published products
-    setAllProducts(publishedProducts);
-    
-    // Featured products (first 4)
-    setFeaturedProducts(publishedProducts.slice(0, 4));
-    
-    // New arrivals (last 4)
-    const sorted = [...publishedProducts].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    setNewArrivals(sorted.slice(0, 4));
+    try {
+      // Get current user's store to fetch products
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: store } = await supabase
+          .from("stores")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (store) {
+          // Fetch published products from database
+          const publishedProducts = await getPublishedProducts(store.id);
+          
+          // Store all published products
+          setAllProducts(publishedProducts as any);
+          
+          // Featured products (first 4)
+          setFeaturedProducts(publishedProducts.slice(0, 4) as any);
+          
+          // New arrivals (last 4)
+          const sorted = [...publishedProducts].sort((a, b) => 
+            new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+          );
+          setNewArrivals(sorted.slice(0, 4) as any);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading products:", error);
+    }
     
     // Load categories from database or use demo
     try {
@@ -129,23 +145,14 @@ const Home = () => {
     // Initial load
     loadProducts();
     
-    // Listen for storage changes (cross-tab sync)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'products') {
-        loadProducts();
-      }
-    };
-    
     // Reload when window regains focus
     const handleFocus = () => {
       loadProducts();
     };
     
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleFocus);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
@@ -242,7 +249,15 @@ const Home = () => {
             {featuredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredProducts.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                  <ProductCard 
+                    key={product.id} 
+                    id={product.id}
+                    name={product.name}
+                    category={product.category}
+                    priceRange={product.price_range || ''}
+                    images={product.images}
+                    status={product.status}
+                  />
                 ))}
               </div>
             ) : (
@@ -261,7 +276,15 @@ const Home = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {newArrivals.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                  <ProductCard 
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    category={product.category}
+                    priceRange={product.price_range || ''}
+                    images={product.images}
+                    status={product.status}
+                  />
                 ))}
               </div>
             </div>

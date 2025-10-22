@@ -8,15 +8,17 @@ import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { getPublishedProducts } from "@/lib/productData";
+import type { Product as ProductType } from "@/lib/productData";
 
 interface Product {
   id: string;
   name: string;
   category: string;
-  priceRange: string;
+  price_range?: string;
   images: string[];
   status: string;
-  createdAt: string;
+  created_at?: string;
 }
 
 interface StoreData {
@@ -82,9 +84,9 @@ const Store = () => {
         setCategories(categoriesData);
       }
 
-      // TODO: Fetch products from database when products table is properly linked
-      // For now, showing message that store exists but no products yet
-      setProducts([]);
+      // Fetch published products for this store
+      const publishedProducts = await getPublishedProducts(storeData.id);
+      setProducts(publishedProducts as any);
     } catch (error: any) {
       console.error("Error loading store:", error);
       toast({
@@ -212,7 +214,15 @@ const Store = () => {
             {products.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {products.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                  <ProductCard 
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    category={product.category}
+                    priceRange={product.price_range || ''}
+                    images={product.images}
+                    status={product.status}
+                  />
                 ))}
               </div>
             ) : (
