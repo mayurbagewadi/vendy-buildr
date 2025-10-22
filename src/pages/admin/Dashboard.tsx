@@ -67,16 +67,36 @@ const AdminDashboard = () => {
       if (user) {
         const { data: subscription } = await supabase
           .from('subscriptions')
-          .select('trial_ends_at')
+          .select(`
+            trial_ends_at,
+            created_at,
+            status,
+            subscription_plans (trial_days)
+          `)
           .eq('user_id', user.id)
           .single();
         
-        if (subscription?.trial_ends_at) {
-          const trialEndDate = new Date(subscription.trial_ends_at);
+        if (subscription) {
+          let trialEndDate: Date;
+          
+          // If trial_ends_at exists, use it; otherwise calculate from created_at + trial_days
+          if (subscription.trial_ends_at) {
+            trialEndDate = new Date(subscription.trial_ends_at);
+          } else if (subscription.subscription_plans?.trial_days) {
+            trialEndDate = new Date(subscription.created_at);
+            trialEndDate.setDate(trialEndDate.getDate() + subscription.subscription_plans.trial_days);
+          } else {
+            return; // No trial information available
+          }
+          
           const today = new Date();
           const diffTime = trialEndDate.getTime() - today.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          setTrialDaysRemaining(diffDays > 0 ? diffDays : 0);
+          
+          // Only show trial status if subscription is in trial/active and has days remaining
+          if ((subscription.status === 'trial' || subscription.status === 'active') && diffDays > 0) {
+            setTrialDaysRemaining(diffDays);
+          }
         }
       }
     };
