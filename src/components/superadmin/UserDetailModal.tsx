@@ -70,11 +70,30 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
                   <p className="font-medium">{user.full_name || "Not provided"}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Phone Number</p>
+                  <p className="font-medium">{user.phone || "Not provided"}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Joined</p>
                   <p className="font-medium">
                     {new Date(user.created_at).toLocaleDateString()}
                   </p>
                 </div>
+                {user.store?.whatsapp_number && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">WhatsApp Number</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user.store.whatsapp_number}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(user.store.whatsapp_number)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -172,7 +172,7 @@ export default function Users() {
           // Get store for this user
           const { data: stores } = await supabase
             .from("stores")
-            .select("id, name, slug, last_admin_visit")
+            .select("id, name, slug, last_admin_visit, whatsapp_number")
             .eq("user_id", profile.user_id)
             .limit(1);
 
