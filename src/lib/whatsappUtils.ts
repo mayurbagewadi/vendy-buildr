@@ -62,7 +62,7 @@ export const generateOrderMessage = (order: OrderDetails): string => {
     timeStyle: "short",
   });
 
-  let message = `🛍️ *NEW ORDER REQUEST*\n`;
+  let message = `🛍 *NEW ORDER REQUEST*\n`;
   message += `📅 ${date}\n\n`;
 
   message += `👤 *CUSTOMER DETAILS*\n`;
