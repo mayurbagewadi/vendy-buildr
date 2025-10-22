@@ -1,4 +1,4 @@
-
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-      <a href={`/products/${id}`} target="_blank" rel="noopener noreferrer">
+      <Link to={`/products/${id}`}>
         <div className="relative aspect-square overflow-hidden bg-muted">
           <LazyImage
             src={imageUrl}
@@ -33,22 +33,22 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
             </Badge>
           )}
         </div>
-      </a>
+      </Link>
       <CardContent className="p-4">
-        <a href={`/products/${id}`} target="_blank" rel="noopener noreferrer">
+        <Link to={`/products/${id}`}>
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
           <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
             {name}
           </h3>
           <p className="text-lg font-bold text-primary">{displayPrice}</p>
-        </a>
+        </Link>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <a href={`/products/${id}`} target="_blank" rel="noopener noreferrer" className="w-full">
+        <Link to={`/products/${id}`} className="w-full">
           <Button className="w-full min-h-[44px]" variant="outline">
             View Details
           </Button>
-        </a>
+        </Link>
       </CardFooter>
     </Card>
   );

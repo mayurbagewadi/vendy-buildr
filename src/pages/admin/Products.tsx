@@ -376,7 +376,7 @@ const Products = () => {
                               variant="ghost" 
                               size="sm" 
                               title="View Details"
-                              onClick={() => navigate(`/products/${product.id}`)}
+                              onClick={() => window.open(`/products/${product.id}`, '_blank')}
                               className="h-8 w-8 p-0"
                             >
                               <Eye className="w-4 h-4" />
