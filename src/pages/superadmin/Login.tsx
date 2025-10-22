@@ -22,50 +22,63 @@ export default function SuperAdminLogin() {
     setIsLoading(true);
 
     try {
-      // Call edge function to verify super admin credentials
-      const { data, error } = await supabase.functions.invoke('superadmin-auth', {
-        body: { email, password, action: 'login' }
+      // Sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      console.log('Edge function response:', { data, error });
+      if (authError) throw authError;
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Connection error');
+      if (!authData.user) {
+        throw new Error('Login failed');
       }
 
-      if (!data) {
-        throw new Error('No response from server');
+      // Check if user has super_admin role
+      const { data: roles, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .eq('role', 'super_admin');
+
+      if (roleError) throw roleError;
+
+      if (!roles || roles.length === 0) {
+        await supabase.auth.signOut();
+        throw new Error('You do not have super admin access');
       }
 
-      if (data.success) {
-        // Store super admin session
-        sessionStorage.setItem('superadmin_session', JSON.stringify({
-          id: data.admin.id,
-          email: data.admin.email,
-          fullName: data.admin.full_name,
-          loginAt: new Date().toISOString()
-        }));
+      // Get profile data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', authData.user.id)
+        .single();
 
-        if (rememberMe) {
-          localStorage.setItem('superadmin_remember', 'true');
-        }
+      // Store super admin session
+      sessionStorage.setItem('superadmin_session', JSON.stringify({
+        id: authData.user.id,
+        email: authData.user.email,
+        fullName: profile?.full_name || 'Super Admin',
+        loginAt: new Date().toISOString()
+      }));
 
-        toast({
-          title: "Login Successful",
-          description: "Welcome back to Super Admin Panel",
-        });
-
-        navigate("/superadmin/dashboard");
-      } else {
-        throw new Error(data.error || data.message || "Invalid credentials");
+      if (rememberMe) {
+        localStorage.setItem('superadmin_remember', 'true');
       }
+
+      toast({
+        title: "Login Successful",
+        description: "Welcome back to Super Admin Panel",
+      });
+
+      navigate("/superadmin/dashboard");
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message || "An error occurred during login",
+        description: error.message || "Invalid credentials or insufficient permissions",
       });
     } finally {
       setIsLoading(false);
