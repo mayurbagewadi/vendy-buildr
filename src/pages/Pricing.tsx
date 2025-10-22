@@ -10,10 +10,19 @@ import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
 interface SubscriptionPlan {
   id: string;
   name: string;
+  description: string | null;
   monthly_price: number;
   yearly_price: number | null;
-  features: string[];
+  max_products: number | null;
+  whatsapp_orders_limit: number | null;
+  website_orders_limit: number | null;
+  enable_location_sharing: boolean;
+  enable_analytics: boolean;
+  enable_order_emails: boolean;
+  badge_text: string | null;
+  badge_color: string | null;
   is_popular: boolean;
+  trial_days: number;
 }
 
 const Pricing = () => {
@@ -34,28 +43,72 @@ const Pricing = () => {
       const { data, error } = await supabase
         .from("subscription_plans")
         .select("*")
+        .eq("is_active", true)
         .order("monthly_price", { ascending: true });
 
       if (error) throw error;
 
-      const formattedPlans = (data || []).map(plan => ({
-        id: plan.id,
-        name: plan.name,
-        monthly_price: plan.monthly_price,
-        yearly_price: plan.yearly_price,
-        features: Array.isArray(plan.features) 
-          ? plan.features.filter((f): f is string => typeof f === 'string')
-          : [],
-        is_popular: plan.is_popular || false,
-      }));
-
-      setPlans(formattedPlans);
+      setPlans(data || []);
     } catch (err) {
       console.error("Error fetching plans:", err);
       setError("Failed to load pricing plans. Please try again later.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const formatPlanFeatures = (plan: SubscriptionPlan): string[] => {
+    const features: string[] = [];
+    
+    // Max products
+    if (plan.max_products) {
+      features.push(`Up to ${plan.max_products.toLocaleString()} products`);
+    } else {
+      features.push('Unlimited products');
+    }
+    
+    // WhatsApp orders
+    if (plan.whatsapp_orders_limit !== null) {
+      if (plan.whatsapp_orders_limit === 0) {
+        features.push('Unlimited WhatsApp orders');
+      } else {
+        features.push(`${plan.whatsapp_orders_limit.toLocaleString()} WhatsApp orders/month`);
+      }
+    }
+    
+    // Website orders
+    if (plan.website_orders_limit !== null) {
+      if (plan.website_orders_limit === 0) {
+        features.push('Unlimited website orders');
+      } else {
+        features.push(`${plan.website_orders_limit.toLocaleString()} website orders/month`);
+      }
+    }
+    
+    // Additional features
+    if (plan.enable_location_sharing) {
+      features.push('Location sharing for deliveries');
+    }
+    
+    if (plan.enable_analytics) {
+      features.push('Advanced analytics dashboard');
+    }
+    
+    if (plan.enable_order_emails) {
+      features.push('Email notifications');
+    }
+    
+    // Trial period
+    if (plan.trial_days > 0) {
+      features.push(`${plan.trial_days}-day free trial`);
+    }
+    
+    // Standard features for all plans
+    features.push('WhatsApp integration');
+    features.push('Google Sheets sync');
+    features.push('Custom domain support');
+    
+    return features;
   };
 
   if (isLoading) {
@@ -158,6 +211,8 @@ const Pricing = () => {
               const price = billingCycle === "yearly" && plan.yearly_price 
                 ? plan.yearly_price 
                 : plan.monthly_price;
+              
+              const features = formatPlanFeatures(plan);
 
               return (
                 <Card
@@ -171,7 +226,7 @@ const Pricing = () => {
                   {plan.is_popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground px-4 py-1.5 text-sm font-semibold shadow-lg">
-                        Most Popular
+                        {plan.badge_text || 'Most Popular'}
                       </Badge>
                     </div>
                   )}
@@ -180,9 +235,12 @@ const Pricing = () => {
                     <h3 className="font-playfair text-3xl font-bold text-foreground mb-4 tracking-tight">
                       {plan.name}
                     </h3>
+                    {plan.description && (
+                      <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
+                    )}
                     <div className="flex items-baseline gap-2 mb-2">
                       <span className="text-5xl font-bold text-foreground tracking-tight">
-                        ${price}
+                        ₹{price.toLocaleString()}
                       </span>
                       <span className="text-lg text-muted-foreground font-medium">
                         /{billingCycle === "monthly" ? "month" : "year"}
@@ -190,7 +248,7 @@ const Pricing = () => {
                     </div>
                     {billingCycle === "yearly" && plan.yearly_price && (
                       <p className="text-sm text-muted-foreground">
-                        ${Math.round(plan.yearly_price / 12)}/month billed annually
+                        ₹{Math.round(plan.yearly_price / 12).toLocaleString()}/month billed annually
                       </p>
                     )}
                   </div>
@@ -212,18 +270,14 @@ const Pricing = () => {
                     <p className="text-sm font-semibold text-foreground mb-4">
                       Everything included:
                     </p>
-                    {plan.features && plan.features.length > 0 ? (
-                      plan.features.map((feature, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Check className="w-3 h-3 text-primary" />
-                          </div>
-                          <span className="text-sm text-foreground font-medium leading-relaxed">{feature}</span>
+                    {features.map((feature, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check className="w-3 h-3 text-primary" />
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">Contact us for custom features</p>
-                    )}
+                        <span className="text-sm text-foreground font-medium leading-relaxed">{feature}</span>
+                      </div>
+                    ))}
                   </div>
                 </Card>
               );
