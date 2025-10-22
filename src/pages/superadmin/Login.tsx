@@ -27,7 +27,16 @@ export default function SuperAdminLogin() {
         body: { email, password, action: 'login' }
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', { data, error });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Connection error');
+      }
+
+      if (!data) {
+        throw new Error('No response from server');
+      }
 
       if (data.success) {
         // Store super admin session
@@ -49,16 +58,13 @@ export default function SuperAdminLogin() {
 
         navigate("/superadmin/dashboard");
       } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: data.message || "Invalid credentials",
-        });
+        throw new Error(data.error || data.message || "Invalid credentials");
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Login Failed",
         description: error.message || "An error occurred during login",
       });
     } finally {
