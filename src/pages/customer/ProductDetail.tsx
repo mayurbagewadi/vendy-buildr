@@ -13,7 +13,8 @@ import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import LazyImage from "@/components/ui/lazy-image";
 import VideoPlayer from "@/components/ui/video-player";
-import { initializeProducts } from "@/lib/productData";
+import { getProductById } from "@/lib/productData";
+import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import {
   Carousel,
   CarouselContent,
@@ -35,10 +36,14 @@ interface Product {
   category: string;
   images: string[];
   videoUrl?: string;
+  video_url?: string;
   basePrice?: number;
+  base_price?: number;
   baseSku?: string;
+  sku?: string;
   variants?: Variant[];
-  priceRange: string;
+  priceRange?: string;
+  price_range?: string;
   status: string;
 }
 
@@ -51,34 +56,72 @@ const ProductDetail = () => {
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [quantity, setQuantity] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize products with seed data if empty
-    initializeProducts();
-    
-    const products = JSON.parse(localStorage.getItem("products") || "[]");
-    const found = products.find((p: Product) => p.id === id);
-    
-    if (!found) {
-      navigate("/products");
-      return;
-    }
+    const loadProduct = async () => {
+      if (!id) {
+        navigate("/products");
+        return;
+      }
 
-    setProduct(found);
-    
-    // Auto-select first variant if available
-    if (found.variants && found.variants.length > 0) {
-      setSelectedVariant(found.variants[0].name);
-    }
-  }, [id, navigate]);
+      try {
+        setLoading(true);
+        const data = await getProductById(id);
+        
+        if (!data) {
+          toast({
+            title: "Product not found",
+            description: "This product doesn't exist or has been removed.",
+            variant: "destructive",
+          });
+          navigate("/products");
+          return;
+        }
+
+        setProduct(data);
+        
+        // Auto-select first variant if available
+        if (data.variants && data.variants.length > 0) {
+          setSelectedVariant(data.variants[0].name);
+        }
+      } catch (error) {
+        console.error("Error loading product:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load product details",
+          variant: "destructive",
+        });
+        navigate("/products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id, navigate, toast]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading product..." />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!product) {
     return null;
   }
 
   const currentVariant = product.variants?.find(v => v.name === selectedVariant);
-  const currentPrice = currentVariant ? currentVariant.price : product.basePrice || 0;
+  const currentPrice = currentVariant ? currentVariant.price : (product.basePrice || product.base_price || 0);
   const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.svg"];
+  const videoUrl = product.videoUrl || product.video_url;
+  const baseSku = product.baseSku || product.sku;
 
   const handleQuantityChange = (delta: number) => {
     setQuantity(Math.max(0, quantity + delta));
@@ -94,7 +137,7 @@ const ProductDetail = () => {
       variant: selectedVariant || undefined,
       price: currentPrice,
       quantity: quantity,
-      sku: currentVariant?.sku || product.baseSku,
+      sku: currentVariant?.sku || baseSku,
     });
 
     toast({
@@ -104,7 +147,7 @@ const ProductDetail = () => {
   };
 
   const handleBuyWhatsApp = () => {
-    const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || product.baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
+    const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
     const result = openWhatsApp(message);
 
     if (!result.success) {
@@ -260,12 +303,12 @@ const ProductDetail = () => {
             </div>
 
             {/* Video Player */}
-            {product.videoUrl && (
+            {videoUrl && (
               <div className="mt-4">
                 <Card className="overflow-hidden">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-3">Product Video</h3>
-                    <VideoPlayer url={product.videoUrl} className="w-full" />
+                    <VideoPlayer url={videoUrl} className="w-full" />
                   </CardContent>
                 </Card>
               </div>
@@ -323,7 +366,7 @@ const ProductDetail = () => {
             ) : (
               <div className="mb-6">
                 <p className="text-3xl font-bold text-primary">
-                  ₹{product.basePrice}
+                  {product.price_range || product.priceRange || `₹${product.basePrice || product.base_price || 0}`}
                 </p>
               </div>
             )}
@@ -384,10 +427,10 @@ const ProductDetail = () => {
                     <dt className="text-muted-foreground">Category:</dt>
                     <dd className="font-medium">{product.category}</dd>
                   </div>
-                  {product.baseSku && (
+                  {baseSku && (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">SKU:</dt>
-                      <dd className="font-medium">{product.baseSku}</dd>
+                      <dd className="font-medium">{baseSku}</dd>
                     </div>
                   )}
                   <div className="flex justify-between">
