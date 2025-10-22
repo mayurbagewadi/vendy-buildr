@@ -8,6 +8,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   sku?: string;
+  storeId: string;
 }
 
 const CART_STORAGE_KEY = 'shopping_cart';

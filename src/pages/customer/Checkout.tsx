@@ -66,33 +66,37 @@ const Checkout = () => {
 
   const checkLocationFeature = async () => {
     try {
-      // Get the store slug from hostname or pathname
-      const storeSlug = window.location.hostname.split('.')[0];
-      
-      // Get store information
-      const { data: storeData } = await supabase
-        .from("stores")
-        .select("id, user_id")
-        .or(`slug.eq.${storeSlug},custom_domain.eq.${window.location.hostname}`)
-        .maybeSingle();
+      // Get store ID from cart items if available
+      if (cart.length > 0 && cart[0].storeId) {
+        const storeId = cart[0].storeId;
+        
+        // Get store information
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("id, user_id")
+          .eq("id", storeId)
+          .maybeSingle();
 
-      if (!storeData) {
-        // If no store found, assume location is enabled for testing
+        if (!storeData) {
+          setLocationEnabled(true);
+          console.log("No store found, enabling location by default");
+          return;
+        }
+
+        // Get the subscription plan for this store owner
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("plan_id, subscription_plans(enable_location_sharing)")
+          .eq("user_id", storeData.user_id)
+          .maybeSingle();
+
+        const isEnabled = subscription?.subscription_plans?.enable_location_sharing || true;
+        setLocationEnabled(isEnabled);
+        console.log("Location feature enabled:", isEnabled, "for store:", storeData.id);
+      } else {
+        // Enable by default if no cart items
         setLocationEnabled(true);
-        console.log("No store found, enabling location by default");
-        return;
       }
-
-      // Get the subscription plan for this store owner
-      const { data: subscription } = await supabase
-        .from("subscriptions")
-        .select("plan_id, subscription_plans(enable_location_sharing)")
-        .eq("user_id", storeData.user_id)
-        .maybeSingle();
-
-      const isEnabled = subscription?.subscription_plans?.enable_location_sharing || true;
-      setLocationEnabled(isEnabled);
-      console.log("Location feature enabled:", isEnabled, "for store:", storeData.id);
     } catch (error) {
       console.error("Error checking location feature:", error);
       // Enable by default on error for testing
@@ -135,13 +139,17 @@ const Checkout = () => {
     }[data.deliveryTime];
 
     try {
-      // Get store info from hostname or pathname
-      const storeSlug = window.location.hostname.split('.')[0];
+      // Get store ID from cart items
+      const storeId = cart[0]?.storeId;
+      
+      if (!storeId) {
+        throw new Error("Store information not found in cart");
+      }
       
       const { data: storeData } = await supabase
         .from("stores")
         .select("id, user_id")
-        .or(`slug.eq.${storeSlug},custom_domain.eq.${window.location.hostname}`)
+        .eq("id", storeId)
         .maybeSingle();
 
       if (!storeData) throw new Error("Store not found");

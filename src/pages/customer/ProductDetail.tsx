@@ -45,6 +45,8 @@ interface Product {
   priceRange?: string;
   price_range?: string;
   status: string;
+  storeId?: string;
+  store_id?: string;
 }
 
 const ProductDetail = () => {
@@ -138,6 +140,7 @@ const ProductDetail = () => {
       price: currentPrice,
       quantity: quantity,
       sku: currentVariant?.sku || baseSku,
+      storeId: product.storeId || product.store_id || '',
     });
 
     toast({
