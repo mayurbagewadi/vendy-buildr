@@ -91,14 +91,19 @@ const PricingSection = () => {
   };
 
   const handleGetStarted = async (planId: string, planName: string) => {
+    console.log("Get Started clicked for plan:", planName, planId);
+    
     const { data: { user } } = await supabase.auth.getUser();
+    console.log("Current user:", user?.id);
     
     if (!user) {
+      console.log("No user found, redirecting to auth");
       toast.info("Please sign in to get started", {
         description: "You need to create an account to subscribe to a plan"
       });
       navigate("/auth");
     } else {
+      console.log("User logged in, redirecting to admin subscription");
       navigate("/admin/subscription");
     }
   };
