@@ -307,7 +307,10 @@ const PricingSection = () => {
                   className="w-full" 
                   variant={isCurrentPlan ? "outline" : plan.is_popular ? "default" : "outline"}
                   size="lg"
-                  onClick={() => handleGetStarted(plan.id, plan.name)}
+                  onClick={() => {
+                    console.log("Button clicked for plan:", plan.name);
+                    handleGetStarted(plan.id, plan.name);
+                  }}
                   disabled={isCurrentPlan}
                 >
                   {isCurrentPlan ? "Current Plan" : "Get Started"}

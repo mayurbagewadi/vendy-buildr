@@ -327,7 +327,7 @@ const SubscriptionPage = () => {
                   className="w-full"
                   variant={isCurrentPlan ? "outline" : "default"}
                   disabled={isCurrentPlan}
-                  onClick={() => !isCurrentPlan && handleUpgrade()}
+                  onClick={handleUpgrade}
                 >
                   {isCurrentPlan ? "Current Plan" : (
                     <>
