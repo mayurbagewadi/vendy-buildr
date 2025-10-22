@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Check, ArrowUpRight, Calendar, Package } from "lucide-react";
+import { Check, ArrowUpRight, Calendar, Package, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -135,6 +135,19 @@ const SubscriptionPage = () => {
     if (limit === null || limit === 0) return 0;
     const used = currentSubscription.website_orders_used || 0;
     return Math.min((used / limit) * 100, 100);
+  };
+
+  const handleUpgrade = (planId: string, planName: string) => {
+    toast.info(
+      `To upgrade to ${planName}, please contact our support team`,
+      {
+        description: "We'll help you with the upgrade process",
+        action: {
+          label: "Contact Support",
+          onClick: () => window.open("mailto:support@example.com?subject=Upgrade to " + planName, "_blank")
+        }
+      }
+    );
   };
 
   if (loading) {
@@ -314,6 +327,7 @@ const SubscriptionPage = () => {
                   className="w-full"
                   variant={isCurrentPlan ? "outline" : "default"}
                   disabled={isCurrentPlan}
+                  onClick={() => !isCurrentPlan && handleUpgrade(plan.id, plan.name)}
                 >
                   {isCurrentPlan ? "Current Plan" : (
                     <>

@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface SubscriptionPlan {
   id: string;
@@ -26,6 +28,7 @@ interface SubscriptionPlan {
 }
 
 const PricingSection = () => {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -63,6 +66,19 @@ const PricingSection = () => {
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  const handleGetStarted = async (planId: string, planName: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.info("Please sign in to get started", {
+        description: "You need to create an account to subscribe to a plan"
+      });
+      navigate("/auth");
+    } else {
+      navigate("/admin/subscription");
+    }
   };
 
   if (loading) {
@@ -251,6 +267,7 @@ const PricingSection = () => {
                   className="w-full" 
                   variant={plan.is_popular ? "default" : "outline"}
                   size="lg"
+                  onClick={() => handleGetStarted(plan.id, plan.name)}
                 >
                   Get Started
                 </Button>
