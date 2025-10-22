@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getSettings, saveSettings } from "@/lib/settingsData";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -32,32 +33,55 @@ const AdminSettings = () => {
   });
 
   useEffect(() => {
-    // Load existing settings from centralized settings
-    const settings = getSettings();
+    const loadSettings = async () => {
+      // Load existing settings from centralized settings
+      const settings = getSettings();
+      
+      // Load additional settings from old localStorage format for backward compatibility
+      const oldSettings = localStorage.getItem("storeSettings");
+      const extraData = oldSettings ? JSON.parse(oldSettings) : {};
+      
+      // Try to load phone from profiles table
+      let phoneFromDb = extraData.phone || "";
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('phone')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profile?.phone) {
+            phoneFromDb = profile.phone;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading phone from profiles:', error);
+      }
+      
+      setFormData({
+        storeName: settings.storeName,
+        tagline: extraData.tagline || "",
+        logoUrl: extraData.logoUrl || "",
+        heroImageUrl: extraData.heroImageUrl || "",
+        phone: phoneFromDb,
+        email: settings.email || "",
+        address: settings.address || "",
+        whatsappNumber: settings.whatsappNumber,
+        currency: settings.currency || "INR",
+        currencySymbol: settings.currencySymbol || "₹",
+        deliveryAreas: extraData.deliveryAreas || "",
+        returnPolicy: extraData.returnPolicy || "",
+        shippingPolicy: extraData.shippingPolicy || "",
+        termsConditions: extraData.termsConditions || "",
+        facebook: extraData.facebook || "",
+        instagram: extraData.instagram || "",
+        twitter: extraData.twitter || "",
+      });
+    };
     
-    // Load additional settings from old localStorage format for backward compatibility
-    const oldSettings = localStorage.getItem("storeSettings");
-    const extraData = oldSettings ? JSON.parse(oldSettings) : {};
-    
-    setFormData({
-      storeName: settings.storeName,
-      tagline: extraData.tagline || "",
-      logoUrl: extraData.logoUrl || "",
-      heroImageUrl: extraData.heroImageUrl || "",
-      phone: extraData.phone || "",
-      email: settings.email || "",
-      address: settings.address || "",
-      whatsappNumber: settings.whatsappNumber,
-      currency: settings.currency || "INR",
-      currencySymbol: settings.currencySymbol || "₹",
-      deliveryAreas: extraData.deliveryAreas || "",
-      returnPolicy: extraData.returnPolicy || "",
-      shippingPolicy: extraData.shippingPolicy || "",
-      termsConditions: extraData.termsConditions || "",
-      facebook: extraData.facebook || "",
-      instagram: extraData.instagram || "",
-      twitter: extraData.twitter || "",
-    });
+    loadSettings();
   }, []);
 
   const handleInputChange = (field: string, value: string) => {
@@ -117,6 +141,19 @@ const AdminSettings = () => {
 
       // Save additional fields to old format for backward compatibility
       localStorage.setItem("storeSettings", JSON.stringify(formData));
+
+      // Save phone number to profiles table for superadmin visibility
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && formData.phone) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ phone: formData.phone })
+          .eq('user_id', user.id);
+        
+        if (profileError) {
+          console.error('Error updating profile phone:', profileError);
+        }
+      }
       
       toast({
         title: "Settings Saved",
