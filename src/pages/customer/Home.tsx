@@ -73,70 +73,48 @@ const Home = () => {
   const [categories, setCategories] = useState<Category[]>(DEMO_CATEGORIES);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
-  // Load products and categories
+  // Load products and categories from demo store
   const loadProducts = async () => {
     try {
-      // Get current user's store to fetch products
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { data: store } = await supabase
-          .from("stores")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      // Fetch demo store
+      const { data: demoStore } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("slug", "demo")
+        .eq("is_active", true)
+        .maybeSingle();
 
-        if (store) {
-          // Fetch published products from database
-          const publishedProducts = await getPublishedProducts(store.id);
-          
-          // Store all published products
-          setAllProducts(publishedProducts as any);
-          
-          // Featured products (first 4)
-          setFeaturedProducts(publishedProducts.slice(0, 4) as any);
-          
-          // New arrivals (last 4)
-          const sorted = [...publishedProducts].sort((a, b) => 
-            new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-          );
-          setNewArrivals(sorted.slice(0, 4) as any);
+      if (demoStore) {
+        // Fetch published products from demo store
+        const publishedProducts = await getPublishedProducts(demoStore.id);
+        
+        // Store all published products
+        setAllProducts(publishedProducts as any);
+        
+        // Featured products (first 4)
+        setFeaturedProducts(publishedProducts.slice(0, 4) as any);
+        
+        // New arrivals (last 4)
+        const sorted = [...publishedProducts].sort((a, b) => 
+          new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+        );
+        setNewArrivals(sorted.slice(0, 4) as any);
+
+        // Load categories from demo store
+        const { data: categoriesData } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("store_id", demoStore.id)
+          .order("name");
+
+        if (categoriesData && categoriesData.length > 0) {
+          setCategories(categoriesData);
+        } else {
+          setCategories(DEMO_CATEGORIES);
         }
       }
     } catch (error) {
       console.error("Error loading products:", error);
-    }
-    
-    // Load categories from database or use demo
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: store } = await supabase
-          .from("stores")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
-
-        if (store) {
-          const { data: categoriesData } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("store_id", store.id)
-            .order("name");
-
-          if (categoriesData && categoriesData.length > 0) {
-            setCategories(categoriesData);
-          } else {
-            setCategories(DEMO_CATEGORIES);
-          }
-        } else {
-          setCategories(DEMO_CATEGORIES);
-        }
-      } else {
-        setCategories(DEMO_CATEGORIES);
-      }
-    } catch (error) {
-      console.error("Error loading categories:", error);
       setCategories(DEMO_CATEGORIES);
     }
   };
