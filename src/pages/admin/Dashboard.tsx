@@ -121,16 +121,52 @@ const AdminDashboard = () => {
     
     loadStoreName();
 
-    // Load real product data
+    // Load real product data and orders
     const loadProductStats = async () => {
       const products = await getProducts();
       const activeProducts = products.filter(p => p.status === 'published').length;
       
+      // Fetch real orders data
+      const { data: { user } } = await supabase.auth.getUser();
+      let totalOrders = 0;
+      let totalCustomers = 0;
+      
+      if (user) {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (store) {
+          // Get total orders count
+          const { count: ordersCount } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('store_id', store.id);
+          
+          totalOrders = ordersCount || 0;
+          
+          // Get unique customers count
+          const { data: orders } = await supabase
+            .from('orders')
+            .select('customer_email, customer_phone')
+            .eq('store_id', store.id);
+          
+          if (orders) {
+            const uniqueCustomers = new Set(
+              orders.map(order => order.customer_email || order.customer_phone)
+            );
+            totalCustomers = uniqueCustomers.size;
+          }
+        }
+      }
+      
       setStats({
         totalProducts: products.length,
         activeProducts: activeProducts,
-        totalOrders: 156, // Demo data
-        totalCustomers: 89, // Demo data
+        totalOrders,
+        totalCustomers,
       });
 
       // Demo recent activity
