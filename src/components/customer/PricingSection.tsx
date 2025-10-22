@@ -213,9 +213,12 @@ const PricingSection = () => {
                   {(plan.whatsapp_orders_limit ?? 0) > 0 && (
                     <li className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-foreground">
-                        {plan.whatsapp_orders_limit} WhatsApp orders/month
-                      </span>
+                      <div className="text-foreground">
+                        <div className="font-medium">WhatsApp Orders Limit</div>
+                        <div className="text-sm text-muted-foreground">
+                          {plan.whatsapp_orders_limit} orders per month
+                        </div>
+                      </div>
                     </li>
                   )}
                   {(plan.max_products ?? 0) > 0 && (
