@@ -136,16 +136,39 @@ const Checkout = () => {
 
     try {
       // Get store info
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Authentication required");
-
+      const storeSlug = localStorage.getItem('store_slug') || window.location.hostname.split('.')[0];
+      
       const { data: storeData } = await supabase
         .from("stores")
         .select("id, user_id")
-        .eq("user_id", user.id)
-        .single();
+        .or(`slug.eq.${storeSlug},custom_domain.eq.${window.location.hostname}`)
+        .maybeSingle();
 
       if (!storeData) throw new Error("Store not found");
+
+      // Check subscription limits for WhatsApp orders
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select(`
+          whatsapp_orders_used,
+          website_orders_used,
+          subscription_plans (
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", storeData.user_id)
+        .maybeSingle();
+
+      if (subscription?.subscription_plans) {
+        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        
+        // Check if limit is exceeded (0 means unlimited, null means feature disabled)
+        if (whatsappLimit !== null && whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
+          throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
+        }
+      }
 
       // Generate order number
       const orderNumber = `ORD${Date.now().toString().slice(-8)}`;
@@ -179,6 +202,16 @@ const Checkout = () => {
         .single();
 
       if (orderError) throw orderError;
+
+      // Increment WhatsApp orders count
+      if (subscription) {
+        await supabase
+          .from("subscriptions")
+          .update({
+            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
+          })
+          .eq("user_id", storeData.user_id);
+      }
 
       // Log to Google Sheets (non-blocking)
       supabase.functions.invoke('log-order-to-sheet', {

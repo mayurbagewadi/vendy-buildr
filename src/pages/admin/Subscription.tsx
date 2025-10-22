@@ -17,6 +17,7 @@ interface SubscriptionPlan {
   features: string[];
   max_products: number | null;
   whatsapp_orders_limit: number | null;
+  website_orders_limit: number | null;
   enable_location_sharing: boolean;
   enable_analytics: boolean;
   enable_order_emails: boolean;
@@ -30,6 +31,7 @@ interface UserSubscription {
   trial_ends_at: string | null;
   next_billing_at: string | null;
   whatsapp_orders_used: number;
+  website_orders_used: number;
   current_period_end: string | null;
   subscription_plans: SubscriptionPlan;
 }
@@ -120,9 +122,18 @@ const SubscriptionPage = () => {
   };
 
   const getWhatsAppUsagePercentage = () => {
-    if (!currentSubscription?.subscription_plans?.whatsapp_orders_limit) return 0;
-    const limit = currentSubscription.subscription_plans.whatsapp_orders_limit;
+    const limit = currentSubscription?.subscription_plans?.whatsapp_orders_limit;
+    // If limit is null (feature disabled) or 0 (unlimited), don't show usage
+    if (limit === null || limit === 0) return 0;
     const used = currentSubscription.whatsapp_orders_used || 0;
+    return Math.min((used / limit) * 100, 100);
+  };
+
+  const getWebsiteUsagePercentage = () => {
+    const limit = currentSubscription?.subscription_plans?.website_orders_limit;
+    // If limit is null (feature disabled) or 0 (unlimited), don't show usage
+    if (limit === null || limit === 0) return 0;
+    const used = currentSubscription.website_orders_used || 0;
     return Math.min((used / limit) * 100, 100);
   };
 
@@ -171,15 +182,37 @@ const SubscriptionPage = () => {
 
           {/* Usage Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {currentSubscription.subscription_plans.whatsapp_orders_limit && (
+            {currentSubscription.subscription_plans.whatsapp_orders_limit !== null && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground">WhatsApp Orders</span>
                   <span className="text-sm text-muted-foreground">
-                    {currentSubscription.whatsapp_orders_used || 0} / {currentSubscription.subscription_plans.whatsapp_orders_limit}
+                    {currentSubscription.subscription_plans.whatsapp_orders_limit === 0
+                      ? `${currentSubscription.whatsapp_orders_used || 0} / Unlimited`
+                      : `${currentSubscription.whatsapp_orders_used || 0} / ${currentSubscription.subscription_plans.whatsapp_orders_limit}`
+                    }
                   </span>
                 </div>
-                <Progress value={getWhatsAppUsagePercentage()} />
+                {currentSubscription.subscription_plans.whatsapp_orders_limit > 0 && (
+                  <Progress value={getWhatsAppUsagePercentage()} />
+                )}
+              </div>
+            )}
+
+            {currentSubscription.subscription_plans.website_orders_limit !== null && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">Website Orders</span>
+                  <span className="text-sm text-muted-foreground">
+                    {currentSubscription.subscription_plans.website_orders_limit === 0
+                      ? `${currentSubscription.website_orders_used || 0} / Unlimited`
+                      : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
+                    }
+                  </span>
+                </div>
+                {currentSubscription.subscription_plans.website_orders_limit > 0 && (
+                  <Progress value={getWebsiteUsagePercentage()} />
+                )}
               </div>
             )}
 
@@ -253,11 +286,25 @@ const SubscriptionPage = () => {
                         <span className="text-sm text-foreground">{feature}</span>
                       </li>
                     ))}
-                  {plan.whatsapp_orders_limit && (
+                  {plan.whatsapp_orders_limit !== null && (
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-foreground">
-                        {plan.whatsapp_orders_limit} WhatsApp orders/month
+                        {plan.whatsapp_orders_limit === 0 
+                          ? 'Unlimited WhatsApp orders/month'
+                          : `${plan.whatsapp_orders_limit} WhatsApp orders/month`
+                        }
+                      </span>
+                    </li>
+                  )}
+                  {plan.website_orders_limit !== null && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">
+                        {plan.website_orders_limit === 0 
+                          ? 'Unlimited Website orders/month'
+                          : `${plan.website_orders_limit} Website orders/month`
+                        }
                       </span>
                     </li>
                   )}
