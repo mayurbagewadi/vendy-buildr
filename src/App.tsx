@@ -34,6 +34,7 @@ import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import OnboardingCustomize from "./pages/onboarding/Customize";
 import OnboardingComplete from "./pages/onboarding/Complete";
 import Store from "./pages/customer/Store";
+import Policies from "./pages/customer/Policies";
 
 
 const queryClient = new QueryClient();
@@ -85,6 +86,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             {/* Dynamic Store Route - must be last before 404 */}
             <Route path="/:slug" element={<Store />} />
+            <Route path="/:slug/policies" element={<Policies />} />
             <Route path="/:slug/products" element={<CustomerProducts />} />
             <Route path="/:slug/products/:id" element={<ProductDetail />} />
             <Route path="*" element={<NotFound />} />

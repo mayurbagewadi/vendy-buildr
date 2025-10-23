@@ -1,4 +1,5 @@
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 interface StoreFooterProps {
   storeName: string;
@@ -21,6 +22,8 @@ interface StoreFooterProps {
 }
 
 const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email, address, socialLinks, policies }: StoreFooterProps) => {
+  const { slug } = useParams<{ slug: string }>();
+  const policiesPath = slug ? `/${slug}/policies` : "/policies";
   return (
     <footer className="bg-muted border-t border-border mt-20">
       <div className="container mx-auto px-4 py-12">
@@ -36,31 +39,31 @@ const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email
           {/* Policies */}
           <div>
             <h3 className="font-bold text-foreground mb-4">Policies</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {policies?.termsConditions ? (
-                <li>
-                  <strong>Terms & Conditions:</strong><br />
-                  <span className="line-clamp-2">{policies.termsConditions}</span>
-                </li>
-              ) : (
-                <li>Terms & Conditions: Coming soon</li>
-              )}
-              {policies?.returnPolicy ? (
-                <li>
-                  <strong>Return Policy:</strong><br />
-                  <span className="line-clamp-2">{policies.returnPolicy}</span>
-                </li>
-              ) : (
-                <li>Return Policy: Coming soon</li>
-              )}
-              {policies?.shippingPolicy ? (
-                <li>
-                  <strong>Shipping Policy:</strong><br />
-                  <span className="line-clamp-2">{policies.shippingPolicy}</span>
-                </li>
-              ) : (
-                <li>Shipping Policy: Coming soon</li>
-              )}
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link 
+                  to={`${policiesPath}#terms`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to={`${policiesPath}#return-policy`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Return Policy
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to={`${policiesPath}#shipping-policy`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Shipping Policy
+                </Link>
+              </li>
             </ul>
           </div>
 
