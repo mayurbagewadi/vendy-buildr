@@ -158,17 +158,38 @@ export default function Users() {
     try {
       setLoading(true);
       
-      // First get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, phone, user_id, created_at")
-        .order("created_at", { ascending: false });
+      // Fetch all users from auth.users via edge function (includes users without profiles)
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionToken = sessionStorage.getItem('superadmin_session');
+      
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      if (sessionToken) {
+        headers['x-superadmin-session'] = sessionToken;
+      }
 
-      if (profilesError) throw profilesError;
+      const response = await fetch(
+        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
+        { 
+          method: 'POST',
+          headers 
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const { users: authUsers } = await response.json();
 
       // Then get stores and subscriptions for each user
       const formattedUsers = await Promise.all(
-        (profiles || []).map(async (profile: any) => {
+        (authUsers || []).map(async (profile: any) => {
           // Get store for this user
           const { data: stores } = await supabase
             .from("stores")
