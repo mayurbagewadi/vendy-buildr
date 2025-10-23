@@ -147,14 +147,14 @@ const SubscriptionPage = () => {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="pt-8">
         <p className="text-muted-foreground">Loading subscription details...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pt-4">
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -243,7 +243,7 @@ const SubscriptionPage = () => {
                     }
                   </span>
                 </div>
-                <Progress value={getWebsiteUsagePercentage()} className="h-2" />
+                <Progress value={getWebsiteUsagePercentage() || 0} className="h-2" />
               </div>
             )}
 
