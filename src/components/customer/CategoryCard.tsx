@@ -12,7 +12,7 @@ interface CategoryCardProps {
 
 const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardProps) => {
   const categoryLink = slug 
-    ? `/store/${slug}?category=${encodeURIComponent(name)}`
+    ? `/${slug}/products?category=${encodeURIComponent(name)}`
     : `/products?category=${encodeURIComponent(name)}`;
   
   const directImageUrl = convertToDirectImageUrl(image_url);
