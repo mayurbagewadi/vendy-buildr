@@ -527,24 +527,21 @@ const ProductDetail = () => {
         {relatedProducts.length > 0 && (
           <div className="mt-16">
             <h2 className="text-2xl font-bold text-foreground mb-6">
-              {product?.category ? `More in ${product.category}` : 'You May Also Like'}
+              More Products
             </h2>
-            <div className="relative -mx-4 px-4">
-              <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-                {relatedProducts.map((relatedProduct) => (
-                  <div key={relatedProduct.id} className="flex-none w-[280px] snap-start">
-                    <ProductCard
-                      id={relatedProduct.id}
-                      name={relatedProduct.name}
-                      category={relatedProduct.category}
-                      priceRange={relatedProduct.price_range}
-                      images={relatedProduct.images}
-                      status={relatedProduct.status}
-                      storeSlug={storeSlug}
-                    />
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard
+                  key={relatedProduct.id}
+                  id={relatedProduct.id}
+                  name={relatedProduct.name}
+                  category={relatedProduct.category}
+                  priceRange={relatedProduct.price_range}
+                  images={relatedProduct.images}
+                  status={relatedProduct.status}
+                  storeSlug={storeSlug}
+                />
+              ))}
             </div>
           </div>
         )}
