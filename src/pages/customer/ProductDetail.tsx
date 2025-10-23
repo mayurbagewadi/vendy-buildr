@@ -14,8 +14,9 @@ import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import LazyImage from "@/components/ui/lazy-image";
 
-import { getProductById } from "@/lib/productData";
+import { getProductById, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
+import ProductCard from "@/components/customer/ProductCard";
 import {
   Carousel,
   CarouselContent,
@@ -61,6 +62,7 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -97,6 +99,32 @@ const ProductDetail = () => {
           if (storeData) {
             setStoreSlug(storeData.slug);
           }
+
+          // Fetch related products from the same store
+          const allStoreProducts = await getPublishedProducts(storeId);
+          
+          // Filter out current product
+          const otherProducts = allStoreProducts.filter(p => p.id !== id);
+          
+          // Get products from same category
+          const sameCategoryProducts = otherProducts.filter(
+            p => p.category === data.category
+          );
+          
+          // If not enough products in same category, add random products
+          let recommended = [...sameCategoryProducts];
+          if (recommended.length < 6) {
+            const differentCategoryProducts = otherProducts.filter(
+              p => p.category !== data.category
+            );
+            // Shuffle and take needed amount
+            const shuffled = differentCategoryProducts.sort(() => 0.5 - Math.random());
+            recommended = [...recommended, ...shuffled].slice(0, 6);
+          } else {
+            recommended = recommended.slice(0, 6);
+          }
+          
+          setRelatedProducts(recommended);
         }
         
         // Auto-select first variant if available
@@ -482,8 +510,49 @@ const ProductDetail = () => {
                 </dl>
               </CardContent>
             </Card>
+
+            {/* WhatsApp Actions */}
+            <div className="mt-6 space-y-3">
+              <Button 
+                onClick={handleBuyWhatsApp} 
+                className="w-full min-h-[48px] bg-green-600 hover:bg-green-700 text-white" 
+                disabled={quantity === 0}
+              >
+                Buy via WhatsApp
+              </Button>
+              <Button 
+                onClick={handleProductInquiry} 
+                variant="outline"
+                className="w-full min-h-[44px]"
+              >
+                Product Inquiry
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Related Products Section */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-foreground mb-6">
+              You May Also Like
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard
+                  key={relatedProduct.id}
+                  id={relatedProduct.id}
+                  name={relatedProduct.name}
+                  category={relatedProduct.category}
+                  priceRange={relatedProduct.price_range}
+                  images={relatedProduct.images}
+                  status={relatedProduct.status}
+                  storeSlug={storeSlug}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />
