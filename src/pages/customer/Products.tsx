@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
@@ -17,6 +18,7 @@ import type { Product } from "@/lib/productData";
 
 const Products = () => {
   const [searchParams] = useSearchParams();
+  const { slug } = useParams<{ slug?: string }>();
   const { products: allProducts, loading, error, refresh } = useProductData(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -24,6 +26,27 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState<number[]>([0, 10000]);
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showFilters, setShowFilters] = useState(false);
+  const [storeId, setStoreId] = useState<string | null>(null);
+
+  // Fetch store data if accessing via /:slug/products
+  useEffect(() => {
+    const loadStoreData = async () => {
+      if (!slug) return;
+      
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (storeData) {
+        setStoreId(storeData.id);
+      }
+    };
+    
+    loadStoreData();
+  }, [slug]);
 
   // Extract categories whenever products change
   useEffect(() => {
@@ -55,6 +78,11 @@ const Products = () => {
     }
 
     let filtered = [...allProducts];
+
+    // Filter by store if accessing via /:slug/products
+    if (storeId) {
+      filtered = filtered.filter(p => p.store_id === storeId);
+    }
 
     // Apply URL-based search filter
     const searchParam = searchParams.get("search");
@@ -109,7 +137,7 @@ const Products = () => {
     }
 
     setFilteredProducts(filtered);
-  }, [allProducts, selectedCategories, priceRange, sortBy, searchParams]);
+  }, [allProducts, selectedCategories, priceRange, sortBy, searchParams, storeId]);
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories(prev =>
@@ -127,7 +155,7 @@ const Products = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header storeSlug={slug} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {loading ? (
@@ -248,7 +276,7 @@ const Products = () => {
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                  <ProductCard key={product.id} {...product} storeSlug={slug} />
                 ))}
               </div>
             ) : (
