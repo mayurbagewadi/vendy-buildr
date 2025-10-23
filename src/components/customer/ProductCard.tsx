@@ -12,15 +12,17 @@ interface ProductCardProps {
   price_range?: string;
   images: string[];
   status: string;
+  storeSlug?: string;
 }
 
-const ProductCard = ({ id, name, category, priceRange, price_range, images, status }: ProductCardProps) => {
+const ProductCard = ({ id, name, category, priceRange, price_range, images, status, storeSlug }: ProductCardProps) => {
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
+  const productLink = storeSlug ? `/${storeSlug}/products/${id}` : `/products/${id}`;
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-      <Link to={`/products/${id}`}>
+      <Link to={productLink}>
         <div className="relative aspect-square overflow-hidden bg-muted">
           <LazyImage
             src={imageUrl}
@@ -35,7 +37,7 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
         </div>
       </Link>
       <CardContent className="p-4">
-        <Link to={`/products/${id}`}>
+        <Link to={productLink}>
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
           <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
             {name}
@@ -44,7 +46,7 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
         </Link>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Link to={`/products/${id}`} className="w-full">
+        <Link to={productLink} className="w-full">
           <Button className="w-full min-h-[44px]" variant="outline">
             View Details
           </Button>

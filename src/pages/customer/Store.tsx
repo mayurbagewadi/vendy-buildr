@@ -222,6 +222,7 @@ const Store = () => {
                     priceRange={product.price_range || ''}
                     images={product.images}
                     status={product.status}
+                    storeSlug={store.slug}
                   />
                 ))}
               </div>

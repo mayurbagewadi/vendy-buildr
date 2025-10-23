@@ -85,6 +85,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             {/* Dynamic Store Route - must be last before 404 */}
             <Route path="/:slug" element={<Store />} />
+            <Route path="/:slug/products/:id" element={<ProductDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
