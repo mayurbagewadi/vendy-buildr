@@ -160,12 +160,14 @@ const Checkout = () => {
 
       if (!storeData) throw new Error("Store not found");
 
-      // Check subscription limits for Website orders
+      // Check subscription expiration and limits for Website orders
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
           whatsapp_orders_used,
           website_orders_used,
+          current_period_end,
+          status,
           subscription_plans (
             whatsapp_orders_limit,
             website_orders_limit
@@ -174,13 +176,24 @@ const Checkout = () => {
         .eq("user_id", storeData.user_id)
         .maybeSingle();
 
-      if (subscription?.subscription_plans) {
-        const websiteLimit = subscription.subscription_plans.website_orders_limit;
-        const websiteUsed = subscription.website_orders_used || 0;
+      // Check if subscription has expired
+      if (subscription) {
+        const now = new Date();
+        const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
         
-        // Check if limit is exceeded (0 means unlimited, null means feature disabled)
-        if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
-          throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
+        if (periodEnd && periodEnd < now) {
+          throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
+        }
+
+        // Check order limits
+        if (subscription?.subscription_plans) {
+          const websiteLimit = subscription.subscription_plans.website_orders_limit;
+          const websiteUsed = subscription.website_orders_used || 0;
+          
+          // Check if limit is exceeded (0 means unlimited, null means feature disabled)
+          if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
+            throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
+          }
         }
       }
 

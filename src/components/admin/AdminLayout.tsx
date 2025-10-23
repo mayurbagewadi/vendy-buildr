@@ -41,6 +41,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     websiteLimit: number;
   } | null>(null);
   const [showWarning, setShowWarning] = useState(true);
+  const [expirationWarning, setExpirationWarning] = useState<{
+    expired: boolean;
+    expiresAt: string;
+  } | null>(null);
+  const [showExpirationWarning, setShowExpirationWarning] = useState(true);
 
   const notifications = [
     {
@@ -103,7 +108,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         setStoreName(store.name);
       }
 
-      // Check subscription limits
+      // Check subscription limits and expiration
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
@@ -116,25 +121,39 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         .eq("user_id", session.user.id)
         .single();
 
-      if (subscription?.subscription_plans) {
-        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
-        const websiteLimit = subscription.subscription_plans.website_orders_limit;
-        const whatsappUsed = subscription.whatsapp_orders_used || 0;
-        const websiteUsed = subscription.website_orders_used || 0;
-
-        // Check if limits are reached (100%) or close to limit (90%+)
-        const whatsappAtLimit = whatsappLimit && whatsappLimit > 0 && whatsappUsed >= whatsappLimit;
-        const websiteAtLimit = websiteLimit && websiteLimit > 0 && websiteUsed >= websiteLimit;
-
-        if (whatsappAtLimit || websiteAtLimit) {
-          setLimitWarning({
-            whatsapp: whatsappAtLimit,
-            website: websiteAtLimit,
-            whatsappUsed,
-            whatsappLimit: whatsappLimit || 0,
-            websiteUsed,
-            websiteLimit: websiteLimit || 0,
+      if (subscription) {
+        // Check if subscription has expired
+        const now = new Date();
+        const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+        
+        if (periodEnd && periodEnd < now) {
+          setExpirationWarning({
+            expired: true,
+            expiresAt: periodEnd.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
           });
+        }
+
+        // Check order limits
+        if (subscription?.subscription_plans) {
+          const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+          const websiteLimit = subscription.subscription_plans.website_orders_limit;
+          const whatsappUsed = subscription.whatsapp_orders_used || 0;
+          const websiteUsed = subscription.website_orders_used || 0;
+
+          // Check if limits are reached (100%) or close to limit (90%+)
+          const whatsappAtLimit = whatsappLimit && whatsappLimit > 0 && whatsappUsed >= whatsappLimit;
+          const websiteAtLimit = websiteLimit && websiteLimit > 0 && websiteUsed >= websiteLimit;
+
+          if (whatsappAtLimit || websiteAtLimit) {
+            setLimitWarning({
+              whatsapp: whatsappAtLimit,
+              website: websiteAtLimit,
+              whatsappUsed,
+              whatsappLimit: whatsappLimit || 0,
+              websiteUsed,
+              websiteLimit: websiteLimit || 0,
+            });
+          }
         }
       }
     };
@@ -382,8 +401,41 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
         </header>
 
+        {/* Expiration Warning Banner */}
+        {expirationWarning && showExpirationWarning && (
+          <Alert className="m-4 lg:m-6 mb-0 border-destructive bg-destructive/10">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <AlertDescription className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-destructive mb-1">
+                  Subscription Expired
+                </p>
+                <p className="text-sm text-foreground">
+                  Your subscription expired on {expirationWarning.expiresAt}. You cannot accept new orders until you renew your subscription.{" "}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
+                    onClick={() => navigate("/admin/subscription")}
+                  >
+                    Renew your subscription
+                  </Button>
+                  {" "}to continue accepting orders.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
+                onClick={() => setShowExpirationWarning(false)}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Limit Warning Banner */}
-        {limitWarning && showWarning && (
+        {limitWarning && showWarning && !expirationWarning && (
           <Alert className="m-4 lg:m-6 mb-0 border-destructive bg-destructive/10">
             <AlertTriangle className="h-5 w-5 text-destructive" />
             <AlertDescription className="flex items-start justify-between gap-4">
