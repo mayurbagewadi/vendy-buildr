@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Check, ArrowUpRight, Calendar, Package, Mail, ArrowLeft } from "lucide-react";
+import { Check, ArrowUpRight, Calendar, Package, Mail, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SubscriptionPlan {
   id: string;
@@ -163,6 +164,11 @@ const SubscriptionPage = () => {
     navigate("/pricing");
   };
 
+  const isSubscriptionExpired = () => {
+    if (!currentSubscription?.current_period_end) return false;
+    return new Date(currentSubscription.current_period_end) < new Date();
+  };
+
   if (loading) {
     return (
       <div className="pt-8">
@@ -188,6 +194,17 @@ const SubscriptionPage = () => {
         </div>
       </div>
 
+      {/* Expiration Warning */}
+      {currentSubscription && isSubscriptionExpired() && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription className="ml-2">
+            <span className="font-semibold">Your subscription has expired!</span> 
+            {" "}Your store cannot accept new orders. Please upgrade your plan to continue using our services.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Current Plan */}
       {currentSubscription && (
         <Card className="p-6">
@@ -197,8 +214,8 @@ const SubscriptionPage = () => {
                 <h2 className="text-2xl font-bold text-foreground mb-2">
                   {currentSubscription.subscription_plans.name}
                 </h2>
-                <Badge variant={currentSubscription.status === "active" ? "default" : "secondary"}>
-                  {currentSubscription.status}
+                <Badge variant={isSubscriptionExpired() ? "destructive" : currentSubscription.status === "active" ? "default" : "secondary"}>
+                  {isSubscriptionExpired() ? "Expired" : currentSubscription.status}
                 </Badge>
               </div>
               <div className="text-right">
