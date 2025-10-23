@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.sync-sheet-to-db]
 verify_jwt = false
+
+[functions.sync-missing-profiles]
+verify_jwt = false

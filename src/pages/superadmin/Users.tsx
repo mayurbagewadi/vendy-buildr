@@ -29,7 +29,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft, UserCircle } from "lucide-react";
+import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft, UserCircle, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -105,6 +105,7 @@ export default function Users() {
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [syncingProfiles, setSyncingProfiles] = useState(false);
   const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
 
   useEffect(() => {
@@ -543,6 +544,47 @@ export default function Users() {
     }
   };
 
+  const handleSyncProfiles = async () => {
+    try {
+      setSyncingProfiles(true);
+
+      const response = await fetch(
+        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/sync-missing-profiles`,
+        { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to sync profiles');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Success",
+        description: data.message + (data.count > 0 ? ` (${data.count} profiles synced)` : ''),
+      });
+
+      // Refresh the users list
+      if (data.count > 0) {
+        fetchUsers();
+      }
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingProfiles(false);
+    }
+  };
+
   const getStatusBadge = (subscription: UserData["subscription"]) => {
     if (!subscription) {
       return <Badge variant="secondary">No Plan</Badge>;
@@ -688,6 +730,10 @@ export default function Users() {
           </Select>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncProfiles} disabled={syncingProfiles}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncingProfiles ? 'animate-spin' : ''}`} />
+            Sync Profiles
+          </Button>
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
