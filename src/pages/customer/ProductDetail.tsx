@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import LazyImage from "@/components/ui/lazy-image";
-import VideoPlayer from "@/components/ui/video-player";
+
 import { getProductById } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import {
@@ -342,7 +342,15 @@ const ProductDetail = () => {
                 <Card className="overflow-hidden">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-3">Product Video</h3>
-                    <VideoPlayer url={videoUrl} className="w-full" />
+                    <div className="relative w-full pt-[56.25%]">
+                      <iframe
+                        className="absolute inset-0 w-full h-full rounded-lg"
+                        src={`https://www.youtube.com/embed/${videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1] || videoUrl}`}
+                        title="Product Video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
