@@ -158,34 +158,58 @@ export default function Users() {
     try {
       setLoading(true);
       
-      // Fetch all users from auth.users via edge function (includes users without profiles)
-      const { data: { session } } = await supabase.auth.getSession();
-      const sessionToken = sessionStorage.getItem('superadmin_session');
+      // Try to fetch from edge function first, fall back to profiles if it fails
+      let authUsers: any[] = [];
       
-      const headers: any = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-      if (sessionToken) {
-        headers['x-superadmin-session'] = sessionToken;
-      }
-
-      const response = await fetch(
-        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
-        { 
-          method: 'POST',
-          headers 
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const sessionToken = sessionStorage.getItem('superadmin_session');
+        
+        const headers: any = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
         }
-      );
+        if (sessionToken) {
+          headers['x-superadmin-session'] = sessionToken;
+        }
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const response = await fetch(
+          `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
+          { 
+            method: 'POST',
+            headers 
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          authUsers = result.users || [];
+        } else {
+          throw new Error('Edge function unavailable');
+        }
+      } catch (edgeFunctionError) {
+        console.log('Edge function not available, falling back to profiles:', edgeFunctionError);
+        
+        // Fallback: Get profiles from database
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, email, full_name, phone, user_id, created_at")
+          .order("created_at", { ascending: false });
+
+        if (profilesError) throw profilesError;
+        
+        authUsers = (profiles || []).map(p => ({
+          id: p.user_id,
+          email: p.email,
+          full_name: p.full_name,
+          phone: p.phone,
+          created_at: p.created_at,
+          user_id: p.user_id,
+        }));
       }
-
-      const { users: authUsers } = await response.json();
 
       // Then get stores and subscriptions for each user
       const formattedUsers = await Promise.all(
