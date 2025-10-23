@@ -39,11 +39,11 @@ const AdminSettings = () => {
         if (!user) return;
 
         // Load from stores table
-        const { data: store } = await supabase
-          .from('stores')
-          .select('name, description, logo_url, hero_banner_url, whatsapp_number, social_links')
-          .eq('user_id', user.id)
-          .single();
+      const { data: store } = await supabase
+        .from('stores')
+        .select('name, description, logo_url, hero_banner_url, whatsapp_number, social_links, policies, address')
+        .eq('user_id', user.id)
+        .single();
 
         // Load phone from profiles table
         const { data: profile } = await supabase
@@ -59,14 +59,14 @@ const AdminSettings = () => {
           heroImageUrl: store?.hero_banner_url || "",
           phone: profile?.phone || "",
           email: profile?.email || "",
-          address: "",
+          address: store?.address || "",
           whatsappNumber: store?.whatsapp_number || "",
           currency: "INR",
           currencySymbol: "₹",
-          deliveryAreas: "",
-          returnPolicy: "",
-          shippingPolicy: "",
-          termsConditions: "",
+          deliveryAreas: (store?.policies as any)?.deliveryAreas || "",
+          returnPolicy: (store?.policies as any)?.returnPolicy || "",
+          shippingPolicy: (store?.policies as any)?.shippingPolicy || "",
+          termsConditions: (store?.policies as any)?.termsConditions || "",
           facebook: (store?.social_links as any)?.facebook || "",
           instagram: (store?.social_links as any)?.instagram || "",
           twitter: (store?.social_links as any)?.twitter || "",
@@ -137,10 +137,17 @@ const AdminSettings = () => {
           logo_url: formData.logoUrl || null,
           hero_banner_url: formData.heroImageUrl || null,
           whatsapp_number: formData.whatsappNumber,
+          address: formData.address || null,
           social_links: {
             facebook: formData.facebook || null,
             instagram: formData.instagram || null,
             twitter: formData.twitter || null,
+          },
+          policies: {
+            deliveryAreas: formData.deliveryAreas || null,
+            returnPolicy: formData.returnPolicy || null,
+            shippingPolicy: formData.shippingPolicy || null,
+            termsConditions: formData.termsConditions || null,
           }
         })
         .eq('user_id', user.id);

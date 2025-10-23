@@ -29,6 +29,23 @@ interface StoreData {
   logo_url: string | null;
   hero_banner_url: string | null;
   whatsapp_number: string | null;
+  address: string | null;
+  social_links: {
+    facebook?: string | null;
+    instagram?: string | null;
+    twitter?: string | null;
+  } | null;
+  policies: {
+    returnPolicy?: string | null;
+    shippingPolicy?: string | null;
+    termsConditions?: string | null;
+    deliveryAreas?: string | null;
+  } | null;
+}
+
+interface ProfileData {
+  phone: string | null;
+  email: string | null;
 }
 
 interface Category {
@@ -41,6 +58,7 @@ interface Category {
 const Store = () => {
   const { slug } = useParams<{ slug: string }>();
   const [store, setStore] = useState<StoreData | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
@@ -73,7 +91,22 @@ const Store = () => {
         return;
       }
 
-      setStore(storeData);
+      setStore({
+        ...storeData,
+        social_links: storeData.social_links as any,
+        policies: storeData.policies as any,
+      });
+
+      // Fetch profile data for contact information
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("phone, email")
+        .eq("user_id", storeData.user_id)
+        .maybeSingle();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
 
       // Fetch categories for this store
       const { data: categoriesData } = await supabase
@@ -323,6 +356,11 @@ const Store = () => {
         storeName={store.name}
         storeDescription={store.description}
         whatsappNumber={store.whatsapp_number}
+        phone={profile?.phone}
+        email={profile?.email}
+        address={store.address}
+        socialLinks={store.social_links}
+        policies={store.policies}
       />
     </div>
   );

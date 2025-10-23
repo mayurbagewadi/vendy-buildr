@@ -4,9 +4,26 @@ interface StoreFooterProps {
   storeName: string;
   storeDescription?: string | null;
   whatsappNumber?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  socialLinks?: {
+    facebook?: string | null;
+    instagram?: string | null;
+    twitter?: string | null;
+  } | null;
+  policies?: {
+    returnPolicy?: string | null;
+    shippingPolicy?: string | null;
+    termsConditions?: string | null;
+    deliveryAreas?: string | null;
+  } | null;
 }
 
-const StoreFooter = ({ storeName, storeDescription, whatsappNumber }: StoreFooterProps) => {
+const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email, address, socialLinks, policies }: StoreFooterProps) => {
+  const hasPolicies = policies?.returnPolicy || policies?.shippingPolicy || policies?.termsConditions;
+  const hasContact = whatsappNumber || phone || email || address;
+  const hasSocial = socialLinks?.facebook || socialLinks?.instagram || socialLinks?.twitter;
   return (
     <footer className="bg-muted border-t border-border mt-20">
       <div className="container mx-auto px-4 py-12">
@@ -20,68 +37,97 @@ const StoreFooter = ({ storeName, storeDescription, whatsappNumber }: StoreFoote
           </div>
 
           {/* Policies */}
-          <div>
-            <h3 className="font-bold text-foreground mb-4">Policies</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Terms & Conditions
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Return Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Shipping Policy
-                </a>
-              </li>
-            </ul>
-          </div>
+          {hasPolicies && (
+            <div>
+              <h3 className="font-bold text-foreground mb-4">Policies</h3>
+              <ul className="space-y-2 text-sm">
+                {policies?.termsConditions && (
+                  <li className="text-muted-foreground">
+                    <div className="line-clamp-2">{policies.termsConditions}</div>
+                  </li>
+                )}
+                {policies?.returnPolicy && (
+                  <li className="text-muted-foreground">
+                    <strong>Return:</strong> {policies.returnPolicy.substring(0, 100)}
+                    {policies.returnPolicy.length > 100 && '...'}
+                  </li>
+                )}
+                {policies?.shippingPolicy && (
+                  <li className="text-muted-foreground">
+                    <strong>Shipping:</strong> {policies.shippingPolicy.substring(0, 100)}
+                    {policies.shippingPolicy.length > 100 && '...'}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
 
           {/* Contact */}
-          <div>
-            <h3 className="font-bold text-foreground mb-4">Contact Us</h3>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              {whatsappNumber && (
-                <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 flex-shrink-0" />
-                  <span>{whatsappNumber}</span>
-                </li>
+          {hasContact && (
+            <div>
+              <h3 className="font-bold text-foreground mb-4">Contact Us</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                {phone && (
+                  <li className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 flex-shrink-0" />
+                    <span>{phone}</span>
+                  </li>
+                )}
+                {whatsappNumber && phone !== whatsappNumber && (
+                  <li className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 flex-shrink-0" />
+                    <span>WhatsApp: {whatsappNumber}</span>
+                  </li>
+                )}
+                {email && (
+                  <li className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 flex-shrink-0" />
+                    <span>{email}</span>
+                  </li>
+                )}
+                {address && (
+                  <li className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{address}</span>
+                  </li>
+                )}
+              </ul>
+              {hasSocial && (
+                <div className="flex gap-3 mt-4">
+                  {socialLinks?.facebook && (
+                    <a
+                      href={socialLinks.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <Facebook className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks?.instagram && (
+                    <a
+                      href={socialLinks.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks?.twitter && (
+                    <a
+                      href={socialLinks.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
               )}
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 flex-shrink-0" />
-                <span>Contact us for inquiries</span>
-              </li>
-            </ul>
-            <div className="flex gap-3 mt-4">
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Twitter className="w-4 h-4" />
-              </a>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Bottom Bar */}

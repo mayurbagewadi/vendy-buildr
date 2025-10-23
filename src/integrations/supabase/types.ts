@@ -264,6 +264,7 @@ export type Database = {
       }
       stores: {
         Row: {
+          address: string | null
           created_at: string
           custom_domain: string | null
           description: string | null
@@ -280,6 +281,7 @@ export type Database = {
           last_sheet_sync: string | null
           logo_url: string | null
           name: string
+          policies: Json | null
           slug: string
           social_links: Json | null
           updated_at: string
@@ -287,6 +289,7 @@ export type Database = {
           whatsapp_number: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           custom_domain?: string | null
           description?: string | null
@@ -303,6 +306,7 @@ export type Database = {
           last_sheet_sync?: string | null
           logo_url?: string | null
           name: string
+          policies?: Json | null
           slug: string
           social_links?: Json | null
           updated_at?: string
@@ -310,6 +314,7 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           custom_domain?: string | null
           description?: string | null
@@ -326,6 +331,7 @@ export type Database = {
           last_sheet_sync?: string | null
           logo_url?: string | null
           name?: string
+          policies?: Json | null
           slug?: string
           social_links?: Json | null
           updated_at?: string
