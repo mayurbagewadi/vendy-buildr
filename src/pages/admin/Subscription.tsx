@@ -154,7 +154,7 @@ const SubscriptionPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6 md:p-8">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
