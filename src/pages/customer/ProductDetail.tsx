@@ -106,23 +106,15 @@ const ProductDetail = () => {
           // Filter out current product
           const otherProducts = allStoreProducts.filter(p => p.id !== id);
           
-          // Get products from same category
+          // Get products from same category first
           const sameCategoryProducts = otherProducts.filter(
             p => p.category === data.category
           );
           
-          // If not enough products in same category, add random products
-          let recommended = [...sameCategoryProducts];
-          if (recommended.length < 6) {
-            const differentCategoryProducts = otherProducts.filter(
-              p => p.category !== data.category
-            );
-            // Shuffle and take needed amount
-            const shuffled = differentCategoryProducts.sort(() => 0.5 - Math.random());
-            recommended = [...recommended, ...shuffled].slice(0, 6);
-          } else {
-            recommended = recommended.slice(0, 6);
-          }
+          // If no products in same category, show all other products
+          const recommended = sameCategoryProducts.length > 0 
+            ? sameCategoryProducts 
+            : otherProducts;
           
           setRelatedProducts(recommended);
         }
@@ -535,21 +527,24 @@ const ProductDetail = () => {
         {relatedProducts.length > 0 && (
           <div className="mt-16">
             <h2 className="text-2xl font-bold text-foreground mb-6">
-              You May Also Like
+              {product?.category ? `More in ${product.category}` : 'You May Also Like'}
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-              {relatedProducts.map((relatedProduct) => (
-                <ProductCard
-                  key={relatedProduct.id}
-                  id={relatedProduct.id}
-                  name={relatedProduct.name}
-                  category={relatedProduct.category}
-                  priceRange={relatedProduct.price_range}
-                  images={relatedProduct.images}
-                  status={relatedProduct.status}
-                  storeSlug={storeSlug}
-                />
-              ))}
+            <div className="relative -mx-4 px-4">
+              <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+                {relatedProducts.map((relatedProduct) => (
+                  <div key={relatedProduct.id} className="flex-none w-[280px] snap-start">
+                    <ProductCard
+                      id={relatedProduct.id}
+                      name={relatedProduct.name}
+                      category={relatedProduct.category}
+                      priceRange={relatedProduct.price_range}
+                      images={relatedProduct.images}
+                      status={relatedProduct.status}
+                      storeSlug={storeSlug}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
