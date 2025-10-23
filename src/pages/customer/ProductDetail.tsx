@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -59,6 +60,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -83,6 +85,20 @@ const ProductDetail = () => {
 
         setProduct(data);
         
+        // Fetch store slug for navigation
+        const storeId = data.store_id;
+        if (storeId) {
+          const { data: storeData } = await supabase
+            .from("stores")
+            .select("slug")
+            .eq("id", storeId)
+            .single();
+          
+          if (storeData) {
+            setStoreSlug(storeData.slug);
+          }
+        }
+        
         // Auto-select first variant if available
         if (data.variants && data.variants.length > 0) {
           setSelectedVariant(data.variants[0].name);
@@ -106,7 +122,7 @@ const ProductDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} />
         <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner size="lg" text="Loading product..." />
         </div>
@@ -124,6 +140,10 @@ const ProductDetail = () => {
   const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.svg"];
   const videoUrl = product.videoUrl || product.video_url;
   const baseSku = product.baseSku || product.sku;
+  
+  // Use store-specific routes if storeSlug is available
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
 
   const handleQuantityChange = (delta: number) => {
     setQuantity(Math.max(0, quantity + delta));
@@ -132,7 +152,7 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     if (!product) return;
 
-    const storeId = product.storeId || product.store_id;
+    const storeId = product.store_id;
     
     if (!storeId) {
       toast({
@@ -222,14 +242,14 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header storeSlug={storeSlug} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/home" className="hover:text-foreground">Home</Link>
+          <Link to={homeLink} className="hover:text-foreground">Home</Link>
           <ChevronRight className="w-4 h-4" />
-          <Link to="/products" className="hover:text-foreground">Products</Link>
+          <Link to={productsLink} className="hover:text-foreground">Products</Link>
           <ChevronRight className="w-4 h-4" />
           <span className="text-foreground">{product.name}</span>
         </nav>

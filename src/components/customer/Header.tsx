@@ -7,16 +7,24 @@ import MiniCart from "@/components/customer/MiniCart";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 
-const Header = () => {
+interface HeaderProps {
+  storeSlug?: string;
+}
+
+const Header = ({ storeSlug }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Use store-specific routes if storeSlug is provided, otherwise use generic routes
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+      navigate(`${productsLink}?search=${encodeURIComponent(searchQuery)}`);
       setSearchQuery("");
     }
   };
@@ -40,7 +48,7 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/home" className="flex items-center gap-2">
+          <Link to={homeLink} className="flex items-center gap-2">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <ShoppingCart className="w-6 h-6 text-primary-foreground" />
             </div>
@@ -51,16 +59,16 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to="/home" className="text-foreground hover:text-primary transition-colors">
+            <Link to={homeLink} className="text-foreground hover:text-primary transition-colors">
               Home
             </Link>
-            <Link to="/products" className="text-foreground hover:text-primary transition-colors">
+            <Link to={productsLink} className="text-foreground hover:text-primary transition-colors">
               Products
             </Link>
-            <Link to="/home#categories" className="text-foreground hover:text-primary transition-colors">
+            <Link to={`${homeLink}#categories`} className="text-foreground hover:text-primary transition-colors">
               Categories
             </Link>
-            <Link to="/home#about" className="text-foreground hover:text-primary transition-colors">
+            <Link to={`${homeLink}#about`} className="text-foreground hover:text-primary transition-colors">
               About
             </Link>
           </nav>
@@ -136,28 +144,28 @@ const Header = () => {
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
             <Link
-              to="/home"
+              to={homeLink}
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
-              to="/products"
+              to={productsLink}
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Products
             </Link>
             <Link
-              to="/home#categories"
+              to={`${homeLink}#categories`}
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Categories
             </Link>
             <Link
-              to="/home#about"
+              to={`${homeLink}#about`}
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
