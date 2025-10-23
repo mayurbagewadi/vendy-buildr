@@ -271,11 +271,8 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 sm:ml-auto">
-                <Button size="sm" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
+                <Button size="sm" className="whitespace-nowrap" onClick={() => navigate("/admin/subscription")}>
                   Upgrade Now
-                </Button>
-                <Button size="sm" variant="outline" className="whitespace-nowrap" onClick={() => navigate("/pricing")}>
-                  View Plans
                 </Button>
               </div>
             </CardContent>

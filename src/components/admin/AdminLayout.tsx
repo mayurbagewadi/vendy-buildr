@@ -11,7 +11,8 @@ import {
   ShoppingBag,
   Bell,
   User,
-  ShoppingCart
+  ShoppingCart,
+  CreditCard
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -159,6 +160,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/analytics",
       icon: LayoutDashboard,
       current: location.pathname === "/admin/analytics",
+    },
+    {
+      name: "Subscription",
+      href: "/admin/subscription",
+      icon: CreditCard,
+      current: location.pathname === "/admin/subscription",
     },
     {
       name: "Settings",
