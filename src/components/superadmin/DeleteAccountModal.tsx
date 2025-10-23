@@ -42,30 +42,20 @@ export function DeleteAccountModal({
     try {
       setLoading(true);
 
-      // Delete user's store if exists
-      if (user.store) {
-        await supabase.from("stores").delete().eq("user_id", user.id);
-      }
-
-      // Delete user's subscriptions
-      await supabase.from("subscriptions").delete().eq("user_id", user.id);
-
-      // Delete user's transactions
-      await supabase.from("transactions").delete().eq("user_id", user.id);
-
-      // Delete user profile
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("user_id", user.id);
+      // Call edge function to completely delete user including auth records
+      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        body: { userId: user.id }
+      });
 
       if (error) throw error;
 
-      // Activity logging will be implemented in future update
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user account');
+      }
 
       toast({
-        title: "Account Deleted",
-        description: `${user.email}'s account has been permanently deleted`,
+        title: "Account Completely Deleted",
+        description: `${user.email}'s account, all data, and authentication records have been permanently deleted`,
       });
 
       onSuccess();
@@ -73,7 +63,7 @@ export function DeleteAccountModal({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -104,6 +94,7 @@ export function DeleteAccountModal({
           <div>
             <p className="text-sm font-medium mb-2">What will be deleted:</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Authentication credentials (cannot login anymore)</li>
               <li>User account and profile</li>
               <li>Store data and settings</li>
               <li>All products</li>
