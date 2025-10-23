@@ -41,6 +41,7 @@ const SubscriptionPage = () => {
   const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actualOrderCount, setActualOrderCount] = useState(0);
 
   useEffect(() => {
     fetchSubscriptionData();
@@ -52,6 +53,23 @@ const SubscriptionPage = () => {
       if (!user) {
         navigate("/auth");
         return;
+      }
+
+      // Fetch store first to get store_id
+      const { data: store } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      // Count actual orders from the orders table
+      if (store) {
+        const { count } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("store_id", store.id);
+        
+        setActualOrderCount(count || 0);
       }
 
       // Fetch current subscription
@@ -133,7 +151,7 @@ const SubscriptionPage = () => {
     const limit = currentSubscription?.subscription_plans?.website_orders_limit;
     // If limit is null (feature disabled) or 0 (unlimited), don't show usage
     if (limit === null || limit === 0) return 0;
-    const used = currentSubscription.website_orders_used || 0;
+    const used = actualOrderCount; // Use actual order count from orders table
     return Math.min((used / limit) * 100, 100);
   };
 
@@ -238,8 +256,8 @@ const SubscriptionPage = () => {
                   <span className="text-sm font-medium text-foreground">Website Orders</span>
                   <span className="text-sm text-muted-foreground">
                     {currentSubscription.subscription_plans.website_orders_limit === 0
-                      ? `${currentSubscription.website_orders_used || 0} / Unlimited`
-                      : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
+                      ? `${actualOrderCount} / Unlimited`
+                      : `${actualOrderCount} / ${currentSubscription.subscription_plans.website_orders_limit}`
                     }
                   </span>
                 </div>
