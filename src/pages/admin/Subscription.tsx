@@ -154,7 +154,7 @@ const SubscriptionPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-4">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -228,9 +228,7 @@ const SubscriptionPage = () => {
                     }
                   </span>
                 </div>
-                {currentSubscription.subscription_plans.whatsapp_orders_limit > 0 && (
-                  <Progress value={getWhatsAppUsagePercentage()} />
-                )}
+                <Progress value={getWhatsAppUsagePercentage()} className="h-2" />
               </div>
             )}
 
@@ -245,9 +243,7 @@ const SubscriptionPage = () => {
                     }
                   </span>
                 </div>
-                {currentSubscription.subscription_plans.website_orders_limit > 0 && (
-                  <Progress value={getWebsiteUsagePercentage()} />
-                )}
+                <Progress value={getWebsiteUsagePercentage()} className="h-2" />
               </div>
             )}
 
