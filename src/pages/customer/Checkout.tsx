@@ -160,7 +160,7 @@ const Checkout = () => {
 
       if (!storeData) throw new Error("Store not found");
 
-      // Check subscription limits for WhatsApp orders
+      // Check subscription limits for Website orders
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
@@ -175,12 +175,12 @@ const Checkout = () => {
         .maybeSingle();
 
       if (subscription?.subscription_plans) {
-        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
-        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        const websiteLimit = subscription.subscription_plans.website_orders_limit;
+        const websiteUsed = subscription.website_orders_used || 0;
         
         // Check if limit is exceeded (0 means unlimited, null means feature disabled)
-        if (whatsappLimit !== null && whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
-          throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
+        if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
+          throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
         }
       }
 
@@ -217,12 +217,12 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Increment WhatsApp orders count
+      // Increment Website orders count (these are website orders, not WhatsApp)
       if (subscription) {
         await supabase
           .from("subscriptions")
           .update({
-            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
+            website_orders_used: (subscription.website_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
       }
