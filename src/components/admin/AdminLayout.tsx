@@ -12,10 +12,13 @@ import {
   Bell,
   User,
   ShoppingCart,
-  CreditCard
+  CreditCard,
+  AlertTriangle,
+  XCircle
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdminLayoutProps {
@@ -29,6 +32,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [storeName, setStoreName] = useState("Your Store");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [limitWarning, setLimitWarning] = useState<{
+    whatsapp: boolean;
+    website: boolean;
+    whatsappUsed: number;
+    whatsappLimit: number;
+    websiteUsed: number;
+    websiteLimit: number;
+  } | null>(null);
+  const [showWarning, setShowWarning] = useState(true);
 
   const notifications = [
     {
@@ -89,6 +101,41 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       if (store.name) {
         console.log('[AdminLayout] Setting store name:', store.name);
         setStoreName(store.name);
+      }
+
+      // Check subscription limits
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select(`
+          *,
+          subscription_plans (
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (subscription?.subscription_plans) {
+        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+        const websiteLimit = subscription.subscription_plans.website_orders_limit;
+        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        const websiteUsed = subscription.website_orders_used || 0;
+
+        // Check if limits are reached (100%) or close to limit (90%+)
+        const whatsappAtLimit = whatsappLimit && whatsappLimit > 0 && whatsappUsed >= whatsappLimit;
+        const websiteAtLimit = websiteLimit && websiteLimit > 0 && websiteUsed >= websiteLimit;
+
+        if (whatsappAtLimit || websiteAtLimit) {
+          setLimitWarning({
+            whatsapp: whatsappAtLimit,
+            website: websiteAtLimit,
+            whatsappUsed,
+            whatsappLimit: whatsappLimit || 0,
+            websiteUsed,
+            websiteLimit: websiteLimit || 0,
+          });
+        }
       }
     };
 
@@ -334,6 +381,47 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
           </div>
         </header>
+
+        {/* Limit Warning Banner */}
+        {limitWarning && showWarning && (
+          <Alert className="m-4 lg:m-6 mb-0 border-destructive bg-destructive/10">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <AlertDescription className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-destructive mb-1">
+                  Order Limit Reached
+                </p>
+                <p className="text-sm text-foreground">
+                  {limitWarning.whatsapp && limitWarning.website && (
+                    <>You've reached your WhatsApp ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}) and Website ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}) order limits. </>
+                  )}
+                  {limitWarning.whatsapp && !limitWarning.website && (
+                    <>You've reached your WhatsApp order limit ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}). </>
+                  )}
+                  {!limitWarning.whatsapp && limitWarning.website && (
+                    <>You've reached your Website order limit ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}). </>
+                  )}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
+                    onClick={() => navigate("/admin/subscription")}
+                  >
+                    Upgrade your plan
+                  </Button>
+                  {" "}to continue receiving orders.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
+                onClick={() => setShowWarning(false)}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto smooth-scroll">

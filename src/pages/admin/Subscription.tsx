@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Check, ArrowUpRight, Calendar, Package, Mail } from "lucide-react";
+import { Check, ArrowUpRight, Calendar, Package, Mail, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -154,10 +154,20 @@ const SubscriptionPage = () => {
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
-        <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/admin/dashboard")}
+          className="flex-shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
+          <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
+        </div>
       </div>
 
       {/* Current Plan */}
