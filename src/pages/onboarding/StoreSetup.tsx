@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Store, Check, X, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { seedDemoDataForStore } from "@/lib/seedDemoData";
 
 const StoreSetup = () => {
   const navigate = useNavigate();
@@ -112,19 +113,25 @@ const StoreSetup = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      const { error } = await supabase.from("stores").insert({
+      const { data: storeData, error } = await supabase.from("stores").insert({
         user_id: user.id,
         name: formData.storeName,
         slug: formData.storeSlug,
         description: formData.description || null,
         whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`
-      });
+      }).select();
 
       if (error) throw error;
 
+      // Seed demo products and categories for the new store
+      if (storeData && storeData.length > 0) {
+        const newStoreId = storeData[0].id;
+        await seedDemoDataForStore(newStoreId);
+      }
+
       toast({
         title: "Store created!",
-        description: "Let's customize your store next."
+        description: "Your store is ready with demo products. Let's customize it next."
       });
 
       navigate("/onboarding/customize");
