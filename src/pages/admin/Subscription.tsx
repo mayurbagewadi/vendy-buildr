@@ -155,39 +155,53 @@ const SubscriptionPage = () => {
 
   return (
     <div className="p-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
-          <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
-        </div>
-        <Button onClick={handleViewPlans} variant="outline">
-          View All Plans
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
+        <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
       </div>
 
       {/* Current Plan */}
       {currentSubscription && (
         <Card className="p-6">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">
-                {currentSubscription.subscription_plans.name}
-              </h2>
-              <Badge variant={currentSubscription.status === "active" ? "default" : "secondary"}>
-                {currentSubscription.status}
-              </Badge>
+          <div className="mb-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  {currentSubscription.subscription_plans.name}
+                </h2>
+                <Badge variant={currentSubscription.status === "active" ? "default" : "secondary"}>
+                  {currentSubscription.status}
+                </Badge>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-foreground">
+                  {formatPrice(
+                    currentSubscription.billing_cycle === "yearly" && currentSubscription.subscription_plans.yearly_price
+                      ? currentSubscription.subscription_plans.yearly_price
+                      : currentSubscription.subscription_plans.monthly_price
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  /{currentSubscription.billing_cycle === "yearly" ? "year" : "month"}
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-foreground">
-                {formatPrice(
-                  currentSubscription.billing_cycle === "yearly" && currentSubscription.subscription_plans.yearly_price
-                    ? currentSubscription.subscription_plans.yearly_price
-                    : currentSubscription.subscription_plans.monthly_price
-                )}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                /{currentSubscription.billing_cycle === "yearly" ? "year" : "month"}
-              </p>
+            
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-muted-foreground" />
+                <span className="text-foreground">
+                  <span className="font-medium">Billing:</span>{" "}
+                  {currentSubscription.billing_cycle === "yearly" ? "Yearly" : "Monthly"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-foreground">
+                  <span className="font-medium">Expires:</span>{" "}
+                  {formatDate(currentSubscription.current_period_end)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -227,18 +241,22 @@ const SubscriptionPage = () => {
               </div>
             )}
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-foreground">Next billing: {formatDate(currentSubscription.next_billing_at)}</span>
+            {currentSubscription.next_billing_at && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">Next billing: {formatDate(currentSubscription.next_billing_at)}</span>
+                </div>
               </div>
-              {currentSubscription.trial_ends_at && (
+            )}
+            {currentSubscription.trial_ends_at && (
+              <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-foreground">Trial ends: {formatDate(currentSubscription.trial_ends_at)}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Current Plan Features */}
