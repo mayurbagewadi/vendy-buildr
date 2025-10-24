@@ -472,7 +472,10 @@ const Checkout = () => {
                       {locationEnabled && (
                         <div className="space-y-2">
                           <Label>Share Your Location (Optional)</Label>
-                          <LocationPicker onLocationSelect={handleLocationSelect} />
+                          <LocationPicker 
+                            onLocationSelect={handleLocationSelect} 
+                            enabled={locationEnabled}
+                          />
                           {location && (
                             <p className="text-sm text-success">✓ Location captured successfully</p>
                           )}
