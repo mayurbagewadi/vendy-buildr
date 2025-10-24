@@ -17,6 +17,17 @@ export default function SuperAdminLogin() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+
+  const ALLOWED_DOMAIN = 'superadmin.yesgive.shop';
+
+  useEffect(() => {
+    // Check if accessing from authorized domain
+    const currentDomain = window.location.hostname;
+    if (currentDomain !== ALLOWED_DOMAIN && currentDomain !== 'localhost') {
+      setIsUnauthorizedDomain(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +107,28 @@ export default function SuperAdminLogin() {
           <div>
             <CardTitle className="text-3xl font-bold">Super Admin</CardTitle>
             <CardDescription className="mt-2">
-              Enter your credentials to access the admin panel
+              {isUnauthorizedDomain 
+                ? "Access Restricted"
+                : "Enter your credentials to access the admin panel"
+              }
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          {isUnauthorizedDomain ? (
+            <div className="text-center space-y-4">
+              <p className="text-destructive font-medium">
+                Unauthorized Domain Access
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This super admin panel can only be accessed from authorized domains.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Current domain: <span className="font-mono">{window.location.hostname}</span>
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -158,6 +185,7 @@ export default function SuperAdminLogin() {
               )}
             </Button>
           </form>
+          )}
         </CardContent>
       </Card>
     </div>

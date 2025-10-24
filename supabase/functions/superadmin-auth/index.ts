@@ -37,6 +37,35 @@ serve(async (req) => {
   }
 
   try {
+    // Validate domain - only allow requests from authorized domain
+    const origin = req.headers.get('origin') || '';
+    const ALLOWED_DOMAIN = 'superadmin.yesgive.shop';
+    
+    // Extract hostname from origin
+    let requestDomain = '';
+    try {
+      requestDomain = new URL(origin).hostname;
+    } catch (e) {
+      requestDomain = origin;
+    }
+    
+    // Allow localhost for development
+    const isLocalhost = requestDomain.includes('localhost') || requestDomain.includes('127.0.0.1');
+    const isAllowedDomain = requestDomain === ALLOWED_DOMAIN;
+    
+    if (!isLocalhost && !isAllowedDomain) {
+      console.log('Unauthorized domain access attempt:', requestDomain);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Access denied: Unauthorized domain' 
+        }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
