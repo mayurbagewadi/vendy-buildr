@@ -304,17 +304,34 @@ const SubscriptionPage = () => {
           <div className="border-t pt-4">
             <h3 className="font-semibold text-foreground mb-3">Plan Features</h3>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {/* Core features from JSONB - filter out feature flags */}
+              {/* Max Products */}
+              {currentSubscription.subscription_plans.max_products !== null && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">
+                    {currentSubscription.subscription_plans.max_products === 0 
+                      ? 'Unlimited Products'
+                      : `Max ${currentSubscription.subscription_plans.max_products} Product${currentSubscription.subscription_plans.max_products === 1 ? '' : 's'}`
+                    }
+                  </span>
+                </li>
+              )}
+              
+              {/* Core features from JSONB - filter out controlled features */}
               {currentSubscription.subscription_plans.features
                 .filter(f => {
                   if (!f || typeof f !== 'string' || f.trim() === '') return false;
                   const lower = f.toLowerCase();
-                  // Exclude features that are controlled by boolean flags
+                  // Exclude all features that should be controlled elsewhere
                   return !lower.includes('analytics') && 
                          !lower.includes('email') && 
                          !lower.includes('notification') &&
                          !lower.includes('location') &&
-                         !lower.includes('tracking');
+                         !lower.includes('tracking') &&
+                         !lower.includes('product') &&
+                         !lower.includes('support') &&
+                         !lower.includes('whatsapp order') &&
+                         !lower.includes('website order');
                 })
                 .map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
@@ -377,17 +394,34 @@ const SubscriptionPage = () => {
 
                 {/* Plan Features */}
                 <ul className="space-y-2 mb-6 flex-1">
-                  {/* Core features from JSONB - filter out feature flags */}
+                  {/* Max Products */}
+                  {plan.max_products !== null && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">
+                        {plan.max_products === 0 
+                          ? 'Unlimited Products'
+                          : `Max ${plan.max_products} Product${plan.max_products === 1 ? '' : 's'}`
+                        }
+                      </span>
+                    </li>
+                  )}
+                  
+                  {/* Core features from JSONB - filter out controlled features */}
                   {plan.features
                     .filter(f => {
                       if (!f || typeof f !== 'string' || f.trim() === '') return false;
                       const lower = f.toLowerCase();
-                      // Exclude features controlled by boolean flags
+                      // Exclude all features that should be controlled elsewhere
                       return !lower.includes('analytics') && 
                              !lower.includes('email') && 
                              !lower.includes('notification') &&
                              !lower.includes('location') &&
-                             !lower.includes('tracking');
+                             !lower.includes('tracking') &&
+                             !lower.includes('product') &&
+                             !lower.includes('support') &&
+                             !lower.includes('whatsapp order') &&
+                             !lower.includes('website order');
                     })
                     .map((feature, index) => (
                       <li key={index} className="flex items-start gap-2">
@@ -423,7 +457,7 @@ const SubscriptionPage = () => {
                       <span className="text-sm text-foreground">
                         {plan.whatsapp_orders_limit === 0 
                           ? 'Unlimited WhatsApp orders/month'
-                          : `${plan.whatsapp_orders_limit} WhatsApp orders/month`
+                          : `${plan.whatsapp_orders_limit} WhatsApp order${plan.whatsapp_orders_limit === 1 ? '' : 's'}/month`
                         }
                       </span>
                     </li>
@@ -434,7 +468,7 @@ const SubscriptionPage = () => {
                       <span className="text-sm text-foreground">
                         {plan.website_orders_limit === 0 
                           ? 'Unlimited Website orders/month'
-                          : `${plan.website_orders_limit} Website orders/month`
+                          : `${plan.website_orders_limit} Website order${plan.website_orders_limit === 1 ? '' : 's'}/month`
                         }
                       </span>
                     </li>

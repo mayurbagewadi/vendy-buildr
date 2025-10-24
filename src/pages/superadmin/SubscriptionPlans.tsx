@@ -291,9 +291,9 @@ const SubscriptionPlansPage = () => {
                       )}
                     </div>
                     <div className="space-y-2 text-sm">
-                      <p>Max Products: {plan.max_products || 'Unlimited'}</p>
-                      <p>WhatsApp Orders: {plan.whatsapp_orders_limit || 'Unlimited'}</p>
-                      <p>Website Orders: {plan.website_orders_limit || 'Unlimited'}</p>
+                      <p>Max Products: {plan.max_products === 0 || plan.max_products === null ? 'Unlimited' : plan.max_products}</p>
+                      <p>WhatsApp Orders: {plan.whatsapp_orders_limit === 0 || plan.whatsapp_orders_limit === null ? 'Unlimited' : plan.whatsapp_orders_limit}</p>
+                      <p>Website Orders: {plan.website_orders_limit === 0 || plan.website_orders_limit === null ? 'Unlimited' : plan.website_orders_limit}</p>
                       <p>Status: {plan.is_active ? 'Active' : 'Inactive'}</p>
                       <div className="flex gap-2 mt-2">
                         {plan.enable_location_sharing && (
