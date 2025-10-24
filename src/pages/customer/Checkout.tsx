@@ -97,8 +97,11 @@ const Checkout = () => {
       }
 
       const storeId = cart[0]?.storeId;
-      if (!storeId) {
-        setSubscriptionError("Invalid cart data. Please try again.");
+      
+      // Validate storeId exists and is not empty
+      if (!storeId || storeId.trim() === '') {
+        console.error('Cart storeId is invalid:', storeId);
+        setSubscriptionError("Unable to process your order. Please clear your cart and add products again from the store.");
         setIsCheckingSubscription(false);
         return;
       }
