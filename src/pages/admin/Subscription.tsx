@@ -304,14 +304,44 @@ const SubscriptionPage = () => {
           <div className="border-t pt-4">
             <h3 className="font-semibold text-foreground mb-3">Plan Features</h3>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {/* Core features from JSONB - filter out feature flags */}
               {currentSubscription.subscription_plans.features
-                .filter(f => f && typeof f === 'string' && f.trim() !== '')
+                .filter(f => {
+                  if (!f || typeof f !== 'string' || f.trim() === '') return false;
+                  const lower = f.toLowerCase();
+                  // Exclude features that are controlled by boolean flags
+                  return !lower.includes('analytics') && 
+                         !lower.includes('email') && 
+                         !lower.includes('notification') &&
+                         !lower.includes('location') &&
+                         !lower.includes('tracking');
+                })
                 .map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-foreground">{feature}</span>
                   </li>
                 ))}
+              
+              {/* Boolean flag features - only show if enabled */}
+              {currentSubscription.subscription_plans.enable_analytics && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Advanced Analytics</span>
+                </li>
+              )}
+              {currentSubscription.subscription_plans.enable_order_emails && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Email Notifications</span>
+                </li>
+              )}
+              {currentSubscription.subscription_plans.enable_location_sharing && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Location Tracking</span>
+                </li>
+              )}
             </ul>
           </div>
         </Card>
@@ -347,15 +377,46 @@ const SubscriptionPage = () => {
 
                 {/* Plan Features */}
                 <ul className="space-y-2 mb-6 flex-1">
+                  {/* Core features from JSONB - filter out feature flags */}
                   {plan.features
-                    .filter(f => f && typeof f === 'string' && f.trim() !== '')
-                    .slice(0, 5)
+                    .filter(f => {
+                      if (!f || typeof f !== 'string' || f.trim() === '') return false;
+                      const lower = f.toLowerCase();
+                      // Exclude features controlled by boolean flags
+                      return !lower.includes('analytics') && 
+                             !lower.includes('email') && 
+                             !lower.includes('notification') &&
+                             !lower.includes('location') &&
+                             !lower.includes('tracking');
+                    })
                     .map((feature, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-foreground">{feature}</span>
                       </li>
                     ))}
+                  
+                  {/* Boolean flag features - only show if enabled */}
+                  {plan.enable_analytics && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Advanced Analytics</span>
+                    </li>
+                  )}
+                  {plan.enable_order_emails && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Email Notifications</span>
+                    </li>
+                  )}
+                  {plan.enable_location_sharing && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Location Tracking</span>
+                    </li>
+                  )}
+                  
+                  {/* Order limits */}
                   {plan.whatsapp_orders_limit !== null && (
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
