@@ -92,11 +92,14 @@ const Checkout = () => {
       
       // Get store ID from cart items
       if (cart.length === 0) {
+        console.log('Checkout: Cart is empty');
         setIsCheckingSubscription(false);
         return;
       }
 
       const storeId = cart[0]?.storeId;
+      console.log('Checkout: Cart storeId:', storeId);
+      console.log('Checkout: Full cart item:', cart[0]);
       
       // Validate storeId exists and is not empty
       if (!storeId || storeId.trim() === '') {
@@ -106,20 +109,24 @@ const Checkout = () => {
         return;
       }
 
-      const { data: storeData } = await supabase
+      const { data: storeData, error: storeError } = await supabase
         .from("stores")
         .select("id, user_id")
         .eq("id", storeId)
         .maybeSingle();
 
+      console.log('Checkout: Store data:', storeData);
+      console.log('Checkout: Store error:', storeError);
+
       if (!storeData) {
+        console.error('Store not found for ID:', storeId);
         setSubscriptionError("Store not found.");
         setIsCheckingSubscription(false);
         return;
       }
 
       // Check subscription status and limits
-      const { data: subscription } = await supabase
+      const { data: subscription, error: subscriptionError } = await supabase
         .from("subscriptions")
         .select(`
           status,
@@ -134,7 +141,11 @@ const Checkout = () => {
         .eq("user_id", storeData.user_id)
         .maybeSingle();
 
+      console.log('Checkout: Subscription data:', subscription);
+      console.log('Checkout: Subscription error:', subscriptionError);
+
       if (!subscription) {
+        console.error('No subscription found for user_id:', storeData.user_id);
         setSubscriptionError("This store has no active subscription. Orders are currently unavailable.");
         setIsCheckingSubscription(false);
         return;
