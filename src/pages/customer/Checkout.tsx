@@ -46,6 +46,8 @@ const Checkout = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -62,7 +64,108 @@ const Checkout = () => {
 
   useEffect(() => {
     checkLocationFeature();
+    checkSubscriptionLimits();
   }, []);
+
+  const checkSubscriptionLimits = async () => {
+    try {
+      setIsCheckingSubscription(true);
+      
+      // Get store ID from cart items
+      if (cart.length === 0) {
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const storeId = cart[0]?.storeId;
+      if (!storeId) {
+        setSubscriptionError("Invalid cart data. Please try again.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id")
+        .eq("id", storeId)
+        .maybeSingle();
+
+      if (!storeData) {
+        setSubscriptionError("Store not found.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check subscription status and limits
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select(`
+          status,
+          whatsapp_orders_used,
+          website_orders_used,
+          current_period_end,
+          subscription_plans (
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", storeData.user_id)
+        .maybeSingle();
+
+      if (!subscription) {
+        setSubscriptionError("This store has no active subscription. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription is active or in trial
+      if (!['active', 'trial'].includes(subscription.status)) {
+        setSubscriptionError("This store's subscription is not active. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription has expired
+      const now = new Date();
+      const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+      
+      if (periodEnd && periodEnd < now) {
+        setSubscriptionError("This store's subscription has expired. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check order limits
+      if (subscription.subscription_plans) {
+        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        const websiteLimit = subscription.subscription_plans.website_orders_limit;
+        const websiteUsed = subscription.website_orders_used || 0;
+        
+        // Check if WhatsApp limit is exceeded (0 means unlimited, null means feature disabled)
+        if (whatsappLimit !== null && whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
+          setSubscriptionError("This store has reached its monthly order limit. Orders are currently unavailable.");
+          setIsCheckingSubscription(false);
+          return;
+        }
+        
+        // Check if Website limit is exceeded
+        if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
+          setSubscriptionError("This store has reached its monthly order limit. Orders are currently unavailable.");
+          setIsCheckingSubscription(false);
+          return;
+        }
+      }
+
+      // All checks passed
+      setSubscriptionError(null);
+      setIsCheckingSubscription(false);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      setSubscriptionError("Unable to verify store subscription. Please try again later.");
+      setIsCheckingSubscription(false);
+    }
+  };
 
   const checkLocationFeature = async () => {
     try {
@@ -107,6 +210,41 @@ const Checkout = () => {
   const handleLocationSelect = (latitude: number, longitude: number) => {
     setLocation({ latitude, longitude });
   };
+
+  if (isCheckingSubscription) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <p className="text-muted-foreground">Checking availability...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (subscriptionError) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
+            <h1 className="text-3xl font-bold mb-4">Orders Unavailable</h1>
+            <p className="text-muted-foreground mb-8">
+              {subscriptionError}
+            </p>
+            <Link to="/home">
+              <Button size="lg">Back to Home</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
