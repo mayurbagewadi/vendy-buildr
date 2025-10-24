@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,12 +10,39 @@ import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
 
 const Cart = () => {
+  const { slug } = useParams<{ slug?: string }>();
   const { cart, cartTotal, updateQuantity, removeItem } = useCart();
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
+
+  useEffect(() => {
+    // If slug from URL, use it. Otherwise, try to get it from cart items
+    if (slug) {
+      setStoreSlug(slug);
+    } else if (cart.length > 0 && cart[0].storeId) {
+      // Get store slug from the first cart item's store
+      const fetchStoreSlug = async () => {
+        const { data } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        if (data) {
+          setStoreSlug(data.slug);
+        }
+      };
+      fetchStoreSlug();
+    }
+  }, [slug, cart]);
+
+  // Generate store-aware links
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
+  const checkoutLink = storeSlug ? `/${storeSlug}/checkout` : "/checkout";
 
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
@@ -21,7 +50,7 @@ const Cart = () => {
             <p className="text-muted-foreground mb-8">
               Add some products to your cart to see them here
             </p>
-            <Link to="/products">
+            <Link to={productsLink}>
               <Button size="lg">Continue Shopping</Button>
             </Link>
           </div>
@@ -33,12 +62,12 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header storeSlug={storeSlug} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/home" className="hover:text-foreground">Home</Link>
+          <Link to={homeLink} className="hover:text-foreground">Home</Link>
           <ChevronRight className="w-4 h-4" />
           <span className="text-foreground">Shopping Cart</span>
         </nav>
@@ -159,12 +188,12 @@ const Cart = () => {
                 </div>
 
                 <Button asChild className="w-full min-h-[48px]" size="lg">
-                  <Link to="/checkout">
+                  <Link to={checkoutLink}>
                     Proceed to Checkout
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full min-h-[44px] mt-3">
-                  <Link to="/products">
+                  <Link to={productsLink}>
                     Continue Shopping
                   </Link>
                 </Button>

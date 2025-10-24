@@ -89,6 +89,8 @@ const App = () => (
             <Route path="/:slug/policies" element={<Policies />} />
             <Route path="/:slug/products" element={<CustomerProducts />} />
             <Route path="/:slug/products/:id" element={<ProductDetail />} />
+            <Route path="/:slug/cart" element={<Cart />} />
+            <Route path="/:slug/checkout" element={<Checkout />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

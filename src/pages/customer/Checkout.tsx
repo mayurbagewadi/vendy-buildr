@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -40,6 +40,7 @@ const checkoutSchema = z.object({
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 const Checkout = () => {
+  const { slug } = useParams<{ slug?: string }>();
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
@@ -48,6 +49,7 @@ const Checkout = () => {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -65,7 +67,24 @@ const Checkout = () => {
   useEffect(() => {
     checkLocationFeature();
     checkSubscriptionLimits();
-  }, []);
+    
+    // Get store slug from URL or cart items
+    if (slug) {
+      setStoreSlug(slug);
+    } else if (cart.length > 0 && cart[0].storeId) {
+      const fetchStoreSlug = async () => {
+        const { data } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        if (data) {
+          setStoreSlug(data.slug);
+        }
+      };
+      fetchStoreSlug();
+    }
+  }, [slug, cart]);
 
   const checkSubscriptionLimits = async () => {
     try {
@@ -220,7 +239,7 @@ const Checkout = () => {
   if (isCheckingSubscription) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <p className="text-muted-foreground">Checking availability...</p>
@@ -234,7 +253,7 @@ const Checkout = () => {
   if (subscriptionError) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
@@ -242,7 +261,7 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-8">
               {subscriptionError}
             </p>
-            <Link to="/home">
+            <Link to={storeSlug ? `/${storeSlug}` : "/home"}>
               <Button size="lg">Back to Home</Button>
             </Link>
           </div>
@@ -255,7 +274,7 @@ const Checkout = () => {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
@@ -263,7 +282,7 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-8">
               Add some products to proceed to checkout
             </p>
-            <Link to="/products">
+            <Link to={storeSlug ? `/${storeSlug}/products` : "/products"}>
               <Button size="lg">Continue Shopping</Button>
             </Link>
           </div>
@@ -438,7 +457,7 @@ const Checkout = () => {
 
       clearCart();
       setTimeout(() => {
-        navigate("/home");
+        navigate(storeSlug ? `/${storeSlug}` : "/home");
       }, 2000);
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -451,16 +470,19 @@ const Checkout = () => {
     }
   };
 
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header storeSlug={storeSlug} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/home" className="hover:text-foreground">Home</Link>
+          <Link to={homeLink} className="hover:text-foreground">Home</Link>
           <ChevronRight className="w-4 h-4" />
-          <Link to="/cart" className="hover:text-foreground">Cart</Link>
+          <Link to={cartLink} className="hover:text-foreground">Cart</Link>
           <ChevronRight className="w-4 h-4" />
           <span className="text-foreground">Checkout</span>
         </nav>
