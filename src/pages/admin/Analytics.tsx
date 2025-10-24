@@ -47,9 +47,10 @@ const Analytics = () => {
         return;
       }
 
-      const analyticsEnabled = subscription?.subscription_plans?.enable_analytics;
+      const analyticsEnabled = subscription?.subscription_plans?.enable_analytics || false;
+      const isActiveSubscription = ['active', 'trial'].includes(subscription?.status);
 
-      if (!analyticsEnabled) {
+      if (!analyticsEnabled || !isActiveSubscription) {
         setHasAccess(false);
         setLoading(false);
         return;

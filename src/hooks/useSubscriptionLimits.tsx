@@ -157,6 +157,46 @@ export function useSubscriptionLimits() {
     return limits.websiteOrdersUsed < limits.websiteOrdersLimit;
   };
 
+  const getOrderLimitWarning = () => {
+    if (!limits.hasActiveSubscription) {
+      return "No active subscription. Please upgrade to place orders.";
+    }
+    
+    const whatsappLimit = limits.whatsappOrdersLimit;
+    const whatsappUsed = limits.whatsappOrdersUsed;
+    const websiteLimit = limits.websiteOrdersLimit;
+    const websiteUsed = limits.websiteOrdersUsed;
+    
+    // Check if features are disabled
+    if (whatsappLimit === null && websiteLimit === null) {
+      return "Ordering features are not available in your current plan.";
+    }
+    
+    // Check WhatsApp limits
+    if (whatsappLimit !== null && whatsappLimit > 0) {
+      const whatsappRemaining = whatsappLimit - whatsappUsed;
+      if (whatsappRemaining <= 0) {
+        return `WhatsApp order limit reached (${whatsappUsed}/${whatsappLimit}). Upgrade your plan to accept more orders.`;
+      }
+      if (whatsappRemaining <= 3) {
+        return `Warning: Only ${whatsappRemaining} WhatsApp order slots remaining (${whatsappUsed}/${whatsappLimit}).`;
+      }
+    }
+    
+    // Check Website limits
+    if (websiteLimit !== null && websiteLimit > 0) {
+      const websiteRemaining = websiteLimit - websiteUsed;
+      if (websiteRemaining <= 0) {
+        return `Website order limit reached (${websiteUsed}/${websiteLimit}). Upgrade your plan to accept more orders.`;
+      }
+      if (websiteRemaining <= 3) {
+        return `Warning: Only ${websiteRemaining} website order slots remaining (${websiteUsed}/${websiteLimit}).`;
+      }
+    }
+    
+    return null;
+  };
+
   const getProductLimitMessage = () => {
     if (!limits.hasActiveSubscription) {
       return "No active subscription. Please upgrade to publish products.";
@@ -178,6 +218,7 @@ export function useSubscriptionLimits() {
     canPlaceWhatsAppOrder,
     canPlaceWebsiteOrder,
     getProductLimitMessage,
+    getOrderLimitWarning,
     refresh: loadLimits,
   };
 }
