@@ -99,36 +99,60 @@ export function AssignPlanModal({
     try {
       setLoading(true);
 
-      // Calculate trial end date
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
-
-      // Calculate next billing date (after trial)
-      const nextBillingAt = new Date(trialEndsAt);
-      if (billingCycle === "monthly") {
-        nextBillingAt.setMonth(nextBillingAt.getMonth() + 1);
+      const now = new Date();
+      
+      // Calculate current period end based on billing cycle and status
+      let currentPeriodEnd = new Date();
+      if (status === "trial") {
+        // For trial, current period ends when trial ends
+        currentPeriodEnd.setDate(currentPeriodEnd.getDate() + trialDays);
+      } else if (status === "active") {
+        // For active, set based on billing cycle
+        if (billingCycle === "monthly") {
+          currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+        } else {
+          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+        }
       } else {
-        nextBillingAt.setFullYear(nextBillingAt.getFullYear() + 1);
+        // For expired/cancelled, set to past date
+        currentPeriodEnd = new Date(now.getTime() - 86400000); // Yesterday
       }
+
+      // Calculate trial end date
+      const trialEndsAt = status === "trial" 
+        ? new Date(now.getTime() + trialDays * 86400000) 
+        : null;
+
+      // Calculate next billing date
+      const nextBillingAt = status === "active" 
+        ? new Date(currentPeriodEnd.getTime()) 
+        : null;
 
       // Check if subscription exists
       const { data: existing } = await supabase
         .from("subscriptions")
         .select("id")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
+
+      const subscriptionData = {
+        plan_id: selectedPlanId,
+        billing_cycle: billingCycle,
+        status: status,
+        current_period_start: now.toISOString(),
+        current_period_end: currentPeriodEnd.toISOString(),
+        trial_ends_at: trialEndsAt?.toISOString() || null,
+        next_billing_at: nextBillingAt?.toISOString() || null,
+        started_at: now.toISOString(),
+      };
 
       if (existing) {
         // Update existing subscription
         const { error } = await supabase
           .from("subscriptions")
           .update({
-            plan_id: selectedPlanId,
-            billing_cycle: billingCycle,
-            status: status,
-            trial_ends_at: status === "trial" ? trialEndsAt.toISOString() : null,
-            next_billing_at: status === "active" ? nextBillingAt.toISOString() : null,
-            updated_at: new Date().toISOString(),
+            ...subscriptionData,
+            updated_at: now.toISOString(),
           })
           .eq("id", existing.id);
 
@@ -137,11 +161,7 @@ export function AssignPlanModal({
         // Create new subscription
         const { error } = await supabase.from("subscriptions").insert({
           user_id: userId,
-          plan_id: selectedPlanId,
-          billing_cycle: billingCycle,
-          status: status,
-          trial_ends_at: status === "trial" ? trialEndsAt.toISOString() : null,
-          next_billing_at: status === "active" ? nextBillingAt.toISOString() : null,
+          ...subscriptionData,
         });
 
         if (error) throw error;
