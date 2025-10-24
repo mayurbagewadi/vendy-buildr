@@ -135,37 +135,29 @@ const Checkout = () => {
         return;
       }
 
-      // Check order limits - both WhatsApp and Website need to have available quota
+      // Check order limits - store subscription info for later validation
       if (subscription.subscription_plans) {
         const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
         const whatsappUsed = subscription.whatsapp_orders_used || 0;
         const websiteLimit = subscription.subscription_plans.website_orders_limit;
         const websiteUsed = subscription.website_orders_used || 0;
         
-        // Check if WhatsApp feature is disabled (null means disabled)
-        if (whatsappLimit === null) {
-          setSubscriptionError("WhatsApp ordering is not available in this store's plan.");
+        // Check if BOTH features are disabled - only then block orders entirely
+        if (whatsappLimit === null && websiteLimit === null) {
+          setSubscriptionError("Ordering is not available in this store's plan.");
           setIsCheckingSubscription(false);
           return;
         }
         
-        // Check if Website feature is disabled (null means disabled)
-        if (websiteLimit === null) {
-          setSubscriptionError("Website ordering is not available in this store's plan.");
-          setIsCheckingSubscription(false);
-          return;
-        }
+        // Check WhatsApp limit if feature is enabled
+        const whatsappAvailable = whatsappLimit !== null && (whatsappLimit === 0 || whatsappUsed < whatsappLimit);
         
-        // Check if WhatsApp limit is exceeded (0 means unlimited, positive number is the limit)
-        if (whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
-          setSubscriptionError("This store has reached its monthly WhatsApp order limit. Orders are currently unavailable.");
-          setIsCheckingSubscription(false);
-          return;
-        }
+        // Check Website limit if feature is enabled  
+        const websiteAvailable = websiteLimit !== null && (websiteLimit === 0 || websiteUsed < websiteLimit);
         
-        // Check if Website limit is exceeded (0 means unlimited, positive number is the limit)
-        if (websiteLimit > 0 && websiteUsed >= websiteLimit) {
-          setSubscriptionError("This store has reached its monthly website order limit. Orders are currently unavailable.");
+        // If both features are enabled but both limits are reached, block orders
+        if (!whatsappAvailable && !websiteAvailable) {
+          setSubscriptionError("This store has reached its order limits for both WhatsApp and website orders.");
           setIsCheckingSubscription(false);
           return;
         }
@@ -337,31 +329,19 @@ const Checkout = () => {
           throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
         }
 
-        // Check both WhatsApp and Website order limits
+        // Check WhatsApp order limits (this is a WhatsApp checkout)
         if (subscription?.subscription_plans) {
           const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
           const whatsappUsed = subscription.whatsapp_orders_used || 0;
-          const websiteLimit = subscription.subscription_plans.website_orders_limit;
-          const websiteUsed = subscription.website_orders_used || 0;
           
           // Check if WhatsApp feature is disabled (null means disabled)
           if (whatsappLimit === null) {
             throw new Error("WhatsApp ordering is not available in your current plan.");
           }
           
-          // Check if Website feature is disabled (null means disabled)
-          if (websiteLimit === null) {
-            throw new Error("Website ordering is not available in your current plan.");
-          }
-          
           // Check if WhatsApp limit is exceeded (0 means unlimited, positive number is the limit)
           if (whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
             throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
-          }
-          
-          // Check if Website limit is exceeded (0 means unlimited, positive number is the limit)
-          if (websiteLimit > 0 && websiteUsed >= websiteLimit) {
-            throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
           }
         }
       }
@@ -399,13 +379,12 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Increment both WhatsApp and Website orders count
+      // Increment WhatsApp orders count only (this is a WhatsApp checkout)
       if (subscription) {
         await supabase
           .from("subscriptions")
           .update({
-            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1,
-            website_orders_used: (subscription.website_orders_used || 0) + 1
+            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
       }
