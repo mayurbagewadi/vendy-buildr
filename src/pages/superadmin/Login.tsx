@@ -24,7 +24,9 @@ export default function SuperAdminLogin() {
   useEffect(() => {
     // Check if accessing from authorized domain
     const currentDomain = window.location.hostname;
-    const isLovableDomain = currentDomain.endsWith('.lovable.app') || currentDomain.endsWith('.lovable.dev');
+    const isLovableDomain = currentDomain.endsWith('.lovable.app') || 
+                           currentDomain.endsWith('.lovable.dev') ||
+                           currentDomain.endsWith('.lovableproject.com');
     const isLocalhost = currentDomain === 'localhost' || currentDomain === '127.0.0.1';
     const isAllowedDomain = currentDomain === ALLOWED_DOMAIN;
     

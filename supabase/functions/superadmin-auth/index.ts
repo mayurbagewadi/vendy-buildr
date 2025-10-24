@@ -51,7 +51,9 @@ serve(async (req) => {
     
     // Allow localhost for development and Lovable preview domains
     const isLocalhost = requestDomain.includes('localhost') || requestDomain.includes('127.0.0.1');
-    const isLovableDomain = requestDomain.endsWith('.lovable.app') || requestDomain.endsWith('.lovable.dev');
+    const isLovableDomain = requestDomain.endsWith('.lovable.app') || 
+                           requestDomain.endsWith('.lovable.dev') ||
+                           requestDomain.endsWith('.lovableproject.com');
     const isAllowedDomain = requestDomain === ALLOWED_DOMAIN;
     
     if (!isLocalhost && !isLovableDomain && !isAllowedDomain) {
