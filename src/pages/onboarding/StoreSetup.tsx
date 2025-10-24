@@ -129,6 +129,27 @@ const StoreSetup = () => {
         await seedDemoDataForStore(newStoreId);
       }
 
+      // Auto-assign default subscription plan
+      const { data: defaultPlan } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("is_default_plan", true)
+        .maybeSingle();
+
+      if (defaultPlan) {
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + (defaultPlan.trial_days || 14));
+
+        await supabase.from("subscriptions").insert({
+          user_id: user.id,
+          plan_id: defaultPlan.id,
+          status: "trial",
+          trial_ends_at: trialEndDate.toISOString(),
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEndDate.toISOString()
+        });
+      }
+
       toast({
         title: "Store created!",
         description: "Your store is ready with demo products. Let's customize it next."

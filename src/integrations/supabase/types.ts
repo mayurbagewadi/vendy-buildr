@@ -353,6 +353,7 @@ export type Database = {
           features: Json | null
           id: string
           is_active: boolean | null
+          is_default_plan: boolean | null
           is_popular: boolean | null
           max_products: number | null
           monthly_price: number
@@ -376,6 +377,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_default_plan?: boolean | null
           is_popular?: boolean | null
           max_products?: number | null
           monthly_price?: number
@@ -399,6 +401,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_default_plan?: boolean | null
           is_popular?: boolean | null
           max_products?: number | null
           monthly_price?: number
