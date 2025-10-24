@@ -152,7 +152,7 @@ const SubscriptionPage = () => {
     const limit = currentSubscription?.subscription_plans?.website_orders_limit;
     // If limit is null (feature disabled) or 0 (unlimited), don't show usage
     if (limit === null || limit === 0) return 0;
-    const used = actualOrderCount; // Use actual order count from orders table
+    const used = currentSubscription.website_orders_used || 0;
     return Math.min((used / limit) * 100, 100);
   };
 
@@ -273,8 +273,8 @@ const SubscriptionPage = () => {
                   <span className="text-sm font-medium text-foreground">Website Orders</span>
                   <span className="text-sm text-muted-foreground">
                     {currentSubscription.subscription_plans.website_orders_limit === 0
-                      ? `${actualOrderCount} / Unlimited`
-                      : `${actualOrderCount} / ${currentSubscription.subscription_plans.website_orders_limit}`
+                      ? `${currentSubscription.website_orders_used || 0} / Unlimited`
+                      : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
                     }
                   </span>
                 </div>

@@ -160,7 +160,7 @@ const Checkout = () => {
 
       if (!storeData) throw new Error("Store not found");
 
-      // Check subscription expiration and limits for WhatsApp orders
+      // Check subscription expiration and limits for both WhatsApp and Website orders
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
@@ -185,14 +185,21 @@ const Checkout = () => {
           throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
         }
 
-        // Check WhatsApp order limits (since this order goes through WhatsApp)
+        // Check both WhatsApp and Website order limits
         if (subscription?.subscription_plans) {
           const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
           const whatsappUsed = subscription.whatsapp_orders_used || 0;
+          const websiteLimit = subscription.subscription_plans.website_orders_limit;
+          const websiteUsed = subscription.website_orders_used || 0;
           
-          // Check if limit is exceeded (0 means unlimited, null means feature disabled)
+          // Check if WhatsApp limit is exceeded (0 means unlimited, null means feature disabled)
           if (whatsappLimit !== null && whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
             throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
+          }
+          
+          // Check if Website limit is exceeded
+          if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
+            throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
           }
         }
       }
@@ -230,12 +237,13 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Increment WhatsApp orders count (since this order goes through WhatsApp)
+      // Increment both WhatsApp and Website orders count
       if (subscription) {
         await supabase
           .from("subscriptions")
           .update({
-            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
+            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1,
+            website_orders_used: (subscription.website_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
       }
