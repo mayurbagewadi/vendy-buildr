@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    // Validate domain - only allow requests from authorized domain
+    // Validate domain - only allow requests from authorized domains
     const origin = req.headers.get('origin') || '';
     const ALLOWED_DOMAIN = 'superadmin.yesgive.shop';
     
@@ -49,11 +49,12 @@ serve(async (req) => {
       requestDomain = origin;
     }
     
-    // Allow localhost for development
+    // Allow localhost for development and Lovable preview domains
     const isLocalhost = requestDomain.includes('localhost') || requestDomain.includes('127.0.0.1');
+    const isLovableDomain = requestDomain.endsWith('.lovable.app') || requestDomain.endsWith('.lovable.dev');
     const isAllowedDomain = requestDomain === ALLOWED_DOMAIN;
     
-    if (!isLocalhost && !isAllowedDomain) {
+    if (!isLocalhost && !isLovableDomain && !isAllowedDomain) {
       console.log('Unauthorized domain access attempt:', requestDomain);
       return new Response(
         JSON.stringify({ 
