@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
+import { LoadingPage } from "@/components/customer/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
@@ -68,15 +70,11 @@ const DEMO_CATEGORIES: Category[] = [
 ];
 
 const Home = () => {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>(DEMO_CATEGORIES);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-
-  // Load products and categories from demo store
-  const loadProducts = async () => {
-    try {
-      // Fetch demo store
+  // Use React Query for caching and automatic refetching
+  const { data, isLoading } = useQuery({
+    queryKey: ['home-data'],
+    queryFn: async () => {
+      // Fetch demo store first
       const { data: demoStore } = await supabase
         .from("stores")
         .select("id")
@@ -84,56 +82,47 @@ const Home = () => {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (demoStore) {
-        // Fetch published products from demo store
-        const publishedProducts = await getPublishedProducts(demoStore.id);
-        
-        // Store all published products
-        setAllProducts(publishedProducts as any);
-        
-        // Featured products (first 4)
-        setFeaturedProducts(publishedProducts.slice(0, 4) as any);
-        
-        // New arrivals (last 4)
-        const sorted = [...publishedProducts].sort((a, b) => 
-          new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-        );
-        setNewArrivals(sorted.slice(0, 4) as any);
+      if (!demoStore) {
+        return {
+          allProducts: [],
+          featuredProducts: [],
+          newArrivals: [],
+          categories: DEMO_CATEGORIES
+        };
+      }
 
-        // Load categories from demo store
-        const { data: categoriesData } = await supabase
+      // Fetch products and categories in parallel for better performance
+      const [publishedProducts, categoriesData] = await Promise.all([
+        getPublishedProducts(demoStore.id),
+        supabase
           .from("categories")
           .select("*")
           .eq("store_id", demoStore.id)
-          .order("name");
+          .order("name")
+          .then(res => res.data)
+      ]);
 
-        if (categoriesData && categoriesData.length > 0) {
-          setCategories(categoriesData);
-        } else {
-          setCategories(DEMO_CATEGORIES);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading products:", error);
-      setCategories(DEMO_CATEGORIES);
-    }
-  };
+      // Process products
+      const sorted = [...publishedProducts].sort((a, b) => 
+        new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+      );
 
-  useEffect(() => {
-    // Initial load
-    loadProducts();
-    
-    // Reload when window regains focus
-    const handleFocus = () => {
-      loadProducts();
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
+      return {
+        allProducts: publishedProducts as any,
+        featuredProducts: publishedProducts.slice(0, 4) as any,
+        newArrivals: sorted.slice(0, 4) as any,
+        categories: (categoriesData && categoriesData.length > 0) ? categoriesData : DEMO_CATEGORIES
+      };
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
+  });
+
+  const { allProducts = [], featuredProducts = [], newArrivals = [], categories = DEMO_CATEGORIES } = data || {};
+
+  if (isLoading) {
+    return <LoadingPage text="Loading store..." />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
