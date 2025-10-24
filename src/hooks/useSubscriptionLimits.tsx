@@ -30,6 +30,45 @@ export function useSubscriptionLimits() {
 
   useEffect(() => {
     loadLimits();
+
+    // Set up realtime listeners for subscription changes
+    const subscriptionsChannel = supabase
+      .channel('subscriptions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions'
+        },
+        () => {
+          console.log('Subscription changed, reloading limits...');
+          loadLimits();
+        }
+      )
+      .subscribe();
+
+    // Listen for subscription plan changes
+    const plansChannel = supabase
+      .channel('plans-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscription_plans'
+        },
+        () => {
+          console.log('Subscription plan changed, reloading limits...');
+          loadLimits();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscriptionsChannel.unsubscribe();
+      plansChannel.unsubscribe();
+    };
   }, []);
 
   const loadLimits = async () => {
