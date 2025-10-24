@@ -160,7 +160,7 @@ const Checkout = () => {
 
       if (!storeData) throw new Error("Store not found");
 
-      // Check subscription expiration and limits for Website orders
+      // Check subscription expiration and limits for WhatsApp orders
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
@@ -185,14 +185,14 @@ const Checkout = () => {
           throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
         }
 
-        // Check order limits
+        // Check WhatsApp order limits (since this order goes through WhatsApp)
         if (subscription?.subscription_plans) {
-          const websiteLimit = subscription.subscription_plans.website_orders_limit;
-          const websiteUsed = subscription.website_orders_used || 0;
+          const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+          const whatsappUsed = subscription.whatsapp_orders_used || 0;
           
           // Check if limit is exceeded (0 means unlimited, null means feature disabled)
-          if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
-            throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
+          if (whatsappLimit !== null && whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
+            throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
           }
         }
       }
@@ -230,12 +230,12 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Increment Website orders count (these are website orders, not WhatsApp)
+      // Increment WhatsApp orders count (since this order goes through WhatsApp)
       if (subscription) {
         await supabase
           .from("subscriptions")
           .update({
-            website_orders_used: (subscription.website_orders_used || 0) + 1
+            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
       }
