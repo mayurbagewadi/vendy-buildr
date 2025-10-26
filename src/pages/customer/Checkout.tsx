@@ -393,11 +393,9 @@ const Checkout = () => {
       };
 
       // Save order to Supabase
-      const { data: insertedOrder, error: orderError } = await supabase
+      const { error: orderError } = await supabase
         .from("orders")
-        .insert([orderRecord])
-        .select('id') // Only request the ID column
-        .single();
+        .insert([orderRecord]);
 
       if (orderError) throw orderError;
 
@@ -409,17 +407,6 @@ const Checkout = () => {
             whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
-      }
-
-
-      // Send order email notification (non-blocking)
-      if (insertedOrder?.id) {
-        supabase.functions.invoke('send-order-email', {
-          body: {
-            orderId: insertedOrder.id,
-            storeId: storeData.id
-          }
-        }).catch(err => console.error('Failed to send order email:', err));
       }
 
       // Prepare order details for WhatsApp
