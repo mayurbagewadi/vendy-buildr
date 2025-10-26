@@ -185,23 +185,10 @@ const Store = () => {
                 {store.name}
               </h1>
               {store.description && (
-                <p className="text-xl text-muted-foreground mb-8">
+                <p className="text-xl text-muted-foreground">
                   {store.description}
                 </p>
               )}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to={`/store/${store.slug}/products`}>
-                  <Button size="lg" className="w-full sm:w-auto">
-                    Start Shopping
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link to={`/store/${store.slug}/products`}>
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    Browse Categories
-                  </Button>
-                </Link>
-              </div>
             </div>
           </div>
         </section>
@@ -209,10 +196,6 @@ const Store = () => {
         {/* Categories Section - Right after banner */}
         {categories.length > 0 && (
           <section className="py-20 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
-            {/* Decorative Background Elements */}
-            <div className="absolute top-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
-            
             <div className="container mx-auto px-4 relative z-10">
               <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
@@ -225,13 +208,13 @@ const Store = () => {
               
               {/* Horizontal Scrollable Layout */}
               <div className="relative px-4">
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-4">
+                <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide snap-x snap-mandatory px-4">
                   {categories.map((category, index) => {
                     const productCount = products.filter(p => p.category === category.name && p.status === 'published').length;
                     return (
-                      <div 
+                      <div
                         key={category.id}
-                        className="flex-shrink-0 w-48 transform transition-all duration-300 hover:scale-105 hover:z-10 snap-center"
+                        className="flex-shrink-0 w-48 snap-center"
                         style={{
                           animationDelay: `${index * 100}ms`
                         }}
