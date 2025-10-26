@@ -142,7 +142,7 @@ const ProductDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} />
+        <Header storeSlug={storeSlug} storeId={product?.store_id || product?.storeId} />
         <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner size="lg" text="Loading product..." />
         </div>
@@ -201,8 +201,9 @@ const ProductDetail = () => {
   };
 
   const handleBuyWhatsApp = async () => {
+    const storeId = product.store_id || product.storeId;
     const message = `🛍️ Hi! I want to buy:\n\n*${product.name}*\nVariant: ${selectedVariant || 'Standard'}\nQuantity: ${quantity}\nPrice: ₹${(currentPrice * quantity).toFixed(2)}\nSKU: ${currentVariant?.sku || baseSku || product.id}\n\nPlease confirm availability. Thank you! 😊`;
-    const result = await openWhatsApp(message);
+    const result = await openWhatsApp(message, undefined, storeId);
 
     if (!result.success) {
       toast({
@@ -220,6 +221,7 @@ const ProductDetail = () => {
   };
 
   const handleProductInquiry = async () => {
+    const storeId = product.store_id || product.storeId;
     const inquiry = {
       productName: product.name,
       productId: product.id,
@@ -227,7 +229,7 @@ const ProductDetail = () => {
     };
 
     const message = generateProductInquiryMessage(inquiry);
-    const result = await openWhatsApp(message);
+    const result = await openWhatsApp(message, undefined, storeId);
 
     if (!result.success) {
       toast({
@@ -262,7 +264,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={storeSlug} />
+      <Header storeSlug={storeSlug} storeId={product.store_id || product.storeId} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}
@@ -502,24 +504,6 @@ const ProductDetail = () => {
                 </dl>
               </CardContent>
             </Card>
-
-            {/* WhatsApp Actions */}
-            <div className="mt-6 space-y-3">
-              <Button 
-                onClick={handleBuyWhatsApp} 
-                className="w-full min-h-[48px] bg-green-600 hover:bg-green-700 text-white" 
-                disabled={quantity === 0}
-              >
-                Buy via WhatsApp
-              </Button>
-              <Button 
-                onClick={handleProductInquiry} 
-                variant="outline"
-                className="w-full min-h-[44px]"
-              >
-                Product Inquiry
-              </Button>
-            </div>
           </div>
         </div>
 

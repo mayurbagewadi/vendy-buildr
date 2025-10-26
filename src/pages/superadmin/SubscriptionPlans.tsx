@@ -49,28 +49,28 @@ const SubscriptionPlansPage = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const superAdminSession = sessionStorage.getItem('superadmin_session');
-      if (superAdminSession) {
-        fetchPlans();
-        return;
-      }
-
-      // Check Supabase auth
+      // Check Supabase auth first (faster than sessionStorage check)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        navigate('/superadmin/login');
-        return;
+        const superAdminSession = sessionStorage.getItem('superadmin_session');
+        if (!superAdminSession) {
+          navigate('/superadmin/login');
+          return;
+        }
       }
 
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'super_admin');
+      if (user) {
+        // Verify super admin role
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'super_admin');
 
-      if (!roles || roles.length === 0) {
-        navigate('/superadmin/login');
-        return;
+        if (!roles || roles.length === 0) {
+          navigate('/superadmin/login');
+          return;
+        }
       }
 
       fetchPlans();
@@ -141,17 +141,21 @@ const SubscriptionPlansPage = () => {
 
       if (error) throw error;
 
+      // Optimistic update - remove from list immediately
+      setPlans(plans.filter(p => p.id !== planToDelete));
+      
       toast({
         title: "Success",
         description: "Plan deleted successfully",
       });
-      fetchPlans();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete plan",
         variant: "destructive",
       });
+      // On error, refetch to ensure consistency
+      fetchPlans();
     } finally {
       setDeleteDialogOpen(false);
       setPlanToDelete(null);
@@ -176,24 +180,34 @@ const SubscriptionPlansPage = () => {
       delete submitData.enable_website_orders;
 
       if (dialogMode === "add") {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('subscription_plans')
-          .insert([submitData]);
+          .insert([submitData])
+          .select()
+          .single();
 
         if (error) throw error;
 
+        // Optimistic update - add to list immediately
+        setPlans([...plans, data]);
+        
         toast({
           title: "Success",
           description: "Plan created successfully",
         });
       } else if (selectedPlan) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('subscription_plans')
           .update(submitData)
-          .eq('id', selectedPlan.id);
+          .eq('id', selectedPlan.id)
+          .select()
+          .single();
 
         if (error) throw error;
 
+        // Optimistic update - update in list immediately
+        setPlans(plans.map(p => p.id === selectedPlan.id ? data : p));
+        
         toast({
           title: "Success",
           description: "Plan updated successfully",
@@ -201,13 +215,14 @@ const SubscriptionPlansPage = () => {
       }
 
       setDialogOpen(false);
-      fetchPlans();
     } catch (error) {
       toast({
         title: "Error",
         description: `Failed to ${dialogMode} plan`,
         variant: "destructive",
       });
+      // On error, refetch to ensure consistency
+      fetchPlans();
     }
   };
 
@@ -276,9 +291,9 @@ const SubscriptionPlansPage = () => {
                       )}
                     </div>
                     <div className="space-y-2 text-sm">
-                      <p>Max Products: {plan.max_products || 'Unlimited'}</p>
-                      <p>WhatsApp Orders: {plan.whatsapp_orders_limit || 'Unlimited'}</p>
-                      <p>Website Orders: {plan.website_orders_limit || 'Unlimited'}</p>
+                      <p>Max Products: {plan.max_products === 0 || plan.max_products === null ? 'Unlimited' : plan.max_products}</p>
+                      <p>WhatsApp Orders: {plan.whatsapp_orders_limit === 0 || plan.whatsapp_orders_limit === null ? 'Unlimited' : plan.whatsapp_orders_limit}</p>
+                      <p>Website Orders: {plan.website_orders_limit === 0 || plan.website_orders_limit === null ? 'Unlimited' : plan.website_orders_limit}</p>
                       <p>Status: {plan.is_active ? 'Active' : 'Inactive'}</p>
                       <div className="flex gap-2 mt-2">
                         {plan.enable_location_sharing && (

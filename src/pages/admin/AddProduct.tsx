@@ -10,13 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Upload, X, Plus, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { addProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { generateProductId } from "@/lib/idGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -59,6 +61,7 @@ const AddProduct = () => {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [storeId, setStoreId] = useState<string>("");
+  const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -225,6 +228,16 @@ const AddProduct = () => {
   };
 
   const onSubmit = async (data: ProductFormData) => {
+    // Check subscription limits before publishing
+    if (data.status === "published" && !subscriptionLimits.canPublishProduct()) {
+      toast({
+        title: "Product Limit Reached",
+        description: subscriptionLimits.getProductLimitMessage() || "Cannot publish more products",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -289,6 +302,14 @@ const AddProduct = () => {
             Create a new product listing for your store
           </p>
         </div>
+
+        {/* Subscription Limit Warning */}
+        {subscriptionLimits.getProductLimitMessage() && (
+          <Alert variant={subscriptionLimits.canPublishProduct() ? "default" : "destructive"}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{subscriptionLimits.getProductLimitMessage()}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Form */}
         <Form {...form}>

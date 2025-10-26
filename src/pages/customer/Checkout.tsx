@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -40,12 +40,16 @@ const checkoutSchema = z.object({
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 const Checkout = () => {
+  const { slug } = useParams<{ slug?: string }>();
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -62,7 +66,134 @@ const Checkout = () => {
 
   useEffect(() => {
     checkLocationFeature();
-  }, []);
+    checkSubscriptionLimits();
+    
+    // Get store slug from URL or cart items
+    if (slug) {
+      setStoreSlug(slug);
+    } else if (cart.length > 0 && cart[0].storeId) {
+      const fetchStoreSlug = async () => {
+        const { data } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        if (data) {
+          setStoreSlug(data.slug);
+        }
+      };
+      fetchStoreSlug();
+    }
+  }, [slug, cart]);
+
+  const checkSubscriptionLimits = async () => {
+    try {
+      setIsCheckingSubscription(true);
+      
+      // Get store ID from cart items
+      if (cart.length === 0) {
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const storeId = cart[0]?.storeId;
+      
+      // Validate storeId exists and is not empty
+      if (!storeId || storeId.trim() === '') {
+        console.error('Cart storeId is invalid:', storeId);
+        setSubscriptionError("Unable to process your order. Please clear your cart and add products again from the store.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id")
+        .eq("id", storeId)
+        .maybeSingle();
+
+      if (!storeData) {
+        setSubscriptionError("Store not found.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check subscription status and limits
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select(`
+          status,
+          whatsapp_orders_used,
+          website_orders_used,
+          current_period_end,
+          subscription_plans (
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", storeData.user_id)
+        .maybeSingle();
+
+      if (!subscription) {
+        setSubscriptionError("This store has no active subscription. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription is active or in trial
+      if (!['active', 'trial'].includes(subscription.status)) {
+        setSubscriptionError("This store's subscription is not active. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription has expired
+      const now = new Date();
+      const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+      
+      if (periodEnd && periodEnd < now) {
+        setSubscriptionError("This store's subscription has expired. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check order limits - store subscription info for later validation
+      if (subscription.subscription_plans) {
+        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        const websiteLimit = subscription.subscription_plans.website_orders_limit;
+        const websiteUsed = subscription.website_orders_used || 0;
+        
+        // Check if BOTH features are disabled - only then block orders entirely
+        if (whatsappLimit === null && websiteLimit === null) {
+          setSubscriptionError("Ordering is not available in this store's plan.");
+          setIsCheckingSubscription(false);
+          return;
+        }
+        
+        // Check WhatsApp limit if feature is enabled
+        const whatsappAvailable = whatsappLimit !== null && (whatsappLimit === 0 || whatsappUsed < whatsappLimit);
+        
+        // Check Website limit if feature is enabled  
+        const websiteAvailable = websiteLimit !== null && (websiteLimit === 0 || websiteUsed < websiteLimit);
+        
+        // If both features are enabled but both limits are reached, block orders
+        if (!whatsappAvailable && !websiteAvailable) {
+          setSubscriptionError("This store has reached its order limits for both WhatsApp and website orders.");
+          setIsCheckingSubscription(false);
+          return;
+        }
+      }
+
+      // All checks passed
+      setSubscriptionError(null);
+      setIsCheckingSubscription(false);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      setSubscriptionError("Unable to verify store subscription. Please try again later.");
+      setIsCheckingSubscription(false);
+    }
+  };
 
   const checkLocationFeature = async () => {
     try {
@@ -90,17 +221,17 @@ const Checkout = () => {
           .eq("user_id", storeData.user_id)
           .maybeSingle();
 
-        const isEnabled = subscription?.subscription_plans?.enable_location_sharing || true;
+        const isEnabled = subscription?.subscription_plans?.enable_location_sharing || false;
         setLocationEnabled(isEnabled);
         console.log("Location feature enabled:", isEnabled, "for store:", storeData.id);
       } else {
-        // Enable by default if no cart items
-        setLocationEnabled(true);
+        // Disable by default if no cart items
+        setLocationEnabled(false);
       }
     } catch (error) {
       console.error("Error checking location feature:", error);
-      // Enable by default on error for testing
-      setLocationEnabled(true);
+      // Disable by default on error to respect subscription limits
+      setLocationEnabled(false);
     }
   };
 
@@ -108,10 +239,45 @@ const Checkout = () => {
     setLocation({ latitude, longitude });
   };
 
+  if (isCheckingSubscription) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <p className="text-muted-foreground">Checking availability...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (subscriptionError) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
+            <h1 className="text-3xl font-bold mb-4">Orders Unavailable</h1>
+            <p className="text-muted-foreground mb-8">
+              {subscriptionError}
+            </p>
+            <Link to={storeSlug ? `/${storeSlug}` : "/home"}>
+              <Button size="lg">Back to Home</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
@@ -119,7 +285,7 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-8">
               Add some products to proceed to checkout
             </p>
-            <Link to="/products">
+            <Link to={storeSlug ? `/${storeSlug}/products` : "/products"}>
               <Button size="lg">Continue Shopping</Button>
             </Link>
           </div>
@@ -160,7 +326,7 @@ const Checkout = () => {
 
       if (!storeData) throw new Error("Store not found");
 
-      // Check subscription expiration and limits for Website orders
+      // Check subscription expiration and limits for both WhatsApp and Website orders
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select(`
@@ -185,14 +351,19 @@ const Checkout = () => {
           throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
         }
 
-        // Check order limits
+        // Check WhatsApp order limits (this is a WhatsApp checkout)
         if (subscription?.subscription_plans) {
-          const websiteLimit = subscription.subscription_plans.website_orders_limit;
-          const websiteUsed = subscription.website_orders_used || 0;
+          const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+          const whatsappUsed = subscription.whatsapp_orders_used || 0;
           
-          // Check if limit is exceeded (0 means unlimited, null means feature disabled)
-          if (websiteLimit !== null && websiteLimit > 0 && websiteUsed >= websiteLimit) {
-            throw new Error("Website order limit reached for this month. Please upgrade your plan or contact support.");
+          // Check if WhatsApp feature is disabled (null means disabled)
+          if (whatsappLimit === null) {
+            throw new Error("WhatsApp ordering is not available in your current plan.");
+          }
+          
+          // Check if WhatsApp limit is exceeded (0 means unlimited, positive number is the limit)
+          if (whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
+            throw new Error("WhatsApp order limit reached for this month. Please upgrade your plan or contact support.");
           }
         }
       }
@@ -224,31 +395,20 @@ const Checkout = () => {
       // Save order to Supabase
       const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
-        .insert([orderRecord])
-        .select('id')
+        .insert(orderRecord)
+        .select('id') // Only request the ID (primary key)
         .single();
 
       if (orderError) throw orderError;
 
-      // Increment Website orders count (these are website orders, not WhatsApp)
+      // Increment WhatsApp orders count only (this is a WhatsApp checkout)
       if (subscription) {
         await supabase
           .from("subscriptions")
           .update({
-            website_orders_used: (subscription.website_orders_used || 0) + 1
+            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
           })
           .eq("user_id", storeData.user_id);
-      }
-
-
-      // Send order email notification (non-blocking)
-      if (insertedOrder?.id) {
-        supabase.functions.invoke('send-order-email', {
-          body: {
-            orderId: insertedOrder.id,
-            storeId: storeData.id
-          }
-        }).catch(err => console.error('Failed to send order email:', err));
       }
 
       // Prepare order details for WhatsApp
@@ -270,7 +430,7 @@ const Checkout = () => {
 
       // Generate and send WhatsApp message
       const message = generateOrderMessage(orderDetails);
-      const result = await openWhatsApp(message);
+      const result = await openWhatsApp(message, undefined, storeId);
 
       if (!result.success) {
         toast({
@@ -289,7 +449,7 @@ const Checkout = () => {
 
       clearCart();
       setTimeout(() => {
-        navigate("/home");
+        navigate(storeSlug ? `/${storeSlug}` : "/home");
       }, 2000);
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -302,16 +462,19 @@ const Checkout = () => {
     }
   };
 
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/home" className="hover:text-foreground">Home</Link>
+          <Link to={homeLink} className="hover:text-foreground">Home</Link>
           <ChevronRight className="w-4 h-4" />
-          <Link to="/cart" className="hover:text-foreground">Cart</Link>
+          <Link to={cartLink} className="hover:text-foreground">Cart</Link>
           <ChevronRight className="w-4 h-4" />
           <span className="text-foreground">Checkout</span>
         </nav>
@@ -464,7 +627,10 @@ const Checkout = () => {
                       {locationEnabled && (
                         <div className="space-y-2">
                           <Label>Share Your Location (Optional)</Label>
-                          <LocationPicker onLocationSelect={handleLocationSelect} />
+                          <LocationPicker 
+                            onLocationSelect={handleLocationSelect} 
+                            enabled={locationEnabled}
+                          />
                           {location && (
                             <p className="text-sm text-success">✓ Location captured successfully</p>
                           )}

@@ -13,13 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Filter } from "lucide-react";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
-import { useProductData } from "@/hooks/useProductData";
+import { getPublishedProducts } from "@/lib/productData";
 import type { Product } from "@/lib/productData";
 
 const Products = () => {
   const [searchParams] = useSearchParams();
   const { slug } = useParams<{ slug?: string }>();
-  const { products: allProducts, loading, error, refresh } = useProductData(true);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -28,25 +30,48 @@ const Products = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
 
-  // Fetch store data if accessing via /:slug/products
+  // Fetch store data and products if accessing via /:slug/products
   useEffect(() => {
-    const loadStoreData = async () => {
+    const loadStoreDataAndProducts = async () => {
       if (!slug) return;
-      
-      const { data: storeData } = await supabase
-        .from("stores")
-        .select("id")
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .maybeSingle();
-      
-      if (storeData) {
-        setStoreId(storeData.id);
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("id")
+          .eq("slug", slug)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (storeData) {
+          setStoreId(storeData.id);
+          // Fetch products for this store
+          const products = await getPublishedProducts(storeData.id);
+          setAllProducts(products);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load products');
+      } finally {
+        setLoading(false);
       }
     };
-    
-    loadStoreData();
+
+    loadStoreDataAndProducts();
   }, [slug]);
+
+  const refresh = async () => {
+    if (storeId) {
+      try {
+        const products = await getPublishedProducts(storeId);
+        setAllProducts(products);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to reload products');
+      }
+    }
+  };
 
   // Extract categories whenever products change
   useEffect(() => {

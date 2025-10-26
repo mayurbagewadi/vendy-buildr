@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   storeSlug?: string;
+  storeId?: string;
 }
 
-const Header = ({ storeSlug }: HeaderProps) => {
+const Header = ({ storeSlug, storeId }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const Header = ({ storeSlug }: HeaderProps) => {
 
   const handleWhatsApp = async () => {
     const message = generateGeneralInquiryMessage();
-    const result = await openWhatsApp(message);
+    const result = await openWhatsApp(message, undefined, storeId);
     
     if (!result.success) {
       toast({

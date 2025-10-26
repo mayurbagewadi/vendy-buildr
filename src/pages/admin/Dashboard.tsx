@@ -40,32 +40,24 @@ const AdminDashboard = () => {
     // Initialize products with seed data if empty
     initializeProducts();
     
-    // Track admin panel visit
-    const updateAdminVisit = async () => {
+    const initializeDashboard = async () => {
+      // Single auth check for all operations
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: stores } = await supabase
-          .from('stores')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
-        
-        if (stores && stores.length > 0) {
-          await supabase
-            .from('stores')
-            .update({ last_admin_visit: new Date().toISOString() })
-            .eq('id', stores[0].id);
-        }
-      }
-    };
-    
-    updateAdminVisit();
-    
-    // Fetch subscription and calculate trial days
-    const fetchSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: subscription } = await supabase
+      if (!user) return;
+
+      // Fetch store once for all operations
+      const { data: store } = await supabase
+        .from('stores')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!store) return;
+
+      // Run all data fetching operations in parallel
+      const [products, subscriptionResult, ordersCountResult, ordersResult] = await Promise.all([
+        getProducts(),
+        supabase
           .from('subscriptions')
           .select(`
             trial_ends_at,
@@ -74,102 +66,70 @@ const AdminDashboard = () => {
             subscription_plans (trial_days)
           `)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle(),
+        supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('store_id', store.id),
+        supabase
+          .from('orders')
+          .select('customer_email, customer_phone')
+          .eq('store_id', store.id),
+        // Update admin visit in background (don't wait for it)
+        supabase
+          .from('stores')
+          .update({ last_admin_visit: new Date().toISOString() })
+          .eq('id', store.id)
+      ]);
+
+      // Set store name
+      if (store.name) {
+        setStoreName(store.name);
+      }
+
+      // Calculate trial days
+      const subscription = subscriptionResult.data;
+      if (subscription) {
+        let trialEndDate: Date | null = null;
         
-        if (subscription) {
-          let trialEndDate: Date;
-          
-          // If trial_ends_at exists, use it; otherwise calculate from created_at + trial_days
-          if (subscription.trial_ends_at) {
-            trialEndDate = new Date(subscription.trial_ends_at);
-          } else if (subscription.subscription_plans?.trial_days) {
-            trialEndDate = new Date(subscription.created_at);
-            trialEndDate.setDate(trialEndDate.getDate() + subscription.subscription_plans.trial_days);
-          } else {
-            return; // No trial information available
-          }
-          
+        if (subscription.trial_ends_at) {
+          trialEndDate = new Date(subscription.trial_ends_at);
+        } else if (subscription.subscription_plans?.trial_days) {
+          trialEndDate = new Date(subscription.created_at);
+          trialEndDate.setDate(trialEndDate.getDate() + subscription.subscription_plans.trial_days);
+        }
+        
+        if (trialEndDate) {
           const today = new Date();
           const diffTime = trialEndDate.getTime() - today.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
-          // Only show trial status if subscription is in trial/active and has days remaining
           if ((subscription.status === 'trial' || subscription.status === 'active') && diffDays > 0) {
             setTrialDaysRemaining(diffDays);
           }
         }
       }
-    };
-    
-    fetchSubscription();
-    
-    // Load store name from database
-    const loadStoreName = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('name')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (store?.name) {
-          setStoreName(store.name);
-        }
-      }
-    };
-    
-    loadStoreName();
 
-    // Load real product data and orders
-    const loadProductStats = async () => {
-      const products = await getProducts();
+      // Calculate stats
       const activeProducts = products.filter(p => p.status === 'published').length;
+      const totalOrders = ordersCountResult.count || 0;
       
-      // Fetch real orders data
-      const { data: { user } } = await supabase.auth.getUser();
-      let totalOrders = 0;
       let totalCustomers = 0;
-      
-      if (user) {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (store) {
-          // Get total orders count
-          const { count: ordersCount } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('store_id', store.id);
-          
-          totalOrders = ordersCount || 0;
-          
-          // Get unique customers count
-          const { data: orders } = await supabase
-            .from('orders')
-            .select('customer_email, customer_phone')
-            .eq('store_id', store.id);
-          
-          if (orders) {
-            const uniqueCustomers = new Set(
-              orders.map(order => order.customer_email || order.customer_phone)
-            );
-            totalCustomers = uniqueCustomers.size;
-          }
-        }
+      if (ordersResult.data) {
+        const uniqueCustomers = new Set(
+          ordersResult.data.map(order => order.customer_email || order.customer_phone)
+        );
+        totalCustomers = uniqueCustomers.size;
       }
-      
+
       setStats({
         totalProducts: products.length,
-        activeProducts: activeProducts,
+        activeProducts,
         totalOrders,
         totalCustomers,
       });
 
-      // Demo recent activity
+      // Set recent activity
       const demoActivity = [
         {
           id: '1',
@@ -193,7 +153,7 @@ const AdminDashboard = () => {
       setRecentActivity(demoActivity);
     };
 
-    loadProductStats();
+    initializeDashboard();
 
     // Show demo notification
     toast({

@@ -10,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Upload, X, Plus, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProductById, updateProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -58,6 +60,8 @@ const EditProduct = () => {
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [storeId, setStoreId] = useState<string>("");
+  const [originalStatus, setOriginalStatus] = useState<string>("");
+  const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -130,6 +134,7 @@ const EditProduct = () => {
       status: product.status,
     });
 
+    setOriginalStatus(product.status);
     setImageUrls(product.images || []);
     setVideoUrl(product.videoUrl || product.video_url || "");
     
@@ -229,6 +234,19 @@ const EditProduct = () => {
   const onSubmit = async (data: ProductFormData) => {
     if (!id) return;
     
+    // Check if changing to published status when it wasn't published before
+    const wasNotPublished = originalStatus !== "published";
+    const isPublishingNow = data.status === "published";
+    
+    if (wasNotPublished && isPublishingNow && !subscriptionLimits.canPublishProduct()) {
+      toast({
+        title: "Product Limit Reached",
+        description: subscriptionLimits.getProductLimitMessage() || "Cannot publish more products",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -308,6 +326,14 @@ const EditProduct = () => {
             </div>
           </div>
         </div>
+
+        {/* Subscription Limit Warning */}
+        {subscriptionLimits.getProductLimitMessage() && (
+          <Alert variant={subscriptionLimits.canPublishProduct() ? "default" : "destructive"}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{subscriptionLimits.getProductLimitMessage()}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Form */}
         <Form {...form}>

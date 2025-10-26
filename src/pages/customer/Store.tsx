@@ -109,13 +109,15 @@ const Store = () => {
       }
 
       // Fetch categories for this store
-      const { data: categoriesData } = await supabase
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from("categories")
         .select("*")
         .eq("store_id", storeData.id)
         .order("name");
 
-      if (categoriesData) {
+      if (categoriesError) {
+        console.error("Error fetching categories:", categoriesError);
+      } else if (categoriesData) {
         setCategories(categoriesData);
       }
 
@@ -165,7 +167,7 @@ const Store = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={store.slug} />
+      <Header storeSlug={store.slug} storeId={store.id} />
       
       <main className="flex-1">
         {/* Hero Section */}
@@ -320,7 +322,7 @@ const Store = () => {
         )}
 
         {/* CTA Section */}
-        <section className="py-20 bg-primary text-primary-foreground">
+        <section className="py-20 bg-primary text-primary-foreground mb-0">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Ready to Start Shopping?
@@ -336,7 +338,7 @@ const Store = () => {
                 </Button>
               </Link>
               {store.whatsapp_number && (
-                <a 
+                <a
                   href={`https://wa.me/${store.whatsapp_number.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -352,7 +354,7 @@ const Store = () => {
         </section>
       </main>
 
-      <StoreFooter 
+      <StoreFooter
         storeName={store.name}
         storeDescription={store.description}
         whatsappNumber={store.whatsapp_number}

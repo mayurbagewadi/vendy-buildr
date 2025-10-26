@@ -37,6 +37,38 @@ serve(async (req) => {
   }
 
   try {
+    // Validate domain - only allow requests from authorized domains
+    const origin = req.headers.get('origin') || '';
+    const ALLOWED_DOMAIN = 'superadmin.yesgive.shop';
+    
+    // Extract hostname from origin
+    let requestDomain = '';
+    try {
+      requestDomain = new URL(origin).hostname;
+    } catch (e) {
+      requestDomain = origin;
+    }
+    
+    // Allow localhost for development and Lovable preview domains
+    const isLocalhost = requestDomain.includes('localhost') || requestDomain.includes('127.0.0.1');
+    const isLovableDomain = requestDomain.endsWith('.lovable.app') || 
+                           requestDomain.endsWith('.lovable.dev') ||
+                           requestDomain.endsWith('.lovableproject.com');
+    const isAllowedDomain = requestDomain === ALLOWED_DOMAIN;
+    
+    if (!isLocalhost && !isLovableDomain && !isAllowedDomain) {
+      console.log('Unauthorized domain access attempt:', requestDomain);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Access denied: Unauthorized domain' 
+        }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',

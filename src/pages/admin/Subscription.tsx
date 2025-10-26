@@ -152,7 +152,7 @@ const SubscriptionPage = () => {
     const limit = currentSubscription?.subscription_plans?.website_orders_limit;
     // If limit is null (feature disabled) or 0 (unlimited), don't show usage
     if (limit === null || limit === 0) return 0;
-    const used = actualOrderCount; // Use actual order count from orders table
+    const used = currentSubscription.website_orders_used || 0;
     return Math.min((used / limit) * 100, 100);
   };
 
@@ -273,8 +273,8 @@ const SubscriptionPage = () => {
                   <span className="text-sm font-medium text-foreground">Website Orders</span>
                   <span className="text-sm text-muted-foreground">
                     {currentSubscription.subscription_plans.website_orders_limit === 0
-                      ? `${actualOrderCount} / Unlimited`
-                      : `${actualOrderCount} / ${currentSubscription.subscription_plans.website_orders_limit}`
+                      ? `${currentSubscription.website_orders_used || 0} / Unlimited`
+                      : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
                     }
                   </span>
                 </div>
@@ -304,14 +304,61 @@ const SubscriptionPage = () => {
           <div className="border-t pt-4">
             <h3 className="font-semibold text-foreground mb-3">Plan Features</h3>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {/* Max Products */}
+              {currentSubscription.subscription_plans.max_products !== null && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">
+                    {currentSubscription.subscription_plans.max_products === 0 
+                      ? 'Unlimited Products'
+                      : `Max ${currentSubscription.subscription_plans.max_products} Product${currentSubscription.subscription_plans.max_products === 1 ? '' : 's'}`
+                    }
+                  </span>
+                </li>
+              )}
+              
+              {/* Core features from JSONB - filter out controlled features */}
               {currentSubscription.subscription_plans.features
-                .filter(f => f && typeof f === 'string' && f.trim() !== '')
+                .filter(f => {
+                  if (!f || typeof f !== 'string' || f.trim() === '') return false;
+                  const lower = f.toLowerCase();
+                  // Exclude all features that should be controlled elsewhere
+                  return !lower.includes('analytics') && 
+                         !lower.includes('email') && 
+                         !lower.includes('notification') &&
+                         !lower.includes('location') &&
+                         !lower.includes('tracking') &&
+                         !lower.includes('product') &&
+                         !lower.includes('support') &&
+                         !lower.includes('whatsapp order') &&
+                         !lower.includes('website order');
+                })
                 .map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-foreground">{feature}</span>
                   </li>
                 ))}
+              
+              {/* Boolean flag features - only show if enabled */}
+              {currentSubscription.subscription_plans.enable_analytics && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Advanced Analytics</span>
+                </li>
+              )}
+              {currentSubscription.subscription_plans.enable_order_emails && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Email Notifications</span>
+                </li>
+              )}
+              {currentSubscription.subscription_plans.enable_location_sharing && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Location Tracking</span>
+                </li>
+              )}
             </ul>
           </div>
         </Card>
@@ -347,22 +394,70 @@ const SubscriptionPage = () => {
 
                 {/* Plan Features */}
                 <ul className="space-y-2 mb-6 flex-1">
+                  {/* Max Products */}
+                  {plan.max_products !== null && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">
+                        {plan.max_products === 0 
+                          ? 'Unlimited Products'
+                          : `Max ${plan.max_products} Product${plan.max_products === 1 ? '' : 's'}`
+                        }
+                      </span>
+                    </li>
+                  )}
+                  
+                  {/* Core features from JSONB - filter out controlled features */}
                   {plan.features
-                    .filter(f => f && typeof f === 'string' && f.trim() !== '')
-                    .slice(0, 5)
+                    .filter(f => {
+                      if (!f || typeof f !== 'string' || f.trim() === '') return false;
+                      const lower = f.toLowerCase();
+                      // Exclude all features that should be controlled elsewhere
+                      return !lower.includes('analytics') && 
+                             !lower.includes('email') && 
+                             !lower.includes('notification') &&
+                             !lower.includes('location') &&
+                             !lower.includes('tracking') &&
+                             !lower.includes('product') &&
+                             !lower.includes('support') &&
+                             !lower.includes('whatsapp order') &&
+                             !lower.includes('website order');
+                    })
                     .map((feature, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-foreground">{feature}</span>
                       </li>
                     ))}
+                  
+                  {/* Boolean flag features - only show if enabled */}
+                  {plan.enable_analytics && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Advanced Analytics</span>
+                    </li>
+                  )}
+                  {plan.enable_order_emails && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Email Notifications</span>
+                    </li>
+                  )}
+                  {plan.enable_location_sharing && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Location Tracking</span>
+                    </li>
+                  )}
+                  
+                  {/* Order limits */}
                   {plan.whatsapp_orders_limit !== null && (
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-foreground">
                         {plan.whatsapp_orders_limit === 0 
                           ? 'Unlimited WhatsApp orders/month'
-                          : `${plan.whatsapp_orders_limit} WhatsApp orders/month`
+                          : `${plan.whatsapp_orders_limit} WhatsApp order${plan.whatsapp_orders_limit === 1 ? '' : 's'}/month`
                         }
                       </span>
                     </li>
@@ -373,7 +468,7 @@ const SubscriptionPage = () => {
                       <span className="text-sm text-foreground">
                         {plan.website_orders_limit === 0 
                           ? 'Unlimited Website orders/month'
-                          : `${plan.website_orders_limit} Website orders/month`
+                          : `${plan.website_orders_limit} Website order${plan.website_orders_limit === 1 ? '' : 's'}/month`
                         }
                       </span>
                     </li>

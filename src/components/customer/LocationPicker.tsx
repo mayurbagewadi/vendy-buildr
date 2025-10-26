@@ -5,12 +5,22 @@ import { toast } from "@/hooks/use-toast";
 
 interface LocationPickerProps {
   onLocationSelect: (latitude: number, longitude: number) => void;
+  enabled?: boolean;
 }
 
-export function LocationPicker({ onLocationSelect }: LocationPickerProps) {
+export function LocationPicker({ onLocationSelect, enabled = true }: LocationPickerProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGetLocation = () => {
+    if (!enabled) {
+      toast({
+        title: "Feature Not Available",
+        description: "Location sharing is not enabled in your current subscription plan",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!navigator.geolocation) {
       toast({
         title: "Not Supported",
@@ -50,6 +60,10 @@ export function LocationPicker({ onLocationSelect }: LocationPickerProps) {
       }
     );
   };
+
+  if (!enabled) {
+    return null;
+  }
 
   return (
     <Button

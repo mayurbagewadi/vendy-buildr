@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,9 +8,33 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
+import { supabase } from "@/integrations/supabase/client";
 
 const MiniCart = () => {
   const { cart, cartCount, cartTotal, removeItem } = useCart();
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    // Get store slug from cart items
+    if (cart.length > 0 && cart[0].storeId) {
+      const fetchStoreSlug = async () => {
+        const { data } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        if (data) {
+          setStoreSlug(data.slug);
+        }
+      };
+      fetchStoreSlug();
+    }
+  }, [cart]);
+
+  // Generate store-aware links
+  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
+  const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
+  const checkoutLink = storeSlug ? `/${storeSlug}/checkout` : "/checkout";
 
   return (
     <Popover>
@@ -36,7 +61,7 @@ const MiniCart = () => {
           <div className="p-8 text-center">
             <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground mb-4">Your cart is empty</p>
-            <Link to="/products">
+            <Link to={productsLink}>
               <Button variant="outline" className="w-full">
                 Continue Shopping
               </Button>
@@ -87,12 +112,12 @@ const MiniCart = () => {
                 <span className="text-xl font-bold text-primary">₹{cartTotal}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Link to="/cart" className="w-full">
+                <Link to={cartLink} className="w-full">
                   <Button variant="outline" className="w-full min-h-[44px]">
                     View Cart
                   </Button>
                 </Link>
-                <Link to="/checkout" className="w-full">
+                <Link to={checkoutLink} className="w-full">
                   <Button className="w-full min-h-[44px]">Checkout</Button>
                 </Link>
               </div>

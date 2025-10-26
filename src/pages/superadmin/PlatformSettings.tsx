@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPlatformSettings, savePlatformSettings, PlatformSettings } from "@/lib/platformSettings";
@@ -16,11 +17,14 @@ const PlatformSettingsPage = () => {
   const [settings, setSettings] = useState<PlatformSettings>(getPlatformSettings());
   const [isSaving, setIsSaving] = useState(false);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
+  const [defaultPlanId, setDefaultPlanId] = useState<string>("");
 
   useEffect(() => {
     const checkAuth = async () => {
       const superAdminSession = sessionStorage.getItem('superadmin_session');
       if (superAdminSession) {
+        loadPlans();
         return;
       }
 
@@ -39,16 +43,48 @@ const PlatformSettingsPage = () => {
 
       if (!roles || roles.length === 0) {
         navigate('/superadmin/login');
+      } else {
+        loadPlans();
+      }
+    };
+
+    const loadPlans = async () => {
+      const { data: plans } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+      
+      if (plans) {
+        setSubscriptionPlans(plans);
+        const defaultPlan = plans.find((p: any) => p.is_default_plan);
+        if (defaultPlan) {
+          setDefaultPlanId(defaultPlan.id);
+        }
       }
     };
 
     checkAuth();
   }, [navigate]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
       savePlatformSettings(settings);
+      
+      // Update default plan in database
+      if (defaultPlanId) {
+        await supabase
+          .from("subscription_plans")
+          .update({ is_default_plan: false })
+          .neq("id", defaultPlanId);
+        
+        await supabase
+          .from("subscription_plans")
+          .update({ is_default_plan: true })
+          .eq("id", defaultPlanId);
+      }
+      
       toast({
         title: "Settings saved",
         description: "Platform settings have been updated successfully.",
@@ -198,6 +234,25 @@ const PlatformSettingsPage = () => {
                 />
                 <p className="text-xs text-muted-foreground">
                   The name of your platform
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="defaultPlan">Default Subscription Plan</Label>
+                <Select value={defaultPlanId} onValueChange={setDefaultPlanId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default plan for new stores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subscriptionPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name} - {plan.monthly_price > 0 ? `₹${plan.monthly_price}/mo` : 'Free'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This plan will be automatically assigned to new store owners
                 </p>
               </div>
             </CardContent>

@@ -2,10 +2,14 @@ import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { openWhatsApp, generateGeneralInquiryMessage } from '@/lib/whatsappUtils';
 
-const WhatsAppFloat = () => {
+interface WhatsAppFloatProps {
+  storeId?: string;
+}
+
+const WhatsAppFloat = ({ storeId }: WhatsAppFloatProps) => {
   const handleClick = () => {
     const message = generateGeneralInquiryMessage();
-    openWhatsApp(message);
+    openWhatsApp(message, undefined, storeId);
   };
 
   return (

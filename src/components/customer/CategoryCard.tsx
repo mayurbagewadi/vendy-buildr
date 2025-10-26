@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Package } from "lucide-react";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import LazyImage from "@/components/ui/lazy-image";
 
 interface CategoryCardProps {
   name: string;
@@ -25,7 +26,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
           <div className="relative aspect-square overflow-hidden">
             {directImageUrl ? (
               <>
-                <img
+                <LazyImage
                   src={directImageUrl}
                   alt={name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-90 group-hover:brightness-100"
