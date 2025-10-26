@@ -393,9 +393,11 @@ const Checkout = () => {
       };
 
       // Save order to Supabase
-      const { error: orderError } = await supabase
+      const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
-        .insert([orderRecord]);
+        .insert(orderRecord)
+        .select('id') // Only request the ID (primary key)
+        .single();
 
       if (orderError) throw orderError;
 
