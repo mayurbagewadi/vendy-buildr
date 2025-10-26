@@ -396,7 +396,7 @@ const Checkout = () => {
       const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
         .insert([orderRecord])
-        .select('id')
+        .select('id') // Only request the ID column
         .single();
 
       if (orderError) throw orderError;
