@@ -504,24 +504,6 @@ const ProductDetail = () => {
                 </dl>
               </CardContent>
             </Card>
-
-            {/* WhatsApp Actions */}
-            <div className="mt-6 space-y-3">
-              <Button 
-                onClick={handleBuyWhatsApp} 
-                className="w-full min-h-[48px] bg-green-600 hover:bg-green-700 text-white" 
-                disabled={quantity === 0}
-              >
-                Buy via WhatsApp
-              </Button>
-              <Button 
-                onClick={handleProductInquiry} 
-                variant="outline"
-                className="w-full min-h-[44px]"
-              >
-                Product Inquiry
-              </Button>
-            </div>
           </div>
         </div>
 

@@ -25,7 +25,7 @@ const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email
   const { slug } = useParams<{ slug: string }>();
   const policiesPath = slug ? `/${slug}/policies` : "/policies";
   return (
-    <footer className="bg-muted border-t border-border mt-20">
+    <footer className="bg-muted border-t border-border">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* About Store */}

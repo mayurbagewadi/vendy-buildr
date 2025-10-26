@@ -22,20 +22,22 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-      <Link to={productLink}>
-        <div className="relative aspect-square overflow-hidden bg-muted">
-          <LazyImage
-            src={imageUrl}
-            alt={name}
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-          />
-          {status === "draft" && (
-            <Badge className="absolute top-2 right-2" variant="secondary">
-              Coming Soon
-            </Badge>
-          )}
-        </div>
-      </Link>
+      <CardContent className="p-0">
+        <Link to={productLink}>
+          <div className="relative aspect-square overflow-hidden bg-muted">
+            <LazyImage
+              src={imageUrl}
+              alt={name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            {status === "draft" && (
+              <Badge className="absolute top-2 right-2" variant="secondary">
+                Coming Soon
+              </Badge>
+            )}
+          </div>
+        </Link>
+      </CardContent>
       <CardContent className="p-4">
         <Link to={productLink}>
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
