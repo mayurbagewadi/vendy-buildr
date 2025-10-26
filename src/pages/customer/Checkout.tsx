@@ -242,7 +242,7 @@ const Checkout = () => {
   if (isCheckingSubscription) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} />
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <p className="text-muted-foreground">Checking availability...</p>
@@ -256,7 +256,7 @@ const Checkout = () => {
   if (subscriptionError) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} />
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
@@ -277,7 +277,7 @@ const Checkout = () => {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} />
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
@@ -430,7 +430,7 @@ const Checkout = () => {
 
       // Generate and send WhatsApp message
       const message = generateOrderMessage(orderDetails);
-      const result = await openWhatsApp(message);
+      const result = await openWhatsApp(message, undefined, storeId);
 
       if (!result.success) {
         toast({
@@ -467,7 +467,7 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={storeSlug} />
+      <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}

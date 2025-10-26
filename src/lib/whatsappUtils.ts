@@ -2,8 +2,8 @@ import { CartItem } from "./cartUtils";
 import { supabase } from "@/integrations/supabase/client";
 
 // Validate if WhatsApp number is properly configured
-export const isWhatsAppConfigured = async (): Promise<boolean> => {
-  const number = await getWhatsAppNumber();
+export const isWhatsAppConfigured = async (storeId?: string): Promise<boolean> => {
+  const number = await getWhatsAppNumber(storeId);
   const formattedNumber = formatWhatsAppNumber(number);
 
   // Check if number is empty, default, or invalid
@@ -16,8 +16,20 @@ export const isWhatsAppConfigured = async (): Promise<boolean> => {
 
 // Get WhatsApp business number from database
 // Note: This function now requires async/await in the calling context
-export const getWhatsAppNumber = async (): Promise<string> => {
+export const getWhatsAppNumber = async (storeId?: string): Promise<string> => {
   try {
+    // If storeId is provided, use it directly (for customer-facing pages)
+    if (storeId) {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('whatsapp_number')
+        .eq('id', storeId)
+        .single();
+      
+      return store?.whatsapp_number || "919876543210";
+    }
+
+    // Otherwise, try to get from authenticated user (for admin pages)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return "919876543210";
 
@@ -145,9 +157,9 @@ export const generateSupportMessage = (): string => {
 };
 
 // Open WhatsApp with pre-filled message
-export const openWhatsApp = async (message: string, phoneNumber?: string): Promise<{ success: boolean; error?: string }> => {
+export const openWhatsApp = async (message: string, phoneNumber?: string, storeId?: string): Promise<{ success: boolean; error?: string }> => {
   // If phoneNumber is not provided, check if WhatsApp is configured
-  if (!phoneNumber && !(await isWhatsAppConfigured())) {
+  if (!phoneNumber && !(await isWhatsAppConfigured(storeId))) {
     return {
       success: false,
       error:
@@ -155,7 +167,7 @@ export const openWhatsApp = async (message: string, phoneNumber?: string): Promi
     };
   }
 
-  const number = phoneNumber || (await getWhatsAppNumber());
+  const number = phoneNumber || (await getWhatsAppNumber(storeId));
   const formattedNumber = formatWhatsAppNumber(number);
 
   // Additional validation for the specific number being used

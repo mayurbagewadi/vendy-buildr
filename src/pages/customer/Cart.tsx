@@ -42,7 +42,7 @@ const Cart = () => {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} />
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
@@ -62,7 +62,7 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={storeSlug} />
+      <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Breadcrumb */}

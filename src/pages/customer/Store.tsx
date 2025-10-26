@@ -165,7 +165,7 @@ const Store = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={store.slug} />
+      <Header storeSlug={store.slug} storeId={store.id} />
       
       <main className="flex-1">
         {/* Hero Section */}
