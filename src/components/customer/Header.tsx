@@ -49,27 +49,27 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to={homeLink} className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-primary-foreground" />
+          <Link to={homeLink} className="flex items-center gap-2 group">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg">
+              <ShoppingCart className="w-6 h-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
             </div>
-            <span className="text-xl font-bold text-foreground hidden sm:block">
+            <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
               MyStore
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to={homeLink} className="text-foreground hover:text-primary transition-colors">
+            <Link to={homeLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Home
             </Link>
-            <Link to={productsLink} className="text-foreground hover:text-primary transition-colors">
+            <Link to={productsLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Products
             </Link>
-            <Link to={`${homeLink}#categories`} className="text-foreground hover:text-primary transition-colors">
+            <Link to={`${homeLink}#categories`} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Categories
             </Link>
-            <Link to={`${homeLink}#about`} className="text-foreground hover:text-primary transition-colors">
+            <Link to={`${homeLink}#about`} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               About
             </Link>
           </nav>
@@ -88,9 +88,9 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
                 type="submit"
                 size="icon"
                 variant="ghost"
-                className="absolute right-0 top-0"
+                className="absolute right-0 top-0 group"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
               </Button>
             </div>
           </form>
@@ -101,19 +101,22 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
               variant="outline"
               size="icon"
               onClick={handleWhatsApp}
-              className="hidden sm:flex min-w-[44px] min-h-[44px]"
+              className="hidden sm:flex min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105"
             >
-              <Phone className="w-5 h-5" />
+              <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
             </Button>
             <MiniCart />
             
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden min-w-[44px] min-h-[44px]"
+              className="md:hidden min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? 
+                <X className="w-5 h-5 animate-in spin-in-180 duration-300" /> : 
+                <Menu className="w-5 h-5 animate-in fade-in duration-300" />
+              }
             </Button>
           </div>
         </div>
@@ -132,9 +135,9 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
               type="submit"
               size="icon"
               variant="ghost"
-              className="absolute right-0 top-0"
+              className="absolute right-0 top-0 group"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
             </Button>
           </div>
         </form>
@@ -142,38 +145,38 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
+        <div className="md:hidden border-t border-border bg-background animate-in slide-in-from-top-2 duration-300">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
             <Link
               to={homeLink}
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
               to={productsLink}
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-75"
               onClick={() => setMobileMenuOpen(false)}
             >
               Products
             </Link>
             <Link
               to={`${homeLink}#categories`}
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-150"
               onClick={() => setMobileMenuOpen(false)}
             >
               Categories
             </Link>
             <Link
               to={`${homeLink}#about`}
-              className="text-foreground hover:text-primary transition-colors"
+              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200"
               onClick={() => setMobileMenuOpen(false)}
             >
               About
             </Link>
-            <Button onClick={handleWhatsApp} className="w-full min-h-[48px]">
-              <Phone className="w-5 h-5 mr-2" />
+            <Button onClick={handleWhatsApp} className="w-full min-h-[48px] animate-in fade-in slide-in-from-bottom-2 duration-300 delay-300 group">
+              <Phone className="w-5 h-5 mr-2 transition-transform duration-300 group-hover:rotate-12" />
               Contact on WhatsApp
             </Button>
           </nav>
