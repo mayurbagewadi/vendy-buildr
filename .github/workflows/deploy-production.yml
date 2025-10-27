@@ -10,35 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build project
-        run: npm run build
-        env:
-          NODE_ENV: production
-
-      - name: Deploy to Hostinger VPS
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "dist/*,package.json,package-lock.json"
-          target: "/var/www/vendy-buildr"
-          strip_components: 0
-
-      - name: Run deployment script on server
+      - name: Deploy to Hostinger VPS via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -46,6 +18,72 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            cd /var/www/vendy-buildr
-            chmod +x deploy.sh
-            ./deploy.sh
+            echo "Starting deployment for vendy-buildr..."
+
+            # Define project directory
+            PROJECT_DIR="/var/www/vendy-buildr"
+            REPO_URL="git@github.com:mayurbagewadi/vendy-buildr.git"
+            BRANCH="production"
+
+            # Create project directory if it doesn't exist
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Creating project directory..."
+              mkdir -p $PROJECT_DIR
+            fi
+
+            cd $PROJECT_DIR
+
+            # Clone or pull the repository
+            if [ ! -d ".git" ]; then
+              echo "Cloning repository..."
+              git clone -b $BRANCH $REPO_URL .
+            else
+              echo "Pulling latest changes..."
+              git fetch origin $BRANCH
+              git reset --hard origin/$BRANCH
+            fi
+
+            # Install dependencies
+            echo "Installing dependencies..."
+            npm ci --production=false
+
+            # Build the project
+            echo "Building project..."
+            npm run build
+
+            # Set correct permissions
+            echo "Setting permissions..."
+            chown -R www-data:www-data $PROJECT_DIR
+            chmod -R 755 $PROJECT_DIR
+
+            # Setup/reload Nginx if needed
+            if [ ! -f "/etc/nginx/sites-available/vendy-buildr" ]; then
+              echo "Setting up Nginx configuration..."
+              cat > /etc/nginx/sites-available/vendy-buildr << 'EOF'
+            server {
+                listen 80;
+                server_name yesgive.shop www.yesgive.shop;
+
+                root /var/www/vendy-buildr/dist;
+                index index.html;
+
+                location / {
+                    try_files \$uri \$uri/ /index.html;
+                }
+
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+            }
+            EOF
+
+              ln -sf /etc/nginx/sites-available/vendy-buildr /etc/nginx/sites-enabled/
+              nginx -t && systemctl reload nginx
+            else
+              echo "Reloading Nginx..."
+              systemctl reload nginx
+            fi
+
+            echo "Deployment completed successfully!"
+            echo "Site is live at: http://yesgive.shop"
