@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import { DEMO_CATEGORIES } from "@/lib/demoProducts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,12 +95,30 @@ export function CategoryManager() {
 
     try {
       setIsAdding(true);
+      
+      // If no image URL provided, assign a demo image
+      let finalImageUrl = newCategoryImage.trim();
+      if (!finalImageUrl) {
+        // Find matching demo category or use a random one
+        const matchingDemo = DEMO_CATEGORIES.find(
+          cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+        );
+        
+        if (matchingDemo) {
+          finalImageUrl = matchingDemo.image_url;
+        } else {
+          // Use a random demo image
+          const randomIndex = Math.floor(Math.random() * DEMO_CATEGORIES.length);
+          finalImageUrl = DEMO_CATEGORIES[randomIndex].image_url;
+        }
+      }
+      
       const { error } = await supabase
         .from("categories")
         .insert([{ 
           name: newCategoryName.trim(), 
           store_id: storeId,
-          image_url: newCategoryImage.trim() || null
+          image_url: finalImageUrl
         }]);
 
       if (error) throw error;
