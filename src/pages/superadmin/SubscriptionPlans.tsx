@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PlanFormDialog } from "@/components/superadmin/PlanFormDialog";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -231,27 +232,30 @@ const SubscriptionPlansPage = () => {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/superadmin/dashboard')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Subscription Plans</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage subscription plans and pricing
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/superadmin/dashboard')}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">Subscription Plans</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Manage subscription plans and pricing
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <Button onClick={handleAddPlan}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Plan
+                </Button>
               </div>
             </div>
-            <Button onClick={handleAddPlan}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Plan
-            </Button>
-          </div>
         </div>
       </div>
 

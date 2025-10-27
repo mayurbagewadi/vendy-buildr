@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureManagement } from "@/components/superadmin/FeatureManagement";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface DashboardStats {
   totalUsers: number;
@@ -243,7 +244,9 @@ export default function SuperAdminDashboard() {
             <h1 className="text-xl font-bold">YourPlatform - Super Admin</h1>
           </div>
           
-          <DropdownMenu>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
                 <UserCircle className="h-5 w-5" />
@@ -266,6 +269,7 @@ export default function SuperAdminDashboard() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 

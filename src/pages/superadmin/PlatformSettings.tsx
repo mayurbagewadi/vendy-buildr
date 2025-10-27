@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPlatformSettings, savePlatformSettings, PlatformSettings } from "@/lib/platformSettings";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const PlatformSettingsPage = () => {
   const navigate = useNavigate();
@@ -144,27 +145,30 @@ const PlatformSettingsPage = () => {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/superadmin/dashboard')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Platform Settings</h1>
-                <p className="text-sm text-muted-foreground">
-                  Configure platform-wide settings
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/superadmin/dashboard')}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">Platform Settings</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Configure platform-wide settings
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <Button onClick={handleSave} disabled={isSaving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </Button>
               </div>
             </div>
-            <Button onClick={handleSave} disabled={isSaving}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
-            </Button>
-          </div>
         </div>
       </div>
 

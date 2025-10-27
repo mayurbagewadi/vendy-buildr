@@ -42,6 +42,7 @@ import { DeleteAccountModal } from "@/components/superadmin/DeleteAccountModal";
 import { AssignPlanModal } from "@/components/superadmin/AssignPlanModal";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface UserData {
   id: string;
@@ -628,10 +629,13 @@ export default function Users() {
             <p className="text-muted-foreground">Manage all users and their stores</p>
           </div>
         </div>
-        <Button>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Manually Add User
-        </Button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Button>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Manually Add User
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
