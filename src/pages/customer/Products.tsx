@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useParams } from "react-router-dom";
+import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
@@ -17,8 +17,9 @@ import { getPublishedProducts } from "@/lib/productData";
 import type { Product } from "@/lib/productData";
 
 const Products = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { slug } = useParams<{ slug?: string }>();
+  const navigate = useNavigate();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +166,11 @@ const Products = () => {
   }, [allProducts, selectedCategories, priceRange, sortBy, searchParams, storeId]);
 
   const handleCategoryToggle = (category: string) => {
+    // Clear the URL category parameter to allow manual selection
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('category');
+    setSearchParams(newParams);
+
     setSelectedCategories(prev =>
       prev.includes(category)
         ? prev.filter(c => c !== category)
@@ -173,6 +179,11 @@ const Products = () => {
   };
 
   const clearFilters = () => {
+    // Clear URL parameters
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('category');
+    setSearchParams(newParams);
+
     setSelectedCategories([]);
     setPriceRange([0, 10000]);
     setSortBy("newest");
