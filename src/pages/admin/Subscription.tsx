@@ -8,6 +8,7 @@ import { Check, ArrowUpRight, Calendar, Package, Mail, ArrowLeft, AlertTriangle 
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 interface SubscriptionPlan {
   id: string;
@@ -171,28 +172,31 @@ const SubscriptionPage = () => {
 
   if (loading) {
     return (
-      <div className="pt-8">
-        <p className="text-muted-foreground">Loading subscription details...</p>
-      </div>
+      <AdminLayout>
+        <div className="pt-8">
+          <p className="text-muted-foreground">Loading subscription details...</p>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="space-y-8 p-6 md:p-8">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/admin/dashboard")}
-          className="flex-shrink-0"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
-          <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
+    <AdminLayout>
+      <div className="space-y-8 p-6 md:p-8">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/admin/dashboard")}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
+            <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
+          </div>
         </div>
-      </div>
 
       {/* Expiration Warning */}
       {currentSubscription && isSubscriptionExpired() && (
@@ -492,7 +496,8 @@ const SubscriptionPage = () => {
           })}
         </div>
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
