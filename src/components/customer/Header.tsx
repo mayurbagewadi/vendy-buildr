@@ -4,6 +4,7 @@ import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -105,6 +106,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
             >
               <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
             </Button>
+            <ThemeToggle />
             <MiniCart />
             
             <Button
