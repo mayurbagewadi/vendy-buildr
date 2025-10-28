@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import ProductCard from "@/components/customer/ProductCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,8 @@ const Products = () => {
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeData, setStoreData] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   // Fetch store data and products if accessing via /:slug/products
   useEffect(() => {
@@ -40,17 +42,30 @@ const Products = () => {
         setLoading(true);
         setError(null);
 
-        const { data: storeData } = await supabase
+        const { data: store } = await supabase
           .from("stores")
-          .select("id")
+          .select("*")
           .eq("slug", slug)
           .eq("is_active", true)
           .maybeSingle();
 
-        if (storeData) {
-          setStoreId(storeData.id);
+        if (store) {
+          setStoreId(store.id);
+          setStoreData(store);
+
+          // Fetch profile data for contact information
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("phone, email")
+            .eq("user_id", store.user_id)
+            .maybeSingle();
+
+          if (profile) {
+            setProfileData(profile);
+          }
+
           // Fetch products for this store
-          const products = await getPublishedProducts(storeData.id);
+          const products = await getPublishedProducts(store.id);
           setAllProducts(products);
         }
       } catch (err) {
@@ -328,7 +343,24 @@ const Products = () => {
         )}
       </main>
 
-      <Footer />
+      {storeData ? (
+        <StoreFooter
+          storeName={storeData.name}
+          storeDescription={storeData.description}
+          whatsappNumber={storeData.whatsapp_number}
+          phone={profileData?.phone}
+          email={profileData?.email}
+          address={storeData.address}
+          socialLinks={storeData.social_links}
+          policies={storeData.policies}
+        />
+      ) : (
+        <footer className="bg-muted border-t border-border">
+          <div className="container mx-auto px-4 py-12 text-center">
+            <p className="text-muted-foreground">&copy; {new Date().getFullYear()} All rights reserved.</p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 };
