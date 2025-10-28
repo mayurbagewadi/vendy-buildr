@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
+import { ThemeProvider } from "next-themes";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -18,6 +19,7 @@ import Categories from "./pages/admin/Categories";
 import Subscription from "./pages/admin/Subscription";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
+import CustomerCategories from "./pages/customer/Categories";
 import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
@@ -41,11 +43,12 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <CartProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <CartProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/pricing" element={<Pricing />} />
@@ -53,6 +56,7 @@ const App = () => (
             
             {/* Customer Routes */}
             <Route path="/home" element={<Home />} />
+            <Route path="/categories" element={<CustomerCategories />} />
             <Route path="/products" element={<CustomerProducts />} />
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
@@ -87,6 +91,7 @@ const App = () => (
             {/* Dynamic Store Route - must be last before 404 */}
             <Route path="/:slug" element={<Store />} />
             <Route path="/:slug/policies" element={<Policies />} />
+            <Route path="/:slug/categories" element={<CustomerCategories />} />
             <Route path="/:slug/products" element={<CustomerProducts />} />
             <Route path="/:slug/products/:id" element={<ProductDetail />} />
             <Route path="/:slug/cart" element={<Cart />} />
@@ -96,6 +101,7 @@ const App = () => (
         </BrowserRouter>
       </CartProvider>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

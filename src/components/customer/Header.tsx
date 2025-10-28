@@ -4,6 +4,7 @@ import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +22,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
   // Use store-specific routes if storeSlug is provided, otherwise use generic routes
   const homeLink = storeSlug ? `/${storeSlug}` : "/home";
   const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
+  const categoriesLink = storeSlug ? `/${storeSlug}/categories` : "/categories";
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +68,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
             <Link to={productsLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Products
             </Link>
-            <Link to={`${homeLink}#categories`} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={categoriesLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Categories
             </Link>
             <Link to={`${homeLink}#about`} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
@@ -105,6 +107,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
             >
               <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
             </Button>
+            <ThemeToggle />
             <MiniCart />
             
             <Button
@@ -162,7 +165,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
               Products
             </Link>
             <Link
-              to={`${homeLink}#categories`}
+              to={categoriesLink}
               className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-150"
               onClick={() => setMobileMenuOpen(false)}
             >

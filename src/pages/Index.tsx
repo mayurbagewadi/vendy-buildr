@@ -18,6 +18,7 @@ import {
   Star
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Index = () => {
   const features = [
@@ -115,6 +116,7 @@ const Index = () => {
           </nav>
           
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/auth" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="font-medium">
                 Login

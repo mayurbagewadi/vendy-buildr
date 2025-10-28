@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Store {
   id: string;
@@ -99,20 +100,23 @@ const CustomDomainsPage = () => {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/superadmin/dashboard')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Custom Domains</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage custom domains for stores
-              </p>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/superadmin/dashboard')}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Custom Domains</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage custom domains for stores
+                </p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>

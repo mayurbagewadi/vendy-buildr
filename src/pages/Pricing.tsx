@@ -6,6 +6,7 @@ import { Check, Crown, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface SubscriptionPlan {
   id: string;
@@ -140,6 +141,7 @@ const Pricing = () => {
           </Link>
           
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/">
               <Button variant="ghost" size="sm">
                 Back to Home

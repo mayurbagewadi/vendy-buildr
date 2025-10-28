@@ -20,6 +20,7 @@ import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -340,6 +341,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
             {/* Right Header Actions */}
             <div className="flex items-center gap-2 lg:gap-3 ml-auto">
+              <ThemeToggle />
               {/* Notifications */}
               <div className="relative" ref={notificationRef}>
                 <button

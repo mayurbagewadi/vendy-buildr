@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Transaction {
   id: string;
@@ -127,20 +128,23 @@ const TransactionsPage = () => {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/superadmin/dashboard')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Transactions</h1>
-              <p className="text-sm text-muted-foreground">
-                View all payment transactions
-              </p>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/superadmin/dashboard')}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Transactions</h1>
+                <p className="text-sm text-muted-foreground">
+                  View all payment transactions
+                </p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>
