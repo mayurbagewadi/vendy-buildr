@@ -122,12 +122,14 @@ const Categories = () => {
             // Fetch product counts for each category
             const categoriesWithCounts: Category[] = await Promise.all(
               (response.data || []).map(async (cat: any) => {
-                const { count } = await supabase
+                const { count, error } = await supabase
                   .from("products")
                   .select("*", { count: "exact", head: true })
                   .eq("store_id", storeIdToUse)
                   .eq("category", cat.name)
                   .eq("status", "published");
+
+                console.log(`Category "${cat.name}": ${count} products`, { error });
 
                 return {
                   id: cat.id,
@@ -138,6 +140,8 @@ const Categories = () => {
                 };
               })
             );
+
+            console.log("Categories with counts:", categoriesWithCounts);
 
             setCategories(categoriesWithCounts.length > 0 ? categoriesWithCounts : DEMO_CATEGORIES);
           } catch (err) {
