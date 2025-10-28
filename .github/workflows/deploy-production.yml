@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - production
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,7 +23,7 @@ jobs:
 
             # Define project directory
             PROJECT_DIR="/var/www/vendy-buildr"
-            REPO_URL="git@github.com:mayurbagewadi/vendy-buildr.git"
+            REPO_URL="https://github.com/mayurbagewadi/vendy-buildr.git"
             BRANCH="production"
 
             # Create project directory if it doesn't exist
@@ -36,20 +37,33 @@ jobs:
             # Clone or pull the repository
             if [ ! -d ".git" ]; then
               echo "Cloning repository..."
-              git clone -b $BRANCH $REPO_URL .
+              git clone -b $BRANCH $REPO_URL . || { echo "Git clone failed!"; exit 1; }
             else
               echo "Pulling latest changes..."
-              git fetch origin $BRANCH
-              git reset --hard origin/$BRANCH
+              git fetch origin $BRANCH || { echo "Git fetch failed!"; exit 1; }
+              git reset --hard origin/$BRANCH || { echo "Git reset failed!"; exit 1; }
+              git clean -fd
             fi
+
+            echo "Current commit: $(git rev-parse HEAD)"
+            echo "Current branch: $(git branch --show-current)"
 
             # Install dependencies
             echo "Installing dependencies..."
-            npm ci --production=false
+            npm ci --production=false || { echo "npm install failed!"; exit 1; }
 
             # Build the project
             echo "Building project..."
-            npm run build
+            npm run build || { echo "Build failed!"; exit 1; }
+
+            # Verify build output
+            if [ ! -f "dist/index.html" ]; then
+              echo "ERROR: dist/index.html not found after build!"
+              exit 1
+            fi
+
+            echo "Build successful! Checking dist/index.html:"
+            head -20 dist/index.html
 
             # Set correct permissions
             echo "Setting permissions..."
