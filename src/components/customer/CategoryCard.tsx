@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Package } from "lucide-react";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import LazyImage from "@/components/ui/lazy-image";
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 interface CategoryCardProps {
   name: string;
@@ -13,19 +14,32 @@ interface CategoryCardProps {
 }
 
 const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardProps) => {
-  const categoryLink = slug 
+  const navigate = useNavigate();
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const categoryLink = slug
     ? `/${slug}/products?category=${encodeURIComponent(name)}`
     : `/products?category=${encodeURIComponent(name)}`;
-  
+
   const directImageUrl = convertToDirectImageUrl(image_url);
 
+  const handleClick = () => {
+    if (isAnimating) return;
+
+    setIsAnimating(true);
+    setTimeout(() => {
+      navigate(categoryLink);
+    }, 700);
+  };
+
   return (
-    <Link to={categoryLink} className="block p-2">
+    <div className="block p-2 cursor-pointer" onClick={handleClick}>
       <motion.div
         whileHover={{ y: -8, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         className="group h-full"
+        animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
       >
         <Card className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary transition-all duration-500 shadow-md hover:shadow-[0_5px_40px_-20px_rgba(0,0,0,0.4)] rounded-2xl">
           <CardContent className="p-0 relative">
@@ -62,7 +76,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
           </CardContent>
         </Card>
       </motion.div>
-    </Link>
+    </div>
   );
 };
 
