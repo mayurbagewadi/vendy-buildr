@@ -119,16 +119,27 @@ const Categories = () => {
 
             if (response.error) throw response.error;
 
-            // Map to our Category type
-            const mappedCategories: Category[] = (response.data || []).map((cat: any) => ({
-              id: cat.id,
-              name: cat.name,
-              image_url: cat.image_url,
-              store_id: cat.store_id,
-              productCount: 0
-            }));
+            // Fetch product counts for each category
+            const categoriesWithCounts: Category[] = await Promise.all(
+              (response.data || []).map(async (cat: any) => {
+                const { count } = await supabase
+                  .from("products")
+                  .select("*", { count: "exact", head: true })
+                  .eq("store_id", storeIdToUse)
+                  .eq("category", cat.name)
+                  .eq("status", "published");
 
-            setCategories(mappedCategories.length > 0 ? mappedCategories : DEMO_CATEGORIES);
+                return {
+                  id: cat.id,
+                  name: cat.name,
+                  image_url: cat.image_url,
+                  store_id: cat.store_id,
+                  productCount: count || 0
+                };
+              })
+            );
+
+            setCategories(categoriesWithCounts.length > 0 ? categoriesWithCounts : DEMO_CATEGORIES);
           } catch (err) {
             console.error("Error fetching categories:", err);
             setCategories(DEMO_CATEGORIES);
