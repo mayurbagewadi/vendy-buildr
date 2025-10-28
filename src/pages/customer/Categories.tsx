@@ -109,19 +109,18 @@ const Categories = () => {
 
         if (storeIdToUse) {
           try {
-            // Fetch categories with explicit type bypass
-            const response = await (supabase as any)
+            // Fetch categories
+            const { data: categoriesData, error: categoriesError } = await supabase
               .from("categories")
               .select("*")
               .eq("store_id", storeIdToUse)
-              .eq("is_active", true)
               .order("created_at", { ascending: true });
 
-            if (response.error) throw response.error;
+            if (categoriesError) throw categoriesError;
 
             // Fetch product counts for each category
             const categoriesWithCounts: Category[] = await Promise.all(
-              (response.data || []).map(async (cat: any) => {
+              (categoriesData || []).map(async (cat: any) => {
                 const { count, error } = await supabase
                   .from("products")
                   .select("*", { count: "exact", head: true })
