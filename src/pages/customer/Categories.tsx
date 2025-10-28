@@ -9,10 +9,10 @@ import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 interface Category {
   id: string;
   name: string;
-  description?: string | null;
   image_url?: string | null;
   display_order?: number;
   store_id?: string;
+  productCount?: number;
 }
 
 // Demo categories with images (fallback)
@@ -108,18 +108,31 @@ const Categories = () => {
         }
 
         if (storeIdToUse) {
-          // Fetch categories for this store
-          const { data: categoriesData, error: categoriesError } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("store_id", storeIdToUse)
-            .eq("is_active", true)
-            .order("display_order", { ascending: true });
+          try {
+            // Fetch categories with explicit type bypass
+            const response = await (supabase as any)
+              .from("categories")
+              .select("*")
+              .eq("store_id", storeIdToUse)
+              .eq("is_active", true)
+              .order("created_at", { ascending: true });
 
-          if (categoriesError) throw categoriesError;
+            if (response.error) throw response.error;
 
-          // Use fetched categories, or demo categories as fallback
-          setCategories(categoriesData && categoriesData.length > 0 ? categoriesData : DEMO_CATEGORIES);
+            // Map to our Category type
+            const mappedCategories: Category[] = (response.data || []).map((cat: any) => ({
+              id: cat.id,
+              name: cat.name,
+              image_url: cat.image_url,
+              store_id: cat.store_id,
+              productCount: 0
+            }));
+
+            setCategories(mappedCategories.length > 0 ? mappedCategories : DEMO_CATEGORIES);
+          } catch (err) {
+            console.error("Error fetching categories:", err);
+            setCategories(DEMO_CATEGORIES);
+          }
         } else {
           // No store found, use demo categories
           setCategories(DEMO_CATEGORIES);
@@ -166,14 +179,14 @@ const Categories = () => {
             </div>
 
             {/* Categories Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {categories.map((category) => (
                 <CategoryCard
                   key={category.id}
-                  id={category.id}
                   name={category.name}
                   image_url={category.image_url}
-                  storeSlug={slug}
+                  productCount={category.productCount}
+                  slug={slug}
                 />
               ))}
             </div>
