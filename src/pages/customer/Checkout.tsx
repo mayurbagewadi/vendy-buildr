@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ChevronRight, MessageCircle, ShoppingBag } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
@@ -50,6 +51,13 @@ const Checkout = () => {
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitDetails, setLimitDetails] = useState<{
+    planName: string;
+    ordersUsed: number;
+    ordersLimit: number;
+    storeWhatsApp?: string;
+  } | null>(null);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -89,7 +97,7 @@ const Checkout = () => {
   const checkSubscriptionLimits = async () => {
     try {
       setIsCheckingSubscription(true);
-      
+
       // Get store ID from cart items
       if (cart.length === 0) {
         setIsCheckingSubscription(false);
@@ -97,7 +105,7 @@ const Checkout = () => {
       }
 
       const storeId = cart[0]?.storeId;
-      
+
       // Validate storeId exists and is not empty
       if (!storeId || storeId.trim() === '') {
         console.error('Cart storeId is invalid:', storeId);
@@ -108,7 +116,7 @@ const Checkout = () => {
 
       const { data: storeData } = await supabase
         .from("stores")
-        .select("id, user_id")
+        .select("id, user_id, whatsapp_number")
         .eq("id", storeId)
         .maybeSingle();
 
@@ -127,6 +135,7 @@ const Checkout = () => {
           website_orders_used,
           current_period_end,
           subscription_plans (
+            name,
             whatsapp_orders_limit,
             website_orders_limit
           )
@@ -177,9 +186,20 @@ const Checkout = () => {
         // Check Website limit if feature is enabled  
         const websiteAvailable = websiteLimit !== null && (websiteLimit === 0 || websiteUsed < websiteLimit);
         
-        // If both features are enabled but both limits are reached, block orders
+        // If both features are enabled but both limits are reached, show modal
         if (!whatsappAvailable && !websiteAvailable) {
-          setSubscriptionError("This store has reached its order limits for both WhatsApp and website orders.");
+          // Determine which limit to show (WhatsApp or Website)
+          const limitType = whatsappLimit !== null ? 'whatsapp' : 'website';
+          const ordersUsed = limitType === 'whatsapp' ? whatsappUsed : websiteUsed;
+          const ordersLimit = limitType === 'whatsapp' ? whatsappLimit : websiteLimit;
+
+          setLimitDetails({
+            planName: subscription.subscription_plans.name || 'Current Plan',
+            ordersUsed,
+            ordersLimit: ordersLimit || 0,
+            storeWhatsApp: storeData.whatsapp_number
+          });
+          setLimitModalOpen(true);
           setIsCheckingSubscription(false);
           return;
         }
@@ -730,6 +750,64 @@ const Checkout = () => {
       </main>
 
       <Footer />
+
+      {/* Order Limit Modal */}
+      <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle>Order Limit Reached</DialogTitle>
+            </div>
+            <DialogDescription className="pt-3 space-y-3">
+              <p className="text-base">
+                This store has reached its monthly order limit
+              </p>
+              {limitDetails && (
+                <div className="bg-accent p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Plan:</span>
+                    <span className="font-semibold">{limitDetails.planName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Orders Used:</span>
+                    <span className="font-semibold">
+                      {limitDetails.ordersUsed} of {limitDetails.ordersLimit}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                The store owner needs to upgrade their plan to accept more orders.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {limitDetails?.storeWhatsApp && (
+              <Button
+                onClick={() => {
+                  window.open(`https://wa.me/${limitDetails.storeWhatsApp}`, '_blank');
+                }}
+                variant="default"
+                className="w-full sm:w-auto"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Contact Store Owner
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setLimitModalOpen(false);
+                navigate(storeSlug ? `/${storeSlug}` : '/');
+              }}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Back to Store
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
