@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Check, ArrowUpRight, Calendar, Package, Mail, AlertTriangle } from "lucide-react";
+import { Check, ArrowUpRight, Calendar, Package, Mail, AlertTriangle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -44,6 +44,7 @@ const SubscriptionPage = () => {
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [actualOrderCount, setActualOrderCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchSubscriptionData();
@@ -157,6 +158,33 @@ const SubscriptionPage = () => {
     return Math.min((used / limit) * 100, 100);
   };
 
+  const getProgressBarColor = (percentage: number) => {
+    if (percentage >= 96) return "bg-destructive";
+    if (percentage >= 81) return "bg-orange-500";
+    if (percentage >= 51) return "bg-yellow-500";
+    return "bg-green-500";
+  };
+
+  const getWarningMessage = (percentage: number) => {
+    if (percentage >= 100) return { level: "error", message: "Limit reached - Upgrade now!" };
+    if (percentage >= 90) return { level: "warning", message: "Almost at limit" };
+    if (percentage >= 80) return { level: "caution", message: "Running low on orders" };
+    return null;
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchSubscriptionData();
+      toast.success("Refreshed! Order usage updated successfully.");
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      toast.error("Failed to refresh data. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleUpgrade = () => {
     navigate("/pricing");
   };
@@ -245,36 +273,94 @@ const SubscriptionPage = () => {
           </div>
 
           {/* Usage Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {currentSubscription.subscription_plans.whatsapp_orders_limit !== null && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">WhatsApp Orders</span>
-                  <span className="text-sm text-muted-foreground">
-                    {currentSubscription.subscription_plans.whatsapp_orders_limit === 0
-                      ? `${currentSubscription.whatsapp_orders_used || 0} / Unlimited`
-                      : `${currentSubscription.whatsapp_orders_used || 0} / ${currentSubscription.subscription_plans.whatsapp_orders_limit}`
-                    }
-                  </span>
-                </div>
-                <Progress value={getWhatsAppUsagePercentage()} className="h-2" />
-              </div>
-            )}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground">Order Usage</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
 
-            {currentSubscription.subscription_plans.website_orders_limit !== null && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">Website Orders</span>
-                  <span className="text-sm text-muted-foreground">
-                    {currentSubscription.subscription_plans.website_orders_limit === 0
-                      ? `${currentSubscription.website_orders_used || 0} / Unlimited`
-                      : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
-                    }
-                  </span>
-                </div>
-                <Progress value={getWebsiteUsagePercentage() || 0} className="h-2" />
-              </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {currentSubscription.subscription_plans.whatsapp_orders_limit !== null && (() => {
+                const percentage = getWhatsAppUsagePercentage();
+                const warning = getWarningMessage(percentage);
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">WhatsApp Orders</span>
+                      <span className="text-sm text-muted-foreground">
+                        {currentSubscription.subscription_plans.whatsapp_orders_limit === 0
+                          ? `${currentSubscription.whatsapp_orders_used || 0} / Unlimited`
+                          : `${currentSubscription.whatsapp_orders_used || 0} / ${currentSubscription.subscription_plans.whatsapp_orders_limit}`
+                        }
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${getProgressBarColor(percentage)}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    {warning && (
+                      <Alert variant={warning.level === 'error' ? 'destructive' : 'default'}
+                             className={`mt-2 ${warning.level === 'warning' ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/50' : warning.level === 'caution' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/50' : ''}`}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="ml-2 text-sm font-medium">
+                          {warning.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {currentSubscription.subscription_plans.website_orders_limit !== null && (() => {
+                const percentage = getWebsiteUsagePercentage();
+                const warning = getWarningMessage(percentage);
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Website Orders</span>
+                      <span className="text-sm text-muted-foreground">
+                        {currentSubscription.subscription_plans.website_orders_limit === 0
+                          ? `${currentSubscription.website_orders_used || 0} / Unlimited`
+                          : `${currentSubscription.website_orders_used || 0} / ${currentSubscription.subscription_plans.website_orders_limit}`
+                        }
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${getProgressBarColor(percentage)}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    {warning && (
+                      <Alert variant={warning.level === 'error' ? 'destructive' : 'default'}
+                             className={`mt-2 ${warning.level === 'warning' ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/50' : warning.level === 'caution' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/50' : ''}`}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="ml-2 text-sm font-medium">
+                          {warning.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
             {currentSubscription.next_billing_at && (
               <div className="space-y-2">
