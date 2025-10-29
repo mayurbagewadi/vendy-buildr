@@ -361,6 +361,7 @@ export type Database = {
           max_products: number | null
           monthly_price: number
           name: string
+          orders_view_limit: number | null
           slug: string
           trial_days: number | null
           updated_at: string
@@ -385,6 +386,7 @@ export type Database = {
           max_products?: number | null
           monthly_price?: number
           name: string
+          orders_view_limit?: number | null
           slug: string
           trial_days?: number | null
           updated_at?: string
@@ -409,6 +411,7 @@ export type Database = {
           max_products?: number | null
           monthly_price?: number
           name?: string
+          orders_view_limit?: number | null
           slug?: string
           trial_days?: number | null
           updated_at?: string

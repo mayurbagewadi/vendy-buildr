@@ -353,6 +353,19 @@ const SubscriptionPage = () => {
                   <span className="text-sm text-foreground">Location Tracking</span>
                 </li>
               )}
+
+              {/* Orders view limit */}
+              {currentSubscription.subscription_plans.orders_view_limit !== null && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">
+                    {currentSubscription.subscription_plans.orders_view_limit === 999999
+                      ? 'View All Orders'
+                      : `View up to ${currentSubscription.subscription_plans.orders_view_limit} recent orders`
+                    }
+                  </span>
+                </li>
+              )}
             </ul>
           </div>
         </Card>
@@ -460,9 +473,22 @@ const SubscriptionPage = () => {
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-foreground">
-                        {plan.website_orders_limit === 0 
+                        {plan.website_orders_limit === 0
                           ? 'Unlimited Website orders/month'
                           : `${plan.website_orders_limit} Website order${plan.website_orders_limit === 1 ? '' : 's'}/month`
+                        }
+                      </span>
+                    </li>
+                  )}
+
+                  {/* Orders view limit */}
+                  {plan.orders_view_limit !== null && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">
+                        {plan.orders_view_limit === 999999
+                          ? 'View All Orders'
+                          : `View up to ${plan.orders_view_limit} recent orders`
                         }
                       </span>
                     </li>

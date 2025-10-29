@@ -78,11 +78,38 @@ const Orders = () => {
 
       if (!store) return;
 
-      const { data, error } = await supabase
+      // Get subscription and plan details to check view limit
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select(`
+          subscription_plans (
+            orders_view_limit
+          )
+        `)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      // Determine the view limit (default to showing all if not set)
+      let viewLimit = null;
+      if (subscription?.subscription_plans?.orders_view_limit) {
+        const limit = subscription.subscription_plans.orders_view_limit;
+        // 999999 represents unlimited
+        viewLimit = limit === 999999 ? null : limit;
+      }
+
+      // Fetch orders with limit if applicable
+      let query = supabase
         .from("orders")
         .select("*")
         .eq("store_id", store.id)
         .order("created_at", { ascending: false });
+
+      // Apply limit if set
+      if (viewLimit !== null) {
+        query = query.limit(viewLimit);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
