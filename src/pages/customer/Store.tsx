@@ -10,6 +10,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 interface Product {
   id: string;
@@ -171,24 +172,39 @@ const Store = () => {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-background py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              {store.logo_url && (
-                <img 
-                  src={store.logo_url} 
-                  alt={store.name}
-                  className="h-24 w-24 mx-auto mb-6 rounded-full object-cover"
-                />
-              )}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-                {store.name}
-              </h1>
-              {store.description && (
-                <p className="text-xl text-muted-foreground">
-                  {store.description}
-                </p>
-              )}
+        <section className="relative">
+          {/* Hero Banner Background */}
+          {store.hero_banner_url && (
+            <div className="absolute inset-0 w-full h-full">
+              <img 
+                src={convertToDirectImageUrl(store.hero_banner_url) || store.hero_banner_url} 
+                alt={`${store.name} banner`}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-background" />
+            </div>
+          )}
+          
+          {/* Hero Content */}
+          <div className={`relative ${store.hero_banner_url ? 'bg-transparent' : 'bg-gradient-to-r from-primary/10 via-primary/5 to-background'} py-20`}>
+            <div className="container mx-auto px-4">
+              <div className="max-w-3xl mx-auto text-center">
+                {store.logo_url && (
+                  <img 
+                    src={convertToDirectImageUrl(store.logo_url) || store.logo_url} 
+                    alt={store.name}
+                    className="h-24 w-24 mx-auto mb-6 rounded-full object-cover border-4 border-background shadow-lg"
+                  />
+                )}
+                <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-6 ${store.hero_banner_url ? 'text-white' : 'text-foreground'}`}>
+                  {store.name}
+                </h1>
+                {store.description && (
+                  <p className={`text-xl ${store.hero_banner_url ? 'text-white/90' : 'text-muted-foreground'}`}>
+                    {store.description}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </section>

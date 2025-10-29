@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 interface Product {
   id: string;
