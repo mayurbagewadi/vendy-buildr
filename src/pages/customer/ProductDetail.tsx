@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +63,8 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [storeData, setStoreData] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -87,17 +89,29 @@ const ProductDetail = () => {
 
         setProduct(data);
         
-        // Fetch store slug for navigation
+        // Fetch store data for navigation and footer
         const storeId = data.store_id;
         if (storeId) {
-          const { data: storeData } = await supabase
+          const { data: store } = await supabase
             .from("stores")
-            .select("slug")
+            .select("*")
             .eq("id", storeId)
             .single();
-          
-          if (storeData) {
-            setStoreSlug(storeData.slug);
+
+          if (store) {
+            setStoreSlug(store.slug);
+            setStoreData(store);
+
+            // Fetch profile data for contact information
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("phone, email")
+              .eq("user_id", store.user_id)
+              .maybeSingle();
+
+            if (profile) {
+              setProfileData(profile);
+            }
           }
 
           // Fetch related products from the same store
@@ -146,7 +160,24 @@ const ProductDetail = () => {
         <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner size="lg" text="Loading product..." />
         </div>
-        <Footer />
+        {storeData ? (
+          <StoreFooter
+            storeName={storeData.name}
+            storeDescription={storeData.description}
+            whatsappNumber={storeData.whatsapp_number}
+            phone={profileData?.phone}
+            email={profileData?.email}
+            address={storeData.address}
+            socialLinks={storeData.social_links}
+            policies={storeData.policies}
+          />
+        ) : (
+          <footer className="bg-muted border-t border-border">
+            <div className="container mx-auto px-4 py-12 text-center">
+              <p className="text-muted-foreground">&copy; {new Date().getFullYear()} All rights reserved.</p>
+            </div>
+          </footer>
+        )}
       </div>
     );
   }
@@ -531,7 +562,24 @@ const ProductDetail = () => {
         )}
       </main>
 
-      <Footer />
+      {storeData ? (
+        <StoreFooter
+          storeName={storeData.name}
+          storeDescription={storeData.description}
+          whatsappNumber={storeData.whatsapp_number}
+          phone={profileData?.phone}
+          email={profileData?.email}
+          address={storeData.address}
+          socialLinks={storeData.social_links}
+          policies={storeData.policies}
+        />
+      ) : (
+        <footer className="bg-muted border-t border-border">
+          <div className="container mx-auto px-4 py-12 text-center">
+            <p className="text-muted-foreground">&copy; {new Date().getFullYear()} All rights reserved.</p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 };
