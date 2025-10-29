@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Check, ArrowUpRight, Calendar, Package, Mail, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Check, ArrowUpRight, Calendar, Package, Mail, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -183,19 +183,9 @@ const SubscriptionPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-8 p-6 md:p-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/admin/dashboard")}
-            className="flex-shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
-            <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
+          <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
         </div>
 
       {/* Expiration Warning */}
