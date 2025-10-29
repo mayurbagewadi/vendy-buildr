@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ const AdminSettings = () => {
     tagline: "",
     logoUrl: "",
     heroImageUrl: "",
+    heroBannerUrls: [] as string[],
     phone: "",
     email: "",
     address: "",
@@ -31,6 +32,7 @@ const AdminSettings = () => {
     instagram: "",
     twitter: "",
   });
+  const [newBannerUrl, setNewBannerUrl] = useState("");
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -38,10 +40,10 @@ const AdminSettings = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Load from stores table
+      // Load from stores table
       const { data: store } = await supabase
         .from('stores')
-        .select('name, description, logo_url, hero_banner_url, whatsapp_number, social_links, policies, address')
+        .select('name, description, logo_url, hero_banner_url, hero_banner_urls, whatsapp_number, social_links, policies, address')
         .eq('user_id', user.id)
         .single();
 
@@ -57,6 +59,7 @@ const AdminSettings = () => {
           tagline: store?.description || "",
           logoUrl: store?.logo_url || "",
           heroImageUrl: store?.hero_banner_url || "",
+          heroBannerUrls: (store?.hero_banner_urls || []) as string[],
           phone: profile?.phone || "",
           email: profile?.email || "",
           address: store?.address || "",
@@ -81,6 +84,23 @@ const AdminSettings = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddBannerUrl = () => {
+    if (newBannerUrl.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        heroBannerUrls: [...prev.heroBannerUrls, newBannerUrl.trim()]
+      }));
+      setNewBannerUrl("");
+    }
+  };
+
+  const handleRemoveBannerUrl = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -136,6 +156,7 @@ const AdminSettings = () => {
           description: formData.tagline || null,
           logo_url: formData.logoUrl || null,
           hero_banner_url: formData.heroImageUrl || null,
+          hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
           whatsapp_number: formData.whatsappNumber,
           address: formData.address || null,
           social_links: {
@@ -192,7 +213,7 @@ const AdminSettings = () => {
         { key: "storeName", label: "Store Name", placeholder: "My Awesome Store", required: true },
         { key: "tagline", label: "Store Tagline", placeholder: "Your one-stop shop for everything" },
         { key: "logoUrl", label: "Logo URL (Google Drive Link)", placeholder: "https://drive.google.com/..." },
-        { key: "heroImageUrl", label: "Hero Banner URL (Google Drive Link)", placeholder: "https://drive.google.com/..." },
+        { key: "heroImageUrl", label: "Single Hero Banner URL (Legacy - Google Drive Link)", placeholder: "https://drive.google.com/..." },
       ]
     },
     {
@@ -289,6 +310,72 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
           ))}
+
+          {/* Hero Banner Carousel Section */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Image className="w-5 h-5 text-primary" />
+                </div>
+                Hero Banner Carousel (Multiple Images)
+              </CardTitle>
+              <p className="text-muted-foreground">Add multiple banner images for auto-sliding carousel</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add New Banner URL */}
+              <div>
+                <Label htmlFor="newBannerUrl">Add New Banner URL (Google Drive Link)</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    id="newBannerUrl"
+                    type="text"
+                    placeholder="https://drive.google.com/..."
+                    value={newBannerUrl}
+                    onChange={(e) => setNewBannerUrl(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddBannerUrl())}
+                    className="admin-input flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddBannerUrl}
+                    className="admin-button-primary"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* List of Banner URLs */}
+              {formData.heroBannerUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Current Banner Images ({formData.heroBannerUrls.length})</Label>
+                  <div className="space-y-2">
+                    {formData.heroBannerUrls.map((url, index) => (
+                      <div key={index} className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                        <span className="text-sm text-muted-foreground font-mono flex-1 truncate">
+                          {index + 1}. {url}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveBannerUrl(index)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {formData.heroBannerUrls.length === 0 && (
+                <p className="text-sm text-muted-foreground">No banner images added yet. Add URLs above to create a carousel.</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Policies Section */}
           <Card className="admin-card">

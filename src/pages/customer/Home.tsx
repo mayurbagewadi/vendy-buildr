@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
 
 interface Product {
   id: string;
@@ -77,7 +79,7 @@ const Home = () => {
       // Fetch demo store first
       const { data: demoStore } = await supabase
         .from("stores")
-        .select("id")
+        .select("id, name, description, logo_url, hero_banner_url, hero_banner_urls")
         .eq("slug", "demo")
         .eq("is_active", true)
         .maybeSingle();
@@ -111,14 +113,15 @@ const Home = () => {
         allProducts: publishedProducts as any,
         featuredProducts: publishedProducts.slice(0, 4) as any,
         newArrivals: sorted.slice(0, 4) as any,
-        categories: (categoriesData && categoriesData.length > 0) ? categoriesData : DEMO_CATEGORIES
+        categories: (categoriesData && categoriesData.length > 0) ? categoriesData : DEMO_CATEGORIES,
+        store: demoStore
       };
     },
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
   });
 
-  const { allProducts = [], featuredProducts = [], newArrivals = [], categories = DEMO_CATEGORIES } = data || {};
+  const { allProducts = [], featuredProducts = [], newArrivals = [], categories = DEMO_CATEGORIES, store } = data || {};
 
   if (isLoading) {
     return <LoadingPage text="Loading store..." />;
@@ -129,19 +132,34 @@ const Home = () => {
       <Header />
       
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-background py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-                Welcome to MyStore
-              </h1>
-              <p className="text-xl text-muted-foreground">
-                Discover quality products at unbeatable prices. Shop now!
-              </p>
+        {/* Hero Banner Carousel Section */}
+        {store && (
+          <HeroBannerCarousel
+            bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0 
+              ? store.hero_banner_urls 
+              : store.hero_banner_url 
+              ? [store.hero_banner_url] 
+              : []}
+            storeName={store.name || "MyStore"}
+            logoUrl={store.logo_url}
+            storeDescription={store.description}
+          />
+        )}
+        
+        {!store && (
+          <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-background py-32">
+            <div className="container mx-auto px-4">
+              <div className="max-w-3xl mx-auto text-center">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+                  Welcome to MyStore
+                </h1>
+                <p className="text-xl text-muted-foreground">
+                  Discover quality products at unbeatable prices. Shop now!
+                </p>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Categories - Right after banner */}
         <section id="categories" className="py-20 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">

@@ -275,6 +275,7 @@ export type Database = {
           google_sheet_url: string | null
           google_token_expiry: string | null
           hero_banner_url: string | null
+          hero_banner_urls: string[] | null
           id: string
           is_active: boolean | null
           last_admin_visit: string | null
@@ -300,6 +301,7 @@ export type Database = {
           google_sheet_url?: string | null
           google_token_expiry?: string | null
           hero_banner_url?: string | null
+          hero_banner_urls?: string[] | null
           id?: string
           is_active?: boolean | null
           last_admin_visit?: string | null
@@ -325,6 +327,7 @@ export type Database = {
           google_sheet_url?: string | null
           google_token_expiry?: string | null
           hero_banner_url?: string | null
+          hero_banner_urls?: string[] | null
           id?: string
           is_active?: boolean | null
           last_admin_visit?: string | null

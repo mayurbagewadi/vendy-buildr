@@ -10,6 +10,8 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
 
 interface Product {
   id: string;
@@ -28,6 +30,7 @@ interface StoreData {
   description: string | null;
   logo_url: string | null;
   hero_banner_url: string | null;
+  hero_banner_urls: string[] | null;
   whatsapp_number: string | null;
   address: string | null;
   social_links: {
@@ -170,28 +173,17 @@ const Store = () => {
       <Header storeSlug={store.slug} storeId={store.id} />
       
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-background py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              {store.logo_url && (
-                <img 
-                  src={store.logo_url} 
-                  alt={store.name}
-                  className="h-24 w-24 mx-auto mb-6 rounded-full object-cover"
-                />
-              )}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-                {store.name}
-              </h1>
-              {store.description && (
-                <p className="text-xl text-muted-foreground">
-                  {store.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* Hero Banner Carousel Section */}
+        <HeroBannerCarousel
+          bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0 
+            ? store.hero_banner_urls 
+            : store.hero_banner_url 
+            ? [store.hero_banner_url] 
+            : []}
+          storeName={store.name}
+          logoUrl={store.logo_url}
+          storeDescription={store.description}
+        />
 
         {/* Categories Section - Right after banner */}
         {categories.length > 0 && (
