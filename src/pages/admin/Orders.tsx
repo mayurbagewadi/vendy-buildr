@@ -115,11 +115,13 @@ const Orders = () => {
       setTotalOrderCount(totalCount || 0);
 
       // Fetch orders with limit if applicable
+      // Strategy: Fetch OLDEST orders first (so Free plan only sees old orders)
+      // Then REVERSE display order (so newest shows at top)
       let query = supabase
         .from("orders")
         .select("*")
         .eq("store_id", store.id)
-        .order("created_at", { ascending: true }); // Get oldest first
+        .order("created_at", { ascending: true }); // Get oldest first from DB
 
       // Apply limit if set
       if (ordersViewLimit !== null) {
@@ -130,7 +132,11 @@ const Orders = () => {
 
       if (error) throw error;
 
-      setOrders(data || []);
+      // Reverse the array to show newest first in UI
+      // Free Plan: Fetches #1, #2 → Displays #2, #1
+      // Pro Plan: Fetches all → Displays newest to oldest
+      const reversedData = (data || []).reverse();
+      setOrders(reversedData);
       setLastSync(new Date());
     } catch (error: any) {
       toast({
