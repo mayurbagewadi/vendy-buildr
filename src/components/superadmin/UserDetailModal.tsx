@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Copy, Mail, Shield, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { RenewSubscriptionModal } from "./RenewSubscriptionModal";
 
 interface UserDetailModalProps {
   user: any;
@@ -13,6 +15,8 @@ interface UserDetailModalProps {
 }
 
 export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailModalProps) {
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -189,6 +193,13 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
                 </div>
 
                 <div className="flex gap-2">
+                  <Button
+                    onClick={() => setRenewModalOpen(true)}
+                    variant="default"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Renew Subscription
+                  </Button>
                   <Button variant="outline">Change Plan</Button>
                   <Button variant="destructive">Cancel Subscription</Button>
                 </div>
@@ -229,6 +240,16 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* Renew Subscription Modal */}
+      {user.subscription && (
+        <RenewSubscriptionModal
+          subscription={user.subscription}
+          open={renewModalOpen}
+          onClose={() => setRenewModalOpen(false)}
+          onSuccess={onRefresh}
+        />
+      )}
     </Dialog>
   );
 }
