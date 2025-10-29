@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Package, 
-  Plus, 
-  Eye, 
-  TrendingUp, 
-  ShoppingCart, 
+import {
+  Package,
+  Plus,
+  Eye,
+  TrendingUp,
+  ShoppingCart,
   Users,
   Star,
   ArrowUpRight,
@@ -91,19 +91,19 @@ const AdminDashboard = () => {
       const subscription = subscriptionResult.data;
       if (subscription) {
         let trialEndDate: Date | null = null;
-        
+
         if (subscription.trial_ends_at) {
           trialEndDate = new Date(subscription.trial_ends_at);
         } else if (subscription.subscription_plans?.trial_days) {
           trialEndDate = new Date(subscription.created_at);
           trialEndDate.setDate(trialEndDate.getDate() + subscription.subscription_plans.trial_days);
         }
-        
+
         if (trialEndDate) {
           const today = new Date();
           const diffTime = trialEndDate.getTime() - today.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
+
           if ((subscription.status === 'trial' || subscription.status === 'active') && diffDays > 0) {
             setTrialDaysRemaining(diffDays);
           }
