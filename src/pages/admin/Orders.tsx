@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban, AlertTriangle, ArrowUpCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
@@ -47,6 +48,9 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [totalOrderCount, setTotalOrderCount] = useState<number>(0);
+  const [viewLimit, setViewLimit] = useState<number | null>(null);
+  const [planName, setPlanName] = useState<string>("");
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -83,6 +87,7 @@ const Orders = () => {
         .from("subscriptions")
         .select(`
           subscription_plans (
+            name,
             orders_view_limit
           )
         `)
@@ -90,23 +95,35 @@ const Orders = () => {
         .maybeSingle();
 
       // Determine the view limit (default to showing all if not set)
-      let viewLimit = null;
+      let ordersViewLimit = null;
       if (subscription?.subscription_plans?.orders_view_limit) {
         const limit = subscription.subscription_plans.orders_view_limit;
         // 999999 represents unlimited
-        viewLimit = limit === 999999 ? null : limit;
+        ordersViewLimit = limit === 999999 ? null : limit;
       }
+
+      // Store plan info in state
+      setPlanName(subscription?.subscription_plans?.name || "");
+      setViewLimit(ordersViewLimit);
+
+      // Get total order count (before applying limit)
+      const { count: totalCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("store_id", store.id);
+
+      setTotalOrderCount(totalCount || 0);
 
       // Fetch orders with limit if applicable
       let query = supabase
         .from("orders")
         .select("*")
         .eq("store_id", store.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true }); // Get oldest first
 
       // Apply limit if set
-      if (viewLimit !== null) {
-        query = query.limit(viewLimit);
+      if (ordersViewLimit !== null) {
+        query = query.limit(ordersViewLimit);
       }
 
       const { data, error } = await query;
@@ -336,29 +353,36 @@ const Orders = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Orders Management</h1>
+            <h1 className="text-3xl font-bold">
+              Orders Management
+              {viewLimit !== null && totalOrderCount > 0 && (
+                <span className="text-muted-foreground text-xl ml-2">
+                  (Showing {Math.min(orders.length, viewLimit)} of {totalOrderCount})
+                </span>
+              )}
+            </h1>
             <p className="text-muted-foreground mt-1">
               Track and manage customer orders (Auto-cleanup: Orders older than 2 months)
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
+            <Button
               onClick={() => {
                 const prev = getPreviousMonthYear();
                 exportToExcel(prev.month, prev.year);
-              }} 
-              variant="outline" 
+              }}
+              variant="outline"
               size="sm"
             >
               <Download className="h-4 w-4 mr-2" />
               Export Previous Month
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 const curr = getCurrentMonthYear();
                 exportToExcel(curr.month, curr.year);
-              }} 
-              variant="outline" 
+              }}
+              variant="outline"
               size="sm"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -413,6 +437,33 @@ const Orders = () => {
             </div>
           </Card>
         </div>
+
+        {/* View Limit Warning Banner */}
+        {viewLimit !== null && totalOrderCount > viewLimit && (
+          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="ml-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-amber-900 dark:text-amber-100">
+                    {planName} Plan Limit
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                    You can only view {viewLimit} orders. {totalOrderCount - viewLimit} more {totalOrderCount - viewLimit === 1 ? 'order is' : 'orders are'} hidden.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => navigate("/admin/subscription")}
+                  size="sm"
+                  className="ml-4 flex-shrink-0"
+                >
+                  <ArrowUpCircle className="h-4 w-4 mr-2" />
+                  Upgrade to Pro
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card className="p-6">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
