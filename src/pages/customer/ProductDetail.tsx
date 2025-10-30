@@ -51,7 +51,11 @@ interface Product {
   store_id?: string;
 }
 
-const ProductDetail = () => {
+interface ProductDetailProps {
+  slug?: string;
+}
+
+const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -61,7 +65,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slugProp);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [storeData, setStoreData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);

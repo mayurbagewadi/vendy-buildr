@@ -55,8 +55,13 @@ const DEMO_CATEGORIES: Category[] = [
   }
 ];
 
-const Categories = () => {
-  const { slug } = useParams<{ slug?: string }>();
+interface CategoriesProps {
+  slug?: string;
+}
+
+const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState<string | null>(null);

@@ -12,6 +12,7 @@ import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface Product {
   id: string;
@@ -58,8 +59,13 @@ interface Category {
   store_id: string;
 }
 
-const Store = () => {
-  const { slug } = useParams<{ slug: string }>();
+interface StoreProps {
+  slug?: string;
+}
+
+const Store = ({ slug: slugProp }: StoreProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const [store, setStore] = useState<StoreData | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,6 +73,11 @@ const Store = () => {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Determine if we're on a store-specific domain (subdomain or custom domain)
+  const isSubdomain = isStoreSpecificDomain();
+  // Build links based on domain type
+  const productsLink = isSubdomain ? '/products' : `/${slug}/products`;
 
   useEffect(() => {
     loadStoreData();
@@ -215,7 +226,7 @@ const Store = () => {
                           name={category.name}
                           image_url={category.image_url}
                           productCount={productCount}
-                          slug={store?.slug}
+                          slug={isSubdomain ? undefined : store?.slug}
                         />
                       </div>
                     );
@@ -234,7 +245,7 @@ const Store = () => {
                 <h2 className="text-3xl font-bold text-foreground mb-2">Featured Products</h2>
                 <p className="text-muted-foreground">Check out our top picks for you</p>
               </div>
-              <Link to={`/store/${store.slug}/products`}>
+              <Link to={productsLink}>
                 <Button variant="outline">
                   See All
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -244,7 +255,7 @@ const Store = () => {
             {featuredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredProducts.map((product) => (
-                  <ProductCard 
+                  <ProductCard
                     key={product.id}
                     id={product.id}
                     name={product.name}
@@ -252,7 +263,7 @@ const Store = () => {
                     priceRange={product.price_range || ''}
                     images={product.images}
                     status={product.status}
-                    storeSlug={store.slug}
+                    storeSlug={isSubdomain ? undefined : store.slug}
                   />
                 ))}
               </div>
@@ -271,7 +282,7 @@ const Store = () => {
                   <h2 className="text-3xl font-bold text-foreground mb-2">New Arrivals</h2>
                   <p className="text-muted-foreground">Fresh products just for you</p>
                 </div>
-                <Link to={`/store/${store.slug}/products`}>
+                <Link to={productsLink}>
                   <Button variant="outline">
                     See All
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -280,7 +291,7 @@ const Store = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {newArrivals.map((product) => (
-                  <ProductCard 
+                  <ProductCard
                     key={product.id}
                     id={product.id}
                     name={product.name}
@@ -288,7 +299,7 @@ const Store = () => {
                     priceRange={product.price_range || ''}
                     images={product.images}
                     status={product.status}
-                    storeSlug={store.slug}
+                    storeSlug={isSubdomain ? undefined : store.slug}
                   />
                 ))}
               </div>
@@ -306,7 +317,7 @@ const Store = () => {
               Explore our full collection of amazing products
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to={`/store/${store.slug}/products`}>
+              <Link to={productsLink}>
                 <Button size="lg" variant="secondary">
                   Browse All Products
                   <ArrowRight className="w-4 h-4 ml-2" />

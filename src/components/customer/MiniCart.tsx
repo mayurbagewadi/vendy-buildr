@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
 import { supabase } from "@/integrations/supabase/client";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 const MiniCart = () => {
   const { cart, cartCount, cartTotal, removeItem } = useCart();
@@ -31,10 +32,15 @@ const MiniCart = () => {
     }
   }, [cart]);
 
+  // Check if we're on a store-specific domain (subdomain or custom domain)
+  const isSubdomain = isStoreSpecificDomain();
+
   // Generate store-aware links
-  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
-  const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
-  const checkoutLink = storeSlug ? `/${storeSlug}/checkout` : "/checkout";
+  // On subdomain: use root paths like /cart
+  // On main platform: use slug paths like /storename/cart
+  const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
+  const cartLink = isSubdomain ? "/cart" : (storeSlug ? `/${storeSlug}/cart` : "/cart");
+  const checkoutLink = isSubdomain ? "/checkout" : (storeSlug ? `/${storeSlug}/checkout` : "/checkout");
 
   return (
     <Popover>

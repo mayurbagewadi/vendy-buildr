@@ -16,9 +16,14 @@ import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product } from "@/lib/productData";
 
-const Products = () => {
+interface ProductsProps {
+  slug?: string;
+}
+
+const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { slug } = useParams<{ slug?: string }>();
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

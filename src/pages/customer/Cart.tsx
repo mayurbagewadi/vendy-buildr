@@ -9,8 +9,13 @@ import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
 
-const Cart = () => {
-  const { slug } = useParams<{ slug?: string }>();
+interface CartProps {
+  slug?: string;
+}
+
+const Cart = ({ slug: slugProp }: CartProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const { cart, cartTotal, updateQuantity, removeItem } = useCart();
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
 

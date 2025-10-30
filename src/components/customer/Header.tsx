@@ -7,6 +7,7 @@ import MiniCart from "@/components/customer/MiniCart";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface HeaderProps {
   storeSlug?: string;
@@ -19,10 +20,15 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Use store-specific routes if storeSlug is provided, otherwise use generic routes
-  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
-  const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
-  const categoriesLink = storeSlug ? `/${storeSlug}/categories` : "/categories";
+  // Check if we're on a store-specific domain (subdomain or custom domain)
+  const isSubdomain = isStoreSpecificDomain();
+
+  // Build links based on domain type
+  // On subdomain: use root paths like /products
+  // On main platform: use slug paths like /storename/products
+  const homeLink = isSubdomain ? "/" : (storeSlug ? `/${storeSlug}` : "/home");
+  const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
+  const categoriesLink = isSubdomain ? "/categories" : (storeSlug ? `/${storeSlug}/categories` : "/categories");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "next-themes";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
+import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -41,7 +42,15 @@ import Policies from "./pages/customer/Policies";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Detect if we're on a store-specific subdomain or custom domain
+  const domainInfo = detectDomain();
+  const storeIdentifier = getStoreIdentifier();
+
+  console.log('Domain Info:', domainInfo);
+  console.log('Store Identifier:', storeIdentifier);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
@@ -50,9 +59,25 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/auth" element={<Auth />} />
+            {domainInfo.isStoreSpecific && storeIdentifier ? (
+              // SUBDOMAIN/CUSTOM DOMAIN ROUTES (e.g., storename.yesgive.shop)
+              // Store pages without /slug prefix
+              <>
+                <Route path="/" element={<Store slug={storeIdentifier} />} />
+                <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
+                <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
+                <Route path="/products" element={<CustomerProducts slug={storeIdentifier} />} />
+                <Route path="/products/:id" element={<ProductDetail slug={storeIdentifier} />} />
+                <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
+                <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
+                <Route path="*" element={<NotFound />} />
+              </>
+            ) : (
+              // MAIN PLATFORM ROUTES (yesgive.shop)
+              <>
+                <Route path="/" element={<Index />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/auth" element={<Auth />} />
             
             {/* Customer Routes */}
             <Route path="/home" element={<Home />} />
@@ -87,22 +112,25 @@ const App = () => (
             <Route path="/onboarding/customize" element={<OnboardingCustomize />} />
             <Route path="/onboarding/complete" element={<OnboardingComplete />} />
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            {/* Dynamic Store Route - must be last before 404 */}
-            <Route path="/:slug" element={<Store />} />
-            <Route path="/:slug/policies" element={<Policies />} />
-            <Route path="/:slug/categories" element={<CustomerCategories />} />
-            <Route path="/:slug/products" element={<CustomerProducts />} />
-            <Route path="/:slug/products/:id" element={<ProductDetail />} />
-            <Route path="/:slug/cart" element={<Cart />} />
-            <Route path="/:slug/checkout" element={<Checkout />} />
-            <Route path="*" element={<NotFound />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                {/* Dynamic Store Route - must be last before 404 */}
+                <Route path="/:slug" element={<Store />} />
+                <Route path="/:slug/policies" element={<Policies />} />
+                <Route path="/:slug/categories" element={<CustomerCategories />} />
+                <Route path="/:slug/products" element={<CustomerProducts />} />
+                <Route path="/:slug/products/:id" element={<ProductDetail />} />
+                <Route path="/:slug/cart" element={<Cart />} />
+                <Route path="/:slug/checkout" element={<Checkout />} />
+                <Route path="*" element={<NotFound />} />
+              </>
+            )}
           </Routes>
         </BrowserRouter>
       </CartProvider>
     </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

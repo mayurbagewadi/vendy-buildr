@@ -33,8 +33,13 @@ interface ProfileData {
   email: string | null;
 }
 
-const Policies = () => {
-  const { slug } = useParams<{ slug: string }>();
+interface PoliciesProps {
+  slug?: string;
+}
+
+const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [storeData, setStoreData] = useState<StoreData | null>(null);

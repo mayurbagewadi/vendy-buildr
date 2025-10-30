@@ -40,8 +40,13 @@ const checkoutSchema = z.object({
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
-const Checkout = () => {
-  const { slug } = useParams<{ slug?: string }>();
+interface CheckoutProps {
+  slug?: string;
+}
+
+const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
