@@ -607,12 +607,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_process_expired_subscriptions: {
+        Args: never
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      process_successful_payment: {
+        Args: {
+          payment_gateway_name: string
+          payment_id?: string
+          subscription_id: string
+        }
+        Returns: undefined
+      }
+      renew_subscription: {
+        Args: { reset_counters?: boolean; subscription_id: string }
+        Returns: undefined
       }
     }
     Enums: {
