@@ -35,6 +35,14 @@ export function RenewSubscriptionModal({
     try {
       setLoading(true);
 
+      // Debug: Log subscription object
+      console.log('Subscription object:', subscription);
+      console.log('Subscription ID:', subscription?.id);
+
+      if (!subscription?.id) {
+        throw new Error('Subscription ID is missing. Please refresh the page and try again.');
+      }
+
       // Calculate new period dates
       const newPeriodStart = new Date();
       const newPeriodEnd = new Date();
