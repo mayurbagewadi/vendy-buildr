@@ -87,26 +87,10 @@ const HeroBannerCarousel = ({
                 {/* Overlay Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70" />
                 
-                {/* Content */}
+                {/* Subtle gradient overlay only - no text */}
                 <div className="relative h-full flex items-center justify-center">
                   <div className="container mx-auto px-4">
-                    <div className="max-w-3xl mx-auto text-center">
-                      {logoUrl && index === 0 && (
-                        <img 
-                          src={convertToDirectImageUrl(logoUrl) || logoUrl} 
-                          alt={storeName}
-                          className="h-24 w-24 mx-auto mb-6 rounded-full object-cover border-4 border-white shadow-2xl"
-                        />
-                      )}
-                      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-lg">
-                        {storeName}
-                      </h1>
-                      {storeDescription && (
-                        <p className="text-xl text-white/90 drop-shadow-md">
-                          {storeDescription}
-                        </p>
-                      )}
-                    </div>
+                    {/* Banner images already contain store branding, so no overlay text needed */}
                   </div>
                 </div>
               </div>
