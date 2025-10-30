@@ -73,34 +73,63 @@ jobs:
             chown -R www-data:www-data $PROJECT_DIR
             chmod -R 755 $PROJECT_DIR
 
-            # Setup/reload Nginx if needed
-            if [ ! -f "/etc/nginx/sites-available/vendy-buildr" ]; then
-              echo "Setting up Nginx configuration..."
-              cat > /etc/nginx/sites-available/vendy-buildr << 'EOF'
+            # Setup/reload Nginx with subdomain support
+            echo "Setting up Nginx configuration with subdomain support..."
+            cat > /etc/nginx/sites-available/vendy-buildr << 'EOF'
+            # Redirect HTTP to HTTPS (if SSL is configured)
+            # server {
+            #     listen 80;
+            #     listen [::]:80;
+            #     server_name yesgive.shop *.yesgive.shop;
+            #     return 301 https://\$host\$request_uri;
+            # }
+
+            # Main server block (HTTP for now, HTTPS when SSL is ready)
             server {
                 listen 80;
-                server_name yesgive.shop www.yesgive.shop;
+                listen [::]:80;
+
+                # Wildcard domain to catch all subdomains
+                server_name yesgive.shop *.yesgive.shop;
 
                 root /var/www/vendy-buildr/dist;
                 index index.html;
 
-                location / {
-                    try_files \$uri \$uri/ /index.html;
-                }
+                # Logs
+                access_log /var/log/nginx/yesgive-access.log;
+                error_log /var/log/nginx/yesgive-error.log;
 
+                # Gzip compression
+                gzip on;
+                gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+
+                # Static assets with caching
                 location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
                     expires 1y;
                     add_header Cache-Control "public, immutable";
                 }
+
+                # SPA fallback - CRITICAL FOR REACT ROUTER AND SUBDOMAIN ROUTING
+                location / {
+                    try_files \$uri \$uri/ /index.html;
+                    add_header Cache-Control "no-cache, no-store, must-revalidate";
+                }
+
+                # Security headers
+                add_header X-Frame-Options "DENY" always;
+                add_header X-Content-Type-Options "nosniff" always;
+                add_header Referrer-Policy "strict-origin-when-cross-origin" always;
             }
             EOF
 
-              ln -sf /etc/nginx/sites-available/vendy-buildr /etc/nginx/sites-enabled/
-              nginx -t && systemctl reload nginx
-            else
-              echo "Reloading Nginx..."
-              systemctl reload nginx
-            fi
+            # Enable the site
+            ln -sf /etc/nginx/sites-available/vendy-buildr /etc/nginx/sites-enabled/vendy-buildr
+
+            # Remove default site if exists
+            rm -f /etc/nginx/sites-enabled/default
+
+            # Test and reload Nginx
+            nginx -t && systemctl reload nginx || { echo "Nginx configuration test failed!"; exit 1; }
 
             echo "Deployment completed successfully!"
             echo "Site is live at: http://yesgive.shop"
