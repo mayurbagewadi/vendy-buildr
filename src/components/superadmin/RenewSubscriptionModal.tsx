@@ -35,11 +35,35 @@ export function RenewSubscriptionModal({
     try {
       setLoading(true);
 
-      // Call the renew_subscription function
-      const { error } = await supabase.rpc("renew_subscription", {
-        subscription_id: subscription.id,
-        reset_counters: resetCounters,
-      });
+      // Calculate new period dates
+      const newPeriodStart = new Date();
+      const newPeriodEnd = new Date();
+
+      if (subscription.billing_cycle === 'yearly') {
+        newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+      } else {
+        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+      }
+
+      // Direct database update (workaround for PostgREST cache issue with RPC)
+      const updateData: any = {
+        status: 'active',
+        current_period_start: newPeriodStart.toISOString(),
+        current_period_end: newPeriodEnd.toISOString(),
+        next_billing_at: newPeriodEnd.toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Conditionally reset counters based on toggle
+      if (resetCounters) {
+        updateData.whatsapp_orders_used = 0;
+        updateData.website_orders_used = 0;
+      }
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update(updateData)
+        .eq('id', subscription.id);
 
       if (error) throw error;
 
