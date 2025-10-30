@@ -405,76 +405,84 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         {/* Expiration Warning Banner */}
         {expirationWarning && showExpirationWarning && (
-          <Alert className="m-4 lg:m-6 mb-0 border-destructive bg-destructive/10">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <AlertDescription className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <p className="font-semibold text-destructive mb-1">
-                  Subscription Expired
-                </p>
-                <p className="text-sm text-foreground">
-                  Your subscription expired on {expirationWarning.expiresAt}. You cannot accept new orders until you renew your subscription.{" "}
+          <div className="px-4 lg:px-6 pt-4 lg:pt-6">
+            <div className="max-w-7xl mx-auto">
+              <Alert className="border-destructive bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <AlertDescription className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-semibold text-destructive mb-1">
+                      Subscription Expired
+                    </p>
+                    <p className="text-sm text-foreground">
+                      Your subscription expired on {expirationWarning.expiresAt}. You cannot accept new orders until you renew your subscription.{" "}
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
+                        onClick={() => navigate("/admin/subscription")}
+                      >
+                        Renew your subscription
+                      </Button>
+                      {" "}to continue accepting orders.
+                    </p>
+                  </div>
                   <Button
-                    variant="link"
-                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
-                    onClick={() => navigate("/admin/subscription")}
+                    variant="ghost"
+                    size="icon"
+                    className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
+                    onClick={() => setShowExpirationWarning(false)}
                   >
-                    Renew your subscription
+                    <XCircle className="h-4 w-4" />
                   </Button>
-                  {" "}to continue accepting orders.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
-                onClick={() => setShowExpirationWarning(false)}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </AlertDescription>
-          </Alert>
+                </AlertDescription>
+              </Alert>
+            </div>
+          </div>
         )}
 
         {/* Limit Warning Banner */}
         {limitWarning && showWarning && !expirationWarning && (
-          <Alert className="m-4 lg:m-6 mb-0 border-destructive bg-destructive/10">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <AlertDescription className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <p className="font-semibold text-destructive mb-1">
-                  Order Limit Reached
-                </p>
-                <p className="text-sm text-foreground">
-                  {limitWarning.whatsapp && limitWarning.website && (
-                    <>You've reached your WhatsApp ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}) and Website ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}) order limits. </>
-                  )}
-                  {limitWarning.whatsapp && !limitWarning.website && (
-                    <>You've reached your WhatsApp order limit ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}). </>
-                  )}
-                  {!limitWarning.whatsapp && limitWarning.website && (
-                    <>You've reached your Website order limit ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}). </>
-                  )}
+          <div className="px-4 lg:px-6 pt-4 lg:pt-6">
+            <div className="max-w-7xl mx-auto">
+              <Alert className="border-destructive bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <AlertDescription className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-semibold text-destructive mb-1">
+                      Order Limit Reached
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {limitWarning.whatsapp && limitWarning.website && (
+                        <>You've reached your WhatsApp ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}) and Website ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}) order limits. </>
+                      )}
+                      {limitWarning.whatsapp && !limitWarning.website && (
+                        <>You've reached your WhatsApp order limit ({limitWarning.whatsappUsed}/{limitWarning.whatsappLimit}). </>
+                      )}
+                      {!limitWarning.whatsapp && limitWarning.website && (
+                        <>You've reached your Website order limit ({limitWarning.websiteUsed}/{limitWarning.websiteLimit}). </>
+                      )}
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
+                        onClick={() => navigate("/admin/subscription")}
+                      >
+                        Upgrade your plan
+                      </Button>
+                      {" "}to continue receiving orders.
+                    </p>
+                  </div>
                   <Button
-                    variant="link"
-                    className="h-auto p-0 text-primary hover:text-primary/80 font-semibold"
-                    onClick={() => navigate("/admin/subscription")}
+                    variant="ghost"
+                    size="icon"
+                    className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
+                    onClick={() => setShowWarning(false)}
                   >
-                    Upgrade your plan
+                    <XCircle className="h-4 w-4" />
                   </Button>
-                  {" "}to continue receiving orders.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="flex-shrink-0 h-6 w-6 hover:bg-destructive/20"
-                onClick={() => setShowWarning(false)}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </AlertDescription>
-          </Alert>
+                </AlertDescription>
+              </Alert>
+            </div>
+          </div>
         )}
 
         {/* Page Content */}
