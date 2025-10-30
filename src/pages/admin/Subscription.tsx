@@ -143,23 +143,29 @@ const SubscriptionPage = () => {
   };
 
   const getWhatsAppUsagePercentage = () => {
-    const limit = currentSubscription?.subscription_plans?.whatsapp_orders_limit;
+    if (!currentSubscription) return 0;
+    const limit = currentSubscription.subscription_plans?.whatsapp_orders_limit;
     // If limit is null (feature disabled) or 0 (unlimited), don't show usage
     if (limit === null || limit === 0) return 0;
     const used = currentSubscription.whatsapp_orders_used || 0;
-    return Math.min((used / limit) * 100, 100);
+    const percentage = (used / limit) * 100;
+    console.log('WhatsApp Usage:', { used, limit, percentage });
+    return Math.min(percentage, 100);
   };
 
   const getWebsiteUsagePercentage = () => {
-    const limit = currentSubscription?.subscription_plans?.website_orders_limit;
+    if (!currentSubscription) return 0;
+    const limit = currentSubscription.subscription_plans?.website_orders_limit;
     // If limit is null (feature disabled) or 0 (unlimited), don't show usage
     if (limit === null || limit === 0) return 0;
     const used = currentSubscription.website_orders_used || 0;
-    return Math.min((used / limit) * 100, 100);
+    const percentage = (used / limit) * 100;
+    console.log('Website Usage:', { used, limit, percentage });
+    return Math.min(percentage, 100);
   };
 
   const getProgressBarColor = (percentage: number) => {
-    if (percentage >= 96) return "bg-destructive";
+    if (percentage >= 96) return "bg-red-600";
     if (percentage >= 81) return "bg-orange-500";
     if (percentage >= 51) return "bg-yellow-500";
     return "bg-green-500";

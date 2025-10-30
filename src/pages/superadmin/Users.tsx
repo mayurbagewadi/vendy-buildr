@@ -57,12 +57,14 @@ interface UserData {
     last_admin_visit: string | null;
   } | null;
   subscription: {
+    id: string;
     plan: {
       name: string;
     };
     status: string;
     billing_cycle: string;
     trial_ends_at: string | null;
+    current_period_end: string | null;
   } | null;
   totalRevenue: number;
   lastOrderDate: string | null;
@@ -227,9 +229,11 @@ export default function Users() {
           const { data: subscriptions } = await supabase
             .from("subscriptions")
             .select(`
+              id,
               status,
               billing_cycle,
               trial_ends_at,
+              current_period_end,
               subscription_plans (
                 name
               )
@@ -257,10 +261,12 @@ export default function Users() {
             store: stores?.[0] || null,
             subscription: subscriptions?.[0]
               ? {
+                  id: subscriptions[0].id,
                   plan: subscriptions[0].subscription_plans,
                   status: subscriptions[0].status,
                   billing_cycle: subscriptions[0].billing_cycle,
                   trial_ends_at: subscriptions[0].trial_ends_at,
+                  current_period_end: subscriptions[0].current_period_end,
                 }
               : null,
             totalRevenue,
