@@ -421,15 +421,8 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Increment WhatsApp orders count only (this is a WhatsApp checkout)
-      if (subscription) {
-        await supabase
-          .from("subscriptions")
-          .update({
-            whatsapp_orders_used: (subscription.whatsapp_orders_used || 0) + 1
-          })
-          .eq("user_id", storeData.user_id);
-      }
+      // Order counter is automatically incremented by database trigger
+      // No manual increment needed here
 
       // Prepare order details for WhatsApp
       const orderDetails = {
