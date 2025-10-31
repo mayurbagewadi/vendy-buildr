@@ -18,8 +18,8 @@ export interface DomainInfo {
 export function detectDomain(): DomainInfo {
   const hostname = window.location.hostname;
 
-  // Lovable preview URLs (e.g., id-preview--xxx.lovable.app)
-  if (hostname.endsWith('.lovable.app')) {
+  // Lovable preview URLs (e.g., id-preview--xxx.lovable.app or xxx.lovableproject.com)
+  if (hostname.endsWith('.lovable.app') || hostname.endsWith('.lovableproject.com')) {
     return { type: 'main', isStoreSpecific: false };
   }
 
