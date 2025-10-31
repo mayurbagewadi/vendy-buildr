@@ -87,13 +87,28 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     try {
       setLoading(true);
 
-      // Fetch store data
-      const { data: storeData, error: storeError } = await supabase
+      // Determine if we're using subdomain or custom domain lookup
+      const domainInfo = isStoreSpecificDomain();
+      let storeQuery = supabase
         .from("stores")
         .select("*")
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .maybeSingle();
+        .eq("is_active", true);
+
+      // Query by subdomain or custom_domain field based on domain type
+      if (domainInfo && slug) {
+        // If slug looks like a domain (contains dots), query by custom_domain or subdomain
+        if (slug.includes('.')) {
+          storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+        } else {
+          // Otherwise, it's a regular slug
+          storeQuery = storeQuery.eq("slug", slug);
+        }
+      } else {
+        // Fallback to slug
+        storeQuery = storeQuery.eq("slug", slug);
+      }
+
+      const { data: storeData, error: storeError } = await storeQuery.maybeSingle();
 
       if (storeError) throw storeError;
       if (!storeData) {

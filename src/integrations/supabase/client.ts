@@ -15,3 +15,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Handle auth errors by clearing invalid sessions
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('Token refreshed successfully');
+  } else if (event === 'SIGNED_OUT' || (!session && event === 'INITIAL_SESSION')) {
+    // Clear any stale data on sign out or invalid session
+    localStorage.removeItem('supabase.auth.token');
+  }
+});
+
+// Clear invalid refresh tokens on startup
+supabase.auth.getSession().catch((error) => {
+  if (error?.message?.includes('Refresh Token')) {
+    console.warn('Clearing invalid refresh token');
+    supabase.auth.signOut({ scope: 'local' });
+  }
+});
