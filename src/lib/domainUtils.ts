@@ -18,6 +18,11 @@ export interface DomainInfo {
 export function detectDomain(): DomainInfo {
   const hostname = window.location.hostname;
 
+  // Lovable preview URLs (e.g., id-preview--xxx.lovable.app)
+  if (hostname.endsWith('.lovable.app')) {
+    return { type: 'main', isStoreSpecific: false };
+  }
+
   // Local development - Check for subdomain testing (e.g., sasumasale.localhost)
   if (hostname.endsWith('.localhost')) {
     const subdomain = hostname.replace('.localhost', '');
