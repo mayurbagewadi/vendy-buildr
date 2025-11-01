@@ -15,6 +15,7 @@ import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product } from "@/lib/productData";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface ProductsProps {
   slug?: string;
@@ -37,6 +38,9 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
+
+  // Determine if we're on a store-specific domain (subdomain or custom domain)
+  const isSubdomain = isStoreSpecificDomain();
 
   // Fetch store data and products if accessing via /:slug/products
   useEffect(() => {
@@ -332,7 +336,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} {...product} storeSlug={slug} />
+                  <ProductCard key={product.id} {...product} storeSlug={isSubdomain ? undefined : slug} />
                 ))}
               </div>
             ) : (

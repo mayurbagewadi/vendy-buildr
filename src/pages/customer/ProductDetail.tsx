@@ -17,6 +17,7 @@ import LazyImage from "@/components/ui/lazy-image";
 import { getProductById, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import ProductCard from "@/components/customer/ProductCard";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import {
   Carousel,
   CarouselContent,
@@ -69,6 +70,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [storeData, setStoreData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
+
+  // Determine if we're on a store-specific domain (subdomain or custom domain)
+  const isSubdomain = isStoreSpecificDomain();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -558,7 +562,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   priceRange={relatedProduct.price_range}
                   images={relatedProduct.images}
                   status={relatedProduct.status}
-                  storeSlug={storeSlug}
+                  storeSlug={isSubdomain ? undefined : storeSlug}
                 />
               ))}
             </div>
