@@ -28,6 +28,7 @@ const AdminDashboard = () => {
   });
 
   const [storeName, setStoreName] = useState("Your Store");
+  const [storeUrl, setStoreUrl] = useState("");
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
   const [recentActivity, setRecentActivity] = useState<Array<{
     id: string;
@@ -48,11 +49,18 @@ const AdminDashboard = () => {
       // Fetch store once for all operations
       const { data: store } = await supabase
         .from('stores')
-        .select('id, name')
+        .select('id, name, slug, custom_domain')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!store) return;
+
+      // Build store URL
+      const protocol = window.location.protocol;
+      const baseUrl = store.custom_domain
+        ? `${protocol}//${store.custom_domain}`
+        : `${protocol}//${store.slug}.yesgive.shop`;
+      setStoreUrl(baseUrl);
 
       // Run all data fetching operations in parallel
       const [products, subscriptionResult, ordersCountResult, ordersResult] = await Promise.all([
@@ -286,14 +294,40 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm font-mono text-foreground break-all">techstore.yourplatform.com</p>
+              <p className="text-sm font-mono text-foreground break-all">
+                {storeUrl || 'Loading...'}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 sm:flex-initial"
+                onClick={() => {
+                  if (storeUrl) {
+                    navigator.clipboard.writeText(storeUrl);
+                    toast({
+                      title: "Link copied!",
+                      description: "Store URL copied to clipboard",
+                    });
+                  }
+                }}
+              >
                 <Package className="w-4 h-4 mr-2" />
                 Copy Link
               </Button>
-              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 sm:flex-initial"
+                onClick={() => {
+                  if (storeUrl) {
+                    // Generate QR code - open new window with QR code generator
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(storeUrl)}`;
+                    window.open(qrUrl, '_blank');
+                  }
+                }}
+              >
                 <Eye className="w-4 h-4 mr-2" />
                 Generate QR
               </Button>
