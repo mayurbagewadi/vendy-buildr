@@ -73,24 +73,44 @@ jobs:
             chown -R www-data:www-data $PROJECT_DIR
             chmod -R 755 $PROJECT_DIR
 
-            # Setup/reload Nginx with subdomain support
-            echo "Setting up Nginx configuration with subdomain support..."
-            cat > /etc/nginx/sites-available/vendy-buildr << 'EOF'
-            # Redirect HTTP to HTTPS (if SSL is configured)
-            # server {
-            #     listen 80;
-            #     listen [::]:80;
-            #     server_name yesgive.shop *.yesgive.shop;
-            #     return 301 https://\$host\$request_uri;
-            # }
+            # Check for SSL certificates
+            echo "Checking SSL certificates..."
+            if [ ! -f "/etc/letsencrypt/live/yesgive.shop/fullchain.pem" ] || [ ! -f "/etc/letsencrypt/live/yesgive.shop/privkey.pem" ]; then
+              echo "WARNING: SSL certificates not found!"
+              echo "Please ensure you have a wildcard SSL certificate for *.yesgive.shop"
+              echo "Run: certbot certonly --manual --preferred-challenges dns -d yesgive.shop -d *.yesgive.shop"
+              echo "Or use your hosting provider's SSL management interface"
+              exit 1
+            fi
+            echo "SSL certificates found and valid!"
 
-            # Main server block (HTTP for now, HTTPS when SSL is ready)
+            # Setup/reload Nginx with subdomain support
+            echo "Setting up Nginx configuration with subdomain support and HTTPS..."
+            cat > /etc/nginx/sites-available/vendy-buildr << 'EOF'
+            # Redirect HTTP to HTTPS
             server {
                 listen 80;
                 listen [::]:80;
+                server_name yesgive.shop *.yesgive.shop;
+
+                # Redirect all HTTP traffic to HTTPS
+                return 301 https://\$host\$request_uri;
+            }
+
+            # Main HTTPS server block with wildcard subdomain support
+            server {
+                listen 443 ssl http2;
+                listen [::]:443 ssl http2;
 
                 # Wildcard domain to catch all subdomains
                 server_name yesgive.shop *.yesgive.shop;
+
+                # SSL Certificate (wildcard cert for *.yesgive.shop)
+                ssl_certificate /etc/letsencrypt/live/yesgive.shop/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/yesgive.shop/privkey.pem;
+                ssl_protocols TLSv1.2 TLSv1.3;
+                ssl_ciphers HIGH:!aNULL:!MD5;
+                ssl_prefer_server_ciphers on;
 
                 root /var/www/vendy-buildr/dist;
                 index index.html;
@@ -101,24 +121,37 @@ jobs:
 
                 # Gzip compression
                 gzip on;
-                gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+                gzip_vary on;
+                gzip_min_length 1024;
+                gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+
+                # Security headers
+                add_header X-Frame-Options "DENY" always;
+                add_header X-Content-Type-Options "nosniff" always;
+                add_header X-XSS-Protection "1; mode=block" always;
+                add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
                 # Static assets with caching
                 location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
                     expires 1y;
                     add_header Cache-Control "public, immutable";
+                    access_log off;
                 }
 
                 # SPA fallback - CRITICAL FOR REACT ROUTER AND SUBDOMAIN ROUTING
                 location / {
                     try_files \$uri \$uri/ /index.html;
                     add_header Cache-Control "no-cache, no-store, must-revalidate";
+                    add_header Pragma "no-cache";
+                    add_header Expires 0;
                 }
 
-                # Security headers
-                add_header X-Frame-Options "DENY" always;
-                add_header X-Content-Type-Options "nosniff" always;
-                add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+                # Deny access to hidden files
+                location ~ /\. {
+                    deny all;
+                    access_log off;
+                    log_not_found off;
+                }
             }
             EOF
 
@@ -132,4 +165,5 @@ jobs:
             nginx -t && systemctl reload nginx || { echo "Nginx configuration test failed!"; exit 1; }
 
             echo "Deployment completed successfully!"
-            echo "Site is live at: http://yesgive.shop"
+            echo "Site is live at: https://yesgive.shop"
+            echo "All subdomains (e.g., storename.yesgive.shop) are also accessible via HTTPS"
