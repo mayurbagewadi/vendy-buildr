@@ -60,7 +60,7 @@ const AddProduct = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
-  const [storeId, setStoreId] = useState<string>("");
+  const [storeId, setStoreId] = useState<string | null>(null);
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({

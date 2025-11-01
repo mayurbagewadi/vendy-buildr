@@ -19,7 +19,7 @@ import {
 interface CategorySelectorProps {
   value: string;
   onChange: (value: string) => void;
-  storeId: string;
+  storeId: string | null;
 }
 
 export function CategorySelector({ value, onChange, storeId }: CategorySelectorProps) {
@@ -35,6 +35,11 @@ export function CategorySelector({ value, onChange, storeId }: CategorySelectorP
   }, [storeId]);
 
   const loadCategories = async () => {
+    // Don't load categories if storeId is not set yet
+    if (!storeId) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("categories")

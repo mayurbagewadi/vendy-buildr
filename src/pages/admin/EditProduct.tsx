@@ -59,7 +59,7 @@ const EditProduct = () => {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [isLoading, setIsLoading] = useState(true);
-  const [storeId, setStoreId] = useState<string>("");
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [originalStatus, setOriginalStatus] = useState<string>("");
   const subscriptionLimits = useSubscriptionLimits();
 
