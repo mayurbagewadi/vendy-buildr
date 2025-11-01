@@ -19,7 +19,7 @@ export default function Auth() {
       
       if (session) {
         setHasSession(true);
-        // Check if user has completed onboarding
+        // Check if user has a store
         const { data: store, error } = await supabase
           .from('stores')
           .select('*')
@@ -30,8 +30,14 @@ export default function Auth() {
         console.log('[Auth] Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
-          console.log('[Auth] Redirecting to onboarding');
-          navigate("/onboarding/store-setup");
+          console.log('[Auth] No store found - signing out');
+          await supabase.auth.signOut();
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "No store found for this account.",
+          });
+          setHasSession(false);
         } else {
           console.log('[Auth] Redirecting to admin dashboard');
           navigate("/admin/dashboard");
@@ -45,12 +51,7 @@ export default function Auth() {
       console.log('[Auth] Auth state changed:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' && session) {
-        toast({
-          title: "Success",
-          description: "You have been signed in successfully!",
-        });
-
-        // Check if user has completed onboarding
+        // Check if user has a store
         const { data: store, error } = await supabase
           .from('stores')
           .select('*')
@@ -61,10 +62,22 @@ export default function Auth() {
         console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
-          console.log('[Auth] New user - redirecting to onboarding');
-          navigate("/onboarding/store-setup");
+          // No store found - this is a new user trying to login
+          console.log('[Auth] No store found - blocking login');
+          await supabase.auth.signOut();
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "No store found for this account. Please contact support or sign up to create a store.",
+          });
+          setIsLoading(false);
         } else {
+          // Store exists - allow login
           console.log('[Auth] Existing user - redirecting to admin dashboard');
+          toast({
+            title: "Success",
+            description: "Welcome back!",
+          });
           navigate("/admin/dashboard");
         }
       }
@@ -135,9 +148,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome to StoreBuilder</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Store Owner Login</CardTitle>
           <CardDescription className="text-center">
-            Sign in with your Google account to create and manage your online store
+            Sign in to access your store dashboard. Only for existing store owners.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
