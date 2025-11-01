@@ -73,13 +73,18 @@ jobs:
             chown -R www-data:www-data $PROJECT_DIR
             chmod -R 755 $PROJECT_DIR
 
-            # Check for SSL certificates
+            # Check for SSL certificates (wildcard cert)
             echo "Checking SSL certificates..."
-            if [ ! -f "/etc/letsencrypt/live/yesgive.shop/fullchain.pem" ] || [ ! -f "/etc/letsencrypt/live/yesgive.shop/privkey.pem" ]; then
-              echo "WARNING: SSL certificates not found!"
-              echo "Please ensure you have a wildcard SSL certificate for *.yesgive.shop"
-              echo "Run: certbot certonly --manual --preferred-challenges dns -d yesgive.shop -d *.yesgive.shop"
-              echo "Or use your hosting provider's SSL management interface"
+            if [ -f "/etc/letsencrypt/live/yesgive.shop-0001/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/yesgive.shop-0001/privkey.pem" ]; then
+              CERT_PATH="/etc/letsencrypt/live/yesgive.shop-0001"
+              echo "Using wildcard certificate: $CERT_PATH"
+            elif [ -f "/etc/letsencrypt/live/yesgive.shop/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/yesgive.shop/privkey.pem" ]; then
+              CERT_PATH="/etc/letsencrypt/live/yesgive.shop"
+              echo "WARNING: Using non-wildcard certificate: $CERT_PATH"
+              echo "For subdomain support, get a wildcard certificate:"
+              echo "certbot certonly --manual --preferred-challenges dns -d yesgive.shop -d *.yesgive.shop"
+            else
+              echo "ERROR: No SSL certificates found!"
               exit 1
             fi
             echo "SSL certificates found and valid!"
@@ -106,8 +111,8 @@ jobs:
                 server_name yesgive.shop *.yesgive.shop;
 
                 # SSL Certificate (wildcard cert for *.yesgive.shop)
-                ssl_certificate /etc/letsencrypt/live/yesgive.shop/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/yesgive.shop/privkey.pem;
+                ssl_certificate CERT_PATH_PLACEHOLDER/fullchain.pem;
+                ssl_certificate_key CERT_PATH_PLACEHOLDER/privkey.pem;
                 ssl_protocols TLSv1.2 TLSv1.3;
                 ssl_ciphers HIGH:!aNULL:!MD5;
                 ssl_prefer_server_ciphers on;
@@ -154,6 +159,9 @@ jobs:
                 }
             }
             EOF
+
+            # Replace certificate path placeholder with actual path
+            sed -i "s|CERT_PATH_PLACEHOLDER|$CERT_PATH|g" /etc/nginx/sites-available/vendy-buildr
 
             # Enable the site
             ln -sf /etc/nginx/sites-available/vendy-buildr /etc/nginx/sites-enabled/vendy-buildr
