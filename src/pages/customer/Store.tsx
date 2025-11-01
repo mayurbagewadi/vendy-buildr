@@ -154,8 +154,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       const publishedProducts = await getPublishedProducts(storeData.id);
       setProducts(publishedProducts as any);
       
-      // Featured products (first 4)
-      setFeaturedProducts(publishedProducts.slice(0, 4) as any);
+      // Featured products (first 16)
+      setFeaturedProducts(publishedProducts.slice(0, 16) as any);
       
       // New arrivals (last 4 sorted by creation date)
       const sorted = [...publishedProducts].sort((a, b) => 
