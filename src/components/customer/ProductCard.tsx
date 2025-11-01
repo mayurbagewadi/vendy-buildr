@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import LazyImage from "@/components/ui/lazy-image";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface ProductCardProps {
   id: string;
@@ -23,7 +24,13 @@ const ProductCard = ({ id, name, category, priceRange, price_range, images, stat
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
-  const productLink = storeSlug ? `/${storeSlug}/products/${id}` : `/products/${id}`;
+
+  // On store-specific domains (subdomain/custom), don't include slug in URL
+  // On main platform, include slug prefix
+  const isOnStoreSpecificDomain = isStoreSpecificDomain();
+  const productLink = isOnStoreSpecificDomain
+    ? `/products/${id}`
+    : (storeSlug ? `/${storeSlug}/products/${id}` : `/products/${id}`);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
