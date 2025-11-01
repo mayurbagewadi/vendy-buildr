@@ -30,7 +30,17 @@ export default function Auth() {
         console.log('[Auth] Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
-          console.log('[Auth] No store found - signing out');
+          console.log('[Auth] No store found - deleting unauthorized user');
+          
+          // Delete the unauthorized user account
+          try {
+            await supabase.functions.invoke('delete-unauthorized-user', {
+              body: { userId: session.user.id }
+            });
+          } catch (err) {
+            console.error('Error deleting unauthorized user:', err);
+          }
+          
           await supabase.auth.signOut();
           toast({
             variant: "destructive",
@@ -62,8 +72,17 @@ export default function Auth() {
         console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No', store);
 
         if (!store) {
-          // No store found - this is a new user trying to login
-          console.log('[Auth] No store found - blocking login');
+          // No store found - delete the unauthorized user account
+          console.log('[Auth] No store found - deleting unauthorized user');
+          
+          try {
+            await supabase.functions.invoke('delete-unauthorized-user', {
+              body: { userId: session.user.id }
+            });
+          } catch (err) {
+            console.error('Error deleting unauthorized user:', err);
+          }
+          
           await supabase.auth.signOut();
           toast({
             variant: "destructive",
