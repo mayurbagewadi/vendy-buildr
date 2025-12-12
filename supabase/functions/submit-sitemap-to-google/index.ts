@@ -205,11 +205,24 @@ function base64UrlEncode(str: string): string {
 
 async function signJWT(data: string, privateKey: string): Promise<string> {
   // Import the private key
+  // Handle escaped newlines (\n as literal string vs actual newline)
+  const normalizedKey = privateKey.replace(/\\n/g, '\n')
+
   const pemHeader = '-----BEGIN PRIVATE KEY-----'
   const pemFooter = '-----END PRIVATE KEY-----'
-  const pemContents = privateKey.replace(pemHeader, '').replace(pemFooter, '').replace(/\s/g, '')
+  const pemContents = normalizedKey
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '')
 
-  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
+  let binaryDer
+  try {
+    binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
+  } catch (error) {
+    console.error('[JWT SIGN] Failed to decode base64:', error)
+    console.error('[JWT SIGN] Private key format issue - check GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY environment variable')
+    throw new Error('Failed to decode base64: Invalid private key format')
+  }
 
   const key = await crypto.subtle.importKey(
     'pkcs8',
