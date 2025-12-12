@@ -10,6 +10,7 @@ import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface ProductCardProps {
   id: string;
+  slug?: string;
   name: string;
   category: string;
   priceRange?: string;
@@ -19,19 +20,22 @@ interface ProductCardProps {
   storeSlug?: string;
 }
 
-const ProductCard = ({ id, name, category, priceRange, price_range, images, status, storeSlug }: ProductCardProps) => {
+const ProductCard = ({ id, slug, name, category, priceRange, price_range, images, status, storeSlug }: ProductCardProps) => {
   const navigate = useNavigate();
   const [isAnimating, setIsAnimating] = useState(false);
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
 
+  // Use slug for SEO-friendly URLs, fallback to id if slug doesn't exist
+  const productIdentifier = slug || id;
+
   // On store-specific domains (subdomain/custom), don't include slug in URL
   // On main platform, include slug prefix
   const isOnStoreSpecificDomain = isStoreSpecificDomain();
   const productLink = isOnStoreSpecificDomain
-    ? `/products/${id}`
-    : (storeSlug ? `/${storeSlug}/products/${id}` : `/products/${id}`);
+    ? `/products/${productIdentifier}`
+    : (storeSlug ? `/${storeSlug}/products/${productIdentifier}` : `/products/${productIdentifier}`);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();

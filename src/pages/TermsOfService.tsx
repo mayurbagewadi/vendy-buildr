@@ -28,7 +28,7 @@ const TermsOfService = () => {
           <section>
             <h2 className="text-2xl font-semibold mb-4">1. Agreement to Terms</h2>
             <p className="text-muted-foreground leading-relaxed">
-              By accessing or using YesGive's services available at <a href="https://yesgive.shop" className="text-primary hover:underline">yesgive.shop</a> ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.
+              By accessing or using Digital Dukandar's services available at <a href="https://digitaldukandar.in" className="text-primary hover:underline">digitaldukandar.in</a> ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.
             </p>
           </section>
 
@@ -219,8 +219,8 @@ const TermsOfService = () => {
             </p>
             <div className="bg-accent p-4 rounded-lg">
               <p className="text-muted-foreground">
-                <strong>Email:</strong> support@yesgive.shop<br />
-                <strong>Website:</strong> <a href="https://yesgive.shop" className="text-primary hover:underline">https://yesgive.shop</a>
+                <strong>Email:</strong> support@digitaldukandar.in<br />
+                <strong>Website:</strong> <a href="https://digitaldukandar.in" className="text-primary hover:underline">https://digitaldukandar.in</a>
               </p>
             </div>
           </section>

@@ -15,7 +15,7 @@ import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import LazyImage from "@/components/ui/lazy-image";
 
-import { getProductById, getPublishedProducts } from "@/lib/productData";
+import { getProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import ProductCard from "@/components/customer/ProductCard";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
@@ -61,7 +61,7 @@ interface ProductDetailProps {
 }
 
 const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
-  const { id } = useParams();
+  const { slug: productSlug } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart, triggerFlyAnimation } = useCart();
@@ -83,15 +83,35 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   useEffect(() => {
     const loadProduct = async () => {
-      if (!id) {
+      if (!productSlug) {
         navigate("/products");
         return;
       }
 
       try {
         setLoading(true);
-        const data = await getProductById(id);
-        
+
+        // Try to fetch by slug first (SEO-friendly URLs)
+        let data = await getProductBySlug(productSlug);
+
+        // Fallback: If slug doesn't work, try as UUID (backward compatibility)
+        if (!data) {
+          data = await getProductById(productSlug);
+
+          // If found by UUID, redirect to slug URL (301 redirect for SEO)
+          if (data && data.slug) {
+            const isSubdomain = isStoreSpecificDomain();
+            const newUrl = isSubdomain
+              ? `/products/${data.slug}`
+              : storeSlug
+                ? `/${storeSlug}/products/${data.slug}`
+                : `/products/${data.slug}`;
+
+            navigate(newUrl, { replace: true });
+            return;
+          }
+        }
+
         if (!data) {
           toast({
             title: "Product not found",
@@ -131,9 +151,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
           // Fetch related products from the same store
           const allStoreProducts = await getPublishedProducts(storeId);
-          
+
           // Filter out current product
-          const otherProducts = allStoreProducts.filter(p => p.id !== id);
+          const otherProducts = allStoreProducts.filter(p => p.id !== data.id);
           
           // Get products from same category first
           const sameCategoryProducts = otherProducts.filter(
@@ -164,7 +184,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
     };
 
     loadProduct();
-  }, [id, navigate, toast]);
+  }, [productSlug, navigate, toast, storeSlug, isSubdomain]);
 
   // Remove pulse animation when variant is selected
   useEffect(() => {
@@ -774,6 +794,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 <ProductCard
                   key={relatedProduct.id}
                   id={relatedProduct.id}
+                  slug={relatedProduct.slug}
                   name={relatedProduct.name}
                   category={relatedProduct.category}
                   priceRange={relatedProduct.price_range}

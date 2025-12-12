@@ -5,6 +5,7 @@ import { generateCategoryImageAlt } from "@/lib/seo/altTags";
 import LazyImage from "@/components/ui/lazy-image";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface CategoryCardProps {
   name: string;
@@ -17,9 +18,12 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
   const navigate = useNavigate();
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const categoryLink = slug
-    ? `/${slug}/products?category=${encodeURIComponent(name)}`
-    : `/products?category=${encodeURIComponent(name)}`;
+  // On store-specific domains (subdomain/custom), don't include slug in URL
+  // On main platform, include slug prefix
+  const isOnStoreSpecificDomain = isStoreSpecificDomain();
+  const categoryLink = isOnStoreSpecificDomain
+    ? `/products?category=${encodeURIComponent(name)}`
+    : (slug ? `/${slug}/products?category=${encodeURIComponent(name)}` : `/products?category=${encodeURIComponent(name)}`);
 
   // Default images for categories without custom images
   const defaultCategoryImages = [

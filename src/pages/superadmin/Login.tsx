@@ -19,7 +19,7 @@ export default function SuperAdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
 
-  const ALLOWED_DOMAIN = 'superadmin.yesgive.shop';
+  const ALLOWED_DOMAIN = 'superadmin.digitaldukandar.in';
 
   useEffect(() => {
     // Check if accessing from authorized domain

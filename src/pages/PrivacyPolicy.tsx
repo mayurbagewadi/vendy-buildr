@@ -28,7 +28,7 @@ const PrivacyPolicy = () => {
           <section>
             <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Welcome to YesGive ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website <a href="https://yesgive.shop" className="text-primary hover:underline">yesgive.shop</a> and use our multi-vendor store platform services.
+              Welcome to Digital Dukandar ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website <a href="https://digitaldukandar.in" className="text-primary hover:underline">digitaldukandar.in</a> and use our multi-vendor store platform services.
             </p>
           </section>
 
@@ -162,8 +162,8 @@ const PrivacyPolicy = () => {
             </p>
             <div className="bg-accent p-4 rounded-lg">
               <p className="text-muted-foreground">
-                <strong>Email:</strong> support@yesgive.shop<br />
-                <strong>Website:</strong> <a href="https://yesgive.shop" className="text-primary hover:underline">https://yesgive.shop</a>
+                <strong>Email:</strong> support@digitaldukandar.in<br />
+                <strong>Website:</strong> <a href="https://digitaldukandar.in" className="text-primary hover:underline">https://digitaldukandar.in</a>
               </p>
             </div>
           </section>

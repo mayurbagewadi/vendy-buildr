@@ -9,6 +9,7 @@ export interface Variant {
 
 export interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string;
   category: string;
@@ -101,6 +102,27 @@ export const getProductById = async (id: string): Promise<Product | null> => {
 
   if (error) {
     console.error('Error fetching product:', error);
+    return null;
+  }
+
+  return data as unknown as Product | null;
+};
+
+// Get product by slug (SEO-friendly URLs)
+export const getProductBySlug = async (slug: string, storeId?: string): Promise<Product | null> => {
+  let query = supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug);
+
+  if (storeId) {
+    query = query.eq('store_id', storeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error('Error fetching product by slug:', error);
     return null;
   }
 
