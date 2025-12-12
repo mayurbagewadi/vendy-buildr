@@ -18,6 +18,11 @@ serve(async (req) => {
     const googleClientEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')!
     const googlePrivateKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')!
 
+    console.log('[DEBUG] Email exists:', !!googleClientEmail)
+    console.log('[DEBUG] Private key exists:', !!googlePrivateKey)
+    console.log('[DEBUG] Private key length:', googlePrivateKey?.length || 0)
+    console.log('[DEBUG] Private key starts with:', googlePrivateKey?.substring(0, 50))
+
     if (!googleClientEmail || !googlePrivateKey) {
       throw new Error('Google service account credentials not configured')
     }
