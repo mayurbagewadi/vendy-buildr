@@ -22,9 +22,12 @@ jobs:
             # Pull latest code
             git pull origin production
 
-            # Install and build
+            # Install and fix permissions
             npm install
-            npm run build
+            chmod -R +x node_modules/.bin
+
+            # Build using npx
+            npx vite build
 
             # Reload nginx
             sudo systemctl reload nginx

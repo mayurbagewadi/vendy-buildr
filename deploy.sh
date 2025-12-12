@@ -8,9 +8,12 @@ cd /var/www/digitaldukandar
 # Pull latest
 git pull origin production
 
-# Build
+# Install and fix permissions
 npm install
-npm run build
+chmod -R +x node_modules/.bin
+
+# Build using npx (handles permissions better)
+npx vite build
 
 # Reload nginx
 sudo systemctl reload nginx
