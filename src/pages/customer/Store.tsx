@@ -272,7 +272,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         title={`${store.name} - Online Store | Shop Quality Products`}
         description={store.description || `Browse ${store.name}'s collection of quality products. ${categories.length > 0 ? 'Explore categories: ' + categories.map(c => c.name).slice(0, 3).join(', ') : ''}`}
         canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain)}
-        image={store.logo_url || store.hero_banner_url || 'https://yesgive.shop/logo.png'}
+        image={store.logo_url || store.hero_banner_url || 'https://digitaldukandar.in/logo.png'}
         keywords={categories.map(c => c.name).concat([store.name, 'online store', 'shop'])}
         type="website"
       />
@@ -353,6 +353,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
@@ -389,6 +390,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}

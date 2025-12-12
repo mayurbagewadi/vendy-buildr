@@ -88,7 +88,7 @@ const App = () => {
                 <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
                 <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
                 <Route path="/products" element={<CustomerProducts slug={storeIdentifier} />} />
-                <Route path="/products/:id" element={<ProductDetail slug={storeIdentifier} />} />
+                <Route path="/products/:slug" element={<ProductDetail slug={storeIdentifier} />} />
                 <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
                 <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
                 <Route path="/sitemap.xml" element={<Sitemap />} />
@@ -116,7 +116,7 @@ const App = () => {
             <Route path="/home" element={<Home />} />
             <Route path="/categories" element={<CustomerCategories />} />
             <Route path="/products" element={<CustomerProducts />} />
-            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/products/:slug" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             
@@ -158,7 +158,7 @@ const App = () => {
                 <Route path="/:slug/policies" element={<Policies />} />
                 <Route path="/:slug/categories" element={<CustomerCategories />} />
                 <Route path="/:slug/products" element={<CustomerProducts />} />
-                <Route path="/:slug/products/:id" element={<ProductDetail />} />
+                <Route path="/:slug/products/:productSlug" element={<ProductDetail />} />
                 <Route path="/:slug/cart" element={<Cart />} />
                 <Route path="/:slug/checkout" element={<Checkout />} />
                 <Route path="*" element={<NotFound />} />

@@ -109,7 +109,7 @@ export function getStoreUrls(
     if (store.custom_domain) {
       storeUrl = `https://${store.custom_domain}`;
     } else if (store.subdomain) {
-      storeUrl = `https://${store.subdomain}.yesgive.shop`;
+      storeUrl = `https://${store.subdomain}.digitaldukandar.in`;
     }
 
     return {
@@ -142,7 +142,7 @@ export function getProductUrls(
     if (product.store_custom_domain) {
       productUrl = `https://${product.store_custom_domain}/products/${product.id}`;
     } else if (product.store_subdomain) {
-      productUrl = `https://${product.store_subdomain}.yesgive.shop/products/${product.id}`;
+      productUrl = `https://${product.store_subdomain}.digitaldukandar.in/products/${product.id}`;
     }
 
     return {

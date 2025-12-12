@@ -22,7 +22,7 @@ export function SEOHead({
   title,
   description,
   canonical,
-  image = 'https://yesgive.shop/placeholder.svg',
+  image = 'https://digitaldukandar.in/placeholder.svg',
   type = 'website',
   keywords = [],
   author,

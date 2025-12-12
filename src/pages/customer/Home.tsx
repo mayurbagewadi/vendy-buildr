@@ -217,9 +217,10 @@ const Home = () => {
             {featuredProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
+                  <ProductCard
+                    key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
@@ -244,9 +245,10 @@ const Home = () => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {newArrivals.map((product) => (
-                  <ProductCard 
+                  <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}

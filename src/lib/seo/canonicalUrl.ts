@@ -5,7 +5,7 @@
  * Why Canonical URLs Matter (20+ Years Experience):
  *
  * 1. Duplicate Content Penalty:
- *    - Same product accessible via: yesgive.shop/store/product, store.yesgive.shop/product, customdomain.com/product
+ *    - Same product accessible via: digitaldukandar.in/store/product, store.digitaldukandar.in/product, customdomain.com/product
  *    - Google penalizes duplicate content (-50% rankings)
  *    - Canonical tells Google "this is the original"
  *
@@ -44,11 +44,11 @@ export function getCanonicalUrl(options: CanonicalUrlOptions): string {
 
   // Priority 2: Subdomain (standard multi-tenant setup)
   if (subdomain && subdomain.trim()) {
-    return `https://${subdomain}.yesgive.shop${path}`;
+    return `https://${subdomain}.digitaldukandar.in${path}`;
   }
 
   // Priority 3: Main domain with slug (fallback)
-  return `https://yesgive.shop/${storeSlug}${path}`;
+  return `https://digitaldukandar.in/${storeSlug}${path}`;
 }
 
 /**
