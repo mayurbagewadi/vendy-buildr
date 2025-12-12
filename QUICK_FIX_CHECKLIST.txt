@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════════════════
+  🚀 RAZORPAY PAYMENT FIX - QUICK CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+Current Error: ❌ "Payment failed - Failed to create payment order"
+              ❌ CORS policy error
+
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 1: Deploy Database (2 minutes)
+  ├─ Go to: https://supabase.com/dashboard
+  ├─ Open: SQL Editor
+  ├─ Copy ALL from: deploy-razorpay-migrations.sql
+  ├─ Paste & Run
+  └─ ✅ Should see: 3 checks with "passed = true"
+
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 2: Redeploy Edge Function (2 minutes)
+  ├─ Go to: Supabase Dashboard → Edge Functions
+  ├─ Find or Create: razorpay-payment
+  ├─ Copy code from: supabase/functions/razorpay-payment/index.ts
+  ├─ Paste & Deploy
+  └─ ✅ Should see: "Deployed successfully"
+
+  OR use CLI:
+  $ npx supabase functions deploy razorpay-payment
+
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 3: Enter Razorpay Credentials (1 minute)
+  ├─ Login as: Super Admin
+  ├─ Go to: Settings page (/superadmin/settings)
+  ├─ Scroll to: Razorpay Payment Gateway section
+  ├─ Enter:
+  │   • API Key ID: rzp_test_xxxxx
+  │   • API Key Secret: your_secret_key
+  │   • Test Mode: ✅ ON
+  ├─ Click: Save Changes
+  └─ ✅ Should see: "Settings saved successfully"
+
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 4: Test Payment (1 minute)
+  ├─ Logout from Super Admin
+  ├─ Go to: /pricing page
+  ├─ Click: Get Started button
+  ├─ Razorpay modal should open
+  ├─ Use test card: 4111 1111 1111 1111
+  │               CVV: 123
+  │               Expiry: 12/25
+  └─ ✅ Payment should succeed!
+
+═══════════════════════════════════════════════════════════════
+
+📌 WHAT WAS FIXED:
+  • Added explicit status: 200 to CORS preflight response
+  • Created database migration SQL file
+  • Created deployment guides
+
+═══════════════════════════════════════════════════════════════
+
+🐛 TROUBLESHOOTING:
+
+  If still seeing errors, run diagnostic:
+  → Open: check-deployment-status.sql in SQL Editor
+  → This shows what's missing
+
+  Need detailed help?
+  → See: FIX_PAYMENT_ERROR.md
+
+═══════════════════════════════════════════════════════════════
+
+⏱️  Total Time: ~5 minutes
+💡 Follow steps in order - don't skip any!
+
+═══════════════════════════════════════════════════════════════

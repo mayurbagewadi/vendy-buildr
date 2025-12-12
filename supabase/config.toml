@@ -1,0 +1,31 @@
+project_id = "vexeuxsvckpfvuxqchqu"
+
+[functions.login-as-user]
+verify_jwt = true
+
+[functions.send-user-email]
+verify_jwt = true
+
+[functions.superadmin-auth]
+verify_jwt = false
+
+[functions.google-oauth-callback]
+verify_jwt = false
+
+[functions.create-google-sheet]
+verify_jwt = false
+
+[functions.sync-products-to-sheet]
+verify_jwt = false
+
+[functions.log-order-to-sheet]
+verify_jwt = false
+
+[functions.sync-sheet-to-db]
+verify_jwt = false
+
+[functions.sync-missing-profiles]
+verify_jwt = false
+
+[functions.delete-user-account]
+verify_jwt = true

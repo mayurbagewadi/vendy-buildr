@@ -1,0 +1,1226 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserDetailModal } from "@/components/superadmin/UserDetailModal";
+import { SuspendAccountModal } from "@/components/superadmin/SuspendAccountModal";
+import { DeleteAccountModal } from "@/components/superadmin/DeleteAccountModal";
+import { AssignPlanModal } from "@/components/superadmin/AssignPlanModal";
+import { toast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+
+interface UserData {
+  id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+  created_at: string;
+  store: {
+    name: string;
+    slug: string;
+    id: string;
+    last_admin_visit: string | null;
+  } | null;
+  subscription: {
+    id: string;
+    plan: {
+      name: string;
+    };
+    status: string;
+    billing_cycle: string;
+    started_at: string | null;
+    current_period_start: string | null;
+    current_period_end: string | null;
+    trial_ends_at: string | null;
+    whatsapp_orders_used: number;
+    website_orders_used: number;
+  } | null;
+  totalRevenue: number;
+  lastOrderDate: string | null;
+  orderCount: number;
+}
+
+interface QuickStats {
+  totalUsers: number;
+  activeStores: number;
+  trialUsers: number;
+  paidUsers: number;
+  expired: number;
+  cancelled: number;
+  inactiveStores: number;
+  noStore: number;
+}
+
+export default function Users() {
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [quickStats, setQuickStats] = useState<QuickStats>({
+    totalUsers: 0,
+    activeStores: 0,
+    trialUsers: 0,
+    paidUsers: 0,
+    expired: 0,
+    cancelled: 0,
+    inactiveStores: 0,
+    noStore: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [planFilter, setPlanFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | "active" | "inactive" | "no-store">("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [showUserDetail, setShowUserDetail] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [syncingProfiles, setSyncingProfiles] = useState(false);
+  const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Check for superadmin session first
+      const session = sessionStorage.getItem('superadmin_session');
+      if (session) {
+        fetchUsers();
+        fetchQuickStats();
+        return;
+      }
+
+      // If no superadmin session, check if user is authenticated with super_admin role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Access Denied",
+          description: "You need admin privileges to access this area",
+          variant: "destructive"
+        });
+        navigate('/superadmin/login');
+        return;
+      }
+
+      // Check if user has super_admin role
+      const { data: roles, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin');
+
+      if (roleError || !roles || roles.length === 0) {
+        toast({
+          title: "Access Denied",
+          description: roleError?.message || "You need admin privileges to access this area",
+          variant: "destructive"
+        });
+        navigate('/superadmin/login');
+        return;
+      }
+
+      // User is authenticated with super_admin role, proceed
+      fetchUsers();
+      fetchQuickStats();
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      
+      // Try to fetch from edge function first, fall back to profiles if it fails
+      let authUsers: any[] = [];
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const sessionToken = sessionStorage.getItem('superadmin_session');
+        
+        const headers: any = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        if (sessionToken) {
+          headers['x-superadmin-session'] = sessionToken;
+        }
+
+        const response = await fetch(
+          `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
+          { 
+            method: 'POST',
+            headers 
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          authUsers = result.users || [];
+        } else {
+          throw new Error('Edge function unavailable');
+        }
+      } catch (edgeFunctionError) {
+        console.log('Edge function not available, falling back to profiles:', edgeFunctionError);
+        
+        // Fallback: Get profiles from database
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, email, full_name, phone, user_id, created_at")
+          .order("created_at", { ascending: false });
+
+        if (profilesError) throw profilesError;
+        
+        authUsers = (profiles || []).map(p => ({
+          id: p.user_id,
+          email: p.email,
+          full_name: p.full_name,
+          phone: p.phone,
+          created_at: p.created_at,
+          user_id: p.user_id,
+        }));
+      }
+
+      // Get all super admin user IDs to exclude them from the list
+      const { data: superAdminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin');
+
+      const superAdminIds = new Set(superAdminRoles?.map(r => r.user_id) || []);
+
+      // Get all helper user IDs to exclude them from store owners list
+      const { data: helpers } = await supabase
+        .from('helpers')
+        .select('id');
+
+      const helperIds = new Set(helpers?.map(h => h.id) || []);
+
+      // Get all helper application user IDs to exclude them too
+      const { data: helperApplications } = await supabase
+        .from('helper_applications')
+        .select('user_id');
+
+      const helperAppIds = new Set(helperApplications?.map(ha => ha.user_id) || []);
+
+      // Filter out super admin users AND helpers
+      const regularUsers = (authUsers || []).filter((profile: any) =>
+        !superAdminIds.has(profile.user_id) &&
+        !helperIds.has(profile.user_id) &&
+        !helperAppIds.has(profile.user_id)
+      );
+
+      // Then get stores and subscriptions for each user
+      const formattedUsers = await Promise.all(
+        regularUsers.map(async (profile: any) => {
+          // Get store for this user
+          const { data: stores } = await supabase
+            .from("stores")
+            .select("id, name, slug, last_admin_visit, whatsapp_number")
+            .eq("user_id", profile.user_id)
+            .limit(1);
+
+          // Get ALL subscriptions for this user (fetch all statuses to properly display after payment)
+          const { data: allSubscriptions } = await supabase
+            .from("subscriptions")
+            .select(`
+              id,
+              status,
+              billing_cycle,
+              started_at,
+              current_period_start,
+              current_period_end,
+              trial_ends_at,
+              whatsapp_orders_used,
+              website_orders_used,
+              updated_at,
+              subscription_plans (
+                name
+              )
+            `)
+            .eq("user_id", profile.user_id)
+            .order("updated_at", { ascending: false });
+
+          // Find the correct current subscription by prioritizing:
+          // 1. Active subscriptions (most recently updated)
+          // 2. Non-expired trials
+          // 3. Others
+          let selectedSubscription = null;
+          if (allSubscriptions && allSubscriptions.length > 0) {
+            const now = new Date();
+            
+            // Filter out truly expired subscriptions (period ended AND not already marked expired/cancelled)
+            const validSubscriptions = allSubscriptions.filter(sub => {
+              if (sub.status === 'cancelled' || sub.status === 'expired') return false;
+              // Check if the period has actually ended
+              if (sub.current_period_end && new Date(sub.current_period_end) < now) return false;
+              return true;
+            });
+
+            // Prioritize: active (most recent) > trial > pending_payment
+            const activeSubscriptions = validSubscriptions.filter(s => s.status === 'active');
+            if (activeSubscriptions.length > 0) {
+              selectedSubscription = activeSubscriptions[0]; // Already sorted by updated_at desc
+            } else {
+              const trialSubscription = validSubscriptions.find(s => s.status === 'trial');
+              if (trialSubscription) {
+                selectedSubscription = trialSubscription;
+              } else {
+                selectedSubscription = validSubscriptions[0];
+              }
+            }
+          }
+          
+          const subscriptions = selectedSubscription ? [selectedSubscription] : [];
+
+          // Get total revenue and last order date
+          const { data: orders } = await supabase
+            .from("orders")
+            .select("total, created_at")
+            .eq("store_id", stores?.[0]?.id || "")
+            .order("created_at", { ascending: false });
+
+          const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+          const lastOrderDate = orders && orders.length > 0 ? orders[0].created_at : null;
+          const orderCount = orders?.length || 0;
+
+          return {
+            id: profile.user_id,
+            email: profile.email,
+            full_name: profile.full_name,
+            phone: profile.phone,
+            created_at: profile.created_at,
+            store: stores?.[0] || null,
+            subscription: subscriptions?.[0]
+              ? {
+                  id: subscriptions[0].id,
+                  plan: subscriptions[0].subscription_plans,
+                  status: subscriptions[0].status,
+                  billing_cycle: subscriptions[0].billing_cycle,
+                  started_at: subscriptions[0].started_at,
+                  current_period_start: subscriptions[0].current_period_start,
+                  current_period_end: subscriptions[0].current_period_end,
+                  trial_ends_at: subscriptions[0].trial_ends_at,
+                  whatsapp_orders_used: subscriptions[0].whatsapp_orders_used,
+                  website_orders_used: subscriptions[0].website_orders_used,
+                }
+              : null,
+            totalRevenue,
+            lastOrderDate,
+            orderCount,
+          };
+        })
+      );
+
+      setUsers(formattedUsers);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchQuickStats = async () => {
+    try {
+      // Get total profiles
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("user_id");
+
+      // Get super admin user IDs to exclude
+      const { data: superAdminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin');
+
+      const superAdminIds = new Set(superAdminRoles?.map(r => r.user_id) || []);
+
+      // Count only non-super-admin users
+      const totalUsers = (allProfiles || []).filter(p => !superAdminIds.has(p.user_id)).length;
+
+      const { count: activeStores } = await supabase
+        .from("stores")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+
+      const { count: trialUsers } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "trial");
+
+      const { count: paidUsers } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active");
+
+      const { count: expired } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "expired");
+
+      const { count: cancelled } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "cancelled");
+
+      // Calculate inactive stores (no orders AND no admin visits in last 60 days)
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+      
+      const { data: allStores } = await supabase
+        .from("stores")
+        .select("id, last_admin_visit");
+
+      let inactiveCount = 0;
+      if (allStores) {
+        for (const store of allStores) {
+          const { data: recentOrders } = await supabase
+            .from("orders")
+            .select("id")
+            .eq("store_id", store.id)
+            .gte("created_at", twoMonthsAgo.toISOString())
+            .limit(1);
+          
+          const hasRecentOrders = recentOrders && recentOrders.length > 0;
+          const hasRecentAdminVisit = store.last_admin_visit && new Date(store.last_admin_visit) >= twoMonthsAgo;
+          
+          // Inactive if BOTH no recent orders AND no recent admin visits
+          if (!hasRecentOrders && !hasRecentAdminVisit) {
+            inactiveCount++;
+          }
+        }
+      }
+
+      // Count users without stores (excluding super admins)
+      const { data: storesWithUsers } = await supabase
+        .from("stores")
+        .select("user_id");
+
+      const userIdsWithStores = new Set(storesWithUsers?.map(s => s.user_id) || []);
+      const noStoreCount = (allProfiles || [])
+        .filter(p => !userIdsWithStores.has(p.user_id) && !superAdminIds.has(p.user_id))
+        .length;
+
+      setQuickStats({
+        totalUsers: totalUsers,
+        activeStores: activeStores || 0,
+        trialUsers: trialUsers || 0,
+        paidUsers: paidUsers || 0,
+        expired: expired || 0,
+        cancelled: cancelled || 0,
+        inactiveStores: inactiveCount,
+        noStore: noStoreCount,
+      });
+    } catch (error: any) {
+      console.error("Error fetching stats:", error);
+    }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.store?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.store?.slug?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesPlan =
+      planFilter === "all" ||
+      user.subscription?.plan?.name?.toLowerCase() === planFilter.toLowerCase();
+
+    const matchesStatus =
+      statusFilter === "all" || user.subscription?.status === statusFilter;
+
+    const matchesActivity = () => {
+      if (activityFilter === "all") return true;
+      if (activityFilter === "no-store") {
+        return !user.store;
+      }
+      if (activityFilter === "inactive") {
+        if (!user.store) return false;
+        
+        const twoMonthsAgo = new Date();
+        twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+        
+        const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+        const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+        
+        // Inactive if BOTH no recent orders AND no recent admin visits
+        return !hasRecentOrders && !hasRecentAdminVisit;
+      }
+      if (activityFilter === "active") {
+        if (!user.store) return false;
+        
+        const twoMonthsAgo = new Date();
+        twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+        
+        const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+        const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+        
+        // Active if EITHER recent orders OR recent admin visits
+        return hasRecentOrders || hasRecentAdminVisit;
+      }
+      return true;
+    };
+
+    return matchesSearch && matchesPlan && matchesStatus && matchesActivity();
+  });
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "oldest":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "name":
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      default:
+        return 0;
+    }
+  });
+
+  const paginatedUsers = sortedUsers.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  const totalPages = Math.ceil(sortedUsers.length / rowsPerPage);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUsers(paginatedUsers.map((user) => user.id));
+    } else {
+      setSelectedUsers([]);
+    }
+  };
+
+  const handleSelectUser = (userId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedUsers([...selectedUsers, userId]);
+    } else {
+      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      // Import xlsx dynamically
+      const XLSX = await import('xlsx');
+      
+      // Fetch complete store details including whatsapp number
+      const enrichedUsers = await Promise.all(
+        filteredUsers.map(async (user) => {
+          let storeDetails = null;
+          if (user.store?.id) {
+            const { data } = await supabase
+              .from('stores')
+              .select('whatsapp_number, description, hero_banner_url, logo_url, custom_domain, social_links')
+              .eq('id', user.store.id)
+              .single();
+            storeDetails = data;
+          }
+          
+          return {
+            'User ID': user.id,
+            'Email': user.email,
+            'Full Name': user.full_name || 'N/A',
+            'Phone': user.phone || 'N/A',
+            'Store Name': user.store?.name || 'No Store',
+            'Store Slug': user.store?.slug || 'N/A',
+            'Store WhatsApp': storeDetails?.whatsapp_number || 'N/A',
+            'Store Description': storeDetails?.description || 'N/A',
+            'Custom Domain': storeDetails?.custom_domain || 'N/A',
+            'Store Logo': storeDetails?.logo_url || 'N/A',
+            'Hero Banner': storeDetails?.hero_banner_url || 'N/A',
+            'Social Links': storeDetails?.social_links ? JSON.stringify(storeDetails.social_links) : 'N/A',
+            'Total Orders': user.orderCount,
+            'Total Revenue': `₹${user.totalRevenue}`,
+            'Last Order Date': user.lastOrderDate ? new Date(user.lastOrderDate).toLocaleString() : 'No orders',
+            'Last Admin Visit': user.store?.last_admin_visit ? new Date(user.store.last_admin_visit).toLocaleString() : 'No visits',
+            'Subscription Plan': user.subscription?.plan?.name || 'Free',
+            'Plan Status': user.subscription?.status || 'None',
+            'Billing Cycle': user.subscription?.billing_cycle || 'N/A',
+            'Trial Ends': user.subscription?.trial_ends_at ? new Date(user.subscription.trial_ends_at).toLocaleDateString() : 'N/A',
+            'Joined Date': new Date(user.created_at).toLocaleString(),
+          };
+        })
+      );
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(enrichedUsers);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 36 }, // User ID
+        { wch: 30 }, // Email
+        { wch: 20 }, // Full Name
+        { wch: 15 }, // Phone
+        { wch: 25 }, // Store Name
+        { wch: 20 }, // Store Slug
+        { wch: 15 }, // WhatsApp
+        { wch: 40 }, // Description
+        { wch: 25 }, // Custom Domain
+        { wch: 50 }, // Logo URL
+        { wch: 50 }, // Banner URL
+        { wch: 30 }, // Social Links
+        { wch: 12 }, // Orders
+        { wch: 15 }, // Revenue
+        { wch: 20 }, // Last Order
+        { wch: 20 }, // Last Visit
+        { wch: 15 }, // Plan
+        { wch: 12 }, // Status
+        { wch: 12 }, // Cycle
+        { wch: 15 }, // Trial
+        { wch: 20 }, // Joined
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Users');
+
+      // Generate Excel file
+      XLSX.writeFile(wb, `users_export_${new Date().toISOString().split("T")[0]}.xlsx`);
+
+      toast({
+        title: "Success",
+        description: `Exported ${enrichedUsers.length} users to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSyncProfiles = async () => {
+    try {
+      setSyncingProfiles(true);
+
+      const response = await fetch(
+        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/sync-missing-profiles`,
+        { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to sync profiles');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Success",
+        description: data.message + (data.count > 0 ? ` (${data.count} profiles synced)` : ''),
+      });
+
+      // Refresh the users list
+      if (data.count > 0) {
+        fetchUsers();
+      }
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingProfiles(false);
+    }
+  };
+
+  const getStatusBadge = (subscription: UserData["subscription"]) => {
+    if (!subscription) {
+      return <Badge variant="secondary">No Plan</Badge>;
+    }
+
+    const { status, trial_ends_at } = subscription;
+
+    if (status === "active") {
+      return <Badge className="bg-green-500">Active</Badge>;
+    } else if (status === "trial") {
+      const daysLeft = trial_ends_at
+        ? Math.ceil(
+            (new Date(trial_ends_at).getTime() - new Date().getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        : 0;
+      return (
+        <Badge variant="outline" className="border-orange-500 text-orange-500">
+          Trial ({daysLeft}d left)
+        </Badge>
+      );
+    } else if (status === "expired") {
+      return <Badge variant="destructive">Expired</Badge>;
+    } else if (status === "cancelled") {
+      return <Badge variant="secondary">Cancelled</Badge>;
+    }
+
+    return <Badge variant="secondary">{status}</Badge>;
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/dashboard')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Users & Stores Management</h1>
+            <p className="text-muted-foreground">Manage all users and their stores</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Button>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Manually Add User
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Total Users</p>
+          <p className="text-2xl font-bold">{quickStats.totalUsers}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Active Stores</p>
+          <p className="text-2xl font-bold">{quickStats.activeStores}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border border-yellow-500 cursor-pointer" onClick={() => setActivityFilter("no-store")}>
+          <p className="text-sm text-muted-foreground">No Store</p>
+          <p className="text-2xl font-bold text-yellow-600">{quickStats.noStore}</p>
+          <p className="text-xs text-muted-foreground mt-1">Not created store</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Trial Users</p>
+          <p className="text-2xl font-bold">{quickStats.trialUsers}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Paid Users</p>
+          <p className="text-2xl font-bold">{quickStats.paidUsers}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Expired</p>
+          <p className="text-2xl font-bold">{quickStats.expired}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border">
+          <p className="text-sm text-muted-foreground">Cancelled</p>
+          <p className="text-2xl font-bold">{quickStats.cancelled}</p>
+        </div>
+        <div className="bg-card p-4 rounded-lg border border-orange-500 cursor-pointer" onClick={() => setActivityFilter("inactive")}>
+          <p className="text-sm text-muted-foreground">Inactive Stores</p>
+          <p className="text-2xl font-bold text-orange-500">{quickStats.inactiveStores}</p>
+          <p className="text-xs text-muted-foreground mt-1">No activity in 60 days</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card p-4 rounded-lg border space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="md:col-span-2">
+            <Input
+              placeholder="Search by email, store name, or slug"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <Select value={planFilter} onValueChange={setPlanFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Plans" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Plans</SelectItem>
+              <SelectItem value="free">Free</SelectItem>
+              <SelectItem value="starter">Starter</SelectItem>
+              <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="trial">Trial</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={activityFilter} onValueChange={(value) => setActivityFilter(value as "all" | "active" | "inactive" | "no-store")}>
+            <SelectTrigger>
+              <SelectValue placeholder="Activity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Users</SelectItem>
+              <SelectItem value="no-store">No Store Created</SelectItem>
+              <SelectItem value="active">Active (recent orders)</SelectItem>
+              <SelectItem value="inactive">Inactive (60+ days)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger>
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="name">Name A-Z</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { fetchUsers(); fetchQuickStats(); }} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+          <Button variant="outline" onClick={handleSyncProfiles} disabled={syncingProfiles}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncingProfiles ? 'animate-spin' : ''}`} />
+            Sync Profiles
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedUsers.length > 0 && (
+        <div className="bg-primary/10 p-4 rounded-lg border border-primary flex items-center justify-between">
+          <span className="font-medium">{selectedUsers.length} users selected</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export Selected
+            </Button>
+            <Button variant="outline" size="sm">
+              Change Plan
+            </Button>
+            <Button variant="outline" size="sm">
+              Suspend
+            </Button>
+            <Button variant="outline" size="sm">
+              <Mail className="w-4 h-4 mr-2" />
+              Send Email
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedUsers([])}
+            >
+              Deselect All
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Users Table */}
+      <div className="bg-card rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={
+                    paginatedUsers.length > 0 &&
+                    selectedUsers.length === paginatedUsers.length
+                  }
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
+              <TableHead>User Info</TableHead>
+              <TableHead>Store Info</TableHead>
+              <TableHead>Revenue</TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : paginatedUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                  No users found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedUsers.includes(user.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectUser(user.id, checked as boolean)
+                      }
+                    />
+                  </TableCell>
+                   <TableCell>
+                     <div className="flex items-center gap-3">
+                       <Avatar>
+                         <AvatarFallback>
+                           {user.email[0].toUpperCase()}
+                         </AvatarFallback>
+                       </Avatar>
+                        <div>
+                          <p className="font-medium">{user.email}</p>
+                          {user.full_name && (
+                            <p className="text-sm text-muted-foreground">
+                              {user.full_name}
+                            </p>
+                          )}
+                          {user.phone && (
+                            <p className="text-xs text-muted-foreground">
+                              {user.phone}
+                            </p>
+                          )}
+                        </div>
+                     </div>
+                   </TableCell>
+                     <TableCell>
+                       {user.store ? (
+                         <div className="space-y-1">
+                           <div className="flex items-center gap-2">
+                             <p className="font-medium">{user.store.name}</p>
+                             {(() => {
+                               const twoMonthsAgo = new Date();
+                               twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+                               
+                               const hasRecentOrders = user.lastOrderDate && new Date(user.lastOrderDate) >= twoMonthsAgo;
+                               const hasRecentAdminVisit = user.store.last_admin_visit && new Date(user.store.last_admin_visit) >= twoMonthsAgo;
+                               const isInactive = !hasRecentOrders && !hasRecentAdminVisit;
+                               
+                               if (isInactive) {
+                                 // Calculate days inactive
+                                 const lastActivity = [user.lastOrderDate, user.store.last_admin_visit]
+                                   .filter(Boolean)
+                                   .map(d => new Date(d!))
+                                   .sort((a, b) => b.getTime() - a.getTime())[0];
+                                 
+                                 const daysInactive = lastActivity 
+                                   ? Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+                                   : null;
+                                 
+                                 return (
+                                   <Badge variant="outline" className="border-orange-500 text-orange-500 text-xs">
+                                     Inactive {daysInactive ? `${daysInactive}d` : ''}
+                                   </Badge>
+                                 );
+                               }
+                               return null;
+                             })()}
+                           </div>
+                           <a 
+                             href={`/${user.store.slug}`}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="text-sm text-primary hover:underline flex items-center gap-1"
+                           >
+                             {user.store.slug}
+                             <ExternalLink className="h-3 w-3" />
+                           </a>
+                           <div className="text-xs text-muted-foreground space-y-0.5">
+                             <p>
+                               {user.orderCount} orders
+                               {user.lastOrderDate && (
+                                 <> • Last: {formatDistanceToNow(new Date(user.lastOrderDate), { addSuffix: true })}</>
+                               )}
+                               {!user.lastOrderDate && <> • No orders yet</>}
+                             </p>
+                             {user.store.last_admin_visit && (
+                               <p>Admin visit: {formatDistanceToNow(new Date(user.store.last_admin_visit), { addSuffix: true })}</p>
+                             )}
+                             {!user.store.last_admin_visit && (
+                               <p>No admin visits tracked</p>
+                             )}
+                           </div>
+                         </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-50">
+                              No Store Created
+                            </Badge>
+                          </div>
+                        )}
+                     </TableCell>
+                   <TableCell>
+                     <p className="font-medium">₹{user.totalRevenue.toLocaleString()}</p>
+                     <p className="text-xs text-muted-foreground">total revenue</p>
+                   </TableCell>
+                   <TableCell>
+                     <Badge variant="outline">
+                       {user.subscription?.plan?.name || "Free"}
+                     </Badge>
+                     {user.subscription && (
+                       <p className="text-xs text-muted-foreground mt-1">
+                         {user.subscription.billing_cycle}
+                       </p>
+                     )}
+                   </TableCell>
+                  <TableCell>{getStatusBadge(user.subscription)}</TableCell>
+                  <TableCell>
+                    <div>
+                      <p>{new Date(user.created_at).toLocaleDateString()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(user.created_at), {
+                          addSuffix: true,
+                        })}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowUserDetail(true);
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowUserDetail(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowAssignPlanModal(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Assign Plan
+                            </DropdownMenuItem>
+                           {user.store && (
+                             <DropdownMenuItem
+                               onClick={() => window.open(`/${user.store.slug}`, '_blank')}
+                             >
+                               <ExternalLink className="w-4 h-4 mr-2" />
+                               Visit Store
+                             </DropdownMenuItem>
+                           )}
+                           <DropdownMenuItem
+                             onClick={async () => {
+                               const emailSubject = prompt("Enter email subject:");
+                               if (!emailSubject) return;
+
+                               const emailBody = prompt("Enter email message:");
+                               if (!emailBody) return;
+
+                               try {
+                                 const { error } = await supabase.functions.invoke('send-user-email', {
+                                   body: {
+                                     to: user.email,
+                                     subject: emailSubject,
+                                     message: emailBody
+                                   }
+                                 });
+
+                                 if (error) throw error;
+
+                                 toast({
+                                   title: "Email sent",
+                                   description: `Email sent successfully to ${user.email}`,
+                                 });
+                               } catch (error: any) {
+                                 toast({
+                                   title: "Error",
+                                   description: error.message,
+                                   variant: "destructive",
+                                 });
+                               }
+                             }}
+                           >
+                             <Mail className="w-4 h-4 mr-2" />
+                             Send Email
+                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowSuspendModal(true);
+                            }}
+                          >
+                            Suspend Account
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * rowsPerPage + 1}-
+              {Math.min(currentPage * rowsPerPage, sortedUsers.length)} of{" "}
+              {sortedUsers.length} users
+            </p>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(i + 1)}
+                      isActive={currentPage === i + 1}
+                      className="cursor-pointer"
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {selectedUser && (
+        <>
+          <UserDetailModal
+            user={selectedUser}
+            open={showUserDetail}
+            onClose={() => {
+              setShowUserDetail(false);
+              setSelectedUser(null);
+            }}
+            onRefresh={fetchUsers}
+          />
+          <SuspendAccountModal
+            user={selectedUser}
+            open={showSuspendModal}
+            onClose={() => {
+              setShowSuspendModal(false);
+              setSelectedUser(null);
+            }}
+            onSuccess={fetchUsers}
+          />
+          <DeleteAccountModal
+            user={selectedUser}
+            open={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setSelectedUser(null);
+            }}
+            onSuccess={fetchUsers}
+          />
+          <AssignPlanModal
+            userId={selectedUser.id}
+            userEmail={selectedUser.email}
+            currentSubscription={selectedUser.subscription}
+            open={showAssignPlanModal}
+            onOpenChange={(open) => {
+              setShowAssignPlanModal(open);
+              if (!open) setSelectedUser(null);
+            }}
+            onSuccess={fetchUsers}
+          />
+        </>
+      )}
+    </div>
+  );
+}
