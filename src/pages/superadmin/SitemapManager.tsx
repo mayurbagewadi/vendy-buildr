@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_FUNCTION_URL = 'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/submit-sitemap-to-google';
 
@@ -21,11 +22,19 @@ export default function SitemapManager() {
         description: "This may take a few minutes for all stores.",
       });
 
+      // Get auth session for API key
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Not authenticated. Please login again.');
+      }
+
       // Call Edge Function to submit all stores
       const response = await fetch(SUPABASE_FUNCTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({}), // Empty body = process all stores
       });
