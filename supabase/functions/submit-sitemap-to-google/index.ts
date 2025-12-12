@@ -14,6 +14,27 @@ serve(async (req) => {
   }
 
   try {
+    // Verify user authentication (if JWT verification is enabled)
+    const authHeader = req.headers.get('Authorization')
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      // Validate token with Supabase
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+      const authClient = createClient(supabaseUrl, supabaseAnonKey)
+
+      const { data: { user }, error: authError } = await authClient.auth.getUser(token)
+
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { headers: corsHeaders, status: 401 }
+        )
+      }
+
+      console.log('[AUTH] Authenticated user:', user.email)
+    }
+
     // Get Google API credentials from environment
     const googleClientEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')!
     const googlePrivateKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')!
@@ -27,7 +48,7 @@ serve(async (req) => {
       throw new Error('Google service account credentials not configured')
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
