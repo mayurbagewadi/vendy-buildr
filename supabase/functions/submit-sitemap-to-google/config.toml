@@ -1,0 +1,5 @@
+# Configuration for submit-sitemap-to-google Edge Function
+
+[function]
+# Disable JWT verification - this function uses Google Service Account auth
+verify_jwt = false
