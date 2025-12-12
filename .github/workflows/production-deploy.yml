@@ -17,28 +17,16 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Navigate to project directory
             cd /var/www/digitaldukandar
 
-            # Force discard any local changes and pull latest
-            git fetch origin
-            git reset --hard origin/production
+            # Pull latest code
             git pull origin production
 
-            # Make deploy script executable and run it
-            chmod +x deploy.sh
-            ./deploy.sh
+            # Install and build
+            npm install
+            npm run build
 
-            # Show deployment status
-            echo "✅ Deployment completed at $(date)"
+            # Reload nginx
+            sudo systemctl reload nginx
 
-      - name: 📊 Deployment Status
-        if: always()
-        run: |
-          if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ Deployment successful!"
-            echo "🌐 Site: https://digitaldukandar.in"
-          else
-            echo "❌ Deployment failed!"
-            exit 1
-          fi
+            echo "✅ Deployed at $(date)"
