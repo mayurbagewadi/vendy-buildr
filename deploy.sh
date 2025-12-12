@@ -39,10 +39,16 @@ git checkout "$BRANCH"
 git pull origin "$BRANCH"
 echo -e "${GREEN}✅ Code updated${NC}"
 
-# Step 4: Install dependencies
-echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+# Step 4: Clean and install dependencies
+echo -e "${YELLOW}📦 Cleaning and installing dependencies...${NC}"
+rm -rf node_modules package-lock.json
 npm install --legacy-peer-deps
 echo -e "${GREEN}✅ Dependencies installed${NC}"
+
+# Step 4.5: Fix permissions on node_modules
+echo -e "${YELLOW}🔐 Fixing node_modules permissions...${NC}"
+chmod -R 755 node_modules
+echo -e "${GREEN}✅ Permissions fixed${NC}"
 
 # Step 5: Build the application
 echo -e "${YELLOW}🔨 Building application...${NC}"
