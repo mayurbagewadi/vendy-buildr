@@ -17,8 +17,15 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Run deployment script
+            # Navigate to project directory
             cd /var/www/digitaldukandar
+
+            # Force discard any local changes and pull latest
+            git fetch origin
+            git reset --hard origin/production
+            git pull origin production
+
+            # Make deploy script executable and run it
             chmod +x deploy.sh
             ./deploy.sh
 
