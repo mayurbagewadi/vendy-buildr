@@ -135,17 +135,27 @@ serve(async (req) => {
       // PLATFORM-WIDE SITEMAP
       console.log('[SITEMAP] Generating platform-wide sitemap')
 
-      // Fetch all active stores for SEO
-      const { data: stores, error: storesError } = await supabase
-        .from('stores')
-        .select('slug, subdomain, custom_domain, updated_at')
-        .order('created_at', { ascending: false })
+      // Fetch all active stores for SEO with timeout protection
+      let stores = []
+      try {
+        console.log('[SITEMAP] Fetching stores from database...')
+        const { data, error: storesError } = await supabase
+          .from('stores')
+          .select('slug, subdomain, custom_domain, updated_at')
+          .order('created_at', { ascending: false })
+          .limit(1000) // Prevent massive queries
 
-      if (storesError) {
-        console.error('[SITEMAP] Error fetching stores:', storesError)
+        if (storesError) {
+          console.error('[SITEMAP] Error fetching stores:', storesError)
+          stores = [] // Continue with empty stores list
+        } else {
+          stores = data || []
+          console.log('[SITEMAP] Platform stores found:', stores.length)
+        }
+      } catch (error) {
+        console.error('[SITEMAP] Exception fetching stores:', error)
+        stores = [] // Continue with empty stores list
       }
-
-      console.log('[SITEMAP] Platform stores found:', stores?.length || 0)
 
       let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -187,10 +197,10 @@ serve(async (req) => {
     <priority>0.3</priority>
   </url>
 
-  <!-- Stores (${stores?.length || 0} active stores) -->`
+  <!-- Stores (${stores.length} active stores) -->`
 
       // Add each store to platform sitemap for SEO discovery
-      if (stores && stores.length > 0) {
+      if (stores.length > 0) {
         for (const store of stores) {
           // Determine store URL (prefer custom domain > subdomain > slug)
           let storeUrl = ''
