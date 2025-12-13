@@ -20,16 +20,29 @@ jobs:
             cd /var/www/digitaldukandar
 
             # Pull latest code
+            echo "📥 Pulling latest code..."
             git pull origin production
 
             # Install and fix permissions
+            echo "📦 Installing dependencies..."
             npm install
             chmod -R +x node_modules/.bin
 
             # Build using npx
+            echo "🔨 Building application..."
             npx vite build
 
+            # Update nginx configuration
+            echo "⚙️  Updating nginx configuration..."
+            sudo cp nginx.conf /etc/nginx/sites-available/digitaldukandar
+
+            # Test nginx configuration
+            echo "🧪 Testing nginx configuration..."
+            sudo nginx -t
+
             # Reload nginx
+            echo "🔄 Reloading nginx..."
             sudo systemctl reload nginx
 
-            echo "✅ Deployed at $(date)"
+            echo "✅ Deployed successfully at $(date)"
+            echo "🌐 Main site: https://digitaldukandar.in"

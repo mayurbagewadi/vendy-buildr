@@ -5,17 +5,32 @@ echo "🚀 Deploying Digital Dukandar..."
 
 cd /var/www/digitaldukandar
 
-# Pull latest
+# Pull latest code
+echo "📥 Pulling latest code..."
 git pull origin production
 
-# Install and fix permissions
+# Install dependencies and fix permissions
+echo "📦 Installing dependencies..."
 npm install
 chmod -R +x node_modules/.bin
 
-# Build using npx (handles permissions better)
+# Build application
+echo "🔨 Building application..."
 npx vite build
 
-# Reload nginx
+# Update nginx configuration
+echo "⚙️  Updating nginx configuration..."
+sudo cp nginx.conf /etc/nginx/sites-available/digitaldukandar
+
+# Test nginx configuration before applying
+echo "🧪 Testing nginx configuration..."
+sudo nginx -t
+
+# Reload nginx to apply changes
+echo "🔄 Reloading nginx..."
 sudo systemctl reload nginx
 
-echo "✅ Deployed successfully!"
+# Verify deployment
+echo "✅ Deployment completed successfully!"
+echo "🌐 Main site: https://digitaldukandar.in"
+echo "📄 Sitemap: https://digitaldukandar.in/sitemap.xml"
