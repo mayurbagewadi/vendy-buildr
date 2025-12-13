@@ -737,6 +737,9 @@ const Index = () => {
               <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
                 Terms of Service
               </Link>
+              <a href="/sitemap.xml" className="hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">
+                Sitemap
+              </a>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2025 StoreBuilder. All rights reserved.
