@@ -135,13 +135,25 @@ serve(async (req) => {
       // PLATFORM-WIDE SITEMAP
       console.log('[SITEMAP] Generating platform-wide sitemap')
 
-      const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+      // Fetch all active stores for SEO
+      const { data: stores, error: storesError } = await supabase
+        .from('stores')
+        .select('slug, subdomain, custom_domain, updated_at')
+        .order('created_at', { ascending: false })
+
+      if (storesError) {
+        console.error('[SITEMAP] Error fetching stores:', storesError)
+      }
+
+      console.log('[SITEMAP] Platform stores found:', stores?.length || 0)
+
+      let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Platform Pages -->
   <url>
     <loc>https://digitaldukandar.in/</loc>
     <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
@@ -174,6 +186,39 @@ serve(async (req) => {
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- Stores (${stores?.length || 0} active stores) -->`
+
+      // Add each store to platform sitemap for SEO discovery
+      if (stores && stores.length > 0) {
+        for (const store of stores) {
+          // Determine store URL (prefer custom domain > subdomain > slug)
+          let storeUrl = ''
+          if (store.custom_domain) {
+            storeUrl = `https://${store.custom_domain}`
+          } else if (store.subdomain) {
+            storeUrl = `https://${store.subdomain}.digitaldukandar.in`
+          } else if (store.slug) {
+            storeUrl = `https://digitaldukandar.in/${store.slug}`
+          }
+
+          if (storeUrl) {
+            const lastmod = store.updated_at
+              ? new Date(store.updated_at).toISOString().split('T')[0]
+              : currentDate
+
+            sitemapXml += `
+  <url>
+    <loc>${storeUrl}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`
+          }
+        }
+      }
+
+      sitemapXml += `
 </urlset>`
 
       return new Response(sitemapXml, { headers: corsHeaders })
