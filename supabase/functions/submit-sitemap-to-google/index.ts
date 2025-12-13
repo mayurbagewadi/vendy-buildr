@@ -201,7 +201,14 @@ async function getGoogleAccessToken(clientEmail: string, privateKey: string) {
 
 // Submit sitemap to Google Search Console
 async function submitSitemap(domain: string, sitemapUrl: string, accessToken: string) {
-  const siteUrl = `sc-domain:${domain}`
+  // Extract parent domain from subdomain
+  // e.g., vendy-store.digitaldukandar.in → digitaldukandar.in
+  const domainParts = domain.split('.')
+  const parentDomain = domainParts.slice(-2).join('.') // Get last 2 parts (digitaldukandar.in)
+
+  const siteUrl = `sc-domain:${parentDomain}` // Use parent domain for all subdomains
+  console.log(`[SUBMIT] Submitting ${domain} to site property: ${siteUrl}`)
+
   const encodedSitemapUrl = encodeURIComponent(sitemapUrl)
 
   const response = await fetch(

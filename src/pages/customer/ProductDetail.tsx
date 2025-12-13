@@ -61,7 +61,11 @@ interface ProductDetailProps {
 }
 
 const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
-  const { slug: productSlug } = useParams();
+  // Handle both route patterns:
+  // 1. /products/:slug (direct product view)
+  // 2. /:slug/products/:productSlug (store-scoped product view)
+  const params = useParams();
+  const productSlug = params.productSlug || params.slug;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart, triggerFlyAnimation } = useCart();
