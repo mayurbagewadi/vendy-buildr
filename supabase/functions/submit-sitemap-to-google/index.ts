@@ -111,8 +111,8 @@ serve(async (req) => {
           continue
         }
 
-        // Generate sitemap URL
-        const sitemapUrl = `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/generate-sitemap?domain=${storeDomain}`
+        // Generate sitemap URL (use actual domain URL, not edge function URL)
+        const sitemapUrl = `https://${storeDomain}/sitemap.xml`
 
         console.log(`[GOOGLE SEARCH CONSOLE] Submitting sitemap for ${storeDomain}:`, sitemapUrl)
 
