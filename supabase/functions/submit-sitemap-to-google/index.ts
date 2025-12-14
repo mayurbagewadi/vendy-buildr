@@ -135,7 +135,7 @@ serve(async (req) => {
         results.push({
           storeId: store.id,
           success: false,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }
@@ -152,7 +152,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[GOOGLE SEARCH CONSOLE] Error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
       { headers: corsHeaders, status: 500 }
     )
   }

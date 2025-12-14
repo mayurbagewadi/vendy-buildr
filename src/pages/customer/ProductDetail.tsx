@@ -798,7 +798,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 <ProductCard
                   key={relatedProduct.id}
                   id={relatedProduct.id}
-                  slug={relatedProduct.slug}
+                  slug={(relatedProduct as any).slug}
                   name={relatedProduct.name}
                   category={relatedProduct.category}
                   priceRange={relatedProduct.price_range}
