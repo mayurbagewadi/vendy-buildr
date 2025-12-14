@@ -376,6 +376,7 @@ export type Database = {
           name: string
           price_range: string | null
           sku: string | null
+          slug: string | null
           status: string
           stock: number | null
           store_id: string
@@ -394,6 +395,7 @@ export type Database = {
           name: string
           price_range?: string | null
           sku?: string | null
+          slug?: string | null
           status?: string
           stock?: number | null
           store_id: string
@@ -412,6 +414,7 @@ export type Database = {
           name?: string
           price_range?: string | null
           sku?: string | null
+          slug?: string | null
           status?: string
           stock?: number | null
           store_id?: string
@@ -473,6 +476,50 @@ export type Database = {
           subdomain?: string
         }
         Relationships: []
+      }
+      sitemap_submissions: {
+        Row: {
+          created_at: string | null
+          domain: string
+          error_message: string | null
+          id: string
+          sitemap_url: string
+          status: string | null
+          store_id: string | null
+          submitted_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          error_message?: string | null
+          id?: string
+          sitemap_url: string
+          status?: string | null
+          store_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          error_message?: string | null
+          id?: string
+          sitemap_url?: string
+          status?: string | null
+          store_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sitemap_submissions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_activity_logs: {
         Row: {
