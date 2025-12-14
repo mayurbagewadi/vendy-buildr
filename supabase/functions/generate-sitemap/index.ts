@@ -136,7 +136,7 @@ serve(async (req) => {
       console.log('[SITEMAP] Generating platform-wide sitemap')
 
       // Fetch all active stores for SEO with timeout protection
-      let stores = []
+      let stores: Array<{ slug: string; subdomain: string | null; custom_domain: string | null; updated_at: string }> = []
       try {
         console.log('[SITEMAP] Fetching stores from database...')
         const { data, error: storesError } = await supabase

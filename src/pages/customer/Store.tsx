@@ -353,7 +353,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <ProductCard
                     key={product.id}
                     id={product.id}
-                    slug={product.slug}
+                    slug={(product as any).slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
@@ -390,7 +390,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <ProductCard
                     key={product.id}
                     id={product.id}
-                    slug={product.slug}
+                    slug={(product as any).slug}
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
