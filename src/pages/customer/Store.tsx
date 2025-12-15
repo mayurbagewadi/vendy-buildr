@@ -172,8 +172,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         if (slug.includes('.')) {
           storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
         } else {
-          // Otherwise, it's a regular slug
-          storeQuery = storeQuery.eq("slug", slug);
+          // FIX: When on store-specific domain, query by subdomain OR slug to handle mismatches
+          // This handles cases where subdomain field differs from slug (e.g., subdomain="test" but slug="store")
+          storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
         }
       } else {
         // Fallback to slug
