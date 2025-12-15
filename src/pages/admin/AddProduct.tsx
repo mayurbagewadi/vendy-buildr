@@ -21,6 +21,17 @@ import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
 
+// Utility function to generate URL-friendly slugs from product names
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')        // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
+};
+
 const variantSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1, "Variant name is required"),
@@ -363,6 +374,7 @@ const AddProduct = () => {
       const productData: SharedProduct = {
         id: generatedProductId,
         name: data.name,
+        slug: generateSlug(data.name),  // FIX: Auto-generate SEO-friendly slug from product name
         description: data.description,
         category: data.category,
         basePrice: parseFloat(data.basePrice),

@@ -149,6 +149,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
     .insert([{
       store_id: storeId,
       name: product.name,
+      slug: product.slug,  // FIX: Include slug in database insert
       description: product.description,
       category: product.category,
       base_price: product.basePrice || product.base_price,
