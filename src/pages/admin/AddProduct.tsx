@@ -365,10 +365,10 @@ const AddProduct = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Use images from URLs  
-      const allImages = imageUrls.length > 0 
-        ? imageUrls 
-        : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'];
+      // Use images from URLs, or auto-assign 3 unique random images
+      const allImages = imageUrls.length > 0
+        ? imageUrls
+        : getRandomDefaultImages(3);  // FIX: Assign 3 unique images instead of 1 hardcoded image
 
       // Create product using shared utility with auto-generated unique ID
       const productData: SharedProduct = {
@@ -381,7 +381,7 @@ const AddProduct = () => {
         stock: parseInt(data.baseStock),
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
-        images: allImages.length > 0 ? allImages : getRandomDefaultImages(3),
+        images: allImages,  // FIX: Always use allImages (already has 3 random or uploaded)
         videoUrl: videoUrl.trim() || undefined,
         variants: variants.map(v => ({
           name: v.name,
