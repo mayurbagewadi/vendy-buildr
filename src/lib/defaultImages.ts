@@ -24,14 +24,22 @@ export const getRandomDefaultImage = (): string => {
 };
 
 /**
- * Get multiple random images from the default pool
+ * Get multiple random UNIQUE images from the default pool
+ * Uses Fisher-Yates shuffle algorithm to ensure no duplicates
  * @param count Number of images to get (default: 1)
- * @returns Array of random image URLs
+ * @returns Array of unique random image URLs
  */
 export const getRandomDefaultImages = (count: number = 1): string[] => {
-  const images: string[] = [];
-  for (let i = 0; i < count; i++) {
-    images.push(getRandomDefaultImage());
+  // Create a copy of the array to avoid mutating the original
+  const shuffled = [...DEFAULT_IMAGES];
+
+  // Fisher-Yates shuffle algorithm
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return images;
+
+  // Return requested count, but cap at available images
+  const actualCount = Math.min(count, DEFAULT_IMAGES.length);
+  return shuffled.slice(0, actualCount);
 };
