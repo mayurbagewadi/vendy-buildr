@@ -138,8 +138,11 @@ export const saveProducts = async (products: Product[]): Promise<void> => {
 export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> => {
   const storeId = await getStoreId();
   if (!storeId) {
+    console.error('[PRODUCT] No store ID found for current user');
     throw new Error('No store found for current user');
   }
+
+  console.log('[PRODUCT] Creating product for store:', storeId, 'Name:', product.name, 'Status:', product.status || 'published');
 
   const { data, error } = await supabase
     .from('products')
@@ -152,7 +155,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
       price_range: product.priceRange || product.price_range,
       stock: product.stock || 0,
       sku: product.sku,
-      status: product.status || 'draft',
+      status: product.status || 'published',  // FIX: Default to published instead of draft
       images: product.images || [],
       video_url: product.videoUrl || product.video_url,
       variants: (product.variants || []) as any,
@@ -161,10 +164,11 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
     .single();
 
   if (error) {
-    console.error('Error adding product:', error);
+    console.error('[PRODUCT] Error adding product:', error);
     throw error;
   }
 
+  console.log('[PRODUCT] ✅ Product created successfully:', data.id, 'Name:', data.name, 'Status:', data.status);
   return data as unknown as Product;
 };
 

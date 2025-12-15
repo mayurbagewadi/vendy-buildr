@@ -75,7 +75,7 @@ const AddProduct = () => {
       category: "",
       baseSku: "",
       baseStock: "",
-      status: "draft",
+      status: "published",  // FIX: Default to published so products are immediately visible
       variants: [],
     },
   });
