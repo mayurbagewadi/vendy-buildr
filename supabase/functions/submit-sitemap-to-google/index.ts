@@ -123,6 +123,36 @@ serve(async (req) => {
         // Submit sitemap to Google Search Console
         const submitResponse = await submitSitemap(storeDomain, sitemapUrl, accessToken)
 
+        // Update sitemap_submissions table with result
+        const updateStatus = submitResponse.success ? 'success' : 'failed'
+
+        // First, get the most recent submission for this store+sitemap
+        const { data: latestSubmission } = await supabase
+          .from('sitemap_submissions')
+          .select('id')
+          .eq('store_id', store.id)
+          .eq('sitemap_url', sitemapUrl)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        // Then update it
+        if (latestSubmission) {
+          const { error: updateError } = await supabase
+            .from('sitemap_submissions')
+            .update({
+              status: updateStatus,
+              response_message: submitResponse.message,
+              error_message: submitResponse.success ? null : submitResponse.message,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', latestSubmission.id)
+
+          if (updateError) {
+            console.error(`[GOOGLE SEARCH CONSOLE] Failed to update submission status:`, updateError)
+          }
+        }
+
         results.push({
           storeId: store.id,
           domain: storeDomain,
@@ -132,10 +162,32 @@ serve(async (req) => {
         })
       } catch (error) {
         console.error(`[GOOGLE SEARCH CONSOLE] Error processing store ${store.id}:`, error)
+
+        // Update database status to failed
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        const { data: latestSubmission } = await supabase
+          .from('sitemap_submissions')
+          .select('id')
+          .eq('store_id', store.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (latestSubmission) {
+          await supabase
+            .from('sitemap_submissions')
+            .update({
+              status: 'failed',
+              error_message: errorMessage,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', latestSubmission.id)
+        }
+
         results.push({
           storeId: store.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorMessage
         })
       }
     }
