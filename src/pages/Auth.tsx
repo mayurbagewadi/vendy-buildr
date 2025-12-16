@@ -21,6 +21,13 @@ export default function Auth() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
+    // Capture referral code from URL and store in sessionStorage
+    const refParam = searchParams.get('ref');
+    if (refParam) {
+      console.log('[Auth] Referral code captured:', refParam);
+      sessionStorage.setItem('referral_code', refParam);
+    }
+
     // Check for account deletion error in URL params
     const errorParam = searchParams.get('error');
     if (errorParam === 'account_deleted') {

@@ -97,20 +97,32 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       }
 
       // Get user profile for full name
-      const { data: profile, error: profileError } = await supabase
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, email')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
-      // Check if profile exists (account might be deleted)
-      if (profileError && profileError.code === 'PGRST116') {
-        console.log('[AdminLayout] Profile not found - account deleted');
+      // If profile doesn't exist, create it (handles cases where trigger didn't fire)
+      if (!profile) {
+        console.log('[AdminLayout] Profile not found - creating profile for user');
+        
+        const { data: newProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: session.user.id,
+            email: session.user.email || '',
+            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+          })
+          .select('full_name, email')
+          .single();
 
-        // Account deleted - sign out and redirect to login with error message
-        await supabase.auth.signOut();
-        navigate("/auth?error=account_deleted");
-        return;
+        if (createProfileError) {
+          console.error('[AdminLayout] Error creating profile:', createProfileError);
+        } else {
+          console.log('[AdminLayout] Profile created successfully');
+          profile = newProfile;
+        }
       }
 
       if (profile?.full_name) {
@@ -126,19 +138,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       console.log('[AdminLayout] Store data:', store ? 'Found' : 'None', error ? `Error: ${error.message}` : '');
 
-      // Check if store doesn't exist AND profile exists (new user needs onboarding)
-      if (!store && profile) {
-        console.log('[AdminLayout] No store found but profile exists - redirecting to onboarding');
+      // Check if store doesn't exist (new user needs onboarding)
+      if (!store) {
+        console.log('[AdminLayout] No store found - redirecting to onboarding');
         navigate("/onboarding/store-setup");
-        return;
-      }
-
-      // If no store and no profile, account was deleted
-      if (!store && !profile) {
-        console.log('[AdminLayout] No store and no profile - account deleted');
-
-        await supabase.auth.signOut();
-        navigate("/auth?error=account_deleted");
         return;
       }
 

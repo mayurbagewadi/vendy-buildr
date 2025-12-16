@@ -72,9 +72,81 @@ serve(async (req) => {
 
     console.log('[delete-user-account] Deleting user:', userId);
 
-    // Delete data in order (respecting foreign key constraints)
+    // First, get all store IDs for this user (to delete store-related data)
+    const { data: userStores } = await supabaseAdmin
+      .from('stores')
+      .select('id')
+      .eq('user_id', userId);
+
+    const storeIds = userStores?.map(s => s.id) || [];
+    console.log('[delete-user-account] Found stores:', storeIds.length);
+
+    // Delete store-related data (respecting foreign key constraints)
+    if (storeIds.length > 0) {
+      // 1. Delete products for all user's stores
+      const { error: productsError } = await supabaseAdmin
+        .from('products')
+        .delete()
+        .in('store_id', storeIds);
+      
+      if (productsError) {
+        console.error('[delete-user-account] Error deleting products:', productsError);
+      } else {
+        console.log('[delete-user-account] Deleted products');
+      }
+
+      // 2. Delete categories for all user's stores
+      const { error: categoriesError } = await supabaseAdmin
+        .from('categories')
+        .delete()
+        .in('store_id', storeIds);
+      
+      if (categoriesError) {
+        console.error('[delete-user-account] Error deleting categories:', categoriesError);
+      } else {
+        console.log('[delete-user-account] Deleted categories');
+      }
+
+      // 3. Delete orders for all user's stores
+      const { error: ordersError } = await supabaseAdmin
+        .from('orders')
+        .delete()
+        .in('store_id', storeIds);
+      
+      if (ordersError) {
+        console.error('[delete-user-account] Error deleting orders:', ordersError);
+      } else {
+        console.log('[delete-user-account] Deleted orders');
+      }
+
+      // 4. Delete sitemap_submissions for all user's stores
+      const { error: sitemapError } = await supabaseAdmin
+        .from('sitemap_submissions')
+        .delete()
+        .in('store_id', storeIds);
+      
+      if (sitemapError) {
+        console.error('[delete-user-account] Error deleting sitemap_submissions:', sitemapError);
+      } else {
+        console.log('[delete-user-account] Deleted sitemap_submissions');
+      }
+
+      // 5. Delete store_activity_logs for all user's stores
+      const { error: activityLogsError } = await supabaseAdmin
+        .from('store_activity_logs')
+        .delete()
+        .in('store_id', storeIds);
+      
+      if (activityLogsError) {
+        console.error('[delete-user-account] Error deleting store_activity_logs:', activityLogsError);
+      } else {
+        console.log('[delete-user-account] Deleted store_activity_logs');
+      }
+    }
+
+    // Delete user-level data
     
-    // 1. Delete from stores table
+    // 6. Delete from stores table
     const { error: storesError } = await supabaseAdmin
       .from('stores')
       .delete()
@@ -86,7 +158,7 @@ serve(async (req) => {
       console.log('[delete-user-account] Deleted stores');
     }
 
-    // 2. Delete from subscriptions table
+    // 7. Delete from subscriptions table
     const { error: subscriptionsError } = await supabaseAdmin
       .from('subscriptions')
       .delete()
@@ -98,7 +170,7 @@ serve(async (req) => {
       console.log('[delete-user-account] Deleted subscriptions');
     }
 
-    // 3. Delete from transactions table
+    // 8. Delete from transactions table
     const { error: transactionsError } = await supabaseAdmin
       .from('transactions')
       .delete()
@@ -110,7 +182,7 @@ serve(async (req) => {
       console.log('[delete-user-account] Deleted transactions');
     }
 
-    // 4. Delete from user_roles table
+    // 9. Delete from user_roles table
     const { error: rolesError } = await supabaseAdmin
       .from('user_roles')
       .delete()
@@ -122,7 +194,7 @@ serve(async (req) => {
       console.log('[delete-user-account] Deleted user_roles');
     }
 
-    // 5. Delete from profiles table
+    // 10. Delete from profiles table
     const { error: profilesError } = await supabaseAdmin
       .from('profiles')
       .delete()
@@ -134,7 +206,7 @@ serve(async (req) => {
       console.log('[delete-user-account] Deleted profiles');
     }
 
-    // 6. Finally, delete the user from auth.users using Admin API
+    // 11. Finally, delete the user from auth.users using Admin API
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (authDeleteError) {
@@ -153,7 +225,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'User account completely deleted including authentication records' 
+        message: 'User account completely deleted including authentication records',
+        deletedStores: storeIds.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

@@ -2,15 +2,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DEMO_PRODUCTS, DEMO_CATEGORIES } from "./demoProducts";
 
-// Utility function to generate URL-friendly slugs from product names
+// Generate URL-friendly slug from product name
 const generateSlug = (name: string): string => {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-')      // Replace spaces with hyphens
-    .replace(/-+/g, '-')        // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 };
 
 export const seedDemoDataForStore = async (storeId: string): Promise<boolean> => {
@@ -32,11 +31,11 @@ export const seedDemoDataForStore = async (storeId: string): Promise<boolean> =>
       // Continue even if categories fail
     }
 
-    // Insert demo products with auto-generated slugs
+    // Insert demo products with generated slugs
     const productsWithStoreId = DEMO_PRODUCTS.map(product => ({
       ...product,
       store_id: storeId,
-      slug: generateSlug(product.name)  // FIX: Auto-generate slug from product name
+      slug: generateSlug(product.name) // Add slug to satisfy database constraint
     }));
 
     console.log(`[SEED] Inserting ${productsWithStoreId.length} demo products with slugs...`);

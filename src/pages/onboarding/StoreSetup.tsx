@@ -173,6 +173,58 @@ const StoreSetup = () => {
         await seedDemoDataForStore(newStoreId);
       }
 
+      // Check for referral code and create store_referrals record
+      const referralCode = sessionStorage.getItem('referral_code');
+      if (referralCode) {
+        console.log('[StoreSetup] Processing referral code:', referralCode);
+        
+        // Find the helper by referral code
+        const { data: helper } = await supabase
+          .from('helpers')
+          .select('id')
+          .eq('referral_code', referralCode)
+          .eq('status', 'Active')
+          .maybeSingle();
+
+        if (helper) {
+          // Get user profile for store owner info
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          // Create store_referrals record
+          const trialEndDate = new Date();
+          trialEndDate.setDate(trialEndDate.getDate() + 14); // 14-day trial
+
+          const { error: referralError } = await supabase
+            .from('store_referrals')
+            .insert({
+              helper_id: helper.id,
+              store_owner_name: profile?.full_name || formData.storeName,
+              store_owner_email: profile?.email || user.email || '',
+              store_owner_phone: formData.whatsappNumber,
+              trial_start_date: new Date().toISOString().split('T')[0],
+              trial_end_date: trialEndDate.toISOString().split('T')[0],
+              trial_status: 'Active',
+              subscription_purchased: false,
+              commission_status: 'Not Applicable'
+            });
+
+          if (referralError) {
+            console.error('[StoreSetup] Error creating referral record:', referralError);
+          } else {
+            console.log('[StoreSetup] Referral record created successfully');
+          }
+
+          // Clear the referral code from sessionStorage
+          sessionStorage.removeItem('referral_code');
+        } else {
+          console.log('[StoreSetup] No active helper found for referral code:', referralCode);
+        }
+      }
+
       // Auto-assign default subscription plan
       const { data: defaultPlan } = await supabase
         .from("subscription_plans")
