@@ -30,6 +30,9 @@ jobs:
             # Install dependencies
             npm install
 
+            # Fix permissions for node executables
+            chmod -R +x node_modules/.bin
+
             # Clean dist folder to remove old static files
             rm -rf dist
 
