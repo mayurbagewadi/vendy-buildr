@@ -167,17 +167,19 @@ const StoreSetup = () => {
 
       if (error) throw error;
 
+      // Get the new store ID (needed for both demo data and referral tracking)
+      const newStoreId = storeData && storeData.length > 0 ? storeData[0].id : null;
+
       // Seed demo products and categories for the new store
-      if (storeData && storeData.length > 0) {
-        const newStoreId = storeData[0].id;
+      if (newStoreId) {
         await seedDemoDataForStore(newStoreId);
       }
 
       // Check for referral code and create store_referrals record
       const referralCode = sessionStorage.getItem('referral_code');
-      if (referralCode) {
+      if (referralCode && newStoreId) {
         console.log('[StoreSetup] Processing referral code:', referralCode);
-        
+
         // Find the helper by referral code
         const { data: helper } = await supabase
           .from('helpers')
