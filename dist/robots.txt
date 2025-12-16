@@ -1,0 +1,52 @@
+# Robots.txt for DigitalDukandar
+# Updated: 2025-12-11
+
+# Allow all major search engines
+User-agent: Googlebot
+Crawl-delay: 0
+Allow: /
+
+User-agent: Bingbot
+Crawl-delay: 1
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Allow all bots by default
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /auth
+Allow: /become-helper
+Allow: /privacy-policy
+Allow: /terms-of-service
+
+# Disallow admin and internal pages from indexing
+Disallow: /admin/
+Disallow: /superadmin/
+Disallow: /onboarding/
+Disallow: /helper/
+Disallow: /application-status
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://digitaldukandar.in/sitemap.xml
+
+# Block aggressive crawlers that don't respect crawl-delay
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /

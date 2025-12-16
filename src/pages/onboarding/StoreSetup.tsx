@@ -202,6 +202,7 @@ const StoreSetup = () => {
             .from('store_referrals')
             .insert({
               helper_id: helper.id,
+              store_id: newStoreId, // FIX: Link referral to the created store
               store_owner_name: profile?.full_name || formData.storeName,
               store_owner_email: profile?.email || user.email || '',
               store_owner_phone: formData.whatsappNumber,
