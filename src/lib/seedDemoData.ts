@@ -2,6 +2,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DEMO_PRODUCTS, DEMO_CATEGORIES } from "./demoProducts";
 
+// Generate URL-friendly slug from product name
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+};
+
 export const seedDemoDataForStore = async (storeId: string): Promise<boolean> => {
   try {
     console.log("Seeding demo data for store:", storeId);
@@ -21,10 +31,11 @@ export const seedDemoDataForStore = async (storeId: string): Promise<boolean> =>
       // Continue even if categories fail
     }
 
-    // Insert demo products
+    // Insert demo products with generated slugs
     const productsWithStoreId = DEMO_PRODUCTS.map(product => ({
       ...product,
-      store_id: storeId
+      store_id: storeId,
+      slug: generateSlug(product.name) // Add slug to satisfy database constraint
     }));
 
     const { error: productsError } = await supabase
