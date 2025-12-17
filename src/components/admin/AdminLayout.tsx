@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, 
-  Package, 
-  Settings, 
-  LogOut, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Package,
+  Settings,
+  LogOut,
+  Menu,
   X,
   ShoppingBag,
   Bell,
@@ -21,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -305,9 +306,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-6 h-6 text-primary-foreground" />
-              </div>
+              <AppLogo size={24} />
               <div className="flex-1">
                 <h2 className="font-semibold text-foreground text-sm truncate">{storeName}</h2>
                 <p className="text-xs text-muted-foreground truncate">Admin Panel</p>
@@ -374,9 +373,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
             {/* Logo for mobile when sidebar is closed */}
             <div className="lg:hidden flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <AppLogo size={20} />
               <span className="font-semibold text-foreground text-sm truncate max-w-[120px]">{storeName}</span>
             </div>
 

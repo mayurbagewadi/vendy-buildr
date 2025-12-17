@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, XCircle } from "lucide-react";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -307,7 +308,10 @@ export default function Auth() {
         )}
 
         <Card className="w-full">
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <AppLogo size={48} />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
           <CardDescription className="text-center">
             Sign in to access your dashboard

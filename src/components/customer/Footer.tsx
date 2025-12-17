@@ -1,4 +1,5 @@
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 const Footer = () => {
   return (
@@ -7,7 +8,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* About */}
           <div>
-            <h3 className="font-bold text-foreground mb-4">About MyStore</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <AppLogo size={28} />
+              <h3 className="font-bold text-foreground">MyStore</h3>
+            </div>
             <p className="text-muted-foreground text-sm">
               Your trusted online store for quality products at great prices. We deliver happiness to your doorstep.
             </p>

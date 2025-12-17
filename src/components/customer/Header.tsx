@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniCart from "@/components/customer/MiniCart";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AppLogo } from "@/components/ui/AppLogo";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
@@ -58,9 +59,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to={homeLink} className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg">
-              <ShoppingCart className="w-6 h-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
-            </div>
+            <AppLogo size={24} className="transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" />
             <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
               MyStore
             </span>

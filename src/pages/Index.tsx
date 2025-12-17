@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AppLogo } from "@/components/ui/AppLogo";
 import {
   Sheet,
   SheetContent,
@@ -174,11 +175,7 @@ const Index = () => {
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-3 sm:gap-4 group flex-shrink-0" aria-label="DigitalDukandar Home">
-            <img
-              src="/logo.png"
-              alt="DigitalDukandar Logo"
-              className="h-12 sm:h-14 md:h-16 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+            <AppLogo size={40} className="transition-transform group-hover:scale-105" />
             <span className="font-playfair font-bold text-2xl sm:text-3xl md:text-4xl bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
               DigitalDukandar
             </span>
@@ -700,11 +697,7 @@ const Index = () => {
         <div className="container mx-auto px-4 lg:px-8 py-16">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="DigitalDukandar Logo"
-                className="h-10 sm:h-12 w-auto object-contain"
-              />
+              <AppLogo size={32} />
               <span className="font-playfair font-bold text-xl sm:text-2xl bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
                 DigitalDukandar
               </span>
