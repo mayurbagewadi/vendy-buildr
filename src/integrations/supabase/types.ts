@@ -569,6 +569,7 @@ export type Database = {
           payment_reference: string | null
           purchase_date: string | null
           signup_date: string
+          store_id: string | null
           store_owner_email: string
           store_owner_name: string
           store_owner_phone: string
@@ -588,6 +589,7 @@ export type Database = {
           payment_reference?: string | null
           purchase_date?: string | null
           signup_date?: string
+          store_id?: string | null
           store_owner_email: string
           store_owner_name: string
           store_owner_phone: string
@@ -607,6 +609,7 @@ export type Database = {
           payment_reference?: string | null
           purchase_date?: string | null
           signup_date?: string
+          store_id?: string | null
           store_owner_email?: string
           store_owner_name?: string
           store_owner_phone?: string
@@ -623,6 +626,13 @@ export type Database = {
             columns: ["helper_id"]
             isOneToOne: false
             referencedRelation: "helpers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_referrals_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
