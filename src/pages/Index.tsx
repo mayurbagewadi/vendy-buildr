@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useLandingAnimations } from "@/hooks/useLandingAnimations";
+import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { AnimatedText } from "@/components/landing/AnimatedText";
+import { GradientBlob } from "@/components/landing/GradientBlob";
 import {
   ShoppingBag,
   Store,
@@ -38,6 +42,8 @@ import {
 
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { heroRef, featuresRef, stepsRef } = useLandingAnimations();
+
   const features = [
     {
       icon: Zap,
@@ -292,37 +298,53 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-background via-primary/[0.02] to-background">
+      <section ref={heroRef} className="relative overflow-hidden bg-gradient-to-b from-background via-primary/[0.02] to-background">
+        {/* Floating Particles */}
+        <FloatingParticles />
+
+        {/* Gradient Blobs - Multiple layers for depth */}
+        <GradientBlob color="blue" size="lg" position={{ top: '-20%', right: '-10%' }} />
+        <GradientBlob color="purple" size="md" position={{ bottom: '-15%', left: '-5%' }} />
+        <GradientBlob color="pink" size="md" position={{ top: '30%', left: '50%' }} />
+
         {/* Decorative Elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
+        <div className="hero-decorative absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
+        <div className="hero-decorative absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
         
         <div className="container relative mx-auto px-4 lg:px-8 py-24 lg:py-36">
           <div className="max-w-5xl mx-auto text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-primary px-5 py-2.5 rounded-full text-sm font-semibold mb-8 shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-3 duration-700">
+            <div className="hero-badge inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-primary px-5 py-2.5 rounded-full text-sm font-semibold mb-8 shadow-lg backdrop-blur-sm">
               <Star className="w-4 h-4 fill-primary" />
               Trusted by 10,000+ Entrepreneurs Worldwide
               <Sparkles className="w-4 h-4" />
             </div>
-            
+
             {/* Main Heading */}
-            <h1 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground mb-6 leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-              Free Online Store India
-              <br />
-              <span className="bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent inline-block mt-2">
-                Launch in 5 Minutes
-              </span>
-            </h1>
+            <div className="hero-heading mb-6">
+              <AnimatedText
+                text="Free Online Store India"
+                as="h1"
+                className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground leading-[1.1]"
+                delay={0.3}
+              />
+              <AnimatedText
+                text="Launch in 5 Minutes"
+                as="h1"
+                className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mt-2 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient"
+                delay={0.6}
+                gradient
+              />
+            </div>
 
             {/* Subheading */}
-            <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed font-light animate-in fade-in slide-in-from-bottom-5 duration-700 delay-200">
+            <p className="hero-subheading text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed font-light">
               Create your professional online store builder for small business India. Sell online with WhatsApp integration, custom domain, and powerful inventory management. No coding required - start your free e-commerce platform today!
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-5 justify-center items-center animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300 mb-12">
+            <div className="hero-cta flex flex-col sm:flex-row gap-5 justify-center items-center mb-12">
               <Link to="/auth" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto h-14 px-10 text-base shadow-2xl hover:shadow-primary/25 transition-all group font-semibold">
                   <Crown className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
@@ -339,7 +361,7 @@ const Index = () => {
             </div>
 
             {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center items-center gap-8 text-sm font-medium animate-in fade-in duration-700 delay-500">
+            <div className="hero-trust flex flex-wrap justify-center items-center gap-8 text-sm font-medium">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                   <Check className="w-3 h-3 text-primary" />
@@ -376,7 +398,7 @@ const Index = () => {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
+      <section ref={featuresRef} id="features" className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <div className="inline-block mb-4">
@@ -392,9 +414,9 @@ const Index = () => {
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card 
+              <Card
                 key={index}
-                className="relative p-8 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden"
+                className="feature-card relative p-8 hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden"
               >
                 {/* Gradient overlay on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
@@ -417,7 +439,7 @@ const Index = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="relative bg-gradient-to-b from-muted/30 via-muted/20 to-background py-24 lg:py-32">
+      <section ref={stepsRef} id="how-it-works" className="relative bg-gradient-to-b from-muted/30 via-muted/20 to-background py-24 lg:py-32">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20">
@@ -434,7 +456,7 @@ const Index = () => {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
               {steps.map((step, index) => (
-                <div key={index} className="relative">
+                <div key={index} className="step-card relative">
                   <div className="text-center group">
                     <div className="relative inline-block mb-6">
                       <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/60 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
