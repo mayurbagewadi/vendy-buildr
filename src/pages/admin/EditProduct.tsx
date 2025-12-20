@@ -33,10 +33,6 @@ const productSchema = z.object({
   name: z.string().trim().min(1, "Product name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().trim().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
   category: z.string().min(1, "Category is required"),
-  basePrice: z.string().refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num > 0;
-  }, "Base price must be a valid positive number"),
   baseSku: z.string().trim().optional(),
   baseStock: z.string().refine((val) => {
     const num = parseInt(val);
@@ -71,8 +67,7 @@ const EditProduct = () => {
     defaultValues: {
       name: "",
       description: "",
-      basePrice: "",
-      category: "",
+category: "",
       baseSku: "",
       baseStock: "",
       status: "draft",
@@ -166,8 +161,7 @@ const EditProduct = () => {
       name: product.name,
       description: product.description,
       category: product.category,
-      basePrice: product.basePrice?.toString() || product.base_price?.toString() || "",
-      baseSku: product.sku || "",
+baseSku: product.sku || "",
       baseStock: product.stock?.toString() || "",
       status: product.status,
     });
@@ -412,8 +406,7 @@ const EditProduct = () => {
         name: data.name,
         description: data.description,
         category: data.category,
-        basePrice: parseFloat(data.basePrice),
-        stock: parseInt(data.baseStock),
+stock: parseInt(data.baseStock),
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
         images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
@@ -423,7 +416,7 @@ const EditProduct = () => {
           price: parseFloat(v.price),
           sku: v.sku,
         })),
-        priceRange: getPriceRange() || `₹${parseFloat(data.basePrice).toFixed(2)}`,
+        priceRange: getPriceRange() || undefined,
         createdAt: (await getProductById(id))?.createdAt || (await getProductById(id))?.created_at || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -519,44 +512,23 @@ const EditProduct = () => {
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="basePrice"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Base Price (₹)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                placeholder="0.00" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <CategorySelector
-                                value={field.value}
-                                onChange={field.onChange}
-                                storeId={storeId}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <FormControl>
+                            <CategorySelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              storeId={storeId}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField

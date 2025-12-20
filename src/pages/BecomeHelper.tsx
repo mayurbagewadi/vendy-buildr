@@ -19,7 +19,7 @@ const formSchema = z.object({
   phone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirm_password: z.string().min(6, "Password must be at least 6 characters"),
-  why_helper: z.string().min(50, "Please write at least 50 characters"),
+  why_helper: z.string().optional(),
   bank_account_name: z.string().min(2, "Account holder name is required"),
   bank_account_number: z.string().min(8, "Invalid account number"),
   bank_ifsc_code: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format"),
@@ -341,10 +341,10 @@ export default function BecomeHelper() {
                   name="why_helper"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Why do you want to become a helper? *</FormLabel>
+                      <FormLabel>Why do you want to become a helper?</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Tell us why you want to join our helper program (minimum 50 characters)"
+                          placeholder="Tell us why you want to join our helper program"
                           className="min-h-32"
                           {...field}
                         />

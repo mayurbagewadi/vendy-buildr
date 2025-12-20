@@ -46,10 +46,6 @@ const productSchema = z.object({
   name: z.string().trim().min(1, "Product name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().trim().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
   category: z.string().min(1, "Category is required"),
-  basePrice: z.string().refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num > 0;
-  }, "Base price must be a valid positive number"),
   baseSku: z.string().trim().optional(),
   baseStock: z.string().refine((val) => {
     const num = parseInt(val);
@@ -82,8 +78,7 @@ const AddProduct = () => {
     defaultValues: {
       name: "",
       description: "",
-      basePrice: "",
-      category: "",
+category: "",
       baseSku: "",
       baseStock: "",
       status: "published",  // FIX: Default to published so products are immediately visible
@@ -377,8 +372,7 @@ const AddProduct = () => {
         slug: generateSlug(data.name),  // FIX: Auto-generate SEO-friendly slug from product name
         description: data.description,
         category: data.category,
-        basePrice: parseFloat(data.basePrice),
-        stock: parseInt(data.baseStock),
+stock: parseInt(data.baseStock),
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
         images: allImages,  // FIX: Always use allImages (already has 3 random or uploaded)
@@ -388,7 +382,7 @@ const AddProduct = () => {
           price: parseFloat(v.price),
           sku: v.sku,
         })),
-        priceRange: getPriceRange() || `₹${parseFloat(data.basePrice).toFixed(2)}`,
+        priceRange: getPriceRange() || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -483,44 +477,23 @@ const AddProduct = () => {
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="basePrice"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Base Price (₹)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                placeholder="0.00" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <CategorySelector
-                                value={field.value}
-                                onChange={field.onChange}
-                                storeId={storeId}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <FormControl>
+                            <CategorySelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              storeId={storeId}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
