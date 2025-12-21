@@ -512,14 +512,6 @@ export default function SuperAdminDashboard() {
             <Button
               variant="ghost"
               className="w-full justify-start"
-              onClick={() => navigate('/superadmin/applications')}
-            >
-              <ClipboardList className="mr-2 h-4 w-4" />
-              Helper Applications
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
               onClick={() => navigate('/superadmin/helpers')}
             >
               <Users className="mr-2 h-4 w-4" />

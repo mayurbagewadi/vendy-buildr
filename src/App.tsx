@@ -20,7 +20,6 @@ import Orders from "./pages/admin/Orders";
 import Analytics from "./pages/admin/Analytics";
 import Categories from "./pages/admin/Categories";
 import Subscription from "./pages/admin/Subscription";
-import Applications from "./pages/admin/Applications";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import CustomerCategories from "./pages/customer/Categories";
@@ -32,7 +31,7 @@ import Auth from "./pages/Auth";
 import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
-import SuperAdminHelpers from "./pages/superadmin/Helpers";
+import HelperManagement from "./pages/superadmin/HelperManagement";
 import SuperAdminCommissions from "./pages/superadmin/Commissions";
 import SuperAdminCommissionSettings from "./pages/superadmin/CommissionSettings";
 import SuperAdminReportsAnalytics from "./pages/superadmin/ReportsAnalytics";
@@ -135,8 +134,7 @@ const App = () => {
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/superadmin/users" element={<SuperAdminUsers />} />
-            <Route path="/superadmin/applications" element={<Applications />} />
-            <Route path="/superadmin/helpers" element={<SuperAdminHelpers />} />
+            <Route path="/superadmin/helpers" element={<HelperManagement />} />
             <Route path="/superadmin/commissions" element={<SuperAdminCommissions />} />
             <Route path="/superadmin/commission-settings" element={<SuperAdminCommissionSettings />} />
             <Route path="/superadmin/reports-analytics" element={<SuperAdminReportsAnalytics />} />
