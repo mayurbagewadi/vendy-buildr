@@ -163,9 +163,11 @@ export default function HelperManagement() {
     }
   };
 
-  // Stats
+  // Stats - exclude approved applications to avoid duplication
+  const nonApprovedApplications = applications.filter(a => a.application_status !== "Approved");
+
   const stats = {
-    total: applications.length + helpers.length,
+    total: nonApprovedApplications.length + helpers.length,
     pending: applications.filter(a => a.application_status === "Pending").length,
     approved: helpers.filter(h => h.status === "Active").length,
     rejected: applications.filter(a => a.application_status === "Rejected").length,
@@ -191,8 +193,11 @@ export default function HelperManagement() {
           .map(a => ({ ...a, type: 'application' as const }));
         break;
       case "all":
+        // Exclude approved applications to avoid showing duplicates (they're already in helpers table)
         data = [
-          ...applications.map(a => ({ ...a, type: 'application' as const })),
+          ...applications
+            .filter(a => a.application_status !== "Approved")
+            .map(a => ({ ...a, type: 'application' as const })),
           ...helpers.map(h => ({ ...h, type: 'helper' as const }))
         ];
         break;
