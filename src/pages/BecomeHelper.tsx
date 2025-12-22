@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,23 +17,12 @@ const formSchema = z.object({
   full_name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
-  password: z.string().optional(),
-  confirm_password: z.string().optional(),
   why_helper: z.string().optional(),
   bank_account_name: z.string().min(2, "Account holder name is required"),
   bank_account_number: z.string().min(8, "Invalid account number"),
   bank_ifsc_code: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format"),
   bank_name: z.string().min(2, "Bank name is required"),
   terms: z.boolean().refine((val) => val === true, "You must agree to terms and conditions"),
-}).refine((data) => {
-  // Only validate password match if password is provided (email signup)
-  if (data.password && data.confirm_password) {
-    return data.password === data.confirm_password;
-  }
-  return true;
-}, {
-  message: "Passwords don't match",
-  path: ["confirm_password"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,8 +43,6 @@ export default function BecomeHelper() {
       full_name: "",
       email: "",
       phone: "",
-      password: "",
-      confirm_password: "",
       why_helper: "",
       bank_account_name: "",
       bank_account_number: "",
@@ -185,47 +171,13 @@ export default function BecomeHelper() {
         }
       }
 
-      let userId: string;
-
-      // If Google user, skip auth signup (already authenticated)
-      if (isGoogleUser && googleUserId) {
-        userId = googleUserId;
-      } else {
-        // Email/password signup - validate password first
-        if (!values.password || values.password.length < 6) {
-          toast.error("Password must be at least 6 characters");
-          return;
-        }
-
-        // Create auth user with email/password
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: values.email,
-          password: values.password!,
-          options: {
-            data: {
-              full_name: values.full_name,
-              user_type: 'helper_applicant',
-            },
-            emailRedirectTo: `${window.location.origin}/application-status`,
-          },
-        });
-
-        if (authError) {
-          if (authError.message.includes("already registered")) {
-            toast.error("This email is already registered");
-          } else {
-            throw authError;
-          }
-          return;
-        }
-
-        if (!authData.user) {
-          toast.error("Failed to create account");
-          return;
-        }
-
-        userId = authData.user.id;
+      // User must be authenticated with Google to submit application
+      if (!isGoogleUser || !googleUserId) {
+        toast.error("Please sign in with Google first to submit your application");
+        return;
       }
+
+      const userId = googleUserId;
 
       // Get recruiter ID if referral code exists
       let recruited_by_helper_id = null;
@@ -349,13 +301,16 @@ export default function BecomeHelper() {
           <CardContent>
             {/* Google Sign Up Option - Only show if not already a Google user */}
             {!isGoogleUser && (
-              <>
+              <div className="mb-6">
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  Please sign in with Google to continue with your application
+                </p>
                 <Button
                   type="button"
                   onClick={handleGoogleSignUp}
                   disabled={isGoogleLoading}
                   variant="outline"
-                  className="w-full mb-4"
+                  className="w-full"
                   size="lg"
                 >
                   {isGoogleLoading ? (
@@ -387,22 +342,12 @@ export default function BecomeHelper() {
                     </>
                   )}
                 </Button>
-
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">
-                      Or fill the form below
-                    </span>
-                  </div>
-                </div>
-              </>
+              </div>
             )}
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {isGoogleUser && (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="full_name"
@@ -461,39 +406,6 @@ export default function BecomeHelper() {
                     </FormItem>
                   )}
                 />
-
-                {/* Only show password fields for email/password signup */}
-                {!isGoogleUser && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password *</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Create a password (min 6 characters)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="confirm_password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password *</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Confirm your password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
 
                 <FormField
                   control={form.control}
@@ -594,6 +506,7 @@ export default function BecomeHelper() {
                 </Button>
               </form>
             </Form>
+            )}
           </CardContent>
         </Card>
       </div>

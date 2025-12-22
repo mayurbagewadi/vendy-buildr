@@ -4,9 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, XCircle } from "lucide-react";
 import { AppLogo } from "@/components/ui/AppLogo";
@@ -18,8 +15,6 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [showDeletedAlert, setShowDeletedAlert] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   useEffect(() => {
     // Capture referral code from URL and store in sessionStorage
@@ -45,11 +40,14 @@ export default function Auth() {
         setHasSession(true);
         
         // First check if user is a helper
-        const { data: helperData } = await supabase
+        console.log('[Auth] Checking for helper with ID:', session.user.id);
+        const { data: helperData, error: helperError } = await supabase
           .from('helpers')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle();
+
+        console.log('[Auth] Helper query result:', { helperData, helperError });
 
         if (helperData) {
           console.log('[Auth] Helper found - redirecting to helper dashboard');
@@ -90,11 +88,14 @@ export default function Auth() {
         setTimeout(async () => {
           try {
             // First check if user is a helper
-            const { data: helperData } = await supabase
+            console.log('[Auth] SIGNED_IN - Checking for helper with ID:', session.user.id);
+            const { data: helperData, error: helperError } = await supabase
               .from('helpers')
               .select('*')
               .eq('id', session.user.id)
               .maybeSingle();
+
+            console.log('[Auth] SIGNED_IN - Helper query result:', { helperData, helperError });
 
             if (helperData) {
               console.log('[Auth] Helper found - redirecting to helper dashboard');
@@ -202,59 +203,6 @@ export default function Auth() {
     }
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !password) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter both email and password",
-      });
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      console.log('[Auth] Starting email/password sign in...');
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('[Auth] Sign in error:', error);
-
-        // Handle email not confirmed error specifically
-        if (error.message.includes("Email not confirmed")) {
-          toast({
-            variant: "destructive",
-            title: "Email Not Confirmed",
-            description: "Please check your email and click the confirmation link we sent you. Check your spam folder if you don't see it.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error.message,
-          });
-        }
-      } else {
-        console.log('[Auth] Sign in successful');
-      }
-    } catch (error) {
-      console.error('[Auth] Unexpected error:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       setIsLoading(true);
@@ -347,60 +295,6 @@ export default function Auth() {
             </>
           ) : (
             <>
-              {/* Email/Password Login Form */}
-              <form onSubmit={handleEmailSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    "Sign in with Email"
-                  )}
-                </Button>
-              </form>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
               {/* Google OAuth Login */}
               <Button
                 onClick={handleGoogleSignIn}
