@@ -126,7 +126,57 @@ export default function BecomeHelper() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      // Check if email exists in applications
+      // CRITICAL: Check if email exists in stores table (store owners cannot be helpers)
+      const { data: storeWithEmail } = await supabase
+        .from("stores")
+        .select("id, name, user_id")
+        .eq("user_id", await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("email", values.email)
+          .maybeSingle()
+          .then(({ data }) => data?.user_id)
+        )
+        .maybeSingle();
+
+      if (storeWithEmail) {
+        toast.error(`❌ BLOCKED: This email (${values.email}) is already registered as a store owner (${storeWithEmail.name}). Store owners cannot become helpers. Please use a different email.`);
+        return;
+      }
+
+      // Alternative check: Direct store lookup by matching user_id from email
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", values.email)
+        .maybeSingle();
+
+      if (profileData) {
+        const { data: existingStore } = await supabase
+          .from("stores")
+          .select("id, name")
+          .eq("user_id", profileData.user_id)
+          .maybeSingle();
+
+        if (existingStore) {
+          toast.error(`❌ BLOCKED: This email is registered as store owner of "${existingStore.name}". Store owners cannot become helpers. Use a different email.`);
+          return;
+        }
+      }
+
+      // Check if phone number belongs to an existing store owner
+      const { data: storeWithPhone } = await supabase
+        .from("stores")
+        .select("id, name, whatsapp_number")
+        .eq("whatsapp_number", values.phone)
+        .maybeSingle();
+
+      if (storeWithPhone) {
+        toast.error(`❌ BLOCKED: This phone number is already registered for store "${storeWithPhone.name}". Store owners cannot become helpers. Use a different phone number.`);
+        return;
+      }
+
+      // Check if email exists in helper applications
       const { data: emailExists } = await supabase
         .from("helper_applications")
         .select("email")
@@ -138,7 +188,7 @@ export default function BecomeHelper() {
         return;
       }
 
-      // Check if phone exists
+      // Check if phone exists in helper applications
       const { data: phoneExists } = await supabase
         .from("helper_applications")
         .select("phone")
@@ -146,29 +196,8 @@ export default function BecomeHelper() {
         .maybeSingle();
 
       if (phoneExists) {
-        toast.error("This phone number is already registered");
+        toast.error("This phone number is already registered as a helper");
         return;
-      }
-
-      // Check if this email is already registered as a store owner
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("user_id, email")
-        .eq("email", values.email)
-        .maybeSingle();
-
-      if (existingProfile) {
-        // Check if this user owns a store
-        const { data: existingStore } = await supabase
-          .from("stores")
-          .select("id, store_name")
-          .eq("user_id", existingProfile.user_id)
-          .maybeSingle();
-
-        if (existingStore) {
-          toast.error("This email is already registered as a store owner. Store owners cannot become helpers. Please use a different email address.");
-          return;
-        }
       }
 
       // User must be authenticated with Google to submit application

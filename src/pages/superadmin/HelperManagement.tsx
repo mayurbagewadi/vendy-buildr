@@ -217,43 +217,26 @@ export default function HelperManagement() {
 
   const handleApprove = async (application: HelperApplication) => {
     try {
-      const { count } = await supabase
-        .from("helpers")
-        .select("*", { count: "exact", head: true });
-
-      const referralCode = `HELP${String((count || 0) + 1).padStart(3, "0")}`;
-      const baseUrl = window.location.origin;
-
-      const { error: helperError } = await supabase.from("helpers").insert({
-        id: application.user_id,
-        application_id: application.id,
-        full_name: application.full_name,
-        email: application.email,
-        phone: application.phone,
-        referral_code: referralCode,
-        store_referral_link: `${baseUrl}/signup?ref=${referralCode}`,
-        helper_recruitment_link: `${baseUrl}/become-helper?ref=${referralCode}`,
-        recruited_by_helper_id: application.recruited_by_helper_id,
-        status: "Active",
+      // Call database RPC function with SECURITY DEFINER (bypasses RLS)
+      const { data: result, error } = await supabase.rpc('approve_helper_application', {
+        p_application_id: application.id
       });
 
-      if (helperError) throw helperError;
+      if (error) {
+        console.error("Error calling approve RPC:", error);
+        throw new Error(error.message || "Failed to approve helper");
+      }
 
-      const { error: updateError } = await supabase
-        .from("helper_applications")
-        .update({
-          application_status: "Approved",
-          approved_at: new Date().toISOString(),
-        })
-        .eq("id", application.id);
+      if (!result?.success) {
+        console.error("Approve helper failed:", result);
+        throw new Error(result?.error || "Approval operation failed");
+      }
 
-      if (updateError) throw updateError;
-
-      toast.success("Helper approved and activated!");
+      toast.success(`Helper approved! Referral code: ${result.referralCode}`);
       await loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving application:", error);
-      toast.error("Failed to approve application");
+      toast.error(error.message || "Failed to approve application");
     }
   };
 
@@ -340,8 +323,25 @@ export default function HelperManagement() {
         body: { userId, deleteType }
       });
 
-      if (error) throw new Error(error.message || "Failed to delete");
-      if (!result?.success) throw new Error(result?.error || "Delete operation failed");
+      if (error) {
+        // Check if it's a blocked deletion (403 Forbidden)
+        if (error.message?.includes('BLOCKED') || error.message?.includes('store owner')) {
+          toast.error(`🚫 ${error.message}`, { duration: 8000 });
+          setDeleteModal(false);
+          return;
+        }
+        throw new Error(error.message || "Failed to delete");
+      }
+
+      if (!result?.success) {
+        // Check for blocked deletion in result
+        if (result?.error?.includes('BLOCKED') || result?.error?.includes('store owner')) {
+          toast.error(`🚫 ${result.error}`, { duration: 8000 });
+          setDeleteModal(false);
+          return;
+        }
+        throw new Error(result?.error || "Delete operation failed");
+      }
 
       if (selectedApplication) {
         await supabase.from("helper_applications").delete().eq("id", selectedApplication.id);

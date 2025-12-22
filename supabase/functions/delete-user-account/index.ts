@@ -72,14 +72,22 @@ serve(async (req) => {
 
     console.log('[delete-user-account] Deleting user:', userId);
 
-    // First, get all store IDs for this user (to delete store-related data)
+    // CRITICAL SAFETY CHECK: Warn if user has stores (data will be permanently deleted)
     const { data: userStores } = await supabaseAdmin
       .from('stores')
-      .select('id')
+      .select('id, name')
       .eq('user_id', userId);
 
     const storeIds = userStores?.map(s => s.id) || [];
+    const storeNames = userStores?.map(s => s.name).join(', ') || '';
+
     console.log('[delete-user-account] Found stores:', storeIds.length);
+
+    if (storeIds.length > 0) {
+      console.warn('[delete-user-account] ⚠️  WARNING: User owns stores that will be PERMANENTLY DELETED:', storeNames);
+      // Log for audit trail - this is a destructive operation
+      console.warn('[delete-user-account] Stores to be deleted:', JSON.stringify(userStores));
+    }
 
     // Delete store-related data (respecting foreign key constraints)
     if (storeIds.length > 0) {

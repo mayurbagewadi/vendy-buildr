@@ -47,6 +47,29 @@ serve(async (req) => {
 
     console.log('[delete-helper] Deleting helper/application:', userId, 'Type:', deleteType);
 
+    // CRITICAL SAFETY CHECK: Prevent deletion if user is a store owner
+    const { data: storeCheck, error: storeCheckError } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (storeCheckError) {
+      console.error('[delete-helper] Error checking for stores:', storeCheckError);
+    }
+
+    if (storeCheck) {
+      console.error('[delete-helper] BLOCKED: User owns a store:', storeCheck.name);
+      return new Response(
+        JSON.stringify({
+          error: `BLOCKED: Cannot delete helper. This user owns the store "${storeCheck.name}". Store owners cannot be deleted as helpers to prevent data loss.`,
+          storeId: storeCheck.id,
+          storeName: storeCheck.name
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
     if (deleteType === 'helper') {
       // Delete helper (cascades to store_referrals, network_commissions via ON DELETE CASCADE)
       const { error: helperError } = await supabaseAdmin
