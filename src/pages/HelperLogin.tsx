@@ -1,115 +1,106 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Loader2, Users, ArrowLeft } from "lucide-react";
 
 export default function HelperLogin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Check for existing session and handle OAuth redirects
+  useEffect(() => {
+    const checkHelperSession = async (userId: string) => {
+      try {
+        console.log('[HelperLogin] Checking helper status for user:', userId);
 
-    if (!email || !password) {
-      toast.error("Please enter both email and password");
-      return;
-    }
+        // Check if user is an approved helper
+        const { data: helperData, error: helperError } = await supabase
+          .from('helpers')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
 
-    try {
-      setLoading(true);
-
-      // Sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        // Handle specific errors
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error("Invalid email or password. Please check your credentials.");
-        } else {
-          toast.error(error.message);
+        if (helperError) {
+          console.error('[HelperLogin] Error checking helper status:', helperError);
+          return;
         }
-        return;
-      }
 
-      if (!data.user) {
-        toast.error("Login failed. Please try again.");
-        return;
-      }
-
-      console.log("[HelperLogin] User ID:", data.user.id);
-      console.log("[HelperLogin] User Email:", data.user.email);
-
-      // Check if user is an approved helper
-      const { data: helperData, error: helperError } = await supabase
-        .from("helpers")
-        .select("*")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      console.log("[HelperLogin] Helper check - Error:", helperError);
-      console.log("[HelperLogin] Helper check - Data:", helperData);
-
-      if (helperError) {
-        console.error("Error checking helper status:", helperError);
-        toast.error("Failed to verify helper status");
-        return;
-      }
-
-      if (helperData) {
-        // User is an approved helper
-        toast.success("Welcome back!");
-        navigate("/helper/dashboard");
-        return;
-      }
-
-      // Check if user has a pending application
-      const { data: applicationData, error: appError } = await supabase
-        .from("helper_applications")
-        .select("*")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-
-      console.log("[HelperLogin] Application check - Error:", appError);
-      console.log("[HelperLogin] Application check - Data:", applicationData);
-
-      if (applicationData) {
-        // User has an application
-        if (applicationData.application_status === "Pending") {
-          toast.info("Your application is under review");
-          navigate("/application-status");
-        } else if (applicationData.application_status === "Rejected") {
-          toast.error("Your helper application was rejected");
-          navigate("/application-status");
-        } else {
-          toast.info("Checking your application status...");
-          navigate("/application-status");
+        if (helperData) {
+          // User is an approved helper - redirect to dashboard
+          console.log('[HelperLogin] Approved helper found, redirecting to dashboard');
+          toast.success('Welcome back!');
+          navigate('/helper/dashboard');
+          return;
         }
-        return;
+
+        // Check if user has a pending application
+        const { data: applicationData, error: appError } = await supabase
+          .from('helper_applications')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (appError) {
+          console.error('[HelperLogin] Error checking application:', appError);
+          return;
+        }
+
+        if (applicationData) {
+          // User has an application - redirect based on status
+          console.log('[HelperLogin] Application found with status:', applicationData.application_status);
+
+          if (applicationData.application_status === 'Pending') {
+            toast.info('Your application is under review');
+          } else if (applicationData.application_status === 'Rejected') {
+            toast.error('Your helper application was rejected');
+          } else {
+            toast.info('Checking your application status...');
+          }
+
+          navigate('/application-status');
+          return;
+        }
+
+        // User is not a helper and has no application
+        console.log('[HelperLogin] No helper or application found');
+        toast.error('You are not registered as a helper. Please apply to become a helper first.');
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('[HelperLogin] Error in session check:', error);
       }
+    };
 
-      // User is not a helper and has no application
-      console.log("[HelperLogin] No helper or application found");
-      toast.error("You are not registered as a helper. Please apply to become a helper first.");
-      await supabase.auth.signOut();
+    // Check for existing session on page load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        console.log('[HelperLogin] Existing session found');
+        await checkHelperSession(session.user.id);
+      }
+      setCheckingSession(false);
+    });
 
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast.error(error.message || "An error occurred during login");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Listen for auth state changes (OAuth redirects)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[HelperLogin] Auth state changed:', event);
+
+      if (event === 'SIGNED_IN' && session) {
+        console.log('[HelperLogin] User signed in, checking helper status');
+        setCheckingSession(true);
+
+        // Defer check to avoid auth deadlock
+        setTimeout(async () => {
+          await checkHelperSession(session.user.id);
+          setCheckingSession(false);
+        }, 100);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -164,68 +155,21 @@ export default function HelperLogin() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="helper@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+            {checkingSession ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Checking your session...</p>
+              </div>
+            ) : (
+              <>
+                {/* Google OAuth Login */}
+                <Button
+                  onClick={handleGoogleSignIn}
                   disabled={loading}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign in with Email"
-                )}
-              </Button>
-            </form>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            {/* Google OAuth Login */}
-            <Button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              variant="outline"
-              className="w-full"
-              size="lg"
-            >
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -275,6 +219,8 @@ export default function HelperLogin() {
                 </Link>
               </p>
             </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
