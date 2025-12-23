@@ -701,32 +701,6 @@ export default function HelperManagement() {
                                 <div className="flex gap-2 justify-end">
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedHelper(helper);
-                                      setViewHelperModal(true);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-1" />
-                                    View
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedHelper(helper);
-                                      setEditRatesForm({
-                                        direct_rate: helper.direct_commission_rate,
-                                        network_rate: helper.network_commission_rate,
-                                        reason: "",
-                                      });
-                                      setEditRatesModal(true);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
                                     variant={helper.status === "Active" ? "destructive" : "default"}
                                     onClick={() => handleSuspend(helper)}
                                   >
