@@ -51,6 +51,7 @@ import {
   TrendingUp,
   Network,
 } from "lucide-react";
+import ViewHelperDetailsModal from "@/components/superadmin/ViewHelperDetailsModal";
 
 interface HelperApplication {
   id: string;
@@ -99,6 +100,7 @@ export default function HelperManagement() {
 
   // Modals
   const [viewDetailsModal, setViewDetailsModal] = useState(false);
+  const [viewHelperModal, setViewHelperModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [editRatesModal, setEditRatesModal] = useState(false);
@@ -702,6 +704,17 @@ export default function HelperManagement() {
                                     variant="outline"
                                     onClick={() => {
                                       setSelectedHelper(helper);
+                                      setViewHelperModal(true);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedHelper(helper);
                                       setEditRatesForm({
                                         direct_rate: helper.direct_commission_rate,
                                         network_rate: helper.network_commission_rate,
@@ -1145,6 +1158,16 @@ export default function HelperManagement() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* View Helper Details Modal */}
+        {selectedHelper && (
+          <ViewHelperDetailsModal
+            open={viewHelperModal}
+            onOpenChange={setViewHelperModal}
+            helperId={selectedHelper.id}
+            helperName={selectedHelper.full_name}
+          />
+        )}
       </div>
     </div>
   );
