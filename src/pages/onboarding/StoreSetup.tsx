@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Store, Check, X, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Store, Check, X, Loader2, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { seedDemoDataForStore } from "@/lib/seedDemoData";
 
@@ -16,7 +17,9 @@ const StoreSetup = () => {
   const [loading, setLoading] = useState(false);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [userName, setUserName] = useState("");
-  
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [blockErrorMessage, setBlockErrorMessage] = useState("");
+
   const [formData, setFormData] = useState({
     storeName: "",
     storeSlug: "",
@@ -24,7 +27,7 @@ const StoreSetup = () => {
     whatsappNumber: "",
     countryCode: "+91"
   });
-  
+
   const [slugStatus, setSlugStatus] = useState<"idle" | "available" | "taken">("idle");
 
   useEffect(() => {
@@ -51,12 +54,9 @@ const StoreSetup = () => {
       .maybeSingle();
 
     if (existingHelper) {
-      toast({
-        title: "Access Denied",
-        description: "You are registered as a helper. Helpers cannot create stores. Please contact support if you need assistance.",
-        variant: "destructive"
-      });
-      navigate("/helper/dashboard");
+      setBlockErrorMessage("You are registered as a helper. Helpers cannot create stores. Please contact support if you need assistance.");
+      setBlockModalOpen(true);
+      setTimeout(() => navigate("/helper/dashboard"), 3000);
       return;
     }
 
@@ -68,12 +68,9 @@ const StoreSetup = () => {
       .maybeSingle();
 
     if (helperApplication) {
-      toast({
-        title: "Access Denied",
-        description: "You have applied or are registered as a helper. Helpers cannot create stores.",
-        variant: "destructive"
-      });
-      navigate("/application-status");
+      setBlockErrorMessage("You have applied or are registered as a helper. Helpers cannot create stores.");
+      setBlockModalOpen(true);
+      setTimeout(() => navigate("/application-status"), 3000);
       return;
     }
 
@@ -450,6 +447,34 @@ const StoreSetup = () => {
           </div>
         </div>
       </div>
+
+      {/* Blocking Error Modal */}
+      <Dialog open={blockModalOpen} onOpenChange={setBlockModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="rounded-full bg-red-100 p-3">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl font-bold text-red-600">
+              Access Blocked
+            </DialogTitle>
+            <DialogDescription className="text-center text-base pt-4">
+              {blockErrorMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={() => setBlockModalOpen(false)}
+              className="w-full sm:w-auto"
+              variant="default"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

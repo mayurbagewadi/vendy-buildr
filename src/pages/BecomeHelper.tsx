@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle, Users, DollarSign, MapPin, Loader2 } from "lucide-react";
+import { CheckCircle, Users, DollarSign, MapPin, Loader2, XCircle } from "lucide-react";
 import { useSearchParams, Link } from "react-router-dom";
 
 const formSchema = z.object({
@@ -35,6 +36,8 @@ export default function BecomeHelper() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [googleUserId, setGoogleUserId] = useState<string | null>(null);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [blockErrorMessage, setBlockErrorMessage] = useState("");
   const referralCode = searchParams.get("ref");
 
   const form = useForm<FormValues>({
@@ -140,7 +143,8 @@ export default function BecomeHelper() {
         .maybeSingle();
 
       if (storeWithEmail) {
-        toast.error(`❌ BLOCKED: This email (${values.email}) is already registered as a store owner (${storeWithEmail.name}). Store owners cannot become helpers. Please use a different email.`);
+        setBlockErrorMessage(`This email (${values.email}) is already registered as a store owner of "${storeWithEmail.name}". Store owners cannot become helpers. Please use a different email.`);
+        setBlockModalOpen(true);
         return;
       }
 
@@ -159,7 +163,8 @@ export default function BecomeHelper() {
           .maybeSingle();
 
         if (existingStore) {
-          toast.error(`❌ BLOCKED: This email is registered as store owner of "${existingStore.name}". Store owners cannot become helpers. Use a different email.`);
+          setBlockErrorMessage(`This email is registered as store owner of "${existingStore.name}". Store owners cannot become helpers. Please use a different email.`);
+          setBlockModalOpen(true);
           return;
         }
       }
@@ -172,7 +177,8 @@ export default function BecomeHelper() {
         .maybeSingle();
 
       if (storeWithPhone) {
-        toast.error(`❌ BLOCKED: This phone number is already registered for store "${storeWithPhone.name}". Store owners cannot become helpers. Use a different phone number.`);
+        setBlockErrorMessage(`This phone number is already registered for store "${storeWithPhone.name}". Store owners cannot become helpers. Please use a different phone number.`);
+        setBlockModalOpen(true);
         return;
       }
 
@@ -539,6 +545,34 @@ export default function BecomeHelper() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Blocking Error Modal */}
+      <Dialog open={blockModalOpen} onOpenChange={setBlockModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="rounded-full bg-red-100 p-3">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl font-bold text-red-600">
+              Access Blocked
+            </DialogTitle>
+            <DialogDescription className="text-center text-base pt-4">
+              {blockErrorMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={() => setBlockModalOpen(false)}
+              className="w-full sm:w-auto"
+              variant="default"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
