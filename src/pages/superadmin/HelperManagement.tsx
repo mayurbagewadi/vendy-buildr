@@ -890,6 +890,17 @@ export default function HelperManagement() {
                                         variant="outline"
                                         onClick={() => {
                                           setSelectedHelper(helper!);
+                                          setViewHelperModal(true);
+                                        }}
+                                      >
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedHelper(helper!);
                                           setEditRatesForm({
                                             direct_rate: helper!.direct_commission_rate,
                                             network_rate: helper!.network_commission_rate,
