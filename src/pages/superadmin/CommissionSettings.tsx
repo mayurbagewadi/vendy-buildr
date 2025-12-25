@@ -16,11 +16,49 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Settings, Save, Plus, Info } from "lucide-react";
+import { Settings, Save, Plus, Info, ChevronDown, History, Calendar, User } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-interface PlanRate {
-  plan_name: string;
-  commission_rate: number;
+interface CommissionConfig {
+  model: "onetime" | "recurring" | "hybrid";
+  onetimeType: "percentage" | "fixed";
+  onetimeValue: number;
+  recurringType: "percentage" | "fixed";
+  recurringValue: number;
+  recurringDuration: number;
+}
+
+interface PlanCommissionOverride {
+  enabled: boolean;
+  monthly: CommissionConfig;
+  yearly: CommissionConfig;
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  monthly_price: number;
+  yearly_price: number;
+  is_active: boolean;
+}
+
+interface AuditRecord {
+  id: string;
+  created_at: string;
+  changed_by_email: string;
+  action: string;
+  table_name: string;
+  field_changed?: string;
+  old_value?: any;
+  new_value?: any;
+  change_reason?: string;
 }
 
 export default function SuperAdminCommissionSettings() {
@@ -28,14 +66,33 @@ export default function SuperAdminCommissionSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Global Commission Rates
-  const [defaultDirectRate, setDefaultDirectRate] = useState(10);
-  const [defaultNetworkRate, setDefaultNetworkRate] = useState(5);
-  const [planRates, setPlanRates] = useState<PlanRate[]>([
-    { plan_name: "Basic Plan", commission_rate: 10 },
-    { plan_name: "Premium Plan", commission_rate: 10 },
-    { plan_name: "Enterprise Plan", commission_rate: 10 }
-  ]);
+  // Network Commission Settings - Consolidated
+  const [networkMonthly, setNetworkMonthly] = useState<CommissionConfig>({
+    model: "recurring",
+    onetimeType: "percentage",
+    onetimeValue: 0,
+    recurringType: "percentage",
+    recurringValue: 0,
+    recurringDuration: 12
+  });
+
+  const [networkYearly, setNetworkYearly] = useState<CommissionConfig>({
+    model: "recurring",
+    onetimeType: "percentage",
+    onetimeValue: 0,
+    recurringType: "percentage",
+    recurringValue: 0,
+    recurringDuration: 12
+  });
+
+  // Active subscription type tab
+  const [activeSubscriptionTab, setActiveSubscriptionTab] = useState<"monthly" | "yearly">("monthly");
+
+  // Subscription Plans (fetched from database)
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+
+  // Plan-Specific Commission (initialized after fetching subscription plans)
+  const [planCommissions, setPlanCommissions] = useState<Record<string, PlanCommissionOverride>>({});
 
   // Feature Toggles
   const [enableMultiTier, setEnableMultiTier] = useState(true);
@@ -48,15 +105,39 @@ export default function SuperAdminCommissionSettings() {
   const [paymentSchedule, setPaymentSchedule] = useState("monthly");
   const [paymentDay, setPaymentDay] = useState("1st");
 
-  // Trial Period Settings
-  const [defaultTrialDays, setDefaultTrialDays] = useState(7);
-  const [sendTrialReminders, setSendTrialReminders] = useState(true);
-  const [reminderBeforeDays, setReminderBeforeDays] = useState(2);
 
   // Helper Recruitment Settings
   const [maxHelpersPerRecruiter, setMaxHelpersPerRecruiter] = useState(-1); // -1 = unlimited
   const [referralCodePrefix, setReferralCodePrefix] = useState("HELP");
   const [autoGenerateCodes, setAutoGenerateCodes] = useState(true);
+
+  // Audit Trail
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+  const [showAuditTrail, setShowAuditTrail] = useState(false);
+
+  // Helper Functions for Plan-Specific Commission
+  const togglePlanCommission = (planId: string) => {
+    setPlanCommissions(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        enabled: !prev[planId].enabled
+      }
+    }));
+  };
+
+  const updatePlanCommission = (planId: string, subscriptionType: "monthly" | "yearly", field: string, value: any) => {
+    setPlanCommissions(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        [subscriptionType]: {
+          ...prev[planId][subscriptionType],
+          [field]: value
+        }
+      }
+    }));
+  };
 
   useEffect(() => {
     checkSuperAdminAccess();
@@ -78,39 +159,257 @@ export default function SuperAdminCommissionSettings() {
     }
   };
 
+  const fetchSubscriptionPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('id, name, slug, monthly_price, yearly_price, is_active')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+
+      const plans = data || [];
+      setSubscriptionPlans(plans);
+
+      // Initialize plan commissions for fetched plans
+      const initialCommissions: Record<string, PlanCommissionOverride> = {};
+      plans.forEach(plan => {
+        initialCommissions[plan.id] = {
+          enabled: false,
+          monthly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 },
+          yearly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 }
+        };
+      });
+      setPlanCommissions(initialCommissions);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      toast.error("Failed to load subscription plans");
+    }
+  };
+
+  const fetchAuditRecords = async () => {
+    try {
+      // Note: This will work once the database migration is applied
+      const { data, error } = await supabase
+        .from('commission_settings_audit')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50); // Show last 50 changes
+
+      if (error) {
+        // If table doesn't exist yet (migration not applied), show friendly message
+        if (error.message.includes('does not exist')) {
+          console.info('Audit trail table not yet created');
+          setAuditRecords([]);
+          return;
+        }
+        throw error;
+      }
+
+      setAuditRecords(data || []);
+    } catch (error) {
+      console.error("Error fetching audit records:", error);
+      // Don't show error toast if table doesn't exist yet
+      if (!String(error).includes('does not exist')) {
+        toast.error("Failed to load audit trail");
+      }
+    }
+  };
+
   const loadSettings = async () => {
-    // In a real implementation, load from database
-    // For now, using default values
+    // Fetch subscription plans from database
+    await fetchSubscriptionPlans();
+    // In a real implementation, load commission settings from database
     toast.success("Settings loaded");
   };
 
-  const handleAddPlanRate = () => {
-    setPlanRates([...planRates, { plan_name: "New Plan", commission_rate: 10 }]);
-  };
+  const validateSettings = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
 
-  const handleUpdatePlanRate = (index: number, field: "plan_name" | "commission_rate", value: string | number) => {
-    const updated = [...planRates];
-    updated[index] = { ...updated[index], [field]: value };
-    setPlanRates(updated);
-  };
+    // 1. Validate Network Commission - Monthly
+    if (networkMonthly.model === "onetime" || networkMonthly.model === "hybrid") {
+      if (networkMonthly.onetimeType === "percentage" && (networkMonthly.onetimeValue < 0 || networkMonthly.onetimeValue > 100)) {
+        errors.push("Network Monthly: One-time percentage must be between 0-100%");
+      }
+      if (networkMonthly.onetimeType === "fixed" && networkMonthly.onetimeValue < 0) {
+        errors.push("Network Monthly: One-time fixed amount cannot be negative");
+      }
+    }
 
-  const handleDeletePlanRate = (index: number) => {
-    const updated = planRates.filter((_, i) => i !== index);
-    setPlanRates(updated);
+    if (networkMonthly.model === "recurring" || networkMonthly.model === "hybrid") {
+      if (networkMonthly.recurringType === "percentage" && (networkMonthly.recurringValue < 0 || networkMonthly.recurringValue > 100)) {
+        errors.push("Network Monthly: Recurring percentage must be between 0-100%");
+      }
+      if (networkMonthly.recurringType === "fixed" && networkMonthly.recurringValue < 0) {
+        errors.push("Network Monthly: Recurring fixed amount cannot be negative");
+      }
+      if (networkMonthly.recurringDuration < 1 || networkMonthly.recurringDuration > 24) {
+        errors.push("Network Monthly: Duration must be between 1-24 months");
+      }
+    }
+
+    // 2. Validate Network Commission - Yearly
+    if (networkYearly.model === "onetime" || networkYearly.model === "hybrid") {
+      if (networkYearly.onetimeType === "percentage" && (networkYearly.onetimeValue < 0 || networkYearly.onetimeValue > 100)) {
+        errors.push("Network Yearly: One-time percentage must be between 0-100%");
+      }
+      if (networkYearly.onetimeType === "fixed" && networkYearly.onetimeValue < 0) {
+        errors.push("Network Yearly: One-time fixed amount cannot be negative");
+      }
+    }
+
+    if (networkYearly.model === "recurring" || networkYearly.model === "hybrid") {
+      if (networkYearly.recurringType === "percentage" && (networkYearly.recurringValue < 0 || networkYearly.recurringValue > 100)) {
+        errors.push("Network Yearly: Recurring percentage must be between 0-100%");
+      }
+      if (networkYearly.recurringType === "fixed" && networkYearly.recurringValue < 0) {
+        errors.push("Network Yearly: Recurring fixed amount cannot be negative");
+      }
+      if (networkYearly.recurringDuration < 1 || networkYearly.recurringDuration > 24) {
+        errors.push("Network Yearly: Duration must be between 1-24 months");
+      }
+    }
+
+    // 3. Validate Plan-Specific Commissions
+    Object.entries(planCommissions).forEach(([planId, commission]) => {
+      if (commission.enabled) {
+        const plan = subscriptionPlans.find(p => p.id === planId);
+        const planName = plan?.name || "Unknown Plan";
+
+        // Validate Monthly
+        if (commission.monthly.model === "onetime" || commission.monthly.model === "hybrid") {
+          if (commission.monthly.onetimeType === "percentage" &&
+              (commission.monthly.onetimeValue < 0 || commission.monthly.onetimeValue > 100)) {
+            errors.push(`${planName} (Monthly): One-time percentage must be between 0-100%`);
+          }
+          if (commission.monthly.onetimeType === "fixed" && commission.monthly.onetimeValue < 0) {
+            errors.push(`${planName} (Monthly): One-time fixed amount cannot be negative`);
+          }
+        }
+
+        if (commission.monthly.model === "recurring" || commission.monthly.model === "hybrid") {
+          if (commission.monthly.recurringType === "percentage" &&
+              (commission.monthly.recurringValue < 0 || commission.monthly.recurringValue > 100)) {
+            errors.push(`${planName} (Monthly): Recurring percentage must be between 0-100%`);
+          }
+          if (commission.monthly.recurringType === "fixed" && commission.monthly.recurringValue < 0) {
+            errors.push(`${planName} (Monthly): Recurring fixed amount cannot be negative`);
+          }
+          if (commission.monthly.recurringDuration < 1 || commission.monthly.recurringDuration > 24) {
+            errors.push(`${planName} (Monthly): Duration must be between 1-24 months`);
+          }
+        }
+
+        // Validate Yearly
+        if (commission.yearly.model === "onetime" || commission.yearly.model === "hybrid") {
+          if (commission.yearly.onetimeType === "percentage" &&
+              (commission.yearly.onetimeValue < 0 || commission.yearly.onetimeValue > 100)) {
+            errors.push(`${planName} (Yearly): One-time percentage must be between 0-100%`);
+          }
+          if (commission.yearly.onetimeType === "fixed" && commission.yearly.onetimeValue < 0) {
+            errors.push(`${planName} (Yearly): One-time fixed amount cannot be negative`);
+          }
+        }
+
+        if (commission.yearly.model === "recurring" || commission.yearly.model === "hybrid") {
+          if (commission.yearly.recurringType === "percentage" &&
+              (commission.yearly.recurringValue < 0 || commission.yearly.recurringValue > 100)) {
+            errors.push(`${planName} (Yearly): Recurring percentage must be between 0-100%`);
+          }
+          if (commission.yearly.recurringType === "fixed" && commission.yearly.recurringValue < 0) {
+            errors.push(`${planName} (Yearly): Recurring fixed amount cannot be negative`);
+          }
+          if (commission.yearly.recurringDuration < 1 || commission.yearly.recurringDuration > 24) {
+            errors.push(`${planName} (Yearly): Duration must be between 1-24 months`);
+          }
+        }
+
+        // Warn if enabled but all values are 0
+        const hasMonthlyValue = (commission.monthly.model === "onetime" && commission.monthly.onetimeValue > 0) ||
+                                (commission.monthly.model === "recurring" && commission.monthly.recurringValue > 0) ||
+                                (commission.monthly.model === "hybrid" && (commission.monthly.onetimeValue > 0 || commission.monthly.recurringValue > 0));
+
+        const hasYearlyValue = (commission.yearly.model === "onetime" && commission.yearly.onetimeValue > 0) ||
+                               (commission.yearly.model === "recurring" && commission.yearly.recurringValue > 0) ||
+                               (commission.yearly.model === "hybrid" && (commission.yearly.onetimeValue > 0 || commission.yearly.recurringValue > 0));
+
+        if (!hasMonthlyValue && !hasYearlyValue) {
+          errors.push(`${planName}: Commission is enabled but all values are 0 - helpers will not earn anything`);
+        }
+      }
+    });
+
+    // 4. Validate System Configuration
+    if (minPayoutThreshold < 0) {
+      errors.push("Minimum Payout Threshold cannot be negative");
+    }
+
+    if (!referralCodePrefix || referralCodePrefix.trim() === "") {
+      errors.push("Referral Code Prefix cannot be empty");
+    }
+
+    if (referralCodePrefix.length > 6) {
+      errors.push("Referral Code Prefix must be 6 characters or less");
+    }
+
+    if (maxHelpersPerRecruiter < -1) {
+      errors.push("Max Helpers Per Recruiter must be -1 (unlimited) or a positive number");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   };
 
   const handleSaveSettings = async () => {
+    // Validate before saving
+    const validation = validateSettings();
+
+    if (!validation.isValid) {
+      // Show all validation errors
+      validation.errors.forEach((error, index) => {
+        setTimeout(() => {
+          toast.error(error, { duration: 5000 });
+        }, index * 100); // Stagger the toasts slightly
+      });
+      return; // Don't proceed with save
+    }
+
     setSaving(true);
     try {
       // In a real implementation, save to database
       // For now, just show success message
 
       const settings = {
-        global_rates: {
-          default_direct_rate: defaultDirectRate,
-          default_network_rate: defaultNetworkRate,
-          plan_specific_rates: planRates
+        network_commission: {
+          monthly: {
+            model: networkMonthly.model,
+            onetime: {
+              type: networkMonthly.onetimeType,
+              value: networkMonthly.onetimeValue
+            },
+            recurring: {
+              type: networkMonthly.recurringType,
+              value: networkMonthly.recurringValue,
+              duration_months: networkMonthly.recurringDuration
+            }
+          },
+          yearly: {
+            model: networkYearly.model,
+            onetime: {
+              type: networkYearly.onetimeType,
+              value: networkYearly.onetimeValue
+            },
+            recurring: {
+              type: networkYearly.recurringType,
+              value: networkYearly.recurringValue,
+              duration_months: networkYearly.recurringDuration
+            }
+          }
         },
+        plan_commissions: planCommissions,
         features: {
           enable_multi_tier: enableMultiTier,
           auto_approve_applications: autoApproveApplications,
@@ -121,11 +420,6 @@ export default function SuperAdminCommissionSettings() {
           min_payout_threshold: minPayoutThreshold,
           payment_schedule: paymentSchedule,
           payment_day: paymentDay
-        },
-        trial: {
-          default_trial_days: defaultTrialDays,
-          send_trial_reminders: sendTrialReminders,
-          reminder_before_days: reminderBeforeDays
         },
         recruitment: {
           max_helpers_per_recruiter: maxHelpersPerRecruiter,
@@ -159,9 +453,33 @@ export default function SuperAdminCommissionSettings() {
     );
   }
 
-  // Example calculator values
-  const exampleHelperEarning = 100;
-  const exampleRecruiterEarning = (exampleHelperEarning * defaultNetworkRate) / 100;
+  // Duration options
+  const durationOptions = [
+    { label: "1 month", value: 1 },
+    { label: "3 months", value: 3 },
+    { label: "6 months", value: 6 },
+    { label: "12 months", value: 12 },
+    { label: "24 months", value: 24 },
+  ];
+
+  // Calculate example earnings
+  const exampleMonthlySubscription = 100;
+  const exampleYearlySubscription = 1000;
+
+  const calculateNetworkCommission = (month: number, isYearly: boolean = false) => {
+    const subscription = isYearly ? exampleYearlySubscription : exampleMonthlySubscription;
+    const config = isYearly ? networkYearly : networkMonthly;
+
+    if (config.model === "onetime") {
+      return month === 1 ? (config.onetimeType === "percentage" ? (subscription * config.onetimeValue) / 100 : config.onetimeValue) : 0;
+    } else if (config.model === "recurring") {
+      return month <= config.recurringDuration ? (config.recurringType === "percentage" ? (subscription * config.recurringValue) / 100 : config.recurringValue) : 0;
+    } else {
+      const onetime = month === 1 ? (config.onetimeType === "percentage" ? (subscription * config.onetimeValue) / 100 : config.onetimeValue) : 0;
+      const recurring = month > 1 && month <= config.recurringDuration + 1 ? (config.recurringType === "percentage" ? (subscription * config.recurringValue) / 100 : config.recurringValue) : 0;
+      return onetime + recurring;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -182,116 +500,579 @@ export default function SuperAdminCommissionSettings() {
           </Button>
         </div>
 
-        {/* Global Commission Rates */}
+        {/* Network Commission Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Global Commission Rates</CardTitle>
-            <CardDescription>Set default commission rates for all helpers</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Default Direct Commission Rate (%)</Label>
-                <Input
-                  type="number"
-                  value={defaultDirectRate}
-                  onChange={(e) => setDefaultDirectRate(parseFloat(e.target.value))}
-                  min={0}
-                  max={100}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Commission earned when helper refers a store owner
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Default Network Commission Rate (%)</Label>
-                <Input
-                  type="number"
-                  value={defaultNetworkRate}
-                  onChange={(e) => setDefaultNetworkRate(parseFloat(e.target.value))}
-                  min={0}
-                  max={100}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Percentage of recruited helper's earning
-                </p>
-              </div>
-            </div>
-
-            {/* Example Calculator */}
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    Network Commission Example:
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    If a recruited helper earns ₹{exampleHelperEarning}, the recruiter gets{" "}
-                    <span className="font-bold">₹{exampleRecruiterEarning.toFixed(2)}</span>{" "}
-                    ({defaultNetworkRate}% of ₹{exampleHelperEarning})
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Plan-Specific Rates */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Plan-Specific Commission Rates</CardTitle>
-                <CardDescription>Set different rates for each subscription plan</CardDescription>
-              </div>
-              <Button size="sm" onClick={handleAddPlanRate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Plan
-              </Button>
-            </div>
+            <CardTitle>Network Commission Settings</CardTitle>
+            <CardDescription>Commission when helper recruits a another helper (multi-tier)</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Plan Name</TableHead>
-                  <TableHead>Commission Rate (%)</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {planRates.map((plan, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <Input
-                        value={plan.plan_name}
-                        onChange={(e) => handleUpdatePlanRate(index, "plan_name", e.target.value)}
+            <Tabs defaultValue="monthly" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="monthly">Monthly Subscription</TabsTrigger>
+                <TabsTrigger value="yearly">Yearly Subscription</TabsTrigger>
+              </TabsList>
+
+              {/* MONTHLY SUBSCRIPTION TAB */}
+              <TabsContent value="monthly" className="space-y-6">
+                {/* Model Selector */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Commission Model</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-monthly-onetime"
+                        name="network-monthly-model"
+                        checked={networkMonthly.model === "onetime"}
+                        onChange={() => setNetworkMonthly(prev => ({ ...prev, model: "onetime" }))}
+                        className="h-4 w-4"
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={plan.commission_rate}
-                        onChange={(e) => handleUpdatePlanRate(index, "commission_rate", parseFloat(e.target.value))}
-                        min={0}
-                        max={100}
+                      <Label htmlFor="network-monthly-onetime" className="font-normal cursor-pointer">
+                        Model 1: One-time Commission Only
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-monthly-recurring"
+                        name="network-monthly-model"
+                        checked={networkMonthly.model === "recurring"}
+                        onChange={() => setNetworkMonthly(prev => ({ ...prev, model: "recurring" }))}
+                        className="h-4 w-4"
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeletePlanRate(index)}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <Label htmlFor="network-monthly-recurring" className="font-normal cursor-pointer">
+                        Model 2: Recurring Commission Only
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-monthly-hybrid"
+                        name="network-monthly-model"
+                        checked={networkMonthly.model === "hybrid"}
+                        onChange={() => setNetworkMonthly(prev => ({ ...prev, model: "hybrid" }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="network-monthly-hybrid" className="font-normal cursor-pointer">
+                        Model 3: Onboarding + Recurring (Hybrid)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* One-time Commission */}
+                {(networkMonthly.model === "onetime" || networkMonthly.model === "hybrid") && (
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                    <Label className="text-base font-semibold">One-time Network Commission</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Commission Type</Label>
+                        <Select value={networkMonthly.onetimeType} onValueChange={(v: "percentage" | "fixed") => setNetworkMonthly(prev => ({ ...prev, onetimeType: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                            <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{networkMonthly.onetimeType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                        <Input
+                          type="number"
+                          value={networkMonthly.onetimeValue}
+                          onChange={(e) => setNetworkMonthly(prev => ({ ...prev, onetimeValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                          min={0}
+                          max={networkMonthly.onetimeType === "percentage" ? 100 : undefined}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paid when store completes onboarding and first subscription payment
+                    </p>
+                  </div>
+                )}
+
+                {/* Recurring Network Commission */}
+                {(networkMonthly.model === "recurring" || networkMonthly.model === "hybrid") && (
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                    <Label className="text-base font-semibold">Recurring Network Commission</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Commission Type</Label>
+                        <Select value={networkMonthly.recurringType} onValueChange={(v: "percentage" | "fixed") => setNetworkMonthly(prev => ({ ...prev, recurringType: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                            <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{networkMonthly.recurringType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                        <Input
+                          type="number"
+                          value={networkMonthly.recurringValue}
+                          onChange={(e) => setNetworkMonthly(prev => ({ ...prev, recurringValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                          min={0}
+                          max={networkMonthly.recurringType === "percentage" ? 100 : undefined}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Duration (Months)</Label>
+                        <Select value={networkMonthly.recurringDuration.toString()} onValueChange={(v) => setNetworkMonthly(prev => ({ ...prev, recurringDuration: parseInt(v) }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {durationOptions.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paid monthly for the specified duration while store remains active
+                    </p>
+                  </div>
+                )}
+
+                {/* Preview */}
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                    <div className="space-y-2 flex-1">
+                      <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                        Earnings Preview (Store pays ₹{exampleMonthlySubscription}/month):
+                      </p>
+                      <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
+                        <p>• Month 1: ₹{calculateNetworkCommission(1, false).toFixed(2)}</p>
+                        <p>• Month 2: ₹{calculateNetworkCommission(2, false).toFixed(2)}</p>
+                        <p>• Month 12: ₹{calculateNetworkCommission(12, false).toFixed(2)}</p>
+                        {networkMonthly.recurringDuration > 12 && (
+                          <p>• Month {networkMonthly.recurringDuration + 1}: ₹{calculateNetworkCommission(networkMonthly.recurringDuration + 1, false).toFixed(2)}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* YEARLY SUBSCRIPTION TAB */}
+              <TabsContent value="yearly" className="space-y-6">
+                {/* Model Selector */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Commission Model</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-yearly-onetime"
+                        name="network-yearly-model"
+                        checked={networkYearly.model === "onetime"}
+                        onChange={() => setNetworkYearly(prev => ({ ...prev, model: "onetime" }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="network-yearly-onetime" className="font-normal cursor-pointer">
+                        Model 1: One-time Commission Only
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-yearly-recurring"
+                        name="network-yearly-model"
+                        checked={networkYearly.model === "recurring"}
+                        onChange={() => setNetworkYearly(prev => ({ ...prev, model: "recurring" }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="network-yearly-recurring" className="font-normal cursor-pointer">
+                        Model 2: Recurring Commission Only
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="network-yearly-hybrid"
+                        name="network-yearly-model"
+                        checked={networkYearly.model === "hybrid"}
+                        onChange={() => setNetworkYearly(prev => ({ ...prev, model: "hybrid" }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="network-yearly-hybrid" className="font-normal cursor-pointer">
+                        Model 3: Onboarding + Recurring (Hybrid)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* One-time Commission */}
+                {(networkYearly.model === "onetime" || networkYearly.model === "hybrid") && (
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                    <Label className="text-base font-semibold">One-time Network Commission</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Commission Type</Label>
+                        <Select value={networkYearly.onetimeType} onValueChange={(v: "percentage" | "fixed") => setNetworkYearly(prev => ({ ...prev, onetimeType: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                            <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{networkYearly.onetimeType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                        <Input
+                          type="number"
+                          value={networkYearly.onetimeValue}
+                          onChange={(e) => setStoreYearlyOnetimeValue(e.target.value === "" ? 0 : Number(e.target.value))}
+                          min={0}
+                          max={networkYearly.onetimeType === "percentage" ? 100 : undefined}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paid when store purchases yearly subscription (higher to incentivize yearly sales)
+                    </p>
+                  </div>
+                )}
+
+                {/* Recurring Network Commission */}
+                {(networkYearly.model === "recurring" || networkYearly.model === "hybrid") && (
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                    <Label className="text-base font-semibold">Recurring Network Commission</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Commission Type</Label>
+                        <Select value={networkYearly.recurringType} onValueChange={(v: "percentage" | "fixed") => setNetworkYearly(prev => ({ ...prev, recurringType: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                            <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{networkYearly.recurringType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                        <Input
+                          type="number"
+                          value={networkYearly.recurringValue}
+                          onChange={(e) => setStoreYearlyRecurringValue(e.target.value === "" ? 0 : Number(e.target.value))}
+                          min={0}
+                          max={networkYearly.recurringType === "percentage" ? 100 : undefined}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Duration (Years)</Label>
+                        <Select value={networkYearly.recurringDuration.toString()} onValueChange={(v) => setNetworkYearly(prev => ({ ...prev, recurringDuration: parseInt(v) }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {durationOptions.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label} {opt.value > 1 ? "years" : "year"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paid yearly for the specified duration while store renews subscription
+                    </p>
+                  </div>
+                )}
+
+                {/* Preview */}
+                <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                    <div className="space-y-2 flex-1">
+                      <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                        Earnings Preview (Store pays ₹{exampleYearlySubscription}/year):
+                      </p>
+                      <div className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
+                        <p>• Year 1: ₹{calculateNetworkCommission(1, true).toFixed(2)}</p>
+                        <p>• Year 2: ₹{calculateNetworkCommission(2, true).toFixed(2)}</p>
+                        <p>• Year 12: ₹{calculateNetworkCommission(12, true).toFixed(2)}</p>
+                        {networkYearly.recurringDuration > 12 && (
+                          <p>• Year {networkYearly.recurringDuration + 1}: ₹{calculateNetworkCommission(networkYearly.recurringDuration + 1, true).toFixed(2)}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+        {/* Plan-Specific Commission */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Plan-Specific Commission</CardTitle>
+            <CardDescription>
+              Customize commission rates for specific subscription plans.
+              When disabled, global settings apply.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="multiple" className="w-full">
+              {subscriptionPlans.map((plan) => {
+                const commission = planCommissions[plan.id];
+                return (
+                  <AccordionItem key={plan.id} value={plan.id}>
+                    <AccordionTrigger>
+                      <div className="flex items-center justify-between w-full pr-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`font-semibold ${!commission.enabled ? "text-red-600 dark:text-red-400" : ""}`}>
+                            {plan.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            ₹{plan.monthly_price}/month • ₹{plan.yearly_price}/year
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Switch
+                            checked={commission.enabled}
+                            onCheckedChange={() => togglePlanCommission(plan.id)}
+                          />
+                          <span className={`text-sm ${!commission.enabled ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                            {commission.enabled ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {!commission.enabled ? (
+                        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+                          <p className="text-red-900 dark:text-red-100 font-semibold">
+                            ⚠️ Commission Disabled
+                          </p>
+                          <p className="text-red-700 dark:text-red-300 text-sm mt-2">
+                            Helpers will receive <strong>NO commission</strong> for recruiting store owners on this plan.
+                            Enable commission above to set rates.
+                          </p>
+                        </div>
+                      ) : (
+                        <Tabs defaultValue="monthly" className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 mb-6">
+                            <TabsTrigger value="monthly">Monthly Subscription</TabsTrigger>
+                            <TabsTrigger value="yearly">Yearly Subscription</TabsTrigger>
+                          </TabsList>
+
+                          {/* MONTHLY TAB */}
+                          <TabsContent value="monthly" className="space-y-4">
+                            {/* Model Selector */}
+                            <div className="space-y-2">
+                              <Label className="font-semibold">Commission Model</Label>
+                              <div className="space-y-2">
+                                {["onetime", "recurring", "hybrid"].map((model) => (
+                                  <div key={model} className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id={`${plan.id}-monthly-${model}`}
+                                      name={`${plan.id}-monthly-model`}
+                                      checked={commission.monthly.model === model}
+                                      onChange={() => updatePlanCommission(plan.id, "monthly", "model", model)}
+                                      className="h-4 w-4"
+                                    />
+                                    <Label htmlFor={`${plan.id}-monthly-${model}`} className="font-normal cursor-pointer">
+                                      Model {model === "onetime" ? "1" : model === "recurring" ? "2" : "3"}:
+                                      {model === "onetime" ? " One-time Only" : model === "recurring" ? " Recurring Only" : " Hybrid"}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Onboarding Commission */}
+                            {(commission.monthly.model === "onetime" || commission.monthly.model === "hybrid") && (
+                              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                                <Label className="font-semibold">Onboarding Commission</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select
+                                      value={commission.monthly.onetimeType}
+                                      onValueChange={(v: "percentage" | "fixed") => updatePlanCommission(plan.id, "monthly", "onetimeType", v)}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                        <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{commission.monthly.onetimeType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                                    <Input
+                                      type="number"
+                                      value={commission.monthly.onetimeValue}
+                                      onChange={(e) => updatePlanCommission(plan.id, "monthly", "onetimeValue", e.target.value === "" ? 0 : Number(e.target.value))}
+                                      min={0}
+                                      max={commission.monthly.onetimeType === "percentage" ? 100 : undefined}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Recurring Commission */}
+                            {(commission.monthly.model === "recurring" || commission.monthly.model === "hybrid") && (
+                              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                                <Label className="font-semibold">Recurring Commission</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select
+                                      value={commission.monthly.recurringType}
+                                      onValueChange={(v: "percentage" | "fixed") => updatePlanCommission(plan.id, "monthly", "recurringType", v)}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                        <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{commission.monthly.recurringType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                                    <Input
+                                      type="number"
+                                      value={commission.monthly.recurringValue}
+                                      onChange={(e) => updatePlanCommission(plan.id, "monthly", "recurringValue", e.target.value === "" ? 0 : Number(e.target.value))}
+                                      min={0}
+                                      max={commission.monthly.recurringType === "percentage" ? 100 : undefined}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Duration (Months)</Label>
+                                    <Select
+                                      value={commission.monthly.recurringDuration.toString()}
+                                      onValueChange={(v) => updatePlanCommission(plan.id, "monthly", "recurringDuration", parseInt(v))}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {durationOptions.map(opt => (
+                                          <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </TabsContent>
+
+                          {/* YEARLY TAB */}
+                          <TabsContent value="yearly" className="space-y-4">
+                            {/* Model Selector */}
+                            <div className="space-y-2">
+                              <Label className="font-semibold">Commission Model</Label>
+                              <div className="space-y-2">
+                                {["onetime", "recurring", "hybrid"].map((model) => (
+                                  <div key={model} className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id={`${plan.id}-yearly-${model}`}
+                                      name={`${plan.id}-yearly-model`}
+                                      checked={commission.yearly.model === model}
+                                      onChange={() => updatePlanCommission(plan.id, "yearly", "model", model)}
+                                      className="h-4 w-4"
+                                    />
+                                    <Label htmlFor={`${plan.id}-yearly-${model}`} className="font-normal cursor-pointer">
+                                      Model {model === "onetime" ? "1" : model === "recurring" ? "2" : "3"}:
+                                      {model === "onetime" ? " One-time Only" : model === "recurring" ? " Recurring Only" : " Hybrid"}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Onboarding Commission */}
+                            {(commission.yearly.model === "onetime" || commission.yearly.model === "hybrid") && (
+                              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                                <Label className="font-semibold">Onboarding Commission</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select
+                                      value={commission.yearly.onetimeType}
+                                      onValueChange={(v: "percentage" | "fixed") => updatePlanCommission(plan.id, "yearly", "onetimeType", v)}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                        <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{commission.yearly.onetimeType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                                    <Input
+                                      type="number"
+                                      value={commission.yearly.onetimeValue}
+                                      onChange={(e) => updatePlanCommission(plan.id, "yearly", "onetimeValue", e.target.value === "" ? 0 : Number(e.target.value))}
+                                      min={0}
+                                      max={commission.yearly.onetimeType === "percentage" ? 100 : undefined}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Recurring Commission */}
+                            {(commission.yearly.model === "recurring" || commission.yearly.model === "hybrid") && (
+                              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                                <Label className="font-semibold">Recurring Commission</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select
+                                      value={commission.yearly.recurringType}
+                                      onValueChange={(v: "percentage" | "fixed") => updatePlanCommission(plan.id, "yearly", "recurringType", v)}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                        <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{commission.yearly.recurringType === "percentage" ? "Rate (%)" : "Amount (₹)"}</Label>
+                                    <Input
+                                      type="number"
+                                      value={commission.yearly.recurringValue}
+                                      onChange={(e) => updatePlanCommission(plan.id, "yearly", "recurringValue", e.target.value === "" ? 0 : Number(e.target.value))}
+                                      min={0}
+                                      max={commission.yearly.recurringType === "percentage" ? 100 : undefined}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Duration (Years)</Label>
+                                    <Select
+                                      value={commission.yearly.recurringDuration.toString()}
+                                      onValueChange={(v) => updatePlanCommission(plan.id, "yearly", "recurringDuration", parseInt(v))}
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {durationOptions.map(opt => (
+                                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                                            {opt.label} {opt.value > 1 ? "years" : "year"}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </TabsContent>
+                        </Tabs>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </CardContent>
         </Card>
 
@@ -413,53 +1194,6 @@ export default function SuperAdminCommissionSettings() {
           </CardContent>
         </Card>
 
-        {/* Trial Period Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Trial Period Settings</CardTitle>
-            <CardDescription>Configure trial period for store owners</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Default Trial Days</Label>
-              <Input
-                type="number"
-                value={defaultTrialDays}
-                onChange={(e) => setDefaultTrialDays(parseInt(e.target.value))}
-                min={0}
-              />
-              <p className="text-xs text-muted-foreground">
-                Number of free trial days for new store owners
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Send Trial Expiry Reminders</Label>
-                <p className="text-xs text-muted-foreground">
-                  Notify store owners before their trial expires
-                </p>
-              </div>
-              <Switch checked={sendTrialReminders} onCheckedChange={setSendTrialReminders} />
-            </div>
-
-            {sendTrialReminders && (
-              <div className="space-y-2">
-                <Label>Send Reminder Before (Days)</Label>
-                <Input
-                  type="number"
-                  value={reminderBeforeDays}
-                  onChange={(e) => setReminderBeforeDays(parseInt(e.target.value))}
-                  min={1}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Send reminder this many days before trial expires
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Helper Recruitment Settings */}
         <Card>
           <CardHeader>
@@ -504,6 +1238,124 @@ export default function SuperAdminCommissionSettings() {
               <Switch checked={autoGenerateCodes} onCheckedChange={setAutoGenerateCodes} />
             </div>
           </CardContent>
+        </Card>
+
+        {/* Audit Trail Viewer */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Audit Trail
+                </CardTitle>
+                <CardDescription>
+                  Track all changes to commission settings
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAuditTrail(!showAuditTrail);
+                  if (!showAuditTrail) {
+                    fetchAuditRecords();
+                  }
+                }}
+              >
+                {showAuditTrail ? "Hide" : "Show"} History
+              </Button>
+            </div>
+          </CardHeader>
+
+          {showAuditTrail && (
+            <CardContent>
+              {auditRecords.length === 0 ? (
+                <div className="bg-muted/50 border border-dashed rounded-lg p-8 text-center">
+                  <History className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground font-medium">No audit records yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Changes to commission settings will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {auditRecords.map((record) => (
+                    <div
+                      key={record.id}
+                      className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              record.action === "created"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                : record.action === "updated"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                : record.action === "deleted"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                            }`}
+                          >
+                            {record.action.toUpperCase()}
+                          </span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {record.table_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(record.created_at).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm mb-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{record.changed_by_email || "Unknown User"}</span>
+                      </div>
+
+                      {record.field_changed && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Field:</span>{" "}
+                          <span className="font-mono bg-muted px-1.5 py-0.5 rounded">
+                            {record.field_changed}
+                          </span>
+                        </div>
+                      )}
+
+                      {(record.old_value || record.new_value) && (
+                        <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                          {record.old_value && (
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground font-semibold">Old Value:</p>
+                              <pre className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-2 text-xs overflow-auto max-h-32">
+                                {JSON.stringify(record.old_value, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {record.new_value && (
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground font-semibold">New Value:</p>
+                              <pre className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-2 text-xs overflow-auto max-h-32">
+                                {JSON.stringify(record.new_value, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {record.change_reason && (
+                        <div className="mt-3 text-sm">
+                          <span className="text-muted-foreground">Reason:</span>{" "}
+                          <span className="italic">{record.change_reason}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          )}
         </Card>
 
         {/* Save Button */}

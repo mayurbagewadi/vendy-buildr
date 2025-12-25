@@ -1,0 +1,114 @@
+# ============================================================================
+# AUTOMATED DATABASE BACKUP - Runs Every 6 Hours
+# ============================================================================
+# This workflow automatically backs up your Supabase database to cloud storage
+#
+# FEATURES:
+# - Runs every 6 hours automatically
+# - Keeps backups for 30 days
+# - Stores in Cloudflare R2 (10GB free)
+# - Can restore anytime
+# - Zero cost
+# ============================================================================
+
+name: 🗄️ Database Backup
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'  # At minute 0 past every 6th hour
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  backup-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🗄️ Backup Supabase Database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          # Install PostgreSQL client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+          # Create backup filename with timestamp
+          BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+
+          echo "📦 Creating database backup: $BACKUP_FILE"
+
+          # Create backup (plain SQL format - easy to restore)
+          pg_dump "$SUPABASE_DB_URL" \
+            --format=plain \
+            --no-owner \
+            --no-acl \
+            --file=$BACKUP_FILE
+
+          # Compress backup to save space
+          gzip $BACKUP_FILE
+
+          echo "✅ Backup created: ${BACKUP_FILE}.gz"
+          echo "📊 Backup size: $(du -h ${BACKUP_FILE}.gz | cut -f1)"
+
+      - name: ☁️ Upload to Cloudflare R2
+        env:
+          R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY }}
+          R2_SECRET_KEY: ${{ secrets.R2_SECRET_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          # Install AWS CLI (works with R2)
+          pip install awscli
+
+          # Configure AWS CLI for R2
+          aws configure set aws_access_key_id $R2_ACCESS_KEY
+          aws configure set aws_secret_access_key $R2_SECRET_KEY
+          aws configure set region auto
+
+          # Upload to R2 with date-based folder structure
+          BACKUP_PATH="backups/$(date +%Y)/$(date +%m)/$(date +%d)/"
+
+          aws s3 cp backup_*.sql.gz \
+            s3://$R2_BUCKET/$BACKUP_PATH \
+            --endpoint-url=$R2_ENDPOINT
+
+          echo "✅ Backup uploaded to: $BACKUP_PATH"
+
+      - name: 🧹 Cleanup old backups (Keep last 30 days)
+        env:
+          R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY }}
+          R2_SECRET_KEY: ${{ secrets.R2_SECRET_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          # Delete backups older than 30 days
+          CUTOFF_DATE=$(date -d '30 days ago' +%Y-%m-%d)
+
+          echo "🧹 Deleting backups older than: $CUTOFF_DATE"
+
+          # List and delete old backups
+          aws s3 ls s3://$R2_BUCKET/backups/ \
+            --endpoint-url=$R2_ENDPOINT \
+            --recursive | \
+            awk '{print $4}' | \
+            while read file; do
+              FILE_DATE=$(echo $file | grep -oP '\d{4}/\d{2}/\d{2}' | tr '/' '-')
+              if [[ "$FILE_DATE" < "$CUTOFF_DATE" ]]; then
+                echo "Deleting: $file"
+                aws s3 rm s3://$R2_BUCKET/$file --endpoint-url=$R2_ENDPOINT
+              fi
+            done
+
+          echo "✅ Cleanup completed"
+
+      - name: 📧 Send notification on failure
+        if: failure()
+        run: |
+          echo "❌ Backup FAILED at $(date)"
+          echo "Please check GitHub Actions logs"
+          # You can add email notification here if needed
