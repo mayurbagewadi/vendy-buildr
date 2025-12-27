@@ -71,6 +71,17 @@ export default function Auth() {
           navigate("/onboarding/store-setup");
         } else {
           console.log('[Auth] Redirecting to admin dashboard');
+
+          // Show welcome toast only once per session (bottom-left positioned)
+          if (!sessionStorage.getItem('welcomeShown')) {
+            toast({
+              title: "Welcome to your dashboard! 👋",
+              description: "All systems are running smoothly.",
+              className: "bottom-4 left-4 md:bottom-6 md:left-6",
+            });
+            sessionStorage.setItem('welcomeShown', 'true');
+          }
+
           navigate("/admin/dashboard");
         }
         setIsLoading(false);
@@ -147,10 +158,17 @@ export default function Auth() {
               navigate("/onboarding/store-setup");
             } else {
               console.log('[Auth] Existing user - redirecting to admin dashboard');
-              toast({
-                title: "Success",
-                description: providerToken ? "Welcome back! Google Drive connected." : "Welcome back!",
-              });
+
+              // Show welcome toast only once per session (bottom-left positioned)
+              if (!sessionStorage.getItem('welcomeShown')) {
+                toast({
+                  title: "Welcome to your dashboard! 👋",
+                  description: "All systems are running smoothly.",
+                  className: "bottom-4 left-4 md:bottom-6 md:left-6",
+                });
+                sessionStorage.setItem('welcomeShown', 'true');
+              }
+
               navigate("/admin/dashboard");
             }
           } catch (error) {

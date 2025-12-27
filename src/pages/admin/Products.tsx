@@ -37,6 +37,7 @@ import { toast } from "@/hooks/use-toast";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
 type Product = SharedProduct & {
   variantCount?: number;
@@ -44,6 +45,7 @@ type Product = SharedProduct & {
 
 const Products = () => {
   const navigate = useNavigate();
+  const subscriptionLimits = useSubscriptionLimits();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -191,12 +193,12 @@ const Products = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Products Used</span>
-                <span className="font-semibold text-foreground">{products.length} / 200</span>
+                <span className="font-semibold text-foreground">{products.length} / {subscriptionLimits.maxProducts || '∞'}</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className="bg-success h-2 rounded-full transition-all" 
-                  style={{ width: `${Math.min((products.length / 200) * 100, 100)}%` }}
+                <div
+                  className="bg-success h-2 rounded-full transition-all"
+                  style={{ width: `${Math.min((products.length / (subscriptionLimits.maxProducts || products.length || 1)) * 100, 100)}%` }}
                 />
               </div>
             </div>

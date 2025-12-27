@@ -181,12 +181,6 @@ const AdminDashboard = () => {
     };
 
     initializeDashboard();
-
-    // Show demo notification
-    toast({
-      title: "Welcome to your dashboard! 👋",
-      description: "All systems are running smoothly.",
-    });
   }, []);
 
   // Real-time countdown timer
