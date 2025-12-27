@@ -248,10 +248,10 @@ const StoreSetup = () => {
 
       toast({
         title: "Store created!",
-        description: "Your store is ready with demo products. Let's customize it next."
+        description: "Your store is ready with demo products."
       });
 
-      navigate("/onboarding/customize");
+      navigate("/onboarding/complete");
     } catch (error: any) {
       toast({
         title: "Error",
