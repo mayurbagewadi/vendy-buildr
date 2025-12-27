@@ -16,6 +16,8 @@ import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 interface Product {
   id: string;
@@ -80,6 +82,11 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  // Scroll animations
+  const categoriesGridRef = useScrollAnimation({ animation: 'slideUp', duration: 0.6, stagger: 0.1, delay: 0.2 });
+  const featuredProductsGridRef = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
+  const newArrivalsGridRef = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
@@ -296,27 +303,26 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {categories.length > 0 && (
           <section className="py-20 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
             <div className="container mx-auto px-4 relative z-10">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-                  Shop by Category
-                </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Explore our curated collections designed just for you
-                </p>
-              </div>
+              <AnimateOnScroll animation="fadeSlideUp" duration={0.8}>
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+                    Shop by Category
+                  </h2>
+                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    Explore our curated collections designed just for you
+                  </p>
+                </div>
+              </AnimateOnScroll>
               
               {/* Horizontal Scrollable Layout */}
               <div className="relative px-4">
-                <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide snap-x snap-mandatory px-4">
+                <div ref={categoriesGridRef} className="flex gap-2 overflow-x-auto py-4 scrollbar-hide snap-x snap-mandatory px-4">
                   {categories.map((category, index) => {
                     const productCount = products.filter(p => p.category === category.name && p.status === 'published').length;
                     return (
                       <div
                         key={category.id}
                         className="flex-shrink-0 w-48 snap-center"
-                        style={{
-                          animationDelay: `${index * 100}ms`
-                        }}
                       >
                         <CategoryCard
                           name={category.name}
@@ -336,20 +342,22 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* Featured Products */}
         <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-foreground mb-2">Featured Products</h2>
-                <p className="text-muted-foreground">Check out our top picks for you</p>
+            <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground mb-2">Featured Products</h2>
+                  <p className="text-muted-foreground">Check out our top picks for you</p>
+                </div>
+                <Link to={productsLink}>
+                  <Button variant="outline">
+                    See All
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
               </div>
-              <Link to={productsLink}>
-                <Button variant="outline">
-                  See All
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
+            </AnimateOnScroll>
             {featuredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div ref={featuredProductsGridRef} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -374,19 +382,21 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {newArrivals.length > 0 && (
           <section className="py-16">
             <div className="container mx-auto px-4">
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground mb-2">New Arrivals</h2>
-                  <p className="text-muted-foreground">Fresh products just for you</p>
+              <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h2 className="text-3xl font-bold text-foreground mb-2">New Arrivals</h2>
+                    <p className="text-muted-foreground">Fresh products just for you</p>
+                  </div>
+                  <Link to={productsLink}>
+                    <Button variant="outline">
+                      See All
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
                 </div>
-                <Link to={productsLink}>
-                  <Button variant="outline">
-                    See All
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              </AnimateOnScroll>
+              <div ref={newArrivalsGridRef} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {newArrivals.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -408,32 +418,34 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* CTA Section */}
         <section className="py-20 bg-primary text-primary-foreground mb-0">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Ready to Start Shopping?
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Explore our full collection of amazing products
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to={productsLink}>
-                <Button size="lg" variant="secondary">
-                  Browse All Products
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              {store.whatsapp_number && (
-                <a
-                  href={`https://wa.me/${store.whatsapp_number.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
-                    Contact on WhatsApp
+            <AnimateOnScroll animation="scale" duration={0.8}>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Ready to Start Shopping?
+              </h2>
+              <p className="text-xl mb-8 opacity-90">
+                Explore our full collection of amazing products
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to={productsLink}>
+                  <Button size="lg" variant="secondary">
+                    Browse All Products
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                </a>
-              )}
-            </div>
+                </Link>
+                {store.whatsapp_number && (
+                  <a
+                    href={`https://wa.me/${store.whatsapp_number.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
+                      Contact on WhatsApp
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </a>
+                )}
+              </div>
+            </AnimateOnScroll>
           </div>
         </section>
       </main>
