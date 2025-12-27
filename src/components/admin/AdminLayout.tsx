@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -51,29 +52,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   } | null>(null);
   const [showExpirationWarning, setShowExpirationWarning] = useState(true);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "New Order Received",
-      description: "Order #1234 has been placed",
-      time: "5 minutes ago",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Product Stock Low",
-      description: "Premium Coffee is running low",
-      time: "2 hours ago",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "New Customer",
-      description: "John Doe has registered",
-      time: "1 day ago",
-      unread: false
-    }
-  ];
+  // Dynamic notifications from existing database tables (orders, products)
+  const { notifications, unreadCount } = useNotifications();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -388,7 +368,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   aria-label="Notifications"
                 >
                   <Bell className="w-5 h-5 text-foreground" />
-                  {notifications.filter(n => n.unread).length > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-card"></span>
                   )}
                 </button>
@@ -401,27 +381,37 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     <div className="p-4 border-b border-border">
                       <h3 className="font-semibold text-foreground text-sm">Notifications</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        You have {notifications.filter(n => n.unread).length} unread notifications
+                        You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
                       </p>
                     </div>
                     <div className="max-h-80 overflow-y-auto scrollbar-hide">
-                      {notifications.map((notification) => (
-                        <div 
-                          key={notification.id}
-                          className={`p-4 hover:bg-muted transition-colors cursor-pointer border-b border-border last:border-0 ${
-                            notification.unread ? 'bg-primary/5' : ''
-                          }`}
-                        >
-                          <div className="flex justify-between items-start mb-1">
-                            <p className="text-sm font-medium text-foreground flex-1">{notification.title}</p>
-                            {notification.unread && (
-                              <span className="w-2 h-2 bg-primary rounded-full mt-1 ml-2 flex-shrink-0"></span>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{notification.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <Bell className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                          <p className="text-sm text-muted-foreground">No notifications yet</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">
+                            You'll see new orders and stock alerts here
+                          </p>
                         </div>
-                      ))}
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-4 hover:bg-muted transition-colors cursor-pointer border-b border-border last:border-0 ${
+                              notification.unread ? 'bg-primary/5' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <p className="text-sm font-medium text-foreground flex-1">{notification.title}</p>
+                              {notification.unread && (
+                                <span className="w-2 h-2 bg-primary rounded-full mt-1 ml-2 flex-shrink-0"></span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{notification.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
