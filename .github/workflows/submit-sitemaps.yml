@@ -1,0 +1,49 @@
+name: Submit Sitemaps to Google
+
+# Run automatically when:
+# 1. New stores are created (via repository_dispatch)
+# 2. On a schedule (weekly)
+# 3. Manually triggered
+on:
+  # Trigger manually from GitHub Actions tab
+  workflow_dispatch:
+
+  # Trigger via API when new store is created
+  repository_dispatch:
+    types: [new_store_created]
+
+  # Run automatically every week (Monday at 9 AM UTC)
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  submit-sitemaps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install googleapis @supabase/supabase-js
+
+      - name: Create Google credentials file
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' > google-credentials.json
+
+      - name: Submit sitemaps to Google
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ./google-credentials.json
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/submit-sitemaps.js
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f google-credentials.json
