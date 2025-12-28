@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, RefreshCw, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_FUNCTION_URL = 'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/submit-sitemap-to-google';
+const INDEXING_FUNCTION_URL = 'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/index-urls-to-google';
 
 export default function SitemapManager() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+  const [indexingLoading, setIndexingLoading] = useState(false);
+  const [indexingResults, setIndexingResults] = useState<any[]>([]);
   const { toast } = useToast();
 
   const submitAllSitemaps = async () => {
@@ -59,6 +62,56 @@ export default function SitemapManager() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const indexAllUrls = async () => {
+    try {
+      setIndexingLoading(true);
+      setIndexingResults([]);
+
+      toast({
+        title: "Indexing URLs...",
+        description: "Submitting URLs to Google for immediate indexing. This may take a few minutes.",
+      });
+
+      // Get auth session for API key
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Not authenticated. Please login again.');
+      }
+
+      // Call Edge Function to index all stores
+      const response = await fetch(INDEXING_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}), // Empty body = process all stores
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIndexingResults(data.results);
+        toast({
+          title: "URLs indexed!",
+          description: `Successfully: ${data.successful} | Failed: ${data.failed} | Total: ${data.processed}`,
+        });
+      } else {
+        throw new Error(data.error || 'Failed to index URLs');
+      }
+    } catch (error) {
+      console.error('Error indexing URLs:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to index URLs",
+        variant: "destructive",
+      });
+    } finally {
+      setIndexingLoading(false);
     }
   };
 
@@ -160,6 +213,113 @@ export default function SitemapManager() {
                 </ul>
               </li>
             </ol>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Google Indexing API - Immediate URL Indexing</CardTitle>
+          <CardDescription>
+            Submit URLs for immediate indexing in Google Search (faster than sitemap submission)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This tool uses the Google Web Search Indexing API to request immediate indexing of store homepages only.
+              Unlike sitemaps which can take days or weeks, this API can get your pages indexed within hours.
+            </p>
+
+            <Button
+              onClick={indexAllUrls}
+              disabled={indexingLoading}
+              className="w-full"
+              variant="default"
+            >
+              {indexingLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Indexing URLs...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Index All URLs to Google
+                </>
+              )}
+            </Button>
+          </div>
+
+          {indexingResults.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Indexing Results:</h3>
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {indexingResults.map((result, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm truncate">{result.url}</p>
+                      {result.message && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {result.message}
+                        </p>
+                      )}
+                      {result.error && (
+                        <p className="text-xs text-destructive mt-1">
+                          {result.error}
+                        </p>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      {result.success ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-destructive" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-muted p-4 rounded-lg space-y-2">
+            <h3 className="font-semibold text-sm">How it works:</h3>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Submits URLs directly to Google for immediate indexing</li>
+              <li>Much faster than sitemap submission (hours vs days/weeks)</li>
+              <li>Indexes only store homepages (not product pages)</li>
+              <li>Processes up to 20 stores at a time to avoid rate limits</li>
+              <li>Rate limited to prevent API quota issues</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <p className="text-sm font-semibold text-blue-800">Setup Required:</p>
+            <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside mt-2">
+              <li>Enable Google Web Search Indexing API in Google Cloud</li>
+              <li>Create Service Account for indexing</li>
+              <li>Add service account email to Google Search Console as owner for each domain</li>
+              <li>Add credentials to Supabase secrets:
+                <ul className="ml-6 mt-1 space-y-1 list-disc">
+                  <li><code className="text-xs">INDEXING_SERVICE_ACCOUNT_EMAIL</code></li>
+                  <li><code className="text-xs">INDEXING_SERVICE_ACCOUNT_PRIVATE_KEY</code></li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+            <p className="text-sm font-semibold text-amber-800">Important Notes:</p>
+            <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside mt-2">
+              <li>This is for immediate indexing of important updates</li>
+              <li>Google has daily quotas - use wisely for critical pages</li>
+              <li>Sitemap submission is still important for comprehensive crawling</li>
+              <li>Don't spam this - Google may penalize excessive usage</li>
+            </ul>
           </div>
         </CardContent>
       </Card>
