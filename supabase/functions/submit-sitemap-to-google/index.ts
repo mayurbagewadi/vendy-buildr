@@ -64,6 +64,7 @@ serve(async (req) => {
         .from('stores')
         .select('id, slug, subdomain, custom_domain')
         .eq('id', storeId)
+        .eq('is_active', true)
         .single()
 
       if (error || !store) {
@@ -71,22 +72,30 @@ serve(async (req) => {
       }
       storesToProcess = [store]
     } else if (domain) {
-      // Specific domain
-      const { data: store, error } = await supabase
+      // Specific domain - FIX: Use parameterized query to prevent SQL injection
+      const subdomain = domain.split('.')[0]
+      const { data: stores, error } = await supabase
         .from('stores')
         .select('id, slug, subdomain, custom_domain')
-        .or(`subdomain.eq.${domain.split('.')[0]},custom_domain.eq.${domain}`)
-        .single()
+        .eq('is_active', true)
 
-      if (error || !store) {
+      if (error) {
+        throw new Error('Failed to fetch stores')
+      }
+
+      // Filter in JavaScript to avoid SQL injection
+      const store = stores?.find(s => s.subdomain === subdomain || s.custom_domain === domain)
+
+      if (!store) {
         throw new Error('Store not found for domain')
       }
       storesToProcess = [store]
     } else {
-      // All stores
+      // All stores - FIX: Only process active stores
       const { data: stores, error } = await supabase
         .from('stores')
         .select('id, slug, subdomain, custom_domain')
+        .eq('is_active', true)
 
       if (error) {
         throw new Error('Failed to fetch stores')
@@ -96,16 +105,28 @@ serve(async (req) => {
 
     console.log('[GOOGLE SEARCH CONSOLE] Processing', storesToProcess.length, 'stores')
 
+    // FIX: Get OAuth token once before loop (valid for 1 hour, reuse for all stores)
+    const tokenResponse = await getGoogleAccessToken(googleClientEmail, googlePrivateKey)
+    const accessToken = tokenResponse.access_token
+
+    if (!accessToken) {
+      throw new Error('Failed to obtain Google access token')
+    }
+
     const results = []
 
     for (const store of storesToProcess) {
       try {
         // Determine store domain
         let storeDomain = ''
+        let isCustomDomain = false
+
         if (store.custom_domain) {
           storeDomain = store.custom_domain
+          isCustomDomain = true
         } else if (store.subdomain) {
           storeDomain = `${store.subdomain}.digitaldukandar.in`
+          isCustomDomain = false
         } else {
           console.log(`[GOOGLE SEARCH CONSOLE] Skipping store ${store.id} - no subdomain or custom domain`)
           continue
@@ -116,12 +137,8 @@ serve(async (req) => {
 
         console.log(`[GOOGLE SEARCH CONSOLE] Submitting sitemap for ${storeDomain}:`, sitemapUrl)
 
-        // Get Google OAuth token
-        const tokenResponse = await getGoogleAccessToken(googleClientEmail, googlePrivateKey)
-        const accessToken = tokenResponse.access_token
-
         // Submit sitemap to Google Search Console
-        const submitResponse = await submitSitemap(storeDomain, sitemapUrl, accessToken)
+        const submitResponse = await submitSitemap(storeDomain, sitemapUrl, accessToken, isCustomDomain)
 
         // Update sitemap_submissions table with result
         const updateStatus = submitResponse.success ? 'success' : 'failed'
@@ -165,23 +182,32 @@ serve(async (req) => {
 
         // Update database status to failed
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        const { data: latestSubmission } = await supabase
-          .from('sitemap_submissions')
-          .select('id')
-          .eq('store_id', store.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
 
-        if (latestSubmission) {
-          await supabase
+        // Reconstruct sitemap URL for error case
+        const errorStoreDomain = store.custom_domain || (store.subdomain ? `${store.subdomain}.digitaldukandar.in` : '')
+        const errorSitemapUrl = errorStoreDomain ? `https://${errorStoreDomain}/sitemap.xml` : ''
+
+        // FIX: Filter by both store_id AND sitemap_url to avoid updating wrong record
+        if (errorSitemapUrl) {
+          const { data: latestSubmission } = await supabase
             .from('sitemap_submissions')
-            .update({
-              status: 'failed',
-              error_message: errorMessage,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', latestSubmission.id)
+            .select('id')
+            .eq('store_id', store.id)
+            .eq('sitemap_url', errorSitemapUrl)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (latestSubmission) {
+            await supabase
+              .from('sitemap_submissions')
+              .update({
+                status: 'failed',
+                error_message: errorMessage,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', latestSubmission.id)
+          }
         }
 
         results.push({
@@ -252,14 +278,31 @@ async function getGoogleAccessToken(clientEmail: string, privateKey: string) {
 }
 
 // Submit sitemap to Google Search Console
-async function submitSitemap(domain: string, sitemapUrl: string, accessToken: string) {
-  // Extract parent domain from subdomain
-  // e.g., vendy-store.digitaldukandar.in → digitaldukandar.in
-  const domainParts = domain.split('.')
-  const parentDomain = domainParts.slice(-2).join('.') // Get last 2 parts (digitaldukandar.in)
+async function submitSitemap(domain: string, sitemapUrl: string, accessToken: string, isCustomDomain: boolean) {
+  let siteUrl: string
 
-  const siteUrl = `sc-domain:${parentDomain}` // Use parent domain for all subdomains
-  console.log(`[SUBMIT] Submitting ${domain} to site property: ${siteUrl}`)
+  if (isCustomDomain) {
+    // FIX: Custom domains use URL prefix property (https://customdomain.com)
+    siteUrl = `https://${domain}/`
+    console.log(`[SUBMIT] Custom domain: Submitting ${domain} to URL prefix property: ${siteUrl}`)
+  } else {
+    // Subdomain: Use domain property (sc-domain:digitaldukandar.in)
+    // Extract parent domain properly handling country-code TLDs
+    const domainParts = domain.split('.')
+
+    // FIX: Handle country-code TLDs (e.g., example.co.uk, example.com.au)
+    let parentDomain: string
+    if (domainParts.length >= 3 && domainParts[domainParts.length - 2].length === 2) {
+      // Likely a country-code TLD (co.uk, com.au, etc.)
+      parentDomain = domainParts.slice(-3).join('.')
+    } else {
+      // Standard TLD (digitaldukandar.in, example.com, etc.)
+      parentDomain = domainParts.slice(-2).join('.')
+    }
+
+    siteUrl = `sc-domain:${parentDomain}`
+    console.log(`[SUBMIT] Subdomain: Submitting ${domain} to domain property: ${siteUrl}`)
+  }
 
   const encodedSitemapUrl = encodeURIComponent(sitemapUrl)
 
