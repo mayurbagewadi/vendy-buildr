@@ -107,7 +107,9 @@ export default function Users() {
   const [sortBy, setSortBy] = useState("newest");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
@@ -162,196 +164,50 @@ export default function Users() {
     checkAuth();
   }, [navigate]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page: number = currentPage) => {
     try {
       setLoading(true);
-      
-      // Try to fetch from edge function first, fall back to profiles if it fails
-      let authUsers: any[] = [];
-      
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const sessionToken = sessionStorage.getItem('superadmin_session');
-        
-        const headers: any = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-        if (sessionToken) {
-          headers['x-superadmin-session'] = sessionToken;
-        }
 
-        const response = await fetch(
-          `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
-          { 
-            method: 'POST',
-            headers 
-          }
-        );
+      const { data: { session } } = await supabase.auth.getSession();
 
-        if (response.ok) {
-          const result = await response.json();
-          authUsers = result.users || [];
-        } else {
-          throw new Error('Edge function unavailable');
-        }
-      } catch (edgeFunctionError) {
-        console.log('Edge function not available, falling back to profiles:', edgeFunctionError);
-        
-        // Fallback: Get profiles from database
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, email, full_name, phone, user_id, created_at")
-          .order("created_at", { ascending: false });
-
-        if (profilesError) throw profilesError;
-        
-        authUsers = (profiles || []).map(p => ({
-          id: p.user_id,
-          email: p.email,
-          full_name: p.full_name,
-          phone: p.phone,
-          created_at: p.created_at,
-          user_id: p.user_id,
-        }));
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
       }
 
-      // Get all super admin user IDs to exclude them from the list
-      const { data: superAdminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'super_admin');
-
-      const superAdminIds = new Set(superAdminRoles?.map(r => r.user_id) || []);
-
-      // Get all helper user IDs to exclude them from store owners list
-      const { data: helpers } = await supabase
-        .from('helpers')
-        .select('id');
-
-      const helperIds = new Set(helpers?.map(h => h.id) || []);
-
-      // Get all helper application user IDs to exclude them too
-      const { data: helperApplications } = await supabase
-        .from('helper_applications')
-        .select('user_id');
-
-      const helperAppIds = new Set(helperApplications?.map(ha => ha.user_id) || []);
-
-      // Filter out super admin users AND helpers
-      const regularUsers = (authUsers || []).filter((profile: any) =>
-        !superAdminIds.has(profile.user_id) &&
-        !helperIds.has(profile.user_id) &&
-        !helperAppIds.has(profile.user_id)
+      const response = await fetch(
+        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/get-all-users`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            page,
+            perPage: rowsPerPage
+          })
+        }
       );
 
-      // Then get stores and subscriptions for each user
-      const formattedUsers = await Promise.all(
-        regularUsers.map(async (profile: any) => {
-          // Get store for this user
-          const { data: stores } = await supabase
-            .from("stores")
-            .select("id, name, slug, last_admin_visit, whatsapp_number")
-            .eq("user_id", profile.user_id)
-            .limit(1);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch users');
+      }
 
-          // Get ALL subscriptions for this user (fetch all statuses to properly display after payment)
-          const { data: allSubscriptions } = await supabase
-            .from("subscriptions")
-            .select(`
-              id,
-              status,
-              billing_cycle,
-              started_at,
-              current_period_start,
-              current_period_end,
-              trial_ends_at,
-              whatsapp_orders_used,
-              website_orders_used,
-              updated_at,
-              subscription_plans (
-                name
-              )
-            `)
-            .eq("user_id", profile.user_id)
-            .order("updated_at", { ascending: false });
+      const result = await response.json();
 
-          // Find the correct current subscription by prioritizing:
-          // 1. Active subscriptions (most recently updated)
-          // 2. Non-expired trials
-          // 3. Others
-          let selectedSubscription = null;
-          if (allSubscriptions && allSubscriptions.length > 0) {
-            const now = new Date();
-            
-            // Filter out truly expired subscriptions (period ended AND not already marked expired/cancelled)
-            const validSubscriptions = allSubscriptions.filter(sub => {
-              if (sub.status === 'cancelled' || sub.status === 'expired') return false;
-              // Check if the period has actually ended
-              if (sub.current_period_end && new Date(sub.current_period_end) < now) return false;
-              return true;
-            });
+      setUsers(result.users || []);
+      setTotalCount(result.pagination?.totalCount || 0);
+      setTotalPages(result.pagination?.totalPages || 1);
+      setCurrentPage(result.pagination?.page || 1);
 
-            // Prioritize: active (most recent) > trial > pending_payment
-            const activeSubscriptions = validSubscriptions.filter(s => s.status === 'active');
-            if (activeSubscriptions.length > 0) {
-              selectedSubscription = activeSubscriptions[0]; // Already sorted by updated_at desc
-            } else {
-              const trialSubscription = validSubscriptions.find(s => s.status === 'trial');
-              if (trialSubscription) {
-                selectedSubscription = trialSubscription;
-              } else {
-                selectedSubscription = validSubscriptions[0];
-              }
-            }
-          }
-          
-          const subscriptions = selectedSubscription ? [selectedSubscription] : [];
+      // Update totalUsers in quickStats to match server count
+      if (result.pagination?.totalCount !== undefined) {
+        setQuickStats(prev => ({ ...prev, totalUsers: result.pagination.totalCount }));
+      }
 
-          // Get total revenue and last order date
-          const { data: orders } = await supabase
-            .from("orders")
-            .select("total, created_at")
-            .eq("store_id", stores?.[0]?.id || "")
-            .order("created_at", { ascending: false });
-
-          const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
-          const lastOrderDate = orders && orders.length > 0 ? orders[0].created_at : null;
-          const orderCount = orders?.length || 0;
-
-          return {
-            id: profile.user_id,
-            email: profile.email,
-            full_name: profile.full_name,
-            phone: profile.phone,
-            created_at: profile.created_at,
-            store: stores?.[0] || null,
-            subscription: subscriptions?.[0]
-              ? {
-                  id: subscriptions[0].id,
-                  plan: subscriptions[0].subscription_plans,
-                  status: subscriptions[0].status,
-                  billing_cycle: subscriptions[0].billing_cycle,
-                  started_at: subscriptions[0].started_at,
-                  current_period_start: subscriptions[0].current_period_start,
-                  current_period_end: subscriptions[0].current_period_end,
-                  trial_ends_at: subscriptions[0].trial_ends_at,
-                  whatsapp_orders_used: subscriptions[0].whatsapp_orders_used,
-                  website_orders_used: subscriptions[0].website_orders_used,
-                }
-              : null,
-            totalRevenue,
-            lastOrderDate,
-            orderCount,
-          };
-        })
-      );
-
-      setUsers(formattedUsers);
     } catch (error: any) {
+      console.error('Error fetching users:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -506,6 +362,7 @@ export default function Users() {
     return matchesSearch && matchesPlan && matchesStatus && matchesActivity();
   });
 
+  // Client-side sorting on current page data
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     switch (sortBy) {
       case "newest":
@@ -519,16 +376,20 @@ export default function Users() {
     }
   });
 
-  const paginatedUsers = sortedUsers.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  // With server-side pagination, displayed users are already paginated from the server
+  // Client-side filtering/sorting applies to the current page only
+  const displayedUsers = sortedUsers;
 
-  const totalPages = Math.ceil(sortedUsers.length / rowsPerPage);
+  // Handle page changes - fetch from server
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      fetchUsers(newPage);
+    }
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedUsers(paginatedUsers.map((user) => user.id));
+      setSelectedUsers(displayedUsers.map((user) => user.id));
     } else {
       setSelectedUsers([]);
     }
@@ -877,8 +738,8 @@ export default function Users() {
               <TableHead className="w-12">
                 <Checkbox
                   checked={
-                    paginatedUsers.length > 0 &&
-                    selectedUsers.length === paginatedUsers.length
+                    displayedUsers.length > 0 &&
+                    selectedUsers.length === displayedUsers.length
                   }
                   onCheckedChange={handleSelectAll}
                 />
@@ -899,14 +760,14 @@ export default function Users() {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : paginatedUsers.length === 0 ? (
+            ) : displayedUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-8">
                   No users found
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedUsers.map((user) => (
+              displayedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <Checkbox
@@ -1142,33 +1003,47 @@ export default function Users() {
           <div className="p-4 border-t flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Showing {(currentPage - 1) * rowsPerPage + 1}-
-              {Math.min(currentPage * rowsPerPage, sortedUsers.length)} of{" "}
-              {sortedUsers.length} users
+              {Math.min(currentPage * rowsPerPage, totalCount)} of{" "}
+              {totalCount} users
             </p>
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    onClick={() => handlePageChange(currentPage - 1)}
                     className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => (
-                  <PaginationItem key={i}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(i + 1)}
-                      isActive={currentPage === i + 1}
-                      className="cursor-pointer"
-                    >
-                      {i + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
+                {(() => {
+                  // Show pages around current page
+                  const pages = [];
+                  const maxVisible = 5;
+                  let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                  let end = Math.min(totalPages, start + maxVisible - 1);
+
+                  // Adjust start if we're near the end
+                  if (end - start + 1 < maxVisible) {
+                    start = Math.max(1, end - maxVisible + 1);
+                  }
+
+                  for (let i = start; i <= end; i++) {
+                    pages.push(
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(i)}
+                          isActive={currentPage === i}
+                          className="cursor-pointer"
+                        >
+                          {i}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  return pages;
+                })()}
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
+                    onClick={() => handlePageChange(currentPage + 1)}
                     className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
