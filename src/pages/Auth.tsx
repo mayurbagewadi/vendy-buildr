@@ -15,6 +15,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [showDeletedAlert, setShowDeletedAlert] = useState(false);
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
 
   useEffect(() => {
     // Capture referral code from URL and store in sessionStorage
@@ -32,13 +33,23 @@ export default function Auth() {
       setSearchParams({});
     }
 
-    // Check if user is already logged in
+    // CRITICAL FIX: Detect if we're returning from OAuth callback
+    // If URL has 'code' parameter, Supabase is processing OAuth - wait for onAuthStateChange
+    const hasOAuthCode = searchParams.get('code') !== null;
+    if (hasOAuthCode) {
+      console.log('[Auth] OAuth callback detected - waiting for session to be established');
+      setIsProcessingOAuth(true);
+      // Don't call getSession() yet - let onAuthStateChange handle it
+      return;
+    }
+
+    // Check if user is already logged in (only when NOT processing OAuth callback)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('[Auth] Checking existing session:', session ? 'Found' : 'None');
-      
+
       if (session) {
         setHasSession(true);
-        
+
         // First check if user is a helper
         console.log('[Auth] Checking for helper with ID:', session.user.id);
         const { data: helperData, error: helperError } = await supabase
@@ -91,7 +102,10 @@ export default function Auth() {
     // Listen for auth changes - CRITICAL: No async function to prevent deadlock
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] Auth state changed:', event, session ? 'Session exists' : 'No session');
-      
+
+      // Clear OAuth processing state once auth state changes
+      setIsProcessingOAuth(false);
+
       if (event === 'SIGNED_IN' && session) {
         setHasSession(true);
         
@@ -284,7 +298,14 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {hasSession ? (
+          {isProcessingOAuth ? (
+            <div className="text-center space-y-4 py-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Processing sign in...
+              </p>
+            </div>
+          ) : hasSession ? (
             <>
               <div className="text-center space-y-2 py-2">
                 <p className="text-sm text-muted-foreground">
