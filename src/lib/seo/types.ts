@@ -35,6 +35,21 @@ export interface Store {
     instagram?: string | null;
     twitter?: string | null;
   } | null;
+  // SEO fields
+  alternate_names?: string | null;
+  seo_description?: string | null;
+  business_phone?: string | null;
+  business_email?: string | null;
+  street_address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  opening_hours?: string | null;
+  facebook_url?: string | null;
+  instagram_url?: string | null;
+  twitter_url?: string | null;
+  price_range?: string | null;
 }
 
 export interface ProductSchemaProps {

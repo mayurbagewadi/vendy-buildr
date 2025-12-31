@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -13,6 +14,9 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
   const [isLoading, setIsLoading] = useState(true);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Convert Google Drive share links to direct image URLs
+  const directSrc = convertToDirectImageUrl(src) || src;
 
   useEffect(() => {
     if (!imgRef.current) return;
@@ -42,10 +46,10 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
     if (!isInView) return;
 
     const img = new Image();
-    img.src = src;
+    img.src = directSrc;
     
     img.onload = () => {
-      setImageSrc(src);
+      setImageSrc(directSrc);
       setIsLoading(false);
     };
 
@@ -53,7 +57,7 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
       setImageSrc(fallback);
       setIsLoading(false);
     };
-  }, [src, isInView, fallback]);
+  }, [directSrc, isInView, fallback]);
 
   return (
     <img

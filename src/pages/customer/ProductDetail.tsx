@@ -262,6 +262,11 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             phone={profileData?.phone}
             email={profileData?.email}
             address={storeData.address}
+            facebookUrl={storeData.facebook_url}
+            instagramUrl={storeData.instagram_url}
+            twitterUrl={storeData.twitter_url}
+            youtubeUrl={storeData.youtube_url}
+            linkedinUrl={storeData.linkedin_url}
             socialLinks={storeData.social_links}
             policies={storeData.policies}
           />
@@ -926,6 +931,11 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           phone={profileData?.phone}
           email={profileData?.email}
           address={storeData.address}
+          facebookUrl={storeData.facebook_url}
+          instagramUrl={storeData.instagram_url}
+          twitterUrl={storeData.twitter_url}
+          youtubeUrl={storeData.youtube_url}
+          linkedinUrl={storeData.linkedin_url}
           socialLinks={storeData.social_links}
           policies={storeData.policies}
         />

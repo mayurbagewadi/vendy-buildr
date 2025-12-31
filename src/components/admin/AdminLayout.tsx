@@ -14,7 +14,11 @@ import {
   ShoppingCart,
   CreditCard,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Rocket,
+  Search,
+  ChevronDown,
+  Share2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -37,6 +41,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [userName, setUserName] = useState<string>("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>(["Growth"]); // Growth open by default
   const [limitWarning, setLimitWarning] = useState<{
     whatsapp: boolean;
     website: boolean;
@@ -219,6 +224,14 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     navigate("/");
   };
 
+  const toggleDropdown = (name: string) => {
+    setOpenDropdowns(prev =>
+      prev.includes(name)
+        ? prev.filter(item => item !== name)
+        : [...prev, name]
+    );
+  };
+
   const navigationItems = [
     {
       name: "Dashboard",
@@ -249,6 +262,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/analytics",
       icon: LayoutDashboard,
       current: location.pathname === "/admin/analytics",
+    },
+    {
+      name: "Growth",
+      icon: Rocket,
+      isDropdown: true,
+      current: location.pathname.startsWith("/admin/growth"),
+      subItems: [
+        {
+          name: "SEO",
+          href: "/admin/growth/seo",
+          icon: Search,
+          current: location.pathname === "/admin/growth/seo",
+        },
+        {
+          name: "Social Media",
+          href: "/admin/growth/social-media",
+          icon: Share2,
+          current: location.pathname === "/admin/growth/social-media",
+        },
+      ],
     },
     {
       name: "Subscription",
@@ -304,24 +337,82 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-hide">
           {navigationItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              onClick={() => {
-                if (window.innerWidth < 1024) {
-                  setIsSidebarOpen(false);
-                }
-              }}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 touch-target
-                ${item.current 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'text-foreground hover:bg-muted'
-                }
-              `}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium text-sm">{item.name}</span>
-            </Link>
+            <div key={item.name}>
+              {item.isDropdown ? (
+                // Dropdown Menu Item
+                <div>
+                  <button
+                    onClick={() => toggleDropdown(item.name)}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 touch-target
+                      ${item.current
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-muted'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm">{item.name}</span>
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        openDropdowns.includes(item.name) ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {/* Sub Items */}
+                  <div
+                    className={`overflow-hidden transition-all duration-200 ${
+                      openDropdowns.includes(item.name)
+                        ? 'max-h-96 opacity-100'
+                        : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="pl-4 mt-1 space-y-1">
+                      {item.subItems?.map((subItem) => (
+                        <Link
+                          key={subItem.name}
+                          to={subItem.href}
+                          onClick={() => {
+                            if (window.innerWidth < 1024) {
+                              setIsSidebarOpen(false);
+                            }
+                          }}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 touch-target
+                            ${subItem.current
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }
+                          `}
+                        >
+                          <subItem.icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="font-medium text-sm">{subItem.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Regular Menu Item
+                <Link
+                  to={item.href!}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      setIsSidebarOpen(false);
+                    }
+                  }}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 touch-target
+                    ${item.current
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-foreground hover:bg-muted'
+                    }
+                  `}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm">{item.name}</span>
+                </Link>
+              )}
+            </div>
           ))}
         </nav>
 

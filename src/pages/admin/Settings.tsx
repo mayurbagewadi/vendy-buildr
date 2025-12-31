@@ -47,9 +47,6 @@ const AdminSettings = () => {
     shippingPolicy: "",
     termsConditions: "",
     privacyPolicy: "",
-    facebook: "",
-    instagram: "",
-    twitter: "",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
 
@@ -139,9 +136,6 @@ const AdminSettings = () => {
           shippingPolicy: (store?.policies as any)?.shippingPolicy || "",
           termsConditions: (store?.policies as any)?.termsConditions || "",
           privacyPolicy: (store?.policies as any)?.privacyPolicy || "",
-          facebook: (store?.social_links as any)?.facebook || "",
-          instagram: (store?.social_links as any)?.instagram || "",
-          twitter: (store?.social_links as any)?.twitter || "",
         });
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -328,11 +322,6 @@ const AdminSettings = () => {
         hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
         address: formData.address || null,
-        social_links: {
-          facebook: formData.facebook || null,
-          instagram: formData.instagram || null,
-          twitter: formData.twitter || null,
-        },
         policies: {
           deliveryAreas: formData.deliveryAreas || null,
           returnPolicy: formData.returnPolicy || null,
@@ -406,22 +395,13 @@ const AdminSettings = () => {
       ]
     },
     {
-      title: "Contact Information", 
+      title: "Contact Information",
       icon: Phone,
       fields: [
         { key: "phone", label: "Phone Number", placeholder: "+1 (555) 123-4567" },
         { key: "email", label: "Email Address", placeholder: "contact@yourstore.com" },
         { key: "whatsappNumber", label: "WhatsApp Business Number", placeholder: "919876543210 (with country code, no spaces)" },
         { key: "address", label: "Store Address", placeholder: "123 Main St, City, State 12345", multiline: true },
-      ]
-    },
-    {
-      title: "Social Media",
-      icon: MessageCircle,
-      fields: [
-        { key: "facebook", label: "Facebook URL", placeholder: "https://facebook.com/yourstore" },
-        { key: "instagram", label: "Instagram URL", placeholder: "https://instagram.com/yourstore" },
-        { key: "twitter", label: "Twitter URL", placeholder: "https://twitter.com/yourstore" },
       ]
     },
     {

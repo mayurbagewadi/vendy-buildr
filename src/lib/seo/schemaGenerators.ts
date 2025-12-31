@@ -59,39 +59,87 @@ export function generateProductSchema(props: ProductSchemaProps) {
 export function generateOrganizationSchema(props: OrganizationSchemaProps) {
   const { store, url, email } = props;
 
+  // Use SEO description if available, otherwise fall back to regular description
+  const description = store.seo_description || store.description;
+
+  // Use business phone if available, otherwise fall back to WhatsApp
+  const telephone = store.business_phone || store.whatsapp_number;
+
+  // Use business email if available, otherwise fall back to provided email
+  const contactEmail = store.business_email || email;
+
   const schema: any = {
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: store.name,
     url: url,
-    ...(store.description && { description: store.description }),
+    ...(description && { description }),
     ...(store.logo_url && {
       image: store.logo_url.startsWith('http')
         ? store.logo_url
         : `${window.location.origin}${store.logo_url}`
     }),
-    ...(store.whatsapp_number && {
-      telephone: store.whatsapp_number
-    }),
-    ...(email && { email }),
-    ...(store.address && {
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: store.address
-      }
-    })
+    ...(telephone && { telephone }),
+    ...(contactEmail && { email: contactEmail })
   };
 
-  // Add social media links if available
-  if (store.social_links) {
-    const sameAs: string[] = [];
+  // Add alternate names if available (for SEO keyword variations)
+  if (store.alternate_names) {
+    const alternateNames = store.alternate_names
+      .split(',')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+
+    if (alternateNames.length > 0) {
+      schema.alternateName = alternateNames;
+    }
+  }
+
+  // Add full address if available
+  if (store.street_address || store.city || store.state) {
+    schema.address = {
+      '@type': 'PostalAddress',
+      ...(store.street_address && { streetAddress: store.street_address }),
+      ...(store.city && { addressLocality: store.city }),
+      ...(store.state && { addressRegion: store.state }),
+      ...(store.postal_code && { postalCode: store.postal_code }),
+      ...(store.country && { addressCountry: store.country })
+    };
+  } else if (store.address) {
+    // Fall back to simple address if no detailed address
+    schema.address = {
+      '@type': 'PostalAddress',
+      streetAddress: store.address
+    };
+  }
+
+  // Add opening hours if available
+  if (store.opening_hours) {
+    schema.openingHours = store.opening_hours;
+  }
+
+  // Add price range if available
+  if (store.price_range) {
+    schema.priceRange = store.price_range;
+  }
+
+  // Add social media links - combine from both sources
+  const sameAs: string[] = [];
+
+  // From SEO settings
+  if (store.facebook_url) sameAs.push(store.facebook_url);
+  if (store.instagram_url) sameAs.push(store.instagram_url);
+  if (store.twitter_url) sameAs.push(store.twitter_url);
+
+  // From legacy social_links (if SEO fields not set)
+  if (store.social_links && sameAs.length === 0) {
     if (store.social_links.facebook) sameAs.push(store.social_links.facebook);
     if (store.social_links.instagram) sameAs.push(store.social_links.instagram);
     if (store.social_links.twitter) sameAs.push(store.social_links.twitter);
+  }
 
-    if (sameAs.length > 0) {
-      schema.sameAs = sameAs;
-    }
+  if (sameAs.length > 0) {
+    schema.sameAs = sameAs;
   }
 
   return schema;

@@ -53,6 +53,23 @@ interface StoreData {
     termsConditions?: string | null;
     deliveryAreas?: string | null;
   } | null;
+  // SEO fields
+  alternate_names: string | null;
+  seo_description: string | null;
+  business_phone: string | null;
+  business_email: string | null;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  opening_hours: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  twitter_url: string | null;
+  youtube_url: string | null;
+  linkedin_url: string | null;
+  price_range: string | null;
 }
 
 interface ProfileData {
@@ -145,7 +162,22 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             logo_url: store.logo_url,
             address: store.address,
             whatsapp_number: store.whatsapp_number,
-            social_links: store.social_links
+            social_links: store.social_links,
+            // SEO fields from admin settings
+            alternate_names: store.alternate_names,
+            seo_description: store.seo_description,
+            business_phone: store.business_phone,
+            business_email: store.business_email,
+            street_address: store.street_address,
+            city: store.city,
+            state: store.state,
+            postal_code: store.postal_code,
+            country: store.country,
+            opening_hours: store.opening_hours,
+            facebook_url: store.facebook_url,
+            instagram_url: store.instagram_url,
+            twitter_url: store.twitter_url,
+            price_range: store.price_range
           },
           email: profile.email || undefined,
           breadcrumbs: [
@@ -457,6 +489,13 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         phone={profile?.phone}
         email={profile?.email}
         address={store.address}
+        // Dedicated social URL fields (Growth → Social Media) - PRIORITY
+        facebookUrl={store.facebook_url}
+        instagramUrl={store.instagram_url}
+        twitterUrl={store.twitter_url}
+        youtubeUrl={store.youtube_url}
+        linkedinUrl={store.linkedin_url}
+        // Legacy (Settings) - FALLBACK
         socialLinks={store.social_links}
         policies={store.policies}
       />

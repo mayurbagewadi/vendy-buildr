@@ -1,6 +1,14 @@
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Instagram, Twitter, Youtube, Linkedin, Mail, Phone, MapPin } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
+/**
+ * Enterprise Pattern: Social Media URL Props with Fallback Chain
+ *
+ * Priority: Dedicated URL fields (from Growth → Social Media)
+ *           → Legacy socialLinks JSON (from Settings)
+ *
+ * This ensures backward compatibility while supporting the new dedicated fields.
+ */
 interface StoreFooterProps {
   storeName: string;
   storeDescription?: string | null;
@@ -8,6 +16,13 @@ interface StoreFooterProps {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  // Dedicated social URL fields (Growth → Social Media) - PRIORITY
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  twitterUrl?: string | null;
+  youtubeUrl?: string | null;
+  linkedinUrl?: string | null;
+  // Legacy social links (Settings) - FALLBACK
   socialLinks?: {
     facebook?: string | null;
     instagram?: string | null;
@@ -22,10 +37,40 @@ interface StoreFooterProps {
   } | null;
 }
 
-const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email, address, socialLinks, policies }: StoreFooterProps) => {
+const StoreFooter = ({
+  storeName,
+  storeDescription,
+  whatsappNumber,
+  phone,
+  email,
+  address,
+  // Dedicated fields (priority)
+  facebookUrl,
+  instagramUrl,
+  twitterUrl,
+  youtubeUrl,
+  linkedinUrl,
+  // Legacy (fallback)
+  socialLinks,
+  policies
+}: StoreFooterProps) => {
   const { slug } = useParams<{ slug: string }>();
   const policiesPath = slug ? `/${slug}/policies` : "/policies";
   const basePath = slug ? `/${slug}` : '';
+
+  /**
+   * Enterprise Pattern: Fallback Chain for Social URLs
+   * Priority: Dedicated field → Legacy socialLinks → null
+   */
+  const resolvedSocial = {
+    facebook: facebookUrl || socialLinks?.facebook || null,
+    instagram: instagramUrl || socialLinks?.instagram || null,
+    twitter: twitterUrl || socialLinks?.twitter || null,
+    youtube: youtubeUrl || null,
+    linkedin: linkedinUrl || null,
+  };
+
+  const hasSocialLinks = Object.values(resolvedSocial).some(url => url);
 
   return (
     <footer className="bg-muted border-t border-border">
@@ -154,36 +199,61 @@ const StoreFooter = ({ storeName, storeDescription, whatsappNumber, phone, email
                 </li>
               )}
             </ul>
-            {(socialLinks?.facebook || socialLinks?.instagram || socialLinks?.twitter) && (
+            {hasSocialLinks && (
               <div className="flex gap-3 mt-4">
-                {socialLinks?.facebook && (
+                {resolvedSocial.facebook && (
                   <a
-                    href={socialLinks.facebook}
+                    href={resolvedSocial.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Facebook"
                   >
                     <Facebook className="w-4 h-4" />
                   </a>
                 )}
-                {socialLinks?.instagram && (
+                {resolvedSocial.instagram && (
                   <a
-                    href={socialLinks.instagram}
+                    href={resolvedSocial.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Instagram"
                   >
                     <Instagram className="w-4 h-4" />
                   </a>
                 )}
-                {socialLinks?.twitter && (
+                {resolvedSocial.twitter && (
                   <a
-                    href={socialLinks.twitter}
+                    href={resolvedSocial.twitter}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Twitter"
                   >
                     <Twitter className="w-4 h-4" />
+                  </a>
+                )}
+                {resolvedSocial.youtube && (
+                  <a
+                    href={resolvedSocial.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="YouTube"
+                  >
+                    <Youtube className="w-4 h-4" />
+                  </a>
+                )}
+                {resolvedSocial.linkedin && (
+                  <a
+                    href={resolvedSocial.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="w-4 h-4" />
                   </a>
                 )}
               </div>
