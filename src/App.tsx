@@ -10,7 +10,6 @@ import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 import Index from "./pages/Index";
-import ConceptLanding from "./pages/concept/ConceptLanding";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
@@ -148,9 +147,6 @@ const App = () => {
                       <Route path="/superadmin/custom-domains" element={<SuperAdminCustomDomains />} />
                       <Route path="/superadmin/settings" element={<SuperAdminPlatformSettings />} />
                       <Route path="/superadmin/sitemaps" element={<SuperAdminSitemapManager />} />
-
-                      {/* Concept/Prototype Routes */}
-                      <Route path="/concept" element={<ConceptLanding />} />
 
                       {/* Onboarding Routes */}
                       <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
