@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Settings, Save, Plus, Info, ChevronDown, History, Calendar, User } from "lucide-react";
+import { Settings, Save, Plus, Info, ChevronDown, History, Calendar, User, CheckCircle2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
@@ -24,6 +24,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CommissionConfig {
   model: "onetime" | "recurring" | "hybrid";
@@ -115,6 +122,28 @@ export default function SuperAdminCommissionSettings() {
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
 
+  // Real-time Field Validation State
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Change Summary Modal
+  const [showChangeSummary, setShowChangeSummary] = useState(false);
+  const [changeSummary, setChangeSummary] = useState<{
+    commissionModel: string[];
+    commissionRates: string[];
+    featureToggles: string[];
+    paymentSettings: string[];
+    recruitmentSettings: string[];
+  }>({
+    commissionModel: [],
+    commissionRates: [],
+    featureToggles: [],
+    paymentSettings: [],
+    recruitmentSettings: []
+  });
+
+  // Original values for comparison
+  const [originalValues, setOriginalValues] = useState<any>(null);
+
   // Helper Functions for Plan-Specific Commission
   const togglePlanCommission = (planId: string) => {
     setPlanCommissions(prev => ({
@@ -137,6 +166,78 @@ export default function SuperAdminCommissionSettings() {
         }
       }
     }));
+  };
+
+  // Real-time Field Validation Functions
+  const validateField = (fieldName: string, value: any, type?: string) => {
+    let error = "";
+
+    switch (fieldName) {
+      case "networkMonthlyOnetimeValue":
+      case "networkYearlyOnetimeValue":
+        if (type === "percentage" && (value < 0 || value > 100)) {
+          error = "Percentage must be between 0-100%";
+        } else if (type === "fixed" && value < 0) {
+          error = "Amount cannot be negative";
+        }
+        break;
+
+      case "networkMonthlyRecurringValue":
+      case "networkYearlyRecurringValue":
+        if (type === "percentage" && (value < 0 || value > 100)) {
+          error = "Percentage must be between 0-100%";
+        } else if (type === "fixed" && value < 0) {
+          error = "Amount cannot be negative";
+        }
+        break;
+
+      case "networkMonthlyRecurringDuration":
+      case "networkYearlyRecurringDuration":
+        if (value < 1 || value > 24) {
+          error = "Duration must be between 1-24 months";
+        }
+        break;
+
+      case "minPayoutThreshold":
+        if (value < 0) {
+          error = "Minimum payout cannot be negative";
+        }
+        break;
+
+      case "referralCodePrefix":
+        if (!value || value.trim() === "") {
+          error = "Referral code prefix is required";
+        } else if (value.length > 6) {
+          error = "Prefix must be 6 characters or less";
+        }
+        break;
+
+      case "maxHelpersPerRecruiter":
+        if (value < -1) {
+          error = "Value must be -1 (unlimited) or greater";
+        }
+        break;
+    }
+
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[fieldName] = error;
+      } else {
+        delete newErrors[fieldName];
+      }
+      return newErrors;
+    });
+
+    return error === "";
+  };
+
+  const clearFieldError = (fieldName: string) => {
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[fieldName];
+      return newErrors;
+    });
   };
 
   useEffect(() => {
@@ -192,7 +293,7 @@ export default function SuperAdminCommissionSettings() {
     try {
       // Note: This will work once the database migration is applied
       const { data, error } = await supabase
-        .from('commission_settings_audit')
+        .from('commission_audit')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50); // Show last 50 changes
@@ -218,10 +319,160 @@ export default function SuperAdminCommissionSettings() {
   };
 
   const loadSettings = async () => {
-    // Fetch subscription plans from database
-    await fetchSubscriptionPlans();
-    // In a real implementation, load commission settings from database
-    toast.success("Settings loaded");
+    try {
+      // Fetch subscription plans from database
+      await fetchSubscriptionPlans();
+
+      // Load active commission settings
+      const { data: settings, error: settingsError } = await supabase
+        .from('commission_settings')
+        .select('*')
+        .eq('is_active', true)
+        .single();
+
+      if (settingsError) {
+        console.error("Error loading commission settings:", settingsError);
+        toast.error("Failed to load commission settings");
+        return;
+      }
+
+      if (settings) {
+        // Load feature toggles
+        setEnableMultiTier(settings.enable_multi_tier);
+        setAutoApproveApplications(settings.auto_approve_applications);
+        setSendWelcomeEmail(settings.send_welcome_email);
+        setSendCommissionNotifications(settings.send_commission_notifications);
+
+        // Load payment settings
+        setMinPayoutThreshold(settings.min_payout_threshold);
+        setPaymentSchedule(settings.payment_schedule);
+        setPaymentDay(settings.payment_day);
+
+        // Load recruitment settings
+        setMaxHelpersPerRecruiter(settings.max_helpers_per_recruiter);
+        setReferralCodePrefix(settings.referral_code_prefix);
+        setAutoGenerateCodes(settings.auto_generate_codes);
+
+        // Load network commission settings
+        const { data: networkCommissions, error: networkError } = await supabase
+          .from('network_commission')
+          .select('*')
+          .eq('settings_id', settings.id);
+
+        let loadedNetworkMonthly = {
+          model: "recurring" as "onetime" | "recurring" | "hybrid",
+          onetimeType: "percentage" as "percentage" | "fixed",
+          onetimeValue: 0,
+          recurringType: "percentage" as "percentage" | "fixed",
+          recurringValue: 0,
+          recurringDuration: 12
+        };
+
+        let loadedNetworkYearly = {
+          model: "recurring" as "onetime" | "recurring" | "hybrid",
+          onetimeType: "percentage" as "percentage" | "fixed",
+          onetimeValue: 0,
+          recurringType: "percentage" as "percentage" | "fixed",
+          recurringValue: 0,
+          recurringDuration: 12
+        };
+
+        if (!networkError && networkCommissions) {
+          networkCommissions.forEach((nc: any) => {
+            const config = {
+              model: nc.commission_model as "onetime" | "recurring" | "hybrid",
+              onetimeType: nc.onetime_type as "percentage" | "fixed",
+              onetimeValue: nc.onetime_value,
+              recurringType: nc.recurring_type as "percentage" | "fixed",
+              recurringValue: nc.recurring_value,
+              recurringDuration: nc.recurring_duration
+            };
+
+            if (nc.subscription_type === 'monthly') {
+              setNetworkMonthly(config);
+              loadedNetworkMonthly = config;
+            } else if (nc.subscription_type === 'yearly') {
+              setNetworkYearly(config);
+              loadedNetworkYearly = config;
+            }
+          });
+        }
+
+        // Load plan-specific commissions
+        const { data: planCommissionsData, error: planError } = await supabase
+          .from('plan_commission')
+          .select('*')
+          .eq('settings_id', settings.id);
+
+        let loadedPlanCommissions: Record<string, PlanCommissionOverride> = {};
+
+        if (!planError && planCommissionsData) {
+          // Start with existing initialized commissions (from fetchSubscriptionPlans)
+          // Get current state by creating a copy
+          const currentPlans: Record<string, PlanCommissionOverride> = {};
+
+          // Initialize with default values for all subscription plans
+          subscriptionPlans.forEach(plan => {
+            currentPlans[plan.id] = {
+              enabled: false,
+              monthly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 },
+              yearly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 }
+            };
+          });
+
+          planCommissionsData.forEach((pc: any) => {
+            if (!currentPlans[pc.plan_id]) {
+              currentPlans[pc.plan_id] = {
+                enabled: pc.enabled,
+                monthly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 },
+                yearly: { model: "hybrid", onetimeType: "percentage", onetimeValue: 0, recurringType: "percentage", recurringValue: 0, recurringDuration: 12 }
+              };
+            }
+
+            const config = {
+              model: pc.commission_model as "onetime" | "recurring" | "hybrid",
+              onetimeType: pc.onetime_type as "percentage" | "fixed",
+              onetimeValue: pc.onetime_value,
+              recurringType: pc.recurring_type as "percentage" | "fixed",
+              recurringValue: pc.recurring_value,
+              recurringDuration: pc.recurring_duration
+            };
+
+            if (pc.subscription_type === 'monthly') {
+              currentPlans[pc.plan_id].monthly = config;
+              currentPlans[pc.plan_id].enabled = pc.enabled;
+            } else if (pc.subscription_type === 'yearly') {
+              currentPlans[pc.plan_id].yearly = config;
+            }
+          });
+
+          loadedPlanCommissions = currentPlans;
+          setPlanCommissions(currentPlans);
+        }
+
+        toast.success("Settings loaded successfully");
+
+        // Save original values for change comparison
+        setOriginalValues({
+          networkMonthly: loadedNetworkMonthly,
+          networkYearly: loadedNetworkYearly,
+          planCommissions: JSON.parse(JSON.stringify(loadedPlanCommissions)),
+          enableMultiTier: settings.enable_multi_tier,
+          autoApproveApplications: settings.auto_approve_applications,
+          sendWelcomeEmail: settings.send_welcome_email,
+          sendCommissionNotifications: settings.send_commission_notifications,
+          minPayoutThreshold: settings.min_payout_threshold,
+          paymentSchedule: settings.payment_schedule,
+          paymentDay: settings.payment_day,
+          maxHelpersPerRecruiter: settings.max_helpers_per_recruiter,
+          referralCodePrefix: settings.referral_code_prefix,
+          autoGenerateCodes: settings.auto_generate_codes
+        });
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      toast.error("Failed to load settings");
+    }
   };
 
   const validateSettings = (): { isValid: boolean; errors: string[] } => {
@@ -363,7 +614,201 @@ export default function SuperAdminCommissionSettings() {
     };
   };
 
+  // Helper function to clean commission data based on model
+  const cleanCommissionData = (model: string, data: any) => {
+    const cleaned = { ...data };
+
+    if (model === 'onetime') {
+      // Clear recurring values when model is onetime
+      // Note: Keep duration at 12 to satisfy database constraint (valid_duration_plan)
+      cleaned.recurring_value = 0;
+      cleaned.recurring_duration = 12;
+    } else if (model === 'recurring') {
+      // Clear onetime values when model is recurring
+      cleaned.onetime_value = 0;
+    }
+    // For 'hybrid' model, keep all values
+
+    return cleaned;
+  };
+
+  const generateChangeSummary = () => {
+    if (!originalValues) return {
+      commissionModel: [],
+      commissionRates: [],
+      featureToggles: [],
+      paymentSettings: [],
+      recruitmentSettings: []
+    };
+
+    const categorizedChanges = {
+      commissionModel: [] as string[],
+      commissionRates: [] as string[],
+      featureToggles: [] as string[],
+      paymentSettings: [] as string[],
+      recruitmentSettings: [] as string[]
+    };
+
+    // Format commission value for display
+    const formatCommission = (type: string, value: number) => {
+      return type === "percentage" ? `${value}%` : `₹${value}`;
+    };
+
+    // Simplified model names
+    const modelNames = {
+      onetime: "One-time",
+      recurring: "Recurring",
+      hybrid: "Hybrid"
+    };
+
+    // Check Network Monthly changes
+    if (JSON.stringify(networkMonthly) !== JSON.stringify(originalValues.networkMonthly)) {
+      if (networkMonthly.model !== originalValues.networkMonthly.model) {
+        categorizedChanges.commissionModel.push(
+          `Monthly: ${modelNames[originalValues.networkMonthly.model]} → ${modelNames[networkMonthly.model]}`
+        );
+      }
+      if (networkMonthly.onetimeValue !== originalValues.networkMonthly.onetimeValue) {
+        categorizedChanges.commissionRates.push(
+          `Monthly One-time: ${formatCommission(originalValues.networkMonthly.onetimeType, originalValues.networkMonthly.onetimeValue)} → ${formatCommission(networkMonthly.onetimeType, networkMonthly.onetimeValue)}`
+        );
+      }
+      if (networkMonthly.recurringValue !== originalValues.networkMonthly.recurringValue) {
+        categorizedChanges.commissionRates.push(
+          `Monthly Recurring: ${formatCommission(originalValues.networkMonthly.recurringType, originalValues.networkMonthly.recurringValue)} → ${formatCommission(networkMonthly.recurringType, networkMonthly.recurringValue)}`
+        );
+      }
+      if (networkMonthly.recurringDuration !== originalValues.networkMonthly.recurringDuration) {
+        categorizedChanges.commissionRates.push(
+          `Monthly Duration: ${originalValues.networkMonthly.recurringDuration} → ${networkMonthly.recurringDuration} months`
+        );
+      }
+    }
+
+    // Check Network Yearly changes
+    if (JSON.stringify(networkYearly) !== JSON.stringify(originalValues.networkYearly)) {
+      if (networkYearly.model !== originalValues.networkYearly.model) {
+        categorizedChanges.commissionModel.push(
+          `Yearly: ${modelNames[originalValues.networkYearly.model]} → ${modelNames[networkYearly.model]}`
+        );
+      }
+      if (networkYearly.onetimeValue !== originalValues.networkYearly.onetimeValue) {
+        categorizedChanges.commissionRates.push(
+          `Yearly One-time: ${formatCommission(originalValues.networkYearly.onetimeType, originalValues.networkYearly.onetimeValue)} → ${formatCommission(networkYearly.onetimeType, networkYearly.onetimeValue)}`
+        );
+      }
+      if (networkYearly.recurringValue !== originalValues.networkYearly.recurringValue) {
+        categorizedChanges.commissionRates.push(
+          `Yearly Recurring: ${formatCommission(originalValues.networkYearly.recurringType, originalValues.networkYearly.recurringValue)} → ${formatCommission(networkYearly.recurringType, networkYearly.recurringValue)}`
+        );
+      }
+    }
+
+    // Check Plan-specific changes
+    Object.keys(planCommissions).forEach(planId => {
+      const plan = subscriptionPlans.find(p => p.id === planId);
+      if (!plan) return;
+
+      const current = planCommissions[planId];
+      const original = originalValues.planCommissions?.[planId];
+
+      if (!original) return;
+
+      if (current.enabled !== original.enabled) {
+        categorizedChanges.featureToggles.push(
+          `${plan.name}: ${current.enabled ? 'Enabled' : 'Disabled'}`
+        );
+      }
+
+      if (JSON.stringify(current.monthly) !== JSON.stringify(original.monthly)) {
+        if (current.monthly.model !== original.monthly.model) {
+          categorizedChanges.commissionModel.push(
+            `${plan.name} Monthly: ${modelNames[original.monthly.model]} → ${modelNames[current.monthly.model]}`
+          );
+        }
+        if (current.monthly.onetimeValue !== original.monthly.onetimeValue) {
+          categorizedChanges.commissionRates.push(
+            `${plan.name} Monthly: ${formatCommission(original.monthly.onetimeType, original.monthly.onetimeValue)} → ${formatCommission(current.monthly.onetimeType, current.monthly.onetimeValue)}`
+          );
+        }
+      }
+
+      if (JSON.stringify(current.yearly) !== JSON.stringify(original.yearly)) {
+        if (current.yearly.onetimeValue !== original.yearly.onetimeValue || current.yearly.recurringValue !== original.yearly.recurringValue) {
+          categorizedChanges.commissionRates.push(
+            `${plan.name} Yearly: Commission updated`
+          );
+        }
+      }
+    });
+
+    // Check Feature Toggles
+    if (enableMultiTier !== originalValues.enableMultiTier) {
+      categorizedChanges.featureToggles.push(
+        `Multi-Tier Program: ${enableMultiTier ? 'Enabled' : 'Disabled'}`
+      );
+    }
+    if (autoApproveApplications !== originalValues.autoApproveApplications) {
+      categorizedChanges.featureToggles.push(
+        `Auto-approve Applications: ${autoApproveApplications ? 'Enabled' : 'Disabled'}`
+      );
+    }
+    if (sendWelcomeEmail !== originalValues.sendWelcomeEmail) {
+      categorizedChanges.featureToggles.push(
+        `Welcome Email: ${sendWelcomeEmail ? 'Enabled' : 'Disabled'}`
+      );
+    }
+    if (sendCommissionNotifications !== originalValues.sendCommissionNotifications) {
+      categorizedChanges.featureToggles.push(
+        `Commission Notifications: ${sendCommissionNotifications ? 'Enabled' : 'Disabled'}`
+      );
+    }
+
+    // Check Payment Settings
+    if (minPayoutThreshold !== originalValues.minPayoutThreshold) {
+      categorizedChanges.paymentSettings.push(
+        `Minimum Payout: ₹${originalValues.minPayoutThreshold} → ₹${minPayoutThreshold}`
+      );
+    }
+    if (paymentSchedule !== originalValues.paymentSchedule) {
+      categorizedChanges.paymentSettings.push(
+        `Schedule: ${originalValues.paymentSchedule} → ${paymentSchedule}`
+      );
+    }
+    if (paymentDay !== originalValues.paymentDay) {
+      categorizedChanges.paymentSettings.push(
+        `Payment Day: ${originalValues.paymentDay} → ${paymentDay}`
+      );
+    }
+
+    // Check Recruitment Settings
+    if (maxHelpersPerRecruiter !== originalValues.maxHelpersPerRecruiter) {
+      const oldValue = originalValues.maxHelpersPerRecruiter === -1 ? 'Unlimited' : originalValues.maxHelpersPerRecruiter;
+      const newValue = maxHelpersPerRecruiter === -1 ? 'Unlimited' : maxHelpersPerRecruiter;
+      categorizedChanges.recruitmentSettings.push(
+        `Max Helpers: ${oldValue} → ${newValue}`
+      );
+    }
+    if (referralCodePrefix !== originalValues.referralCodePrefix) {
+      categorizedChanges.recruitmentSettings.push(
+        `Code Prefix: ${originalValues.referralCodePrefix} → ${referralCodePrefix}`
+      );
+    }
+
+    return categorizedChanges;
+  };
+
   const handleSaveSettings = async () => {
+    // Check for real-time field errors
+    const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+    if (hasFieldErrors) {
+      toast.error("Please fix all field errors before saving", {
+        description: "Check the red-highlighted fields above",
+        duration: 4000,
+      });
+      return;
+    }
+
     // Validate before saving
     const validation = validateSettings();
 
@@ -379,62 +824,156 @@ export default function SuperAdminCommissionSettings() {
 
     setSaving(true);
     try {
-      // In a real implementation, save to database
-      // For now, just show success message
+      // Get current active settings to deactivate
+      const { data: currentSettings } = await supabase
+        .from('commission_settings')
+        .select('id, version')
+        .eq('is_active', true)
+        .single();
 
-      const settings = {
-        network_commission: {
-          monthly: {
-            model: networkMonthly.model,
-            onetime: {
-              type: networkMonthly.onetimeType,
-              value: networkMonthly.onetimeValue
-            },
-            recurring: {
-              type: networkMonthly.recurringType,
-              value: networkMonthly.recurringValue,
-              duration_months: networkMonthly.recurringDuration
-            }
-          },
-          yearly: {
-            model: networkYearly.model,
-            onetime: {
-              type: networkYearly.onetimeType,
-              value: networkYearly.onetimeValue
-            },
-            recurring: {
-              type: networkYearly.recurringType,
-              value: networkYearly.recurringValue,
-              duration_months: networkYearly.recurringDuration
-            }
-          }
-        },
-        plan_commissions: planCommissions,
-        features: {
+      const newVersion = currentSettings ? currentSettings.version + 1 : 1;
+
+      // Deactivate current settings
+      if (currentSettings) {
+        await supabase
+          .from('commission_settings')
+          .update({ is_active: false })
+          .eq('id', currentSettings.id);
+      }
+
+      // Insert new commission settings
+      const { data: newSettings, error: settingsError } = await supabase
+        .from('commission_settings')
+        .insert({
+          version: newVersion,
           enable_multi_tier: enableMultiTier,
           auto_approve_applications: autoApproveApplications,
           send_welcome_email: sendWelcomeEmail,
-          send_commission_notifications: sendCommissionNotifications
-        },
-        payment: {
+          send_commission_notifications: sendCommissionNotifications,
           min_payout_threshold: minPayoutThreshold,
           payment_schedule: paymentSchedule,
-          payment_day: paymentDay
-        },
-        recruitment: {
+          payment_day: paymentDay,
           max_helpers_per_recruiter: maxHelpersPerRecruiter,
           referral_code_prefix: referralCodePrefix,
-          auto_generate_codes: autoGenerateCodes
-        }
-      };
+          auto_generate_codes: autoGenerateCodes,
+          is_active: true
+        })
+        .select()
+        .single();
 
-      console.log("Settings to save:", settings);
+      if (settingsError) throw settingsError;
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save network commission - monthly (with cleanup)
+      const cleanedNetworkMonthly = cleanCommissionData(networkMonthly.model, {
+        onetime_type: networkMonthly.onetimeType,
+        onetime_value: networkMonthly.onetimeValue,
+        recurring_type: networkMonthly.recurringType,
+        recurring_value: networkMonthly.recurringValue,
+        recurring_duration: networkMonthly.recurringDuration
+      });
 
-      toast.success("Settings saved successfully!");
+      const { error: networkMonthlyError } = await supabase
+        .from('network_commission')
+        .insert({
+          settings_id: newSettings.id,
+          subscription_type: 'monthly',
+          commission_model: networkMonthly.model,
+          ...cleanedNetworkMonthly
+        });
+
+      if (networkMonthlyError) throw networkMonthlyError;
+
+      // Save network commission - yearly (with cleanup)
+      const cleanedNetworkYearly = cleanCommissionData(networkYearly.model, {
+        onetime_type: networkYearly.onetimeType,
+        onetime_value: networkYearly.onetimeValue,
+        recurring_type: networkYearly.recurringType,
+        recurring_value: networkYearly.recurringValue,
+        recurring_duration: networkYearly.recurringDuration
+      });
+
+      const { error: networkYearlyError } = await supabase
+        .from('network_commission')
+        .insert({
+          settings_id: newSettings.id,
+          subscription_type: 'yearly',
+          commission_model: networkYearly.model,
+          ...cleanedNetworkYearly
+        });
+
+      if (networkYearlyError) throw networkYearlyError;
+
+      // Save plan-specific commissions
+      for (const [planId, commission] of Object.entries(planCommissions)) {
+        // Save monthly plan commission (with cleanup)
+        const cleanedPlanMonthly = cleanCommissionData(commission.monthly.model, {
+          onetime_type: commission.monthly.onetimeType,
+          onetime_value: commission.monthly.onetimeValue,
+          recurring_type: commission.monthly.recurringType,
+          recurring_value: commission.monthly.recurringValue,
+          recurring_duration: commission.monthly.recurringDuration
+        });
+
+        const { error: planMonthlyError } = await supabase
+          .from('plan_commission')
+          .insert({
+            settings_id: newSettings.id,
+            plan_id: planId,
+            subscription_type: 'monthly',
+            enabled: commission.enabled,
+            commission_model: commission.monthly.model,
+            ...cleanedPlanMonthly
+          });
+
+        if (planMonthlyError) throw planMonthlyError;
+
+        // Save yearly plan commission (with cleanup)
+        const cleanedPlanYearly = cleanCommissionData(commission.yearly.model, {
+          onetime_type: commission.yearly.onetimeType,
+          onetime_value: commission.yearly.onetimeValue,
+          recurring_type: commission.yearly.recurringType,
+          recurring_value: commission.yearly.recurringValue,
+          recurring_duration: commission.yearly.recurringDuration
+        });
+
+        const { error: planYearlyError } = await supabase
+          .from('plan_commission')
+          .insert({
+            settings_id: newSettings.id,
+            plan_id: planId,
+            subscription_type: 'yearly',
+            enabled: commission.enabled,
+            commission_model: commission.yearly.model,
+            ...cleanedPlanYearly
+          });
+
+        if (planYearlyError) throw planYearlyError;
+      }
+
+      // Generate and show change summary
+      const changes = generateChangeSummary();
+      setChangeSummary(changes);
+      setShowChangeSummary(true);
+
+      toast.success(`Settings saved successfully! (Version ${newVersion})`);
       setSaving(false);
+
+      // Update original values to current values after successful save
+      setOriginalValues({
+        networkMonthly: { ...networkMonthly },
+        networkYearly: { ...networkYearly },
+        planCommissions: JSON.parse(JSON.stringify(planCommissions)),
+        enableMultiTier,
+        autoApproveApplications,
+        sendWelcomeEmail,
+        sendCommissionNotifications,
+        minPayoutThreshold,
+        paymentSchedule,
+        paymentDay,
+        maxHelpersPerRecruiter,
+        referralCodePrefix,
+        autoGenerateCodes
+      });
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings");
@@ -581,10 +1120,21 @@ export default function SuperAdminCommissionSettings() {
                         <Input
                           type="number"
                           value={networkMonthly.onetimeValue}
-                          onChange={(e) => setNetworkMonthly(prev => ({ ...prev, onetimeValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                          onChange={(e) => {
+                            const value = e.target.value === "" ? 0 : Number(e.target.value);
+                            setNetworkMonthly(prev => ({ ...prev, onetimeValue: value }));
+                            validateField("networkMonthlyOnetimeValue", value, networkMonthly.onetimeType);
+                          }}
+                          onBlur={() => validateField("networkMonthlyOnetimeValue", networkMonthly.onetimeValue, networkMonthly.onetimeType)}
                           min={0}
                           max={networkMonthly.onetimeType === "percentage" ? 100 : undefined}
+                          className={fieldErrors.networkMonthlyOnetimeValue ? "border-red-500 focus-visible:ring-red-500" : ""}
                         />
+                        {fieldErrors.networkMonthlyOnetimeValue && (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <span className="text-sm">⚠️</span> {fieldErrors.networkMonthlyOnetimeValue}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -613,10 +1163,21 @@ export default function SuperAdminCommissionSettings() {
                         <Input
                           type="number"
                           value={networkMonthly.recurringValue}
-                          onChange={(e) => setNetworkMonthly(prev => ({ ...prev, recurringValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                          onChange={(e) => {
+                            const value = e.target.value === "" ? 0 : Number(e.target.value);
+                            setNetworkMonthly(prev => ({ ...prev, recurringValue: value }));
+                            validateField("networkMonthlyRecurringValue", value, networkMonthly.recurringType);
+                          }}
+                          onBlur={() => validateField("networkMonthlyRecurringValue", networkMonthly.recurringValue, networkMonthly.recurringType)}
                           min={0}
                           max={networkMonthly.recurringType === "percentage" ? 100 : undefined}
+                          className={fieldErrors.networkMonthlyRecurringValue ? "border-red-500 focus-visible:ring-red-500" : ""}
                         />
+                        {fieldErrors.networkMonthlyRecurringValue && (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <span className="text-sm">⚠️</span> {fieldErrors.networkMonthlyRecurringValue}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>Duration (Months)</Label>
@@ -725,7 +1286,7 @@ export default function SuperAdminCommissionSettings() {
                         <Input
                           type="number"
                           value={networkYearly.onetimeValue}
-                          onChange={(e) => setStoreYearlyOnetimeValue(e.target.value === "" ? 0 : Number(e.target.value))}
+                          onChange={(e) => setNetworkYearly(prev => ({ ...prev, onetimeValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
                           min={0}
                           max={networkYearly.onetimeType === "percentage" ? 100 : undefined}
                         />
@@ -757,7 +1318,7 @@ export default function SuperAdminCommissionSettings() {
                         <Input
                           type="number"
                           value={networkYearly.recurringValue}
-                          onChange={(e) => setStoreYearlyRecurringValue(e.target.value === "" ? 0 : Number(e.target.value))}
+                          onChange={(e) => setNetworkYearly(prev => ({ ...prev, recurringValue: e.target.value === "" ? 0 : Number(e.target.value) }))}
                           min={0}
                           max={networkYearly.recurringType === "percentage" ? 100 : undefined}
                         />
@@ -813,13 +1374,26 @@ export default function SuperAdminCommissionSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Accordion type="multiple" className="w-full">
-              {subscriptionPlans.map((plan) => {
+            {subscriptionPlans.length === 0 ? (
+              <div className="bg-muted/50 border border-dashed rounded-lg p-8 text-center">
+                <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground font-medium">No subscription plans found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please create subscription plans first before configuring plan-specific commissions.
+                </p>
+              </div>
+            ) : (
+              <Accordion type="multiple" className="w-full">
+                {subscriptionPlans.map((plan) => {
                 const commission = planCommissions[plan.id];
+
+                // Skip if commission not initialized yet
+                if (!commission) return null;
+
                 return (
                   <AccordionItem key={plan.id} value={plan.id}>
-                    <AccordionTrigger>
-                      <div className="flex items-center justify-between w-full pr-4">
+                    <div className="flex items-center justify-between w-full">
+                      <AccordionTrigger className="flex-1 hover:no-underline">
                         <div className="flex items-center gap-3">
                           <span className={`font-semibold ${!commission.enabled ? "text-red-600 dark:text-red-400" : ""}`}>
                             {plan.name}
@@ -828,17 +1402,17 @@ export default function SuperAdminCommissionSettings() {
                             ₹{plan.monthly_price}/month • ₹{plan.yearly_price}/year
                           </span>
                         </div>
-                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Switch
-                            checked={commission.enabled}
-                            onCheckedChange={() => togglePlanCommission(plan.id)}
-                          />
-                          <span className={`text-sm ${!commission.enabled ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-                            {commission.enabled ? "Enabled" : "Disabled"}
-                          </span>
-                        </div>
+                      </AccordionTrigger>
+                      <div className="flex items-center gap-2 pr-4">
+                        <Switch
+                          checked={commission.enabled}
+                          onCheckedChange={() => togglePlanCommission(plan.id)}
+                        />
+                        <span className={`text-sm ${!commission.enabled ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                          {commission.enabled ? "Enabled" : "Disabled"}
+                        </span>
                       </div>
-                    </AccordionTrigger>
+                    </div>
                     <AccordionContent>
                       {!commission.enabled ? (
                         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
@@ -1072,7 +1646,8 @@ export default function SuperAdminCommissionSettings() {
                   </AccordionItem>
                 );
               })}
-            </Accordion>
+              </Accordion>
+            )}
           </CardContent>
         </Card>
 
@@ -1134,15 +1709,30 @@ export default function SuperAdminCommissionSettings() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Minimum Payout Threshold (₹)</Label>
-              <Input
-                type="number"
-                value={minPayoutThreshold}
-                onChange={(e) => setMinPayoutThreshold(parseFloat(e.target.value))}
-                min={0}
-              />
-              <p className="text-xs text-muted-foreground">
-                Helpers must earn at least this amount before payment is processed
-              </p>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={minPayoutThreshold}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setMinPayoutThreshold(value);
+                    validateField("minPayoutThreshold", value);
+                  }}
+                  onBlur={() => validateField("minPayoutThreshold", minPayoutThreshold)}
+                  min={0}
+                  className={fieldErrors.minPayoutThreshold ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {fieldErrors.minPayoutThreshold && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                    <span className="text-sm">⚠️</span> {fieldErrors.minPayoutThreshold}
+                  </p>
+                )}
+              </div>
+              {!fieldErrors.minPayoutThreshold && (
+                <p className="text-xs text-muted-foreground">
+                  Helpers must earn at least this amount before payment is processed
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1217,15 +1807,30 @@ export default function SuperAdminCommissionSettings() {
 
             <div className="space-y-2">
               <Label>Referral Code Prefix</Label>
-              <Input
-                value={referralCodePrefix}
-                onChange={(e) => setReferralCodePrefix(e.target.value.toUpperCase())}
-                placeholder="HELP"
-                maxLength={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                Prefix for auto-generated referral codes (e.g., HELP001, HELP002)
-              </p>
+              <div className="relative">
+                <Input
+                  value={referralCodePrefix}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    setReferralCodePrefix(value);
+                    validateField("referralCodePrefix", value);
+                  }}
+                  onBlur={() => validateField("referralCodePrefix", referralCodePrefix)}
+                  placeholder="HELP"
+                  maxLength={6}
+                  className={fieldErrors.referralCodePrefix ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {fieldErrors.referralCodePrefix && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                    <span className="text-sm">⚠️</span> {fieldErrors.referralCodePrefix}
+                  </p>
+                )}
+              </div>
+              {!fieldErrors.referralCodePrefix && (
+                <p className="text-xs text-muted-foreground">
+                  Prefix for auto-generated referral codes (e.g., HELP001, HELP002)
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -1279,40 +1884,56 @@ export default function SuperAdminCommissionSettings() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {auditRecords.map((record) => (
-                    <div
-                      key={record.id}
-                      className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              record.action === "created"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                : record.action === "updated"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                : record.action === "deleted"
-                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                                : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
-                            }`}
-                          >
-                            {record.action.toUpperCase()}
-                          </span>
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {record.table_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(record.created_at).toLocaleString()}
-                        </div>
-                      </div>
+                  {auditRecords.map((record) => {
+                    // Get plan name if this is a plan commission change
+                    let planName = "";
+                    let subscriptionType = "";
+                    if (record.table_name === "plan_commission" && record.new_value?.plan_id) {
+                      const plan = subscriptionPlans.find(p => p.id === record.new_value.plan_id);
+                      planName = plan?.name || "Unknown Plan";
+                      subscriptionType = record.new_value.subscription_type
+                        ? ` - ${record.new_value.subscription_type.charAt(0).toUpperCase() + record.new_value.subscription_type.slice(1)}`
+                        : "";
+                    } else if (record.table_name === "network_commission" && record.new_value?.subscription_type) {
+                      subscriptionType = ` - ${record.new_value.subscription_type.charAt(0).toUpperCase() + record.new_value.subscription_type.slice(1)}`;
+                    }
 
-                      <div className="flex items-center gap-2 text-sm mb-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{record.changed_by_email || "Unknown User"}</span>
-                      </div>
+                    return (
+                      <div
+                        key={record.id}
+                        className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                record.action === "created"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                  : record.action === "updated"
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : record.action === "deleted"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                  : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                              }`}
+                            >
+                              {record.action.toUpperCase()}
+                            </span>
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {record.table_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              {planName && ` - "${planName}"${subscriptionType}`}
+                              {!planName && subscriptionType}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(record.created_at).toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm mb-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{record.changed_by_email || "Unknown User"}</span>
+                        </div>
 
                       {record.field_changed && (
                         <div className="text-sm">
@@ -1327,18 +1948,94 @@ export default function SuperAdminCommissionSettings() {
                         <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
                           {record.old_value && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-semibold">Old Value:</p>
-                              <pre className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-2 text-xs overflow-auto max-h-32">
-                                {JSON.stringify(record.old_value, null, 2)}
-                              </pre>
+                              <p className="text-xs text-muted-foreground font-semibold">Previous Values:</p>
+                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 text-xs space-y-1">
+                                {Object.entries(record.old_value).map(([key, value]: [string, any]) => {
+                                  // Skip internal fields
+                                  if (['id', 'created_at', 'settings_id', 'plan_id'].includes(key)) return null;
+
+                                  // Format field name
+                                  const fieldName = key
+                                    .split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ');
+
+                                  // Format value
+                                  let displayValue = value;
+                                  if (key === 'commission_model') {
+                                    displayValue = value === 'onetime' ? 'One-time' : value === 'recurring' ? 'Recurring' : 'Hybrid';
+                                  } else if (key === 'subscription_type') {
+                                    displayValue = value.charAt(0).toUpperCase() + value.slice(1);
+                                  } else if (key.includes('_type') && (value === 'percentage' || value === 'fixed')) {
+                                    displayValue = value === 'percentage' ? 'Percentage (%)' : 'Fixed Amount (₹)';
+                                  } else if (key.includes('_value') && key.includes('onetime')) {
+                                    const typeKey = key.replace('value', 'type');
+                                    const type = record.old_value[typeKey];
+                                    displayValue = type === 'percentage' ? `${value}%` : `₹${value}`;
+                                  } else if (key.includes('_value') && key.includes('recurring')) {
+                                    const typeKey = key.replace('value', 'type');
+                                    const type = record.old_value[typeKey];
+                                    displayValue = type === 'percentage' ? `${value}%` : `₹${value}`;
+                                  } else if (key.includes('duration')) {
+                                    displayValue = `${value} months`;
+                                  } else if (typeof value === 'boolean') {
+                                    displayValue = value ? 'Enabled' : 'Disabled';
+                                  }
+
+                                  return (
+                                    <div key={key} className="flex justify-between py-1 border-b border-red-200 dark:border-red-700 last:border-0">
+                                      <span className="text-muted-foreground">{fieldName}:</span>
+                                      <span className="font-medium">{String(displayValue)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                           {record.new_value && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-semibold">New Value:</p>
-                              <pre className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-2 text-xs overflow-auto max-h-32">
-                                {JSON.stringify(record.new_value, null, 2)}
-                              </pre>
+                              <p className="text-xs text-muted-foreground font-semibold">New Values:</p>
+                              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 text-xs space-y-1">
+                                {Object.entries(record.new_value).map(([key, value]: [string, any]) => {
+                                  // Skip internal fields
+                                  if (['id', 'created_at', 'settings_id', 'plan_id'].includes(key)) return null;
+
+                                  // Format field name
+                                  const fieldName = key
+                                    .split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ');
+
+                                  // Format value
+                                  let displayValue = value;
+                                  if (key === 'commission_model') {
+                                    displayValue = value === 'onetime' ? 'One-time' : value === 'recurring' ? 'Recurring' : 'Hybrid';
+                                  } else if (key === 'subscription_type') {
+                                    displayValue = value.charAt(0).toUpperCase() + value.slice(1);
+                                  } else if (key.includes('_type') && (value === 'percentage' || value === 'fixed')) {
+                                    displayValue = value === 'percentage' ? 'Percentage (%)' : 'Fixed Amount (₹)';
+                                  } else if (key.includes('_value') && key.includes('onetime')) {
+                                    const typeKey = key.replace('value', 'type');
+                                    const type = record.new_value[typeKey];
+                                    displayValue = type === 'percentage' ? `${value}%` : `₹${value}`;
+                                  } else if (key.includes('_value') && key.includes('recurring')) {
+                                    const typeKey = key.replace('value', 'type');
+                                    const type = record.new_value[typeKey];
+                                    displayValue = type === 'percentage' ? `${value}%` : `₹${value}`;
+                                  } else if (key.includes('duration')) {
+                                    displayValue = `${value} months`;
+                                  } else if (typeof value === 'boolean') {
+                                    displayValue = value ? 'Enabled' : 'Disabled';
+                                  }
+
+                                  return (
+                                    <div key={key} className="flex justify-between py-1 border-b border-green-200 dark:border-green-700 last:border-0">
+                                      <span className="text-muted-foreground">{fieldName}:</span>
+                                      <span className="font-medium">{String(displayValue)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1351,7 +2048,8 @@ export default function SuperAdminCommissionSettings() {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1359,12 +2057,707 @@ export default function SuperAdminCommissionSettings() {
         </Card>
 
         {/* Save Button */}
-        <div className="flex justify-end">
-          <Button size="lg" onClick={handleSaveSettings} disabled={saving}>
+        <div className="flex flex-col items-end gap-2">
+          {Object.keys(fieldErrors).length > 0 && (
+            <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+              <span>⚠️</span> Fix {Object.keys(fieldErrors).length} error{Object.keys(fieldErrors).length > 1 ? 's' : ''} before saving
+            </p>
+          )}
+          <Button
+            size="lg"
+            onClick={handleSaveSettings}
+            disabled={saving || Object.keys(fieldErrors).length > 0}
+            className={Object.keys(fieldErrors).length > 0 ? "opacity-50 cursor-not-allowed" : ""}
+          >
             <Save className="h-5 w-5 mr-2" />
             {saving ? "Saving..." : "Save All Settings"}
           </Button>
         </div>
+
+        {/* Change Summary Modal */}
+        <Dialog open={showChangeSummary} onOpenChange={setShowChangeSummary}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+                Settings Saved Successfully
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                {(changeSummary.commissionModel.length +
+                  changeSummary.commissionRates.length +
+                  changeSummary.featureToggles.length +
+                  changeSummary.paymentSettings.length +
+                  changeSummary.recruitmentSettings.length)} changes applied to your commission settings
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6 space-y-6">
+              {(changeSummary.commissionModel.length +
+                changeSummary.commissionRates.length +
+                changeSummary.featureToggles.length +
+                changeSummary.paymentSettings.length +
+                changeSummary.recruitmentSettings.length) === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Info className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No changes detected</p>
+                </div>
+              ) : (
+                <>
+                  {/* Network Commission Settings Display */}
+                  {(originalValues && (
+                    JSON.stringify(networkMonthly) !== JSON.stringify(originalValues.networkMonthly) ||
+                    JSON.stringify(networkYearly) !== JSON.stringify(originalValues.networkYearly)
+                  )) && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b">
+                        <h3 className="font-semibold text-base">Network Commission Settings</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-2 gap-6">
+                          {/* Monthly Column */}
+                          <div className="space-y-4">
+                            <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                              Monthly Subscription
+                            </h4>
+                            <div className="space-y-3 text-sm">
+                              <div className="flex justify-between py-2 border-b">
+                                <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                <span className="font-medium">
+                                  {networkMonthly.model === "onetime" ? "One-time" :
+                                   networkMonthly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                </span>
+                              </div>
+
+                              {(networkMonthly.model === "onetime" || networkMonthly.model === "hybrid") && (
+                                <>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                    <span className="font-medium">
+                                      {networkMonthly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                    <span className="font-medium text-green-600 dark:text-green-400">
+                                      {networkMonthly.onetimeType === "percentage"
+                                        ? `${networkMonthly.onetimeValue}%`
+                                        : `₹${networkMonthly.onetimeValue}`}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+
+                              {(networkMonthly.model === "recurring" || networkMonthly.model === "hybrid") && (
+                                <>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                    <span className="font-medium">
+                                      {networkMonthly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                    <span className="font-medium text-green-600 dark:text-green-400">
+                                      {networkMonthly.recurringType === "percentage"
+                                        ? `${networkMonthly.recurringValue}%`
+                                        : `₹${networkMonthly.recurringValue}`}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                    <span className="font-medium">{networkMonthly.recurringDuration} months</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Yearly Column */}
+                          <div className="space-y-4">
+                            <h4 className="font-semibold text-sm text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                              Yearly Subscription
+                            </h4>
+                            <div className="space-y-3 text-sm">
+                              <div className="flex justify-between py-2 border-b">
+                                <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                <span className="font-medium">
+                                  {networkYearly.model === "onetime" ? "One-time" :
+                                   networkYearly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                </span>
+                              </div>
+
+                              {(networkYearly.model === "onetime" || networkYearly.model === "hybrid") && (
+                                <>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                    <span className="font-medium">
+                                      {networkYearly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                    <span className="font-medium text-green-600 dark:text-green-400">
+                                      {networkYearly.onetimeType === "percentage"
+                                        ? `${networkYearly.onetimeValue}%`
+                                        : `₹${networkYearly.onetimeValue}`}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+
+                              {(networkYearly.model === "recurring" || networkYearly.model === "hybrid") && (
+                                <>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                    <span className="font-medium">
+                                      {networkYearly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                    <span className="font-medium text-green-600 dark:text-green-400">
+                                      {networkYearly.recurringType === "percentage"
+                                        ? `${networkYearly.recurringValue}%`
+                                        : `₹${networkYearly.recurringValue}`}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                    <span className="font-medium">{networkYearly.recurringDuration} months</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Plan-Specific Commission Settings Display */}
+                  {(originalValues && originalValues.planCommissions && Object.keys(planCommissions).some(planId => {
+                    const original = originalValues.planCommissions[planId];
+                    return original && (
+                      JSON.stringify(planCommissions[planId]) !== JSON.stringify(original)
+                    );
+                  })) && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b">
+                        <h3 className="font-semibold text-base">Plan-Specific Commission Settings</h3>
+                      </div>
+                      <div className="p-4 space-y-6">
+                        {Object.keys(planCommissions).map(planId => {
+                          const plan = subscriptionPlans.find(p => p.id === planId);
+                          const current = planCommissions[planId];
+                          const original = originalValues?.planCommissions?.[planId];
+
+                          // Only show if there are changes
+                          if (!plan || !original || JSON.stringify(current) === JSON.stringify(original)) {
+                            return null;
+                          }
+
+                          return (
+                            <div key={planId} className="border-l-4 border-purple-500 pl-4">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-semibold text-base">{plan.name}</h4>
+                                <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                                  current.enabled
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                }`}>
+                                  {current.enabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                              </div>
+
+                              {current.enabled && (
+                                <div className="grid grid-cols-2 gap-6">
+                                  {/* Monthly Column */}
+                                  <div className="space-y-4">
+                                    <h5 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                                      Monthly Subscription
+                                    </h5>
+                                    <div className="space-y-3 text-sm">
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                        <span className="font-medium">
+                                          {current.monthly.model === "onetime" ? "One-time" :
+                                           current.monthly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                        </span>
+                                      </div>
+
+                                      {(current.monthly.model === "onetime" || current.monthly.model === "hybrid") && (
+                                        <>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                            <span className="font-medium">
+                                              {current.monthly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                            <span className="font-medium text-green-600 dark:text-green-400">
+                                              {current.monthly.onetimeType === "percentage"
+                                                ? `${current.monthly.onetimeValue}%`
+                                                : `₹${current.monthly.onetimeValue}`}
+                                            </span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {(current.monthly.model === "recurring" || current.monthly.model === "hybrid") && (
+                                        <>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                            <span className="font-medium">
+                                              {current.monthly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                            <span className="font-medium text-green-600 dark:text-green-400">
+                                              {current.monthly.recurringType === "percentage"
+                                                ? `${current.monthly.recurringValue}%`
+                                                : `₹${current.monthly.recurringValue}`}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                            <span className="font-medium">{current.monthly.recurringDuration} months</span>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Yearly Column */}
+                                  <div className="space-y-4">
+                                    <h5 className="font-semibold text-sm text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                                      Yearly Subscription
+                                    </h5>
+                                    <div className="space-y-3 text-sm">
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                        <span className="font-medium">
+                                          {current.yearly.model === "onetime" ? "One-time" :
+                                           current.yearly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                        </span>
+                                      </div>
+
+                                      {(current.yearly.model === "onetime" || current.yearly.model === "hybrid") && (
+                                        <>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                            <span className="font-medium">
+                                              {current.yearly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                            <span className="font-medium text-green-600 dark:text-green-400">
+                                              {current.yearly.onetimeType === "percentage"
+                                                ? `${current.yearly.onetimeValue}%`
+                                                : `₹${current.yearly.onetimeValue}`}
+                                            </span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {(current.yearly.model === "recurring" || current.yearly.model === "hybrid") && (
+                                        <>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                            <span className="font-medium">
+                                              {current.yearly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                            <span className="font-medium text-green-600 dark:text-green-400">
+                                              {current.yearly.recurringType === "percentage"
+                                                ? `${current.yearly.recurringValue}%`
+                                                : `₹${current.yearly.recurringValue}`}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                            <span className="font-medium">{current.yearly.recurringDuration} months</span>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback: Show changes in structured format if main sections don't render */}
+                  {(changeSummary.commissionModel.length > 0 || changeSummary.commissionRates.length > 0) &&
+                   (!originalValues ||
+                    (JSON.stringify(networkMonthly) === JSON.stringify(originalValues.networkMonthly) &&
+                     JSON.stringify(networkYearly) === JSON.stringify(originalValues.networkYearly) &&
+                     !Object.keys(planCommissions).some(planId => {
+                       const original = originalValues.planCommissions?.[planId];
+                       return original && JSON.stringify(planCommissions[planId]) !== JSON.stringify(original);
+                     }))) && (
+                    <>
+                      {/* Check if changes are for Network Commission */}
+                      {(changeSummary.commissionModel.some(c => c.startsWith('Monthly:') || c.startsWith('Yearly:')) ||
+                        changeSummary.commissionRates.some(c => c.startsWith('Monthly') || c.startsWith('Yearly'))) && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b">
+                            <h3 className="font-semibold text-base">Network Commission Settings</h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="grid grid-cols-2 gap-6">
+                              {/* Monthly Column */}
+                              <div className="space-y-4">
+                                <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                                  Monthly Subscription
+                                </h4>
+                                <div className="space-y-3 text-sm">
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                    <span className="font-medium">
+                                      {networkMonthly.model === "onetime" ? "One-time" :
+                                       networkMonthly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                    </span>
+                                  </div>
+                                  {(networkMonthly.model === "onetime" || networkMonthly.model === "hybrid") && (
+                                    <>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                        <span className="font-medium">
+                                          {networkMonthly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                          {networkMonthly.onetimeType === "percentage"
+                                            ? `${networkMonthly.onetimeValue}%`
+                                            : `₹${networkMonthly.onetimeValue}`}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                  {(networkMonthly.model === "recurring" || networkMonthly.model === "hybrid") && (
+                                    <>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                        <span className="font-medium">
+                                          {networkMonthly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                          {networkMonthly.recurringType === "percentage"
+                                            ? `${networkMonthly.recurringValue}%`
+                                            : `₹${networkMonthly.recurringValue}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                        <span className="font-medium">{networkMonthly.recurringDuration} months</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Yearly Column */}
+                              <div className="space-y-4">
+                                <h4 className="font-semibold text-sm text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                                  Yearly Subscription
+                                </h4>
+                                <div className="space-y-3 text-sm">
+                                  <div className="flex justify-between py-2 border-b">
+                                    <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                    <span className="font-medium">
+                                      {networkYearly.model === "onetime" ? "One-time" :
+                                       networkYearly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                    </span>
+                                  </div>
+                                  {(networkYearly.model === "onetime" || networkYearly.model === "hybrid") && (
+                                    <>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                        <span className="font-medium">
+                                          {networkYearly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                          {networkYearly.onetimeType === "percentage"
+                                            ? `${networkYearly.onetimeValue}%`
+                                            : `₹${networkYearly.onetimeValue}`}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                  {(networkYearly.model === "recurring" || networkYearly.model === "hybrid") && (
+                                    <>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                        <span className="font-medium">
+                                          {networkYearly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                          {networkYearly.recurringType === "percentage"
+                                            ? `${networkYearly.recurringValue}%`
+                                            : `₹${networkYearly.recurringValue}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                        <span className="font-medium">{networkYearly.recurringDuration} months</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Check if changes are for Plan-Specific Commission */}
+                      {Object.keys(planCommissions).filter(planId => {
+                        const plan = subscriptionPlans.find(p => p.id === planId);
+                        return plan && (
+                          changeSummary.commissionModel.some(c => c.includes(plan.name)) ||
+                          changeSummary.commissionRates.some(c => c.includes(plan.name)) ||
+                          changeSummary.featureToggles.some(c => c.includes(plan.name))
+                        );
+                      }).length > 0 && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b">
+                            <h3 className="font-semibold text-base">Plan-Specific Commission Settings</h3>
+                          </div>
+                          <div className="p-4 space-y-6">
+                            {Object.keys(planCommissions).map(planId => {
+                              const plan = subscriptionPlans.find(p => p.id === planId);
+                              const current = planCommissions[planId];
+
+                              // Only show plans that have changes
+                              if (!plan || !(
+                                changeSummary.commissionModel.some(c => c.includes(plan.name)) ||
+                                changeSummary.commissionRates.some(c => c.includes(plan.name)) ||
+                                changeSummary.featureToggles.some(c => c.includes(plan.name))
+                              )) {
+                                return null;
+                              }
+
+                              return (
+                                <div key={planId} className="border-l-4 border-purple-500 pl-4">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h4 className="font-semibold text-base">{plan.name}</h4>
+                                    <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                                      current.enabled
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                    }`}>
+                                      {current.enabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                  </div>
+
+                                  {current.enabled && (
+                                    <div className="grid grid-cols-2 gap-6">
+                                      {/* Monthly Column */}
+                                      <div className="space-y-4">
+                                        <h5 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                                          Monthly Subscription
+                                        </h5>
+                                        <div className="space-y-3 text-sm">
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                            <span className="font-medium">
+                                              {current.monthly.model === "onetime" ? "One-time" :
+                                               current.monthly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                            </span>
+                                          </div>
+                                          {(current.monthly.model === "onetime" || current.monthly.model === "hybrid") && (
+                                            <>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                                <span className="font-medium">
+                                                  {current.monthly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                                <span className="font-medium text-green-600 dark:text-green-400">
+                                                  {current.monthly.onetimeType === "percentage"
+                                                    ? `${current.monthly.onetimeValue}%`
+                                                    : `₹${current.monthly.onetimeValue}`}
+                                                </span>
+                                              </div>
+                                            </>
+                                          )}
+                                          {(current.monthly.model === "recurring" || current.monthly.model === "hybrid") && (
+                                            <>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                                <span className="font-medium">
+                                                  {current.monthly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                                <span className="font-medium text-green-600 dark:text-green-400">
+                                                  {current.monthly.recurringType === "percentage"
+                                                    ? `${current.monthly.recurringValue}%`
+                                                    : `₹${current.monthly.recurringValue}`}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                                <span className="font-medium">{current.monthly.recurringDuration} months</span>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Yearly Column */}
+                                      <div className="space-y-4">
+                                        <h5 className="font-semibold text-sm text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                                          Yearly Subscription
+                                        </h5>
+                                        <div className="space-y-3 text-sm">
+                                          <div className="flex justify-between py-2 border-b">
+                                            <span className="text-gray-600 dark:text-gray-400">Commission Model:</span>
+                                            <span className="font-medium">
+                                              {current.yearly.model === "onetime" ? "One-time" :
+                                               current.yearly.model === "recurring" ? "Recurring" : "Hybrid"}
+                                            </span>
+                                          </div>
+                                          {(current.yearly.model === "onetime" || current.yearly.model === "hybrid") && (
+                                            <>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">One-time Type:</span>
+                                                <span className="font-medium">
+                                                  {current.yearly.onetimeType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">One-time Rate:</span>
+                                                <span className="font-medium text-green-600 dark:text-green-400">
+                                                  {current.yearly.onetimeType === "percentage"
+                                                    ? `${current.yearly.onetimeValue}%`
+                                                    : `₹${current.yearly.onetimeValue}`}
+                                                </span>
+                                              </div>
+                                            </>
+                                          )}
+                                          {(current.yearly.model === "recurring" || current.yearly.model === "hybrid") && (
+                                            <>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Recurring Type:</span>
+                                                <span className="font-medium">
+                                                  {current.yearly.recurringType === "percentage" ? "Percentage" : "Fixed Amount"}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Recurring Rate:</span>
+                                                <span className="font-medium text-green-600 dark:text-green-400">
+                                                  {current.yearly.recurringType === "percentage"
+                                                    ? `${current.yearly.recurringValue}%`
+                                                    : `₹${current.yearly.recurringValue}`}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                                                <span className="font-medium">{current.yearly.recurringDuration} months</span>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Other Settings Changes */}
+                  {(changeSummary.featureToggles.length > 0 ||
+                    changeSummary.paymentSettings.length > 0 ||
+                    changeSummary.recruitmentSettings.length > 0) && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b">
+                        <h3 className="font-semibold text-base">Other Settings Updated</h3>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {changeSummary.featureToggles.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Feature Settings</h4>
+                            <ul className="space-y-1 text-sm">
+                              {changeSummary.featureToggles.map((change, index) => (
+                                <li key={index} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  {change}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {changeSummary.paymentSettings.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Payment Settings</h4>
+                            <ul className="space-y-1 text-sm">
+                              {changeSummary.paymentSettings.map((change, index) => (
+                                <li key={index} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  {change}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {changeSummary.recruitmentSettings.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Recruitment Settings</h4>
+                            <ul className="space-y-1 text-sm">
+                              {changeSummary.recruitmentSettings.map((change, index) => (
+                                <li key={index} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  {change}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end border-t pt-4">
+              <Button onClick={() => setShowChangeSummary(false)} size="lg">
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

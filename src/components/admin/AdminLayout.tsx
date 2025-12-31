@@ -18,7 +18,8 @@ import {
   Rocket,
   Search,
   ChevronDown,
-  Share2
+  Share2,
+  Instagram
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -280,6 +281,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           href: "/admin/growth/social-media",
           icon: Share2,
           current: location.pathname === "/admin/growth/social-media",
+        },
+        {
+          name: "Instagram",
+          href: "/admin/growth/instagram",
+          icon: Instagram,
+          current: location.pathname === "/admin/growth/instagram",
         },
       ],
     },

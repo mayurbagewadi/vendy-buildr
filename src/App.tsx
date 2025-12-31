@@ -22,6 +22,7 @@ import Categories from "./pages/admin/Categories";
 import Subscription from "./pages/admin/Subscription";
 import GrowthSEO from "./pages/admin/growth/SEO";
 import GrowthSocialMedia from "./pages/admin/growth/SocialMedia";
+import GrowthInstagram from "./pages/admin/growth/Instagram";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import CustomerCategories from "./pages/customer/Categories";
@@ -131,6 +132,7 @@ const App = () => {
                       <Route path="/admin/subscription" element={<Subscription />} />
                       <Route path="/admin/growth/seo" element={<GrowthSEO />} />
                       <Route path="/admin/growth/social-media" element={<GrowthSocialMedia />} />
+                      <Route path="/admin/growth/instagram" element={<GrowthInstagram />} />
                       <Route path="/admin/settings" element={<AdminSettings />} />
 
                       {/* Super Admin Routes */}
