@@ -12,6 +12,7 @@ import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
+import InstagramReels from "@/components/customer/InstagramReels";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
@@ -70,6 +71,16 @@ interface StoreData {
   youtube_url: string | null;
   linkedin_url: string | null;
   price_range: string | null;
+  // Instagram Reels
+  instagram_reels_settings: {
+    enabled: boolean;
+    display_mode: string;
+    max_reels: number;
+    manual_reels: { url: string; thumbnail_url?: string; caption?: string }[];
+    show_on_homepage: boolean;
+    section_title: string;
+  } | null;
+  instagram_username: string | null;
 }
 
 interface ProfileData {
@@ -236,6 +247,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         ...storeData,
         social_links: storeData.social_links as any,
         policies: storeData.policies as any,
+        instagram_reels_settings: storeData.instagram_reels_settings as any,
       });
 
       // Fetch profile data for contact information
@@ -409,6 +421,15 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             )}
           </div>
         </section>
+
+        {/* Instagram Reels Section */}
+        {store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage && (
+          <InstagramReels
+            storeId={store.id}
+            settings={store.instagram_reels_settings}
+            instagramUsername={store.instagram_username || undefined}
+          />
+        )}
 
         {/* New Arrivals */}
         {newArrivals.length > 0 && (

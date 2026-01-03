@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Instagram, Check, X, Plus, Trash2, MessageCircle, AtSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Instagram, Check, X, Plus, Trash2, MessageCircle, AtSign, Film, RefreshCw, ExternalLink } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 interface AutoReplyRule {
@@ -26,6 +27,22 @@ interface AutoReplySettings {
 interface CommentAutoReplySettings {
   enabled: boolean;
   default_reply: string;
+}
+
+interface ManualReel {
+  url: string;
+  thumbnail_url?: string;
+  caption?: string;
+  added_at: string;
+}
+
+interface ReelsSettings {
+  enabled: boolean;
+  display_mode: "auto" | "manual" | "both";
+  max_reels: number;
+  manual_reels: ManualReel[];
+  show_on_homepage: boolean;
+  section_title: string;
 }
 
 const GrowthInstagram = () => {
@@ -52,6 +69,18 @@ const GrowthInstagram = () => {
     enabled: false,
     default_reply: "Thanks for your comment!",
   });
+
+  // Reels settings
+  const [reelsSettings, setReelsSettings] = useState<ReelsSettings>({
+    enabled: false,
+    display_mode: "auto",
+    max_reels: 6,
+    manual_reels: [],
+    show_on_homepage: true,
+    section_title: "Follow Us on Instagram",
+  });
+  const [newReelUrl, setNewReelUrl] = useState("");
+  const [refreshingReels, setRefreshingReels] = useState(false);
 
   // New rule form
   const [newKeywords, setNewKeywords] = useState("");
@@ -86,7 +115,7 @@ const GrowthInstagram = () => {
 
       const { data: store, error } = await supabase
         .from("stores")
-        .select("id, instagram_connected, instagram_username, instagram_token_expiry, auto_reply_settings, comment_auto_reply_settings")
+        .select("id, instagram_connected, instagram_username, instagram_token_expiry, auto_reply_settings, comment_auto_reply_settings, instagram_reels_settings")
         .eq("user_id", user.id)
         .single();
 
@@ -107,6 +136,10 @@ const GrowthInstagram = () => {
 
       if (store.comment_auto_reply_settings) {
         setCommentSettings(store.comment_auto_reply_settings as CommentAutoReplySettings);
+      }
+
+      if (store.instagram_reels_settings) {
+        setReelsSettings(store.instagram_reels_settings as ReelsSettings);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -160,6 +193,7 @@ const GrowthInstagram = () => {
         .update({
           auto_reply_settings: autoReplySettings,
           comment_auto_reply_settings: commentSettings,
+          instagram_reels_settings: reelsSettings,
         })
         .eq("id", storeId);
 
@@ -172,6 +206,74 @@ const GrowthInstagram = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addManualReel = () => {
+    if (!newReelUrl.trim()) {
+      toast.error("Please enter a reel URL");
+      return;
+    }
+
+    if (!newReelUrl.includes("instagram.com/reel/") && !newReelUrl.includes("instagram.com/p/")) {
+      toast.error("Invalid URL. Please use format: https://www.instagram.com/reel/xxx");
+      return;
+    }
+
+    // Check for duplicates
+    if (reelsSettings.manual_reels.some(r => r.url === newReelUrl.trim())) {
+      toast.error("This reel is already added");
+      return;
+    }
+
+    const newReel: ManualReel = {
+      url: newReelUrl.trim(),
+      added_at: new Date().toISOString(),
+    };
+
+    setReelsSettings(prev => ({
+      ...prev,
+      manual_reels: [...prev.manual_reels, newReel],
+    }));
+
+    setNewReelUrl("");
+    toast.success("Reel added");
+  };
+
+  const removeManualReel = (url: string) => {
+    setReelsSettings(prev => ({
+      ...prev,
+      manual_reels: prev.manual_reels.filter(r => r.url !== url),
+    }));
+  };
+
+  const handleRefreshReels = async () => {
+    if (!storeId) return;
+
+    try {
+      setRefreshingReels(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/instagram-fetch-reels?action=refresh&store_id=${storeId}`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Refreshed ${data.count} reels from Instagram`);
+      } else {
+        toast.error(data.error || "Failed to refresh reels");
+      }
+    } catch (error) {
+      console.error("Error refreshing reels:", error);
+      toast.error("Failed to refresh reels");
+    } finally {
+      setRefreshingReels(false);
+    }
+  };
+
+  const extractReelId = (url: string) => {
+    const match = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/);
+    return match ? match[2] : url;
   };
 
   const addRule = () => {
@@ -448,6 +550,172 @@ const GrowthInstagram = () => {
                     rows={2}
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Instagram Reels Display */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Film className="w-5 h-5" />
+                  Instagram Reels on Store
+                </CardTitle>
+                <CardDescription>
+                  Display your Instagram Reels on your store's homepage
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Show Reels on Store</Label>
+                    <p className="text-sm text-muted-foreground">Display Instagram Reels to customers</p>
+                  </div>
+                  <Switch
+                    checked={reelsSettings.enabled}
+                    onCheckedChange={(checked) =>
+                      setReelsSettings(prev => ({ ...prev, enabled: checked }))
+                    }
+                  />
+                </div>
+
+                {reelsSettings.enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Section Title</Label>
+                      <Input
+                        value={reelsSettings.section_title}
+                        onChange={(e) =>
+                          setReelsSettings(prev => ({ ...prev, section_title: e.target.value }))
+                        }
+                        placeholder="Follow Us on Instagram"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Display Mode</Label>
+                      <Select
+                        value={reelsSettings.display_mode}
+                        onValueChange={(value: "auto" | "manual" | "both") =>
+                          setReelsSettings(prev => ({ ...prev, display_mode: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto-fetch from Instagram</SelectItem>
+                          <SelectItem value="manual">Manual URLs only</SelectItem>
+                          <SelectItem value="both">Both (Auto + Manual)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {reelsSettings.display_mode === "auto" && "Automatically fetch your latest reels from Instagram"}
+                        {reelsSettings.display_mode === "manual" && "Only show reels you manually add"}
+                        {reelsSettings.display_mode === "both" && "Combine auto-fetched reels with manual ones"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Maximum Reels to Show</Label>
+                      <Select
+                        value={reelsSettings.max_reels.toString()}
+                        onValueChange={(value) =>
+                          setReelsSettings(prev => ({ ...prev, max_reels: parseInt(value) }))
+                        }
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[3, 4, 6, 8, 9, 12].map(num => (
+                            <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Auto-fetch controls */}
+                    {(reelsSettings.display_mode === "auto" || reelsSettings.display_mode === "both") && (
+                      <div className="p-4 bg-muted rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Auto-Fetch Reels</p>
+                            <p className="text-sm text-muted-foreground">Fetch your latest reels from Instagram</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefreshReels}
+                            disabled={refreshingReels}
+                          >
+                            {refreshingReels ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Refresh
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Manual reels */}
+                    {(reelsSettings.display_mode === "manual" || reelsSettings.display_mode === "both") && (
+                      <div className="space-y-4">
+                        <Label>Manual Reels</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Add specific reels you want to display on your store
+                        </p>
+
+                        {/* Existing manual reels */}
+                        {reelsSettings.manual_reels.length > 0 && (
+                          <div className="space-y-2">
+                            {reelsSettings.manual_reels.map((reel) => (
+                              <div key={reel.url} className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                                <Instagram className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {extractReelId(reel.url)}
+                                  </p>
+                                  <a
+                                    href={reel.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                                  >
+                                    View <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeManualReel(reel.url)}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add new reel */}
+                        <div className="p-4 border border-dashed rounded-lg space-y-3">
+                          <Input
+                            value={newReelUrl}
+                            onChange={(e) => setNewReelUrl(e.target.value)}
+                            placeholder="https://www.instagram.com/reel/ABC123..."
+                          />
+                          <Button variant="outline" size="sm" onClick={addManualReel}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Reel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
 

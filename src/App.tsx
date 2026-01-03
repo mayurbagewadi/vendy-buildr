@@ -45,7 +45,6 @@ import SuperAdminCustomDomains from "./pages/superadmin/CustomDomains";
 import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
-import OnboardingComplete from "./pages/onboarding/Complete";
 import Store from "./pages/customer/Store";
 import Policies from "./pages/customer/Policies";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -152,7 +151,6 @@ const App = () => {
 
                       {/* Onboarding Routes */}
                       <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
-                      <Route path="/onboarding/complete" element={<OnboardingComplete />} />
 
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       {/* Dynamic Store Route - must be last before 404 */}

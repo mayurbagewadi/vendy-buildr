@@ -251,7 +251,7 @@ const StoreSetup = () => {
         description: "Your store is ready with demo products."
       });
 
-      navigate("/onboarding/complete");
+      navigate("/admin/dashboard");
     } catch (error: any) {
       toast({
         title: "Error",
