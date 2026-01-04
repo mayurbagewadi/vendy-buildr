@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -28,6 +28,7 @@ const AdminSettings = () => {
   const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
@@ -217,36 +218,73 @@ const AdminSettings = () => {
 
     setIsUploadingBanner(true);
 
+    // Add all files to uploading queue with 0% progress
+    setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      for (const file of validFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
 
-        const response = await supabase.functions.invoke('upload-to-drive', {
-          body: formData,
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
+        // Start progress animation for current file
+        setUploadingFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, progress: 10 } : f
+        ));
 
-        if (response.error) {
-          throw new Error(response.error.message || 'Failed to upload image');
-        }
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
 
-        if (response.data?.imageUrl) {
-          setFormData(prev => ({
-            ...prev,
-            heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
-          }));
-          toast({
-            title: "Banner Uploaded",
-            description: `${file.name} uploaded successfully to Google Drive`,
+        // Simulate progress while uploading
+        const progressInterval = setInterval(() => {
+          setUploadingFiles(prev => prev.map((f, idx) =>
+            idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
+          ));
+        }, 200);
+
+        try {
+          const response = await supabase.functions.invoke('upload-to-drive', {
+            body: uploadFormData,
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
           });
+
+          clearInterval(progressInterval);
+
+          if (response.error) {
+            // Mark as failed
+            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
+            throw new Error(response.error.message || 'Failed to upload image');
+          }
+
+          if (response.data?.imageUrl) {
+            // Set to 100% complete
+            setUploadingFiles(prev => prev.map((f, idx) =>
+              idx === i ? { ...f, progress: 100 } : f
+            ));
+
+            // Small delay to show 100% state
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Remove from uploading queue and add to banners
+            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
+            setFormData(prev => ({
+              ...prev,
+              heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
+            }));
+
+            toast({
+              title: "Banner Uploaded",
+              description: `${file.name} uploaded successfully`,
+            });
+          }
+        } catch (fileError) {
+          clearInterval(progressInterval);
+          throw fileError;
         }
       }
     } catch (error: any) {
@@ -285,6 +323,7 @@ const AdminSettings = () => {
       }
     } finally {
       setIsUploadingBanner(false);
+      setUploadingFiles([]);
       event.target.value = '';
     }
   };
@@ -849,6 +888,44 @@ const AdminSettings = () => {
                 </p>
               </div>
 
+              {/* Uploading Files Progress */}
+              {uploadingFiles.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-base font-medium flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Uploading {uploadingFiles.length} image{uploadingFiles.length > 1 ? 's' : ''}...
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {uploadingFiles.map((file, index) => (
+                      <div key={`uploading-${index}`} className="relative rounded-lg overflow-hidden border bg-muted">
+                        <div className="aspect-[16/9] relative flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
+                          {file.progress < 100 ? (
+                            <>
+                              <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                              <p className="text-sm font-medium text-foreground truncate max-w-[90%] px-2">{file.name}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Uploading to Google Drive...</p>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
+                              <p className="text-sm font-medium text-foreground truncate max-w-[90%] px-2">{file.name}</p>
+                              <p className="text-xs text-green-600 mt-1">Upload complete!</p>
+                            </>
+                          )}
+                          {/* Progress Bar */}
+                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-muted-foreground/20">
+                            <div
+                              className={`h-full transition-all duration-300 ease-out ${file.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                              style={{ width: `${file.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Current Banner Images with Previews */}
               {formData.heroBannerUrls.length > 0 && (
                 <div className="space-y-3">
@@ -885,7 +962,7 @@ const AdminSettings = () => {
                 </div>
               )}
 
-              {formData.heroBannerUrls.length === 0 && (
+              {formData.heroBannerUrls.length === 0 && uploadingFiles.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No banner images added yet.</p>
