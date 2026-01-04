@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Save, Upload, X, Plus, Trash2, AlertCircle } from "lucide-react";
+import { Save, Upload, X, Plus, Trash2, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -60,6 +60,7 @@ const EditProduct = () => {
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -213,19 +214,14 @@ baseSku: product.sku || "",
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleImageUpload triggered');
     const files = Array.from(event.target.files || []);
-    console.log('Files selected:', files.length);
-    
-    if (files.length === 0) {
-      console.log('No files selected');
-      return;
-    }
+
+    if (files.length === 0) return;
 
     // Validate all files first
     const validFiles = files.filter(file => {
       const isValidType = file.type.startsWith('image/');
-      
+
       if (!isValidType) {
         toast({
           title: "Invalid file type",
@@ -234,50 +230,70 @@ baseSku: product.sku || "",
         });
         return false;
       }
-      
+
       return true;
     });
 
-    console.log('Valid files:', validFiles.length);
     if (validFiles.length === 0) return;
 
     setIsUploadingToDrive(true);
+    setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
 
     try {
-      // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session:', session ? 'Found' : 'Not found');
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // Upload each file to Google Drive
-      for (const file of validFiles) {
-        console.log('Uploading file:', file.name);
-        const formData = new FormData();
-        formData.append('file', file);
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
 
-        const response = await supabase.functions.invoke('upload-to-drive', {
-          body: formData,
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
+        setUploadingFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, progress: 10 } : f
+        ));
 
-        console.log('Upload response:', response);
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
 
-        if (response.error) {
-          console.error('Upload error:', response.error);
-          throw new Error(response.error.message || 'Failed to upload image');
-        }
+        const progressInterval = setInterval(() => {
+          setUploadingFiles(prev => prev.map((f, idx) =>
+            idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
+          ));
+        }, 200);
 
-        if (response.data?.imageUrl) {
-          console.log('Image URL received:', response.data.imageUrl);
-          setImageUrls(prev => [...prev, response.data.imageUrl]);
-          toast({
-            title: "Image uploaded",
-            description: `${file.name} uploaded successfully to Google Drive`,
+        try {
+          const response = await supabase.functions.invoke('upload-to-drive', {
+            body: uploadFormData,
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
           });
+
+          clearInterval(progressInterval);
+
+          if (response.error) {
+            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
+            throw new Error(response.error.message || 'Failed to upload image');
+          }
+
+          if (response.data?.imageUrl) {
+            setUploadingFiles(prev => prev.map((f, idx) =>
+              idx === i ? { ...f, progress: 100 } : f
+            ));
+
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
+            setImageUrls(prev => [...prev, response.data.imageUrl]);
+
+            toast({
+              title: "Image uploaded",
+              description: `${file.name} uploaded successfully`,
+            });
+          }
+        } catch (fileError) {
+          clearInterval(progressInterval);
+          throw fileError;
         }
       }
     } catch (error: any) {
@@ -331,7 +347,7 @@ baseSku: product.sku || "",
       }
     } finally {
       setIsUploadingToDrive(false);
-      // Reset the file input
+      setUploadingFiles([]);
       event.target.value = '';
     }
   };
@@ -745,14 +761,7 @@ stock: parseInt(data.baseStock),
                     </div>
 
                     {/* File Upload */}
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                      <Upload className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Or upload from device</p>
-                        <p className="text-xs text-muted-foreground">
-                          PNG, JPG images. Will be uploaded to your Google Drive.
-                        </p>
-                      </div>
+                    <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
                       <input
                         type="file"
                         multiple
@@ -762,19 +771,61 @@ stock: parseInt(data.baseStock),
                         id="image-upload-edit"
                         disabled={isUploadingToDrive}
                       />
-                      <label htmlFor="image-upload-edit" className="cursor-pointer">
-                        <span 
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-4"
-                        >
-                          {isUploadingToDrive ? (
-                            <>
-                              <Upload className="w-4 h-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            'Choose Files'
-                          )}
-                        </span>
+                      <label
+                        htmlFor="image-upload-edit"
+                        className={`block p-6 text-center ${isUploadingToDrive ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        {isUploadingToDrive && uploadingFiles.length > 0 ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                              <span className="font-medium text-foreground">
+                                Uploading {uploadingFiles.length} image{uploadingFiles.length > 1 ? 's' : ''}...
+                              </span>
+                            </div>
+                            {/* File Progress List */}
+                            <div className="space-y-3 max-w-md mx-auto">
+                              {uploadingFiles.map((file, index) => (
+                                <div key={`uploading-${index}`} className="bg-background/80 rounded-lg p-3 border">
+                                  <div className="flex items-center gap-3">
+                                    {file.progress < 100 ? (
+                                      <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
+                                    ) : (
+                                      <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {file.progress < 100 ? 'Uploading to Google Drive...' : 'Complete!'}
+                                      </p>
+                                    </div>
+                                    <span className="text-sm font-medium text-primary">{file.progress}%</span>
+                                  </div>
+                                  {/* Progress Bar */}
+                                  <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all duration-300 ease-out rounded-full ${file.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                                      style={{ width: `${file.progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Or upload from device</p>
+                              <p className="text-xs text-muted-foreground">
+                                PNG, JPG images. Will be uploaded to your Google Drive.
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                              Choose Files
+                            </span>
+                          </div>
+                        )}
                       </label>
                     </div>
 
