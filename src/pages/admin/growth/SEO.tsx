@@ -21,7 +21,11 @@ import {
   Save,
   Info,
   Sparkles,
-  Eye
+  Eye,
+  RefreshCw,
+  Zap,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import {
   Tooltip,
@@ -51,6 +55,10 @@ const SEOSettingsPage = () => {
   const [storeName, setStoreName] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [isSubmittingSitemap, setIsSubmittingSitemap] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [sitemapResult, setSitemapResult] = useState<any>(null);
+  const [indexingResult, setIndexingResult] = useState<any>(null);
 
   const [settings, setSettings] = useState<SEOSettings>({
     alternate_names: "",
@@ -220,6 +228,120 @@ const SEOSettingsPage = () => {
       title: "Variations Generated",
       description: `Generated ${uniqueVariations.length} name variations`,
     });
+  };
+
+  const submitSitemap = async () => {
+    if (!storeId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Store ID not found. Please refresh the page.",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingSitemap(true);
+      setSitemapResult(null);
+
+      toast({
+        title: "Submitting Sitemap",
+        description: "Submitting your sitemap to Google Search Console...",
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated. Please login again.');
+      }
+
+      const response = await fetch('https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/submit-sitemap-to-google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ storeId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSitemapResult(data.results?.[0] || { success: true });
+        toast({
+          title: "Sitemap Submitted!",
+          description: "Your sitemap has been submitted to Google. It may take a few days to appear in search results.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to submit sitemap');
+      }
+    } catch (error: any) {
+      console.error('Error submitting sitemap:', error);
+      setSitemapResult({ success: false, error: error.message });
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: error.message || "Failed to submit sitemap to Google",
+      });
+    } finally {
+      setIsSubmittingSitemap(false);
+    }
+  };
+
+  const requestIndexing = async () => {
+    if (!storeId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Store ID not found. Please refresh the page.",
+      });
+      return;
+    }
+
+    try {
+      setIsIndexing(true);
+      setIndexingResult(null);
+
+      toast({
+        title: "Requesting Indexing",
+        description: "Requesting immediate indexing from Google. This is faster than sitemap submission.",
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated. Please login again.');
+      }
+
+      const response = await fetch('https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/index-urls-to-google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ storeId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIndexingResult(data.results?.[0] || { success: true });
+        toast({
+          title: "Indexing Requested!",
+          description: `Successfully requested indexing. Your store should appear in Google within hours.`,
+        });
+      } else {
+        throw new Error(data.error || 'Failed to request indexing');
+      }
+    } catch (error: any) {
+      console.error('Error requesting indexing:', error);
+      setIndexingResult({ success: false, error: error.message });
+      toast({
+        variant: "destructive",
+        title: "Indexing Failed",
+        description: error.message || "Failed to request indexing from Google",
+      });
+    } finally {
+      setIsIndexing(false);
+    }
   };
 
   if (isLoading) {
@@ -531,6 +653,159 @@ const SEOSettingsPage = () => {
                     )}
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Indexing */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw className="w-5 h-5" />
+                Google Indexing
+              </CardTitle>
+              <CardDescription>
+                Submit your store to Google for faster indexing
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Info */}
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-900 dark:text-blue-100">Two ways to get indexed:</p>
+                    <ul className="mt-2 space-y-1 text-blue-800 dark:text-blue-200">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 dark:text-blue-400">•</span>
+                        <span><strong>Submit Sitemap:</strong> Traditional method, takes 3-7 days</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 dark:text-blue-400">•</span>
+                        <span><strong>Request Indexing:</strong> Faster method using Google Indexing API, appears within hours</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Sitemap Submission */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-medium text-sm mb-1">Submit Sitemap</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Submit your sitemap to Google Search Console (slower but comprehensive)
+                    </p>
+                  </div>
+                  <Button
+                    onClick={submitSitemap}
+                    disabled={isSubmittingSitemap}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isSubmittingSitemap ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Submit Sitemap
+                      </>
+                    )}
+                  </Button>
+                  {sitemapResult && (
+                    <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
+                      sitemapResult.success
+                        ? 'bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
+                    }`}>
+                      {sitemapResult.success ? (
+                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {sitemapResult.success ? (
+                          <p className="font-medium">Submitted successfully!</p>
+                        ) : (
+                          <>
+                            <p className="font-medium">Submission failed</p>
+                            {sitemapResult.error && (
+                              <p className="text-xs mt-1 opacity-90">{sitemapResult.error}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Immediate Indexing */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-medium text-sm mb-1 flex items-center gap-1">
+                      Request Indexing
+                      <Badge variant="secondary" className="text-xs">Faster</Badge>
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Request immediate indexing via Google Indexing API (appears within hours)
+                    </p>
+                  </div>
+                  <Button
+                    onClick={requestIndexing}
+                    disabled={isIndexing}
+                    className="w-full"
+                  >
+                    {isIndexing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Requesting...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Request Indexing
+                      </>
+                    )}
+                  </Button>
+                  {indexingResult && (
+                    <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
+                      indexingResult.success
+                        ? 'bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
+                    }`}>
+                      {indexingResult.success ? (
+                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {indexingResult.success ? (
+                          <p className="font-medium">Indexing requested!</p>
+                        ) : (
+                          <>
+                            <p className="font-medium">Request failed</p>
+                            {indexingResult.error && (
+                              <p className="text-xs mt-1 opacity-90">{indexingResult.error}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-4 text-xs text-muted-foreground">
+                <p className="font-medium mb-2">Note:</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Sitemap is automatically submitted when you create/update your store</li>
+                  <li>Use "Request Indexing" when you make important changes and need Google to re-crawl quickly</li>
+                  <li>You can use both methods - they complement each other</li>
+                </ul>
               </div>
             </CardContent>
           </Card>
