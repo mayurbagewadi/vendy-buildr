@@ -804,7 +804,7 @@ const AdminSettings = () => {
               {/* Option 1: Upload from Device */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">Option 1: Upload from Device</Label>
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingBanner ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
                   <input
                     type="file"
                     id="bannerUpload"
@@ -816,20 +816,47 @@ const AdminSettings = () => {
                   />
                   <label
                     htmlFor="bannerUpload"
-                    className={`cursor-pointer flex flex-col items-center gap-3 ${isUploadingBanner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`block p-6 text-center ${isUploadingBanner ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   >
-                    {isUploadingBanner ? (
-                      <>
-                        <div className="p-3 rounded-full bg-primary/10">
-                          <Upload className="w-6 h-6 text-primary animate-pulse" />
+                    {isUploadingBanner && uploadingFiles.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                          <span className="font-medium text-foreground">
+                            Uploading {uploadingFiles.length} image{uploadingFiles.length > 1 ? 's' : ''}...
+                          </span>
                         </div>
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">Uploading to Google Drive...</p>
-                          <p className="text-sm text-muted-foreground">Please wait</p>
+                        {/* File Progress List */}
+                        <div className="space-y-3 max-w-md mx-auto">
+                          {uploadingFiles.map((file, index) => (
+                            <div key={`uploading-${index}`} className="bg-background/80 rounded-lg p-3 border">
+                              <div className="flex items-center gap-3">
+                                {file.progress < 100 ? (
+                                  <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
+                                ) : (
+                                  <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {file.progress < 100 ? 'Uploading to Google Drive...' : 'Complete!'}
+                                  </p>
+                                </div>
+                                <span className="text-sm font-medium text-primary">{file.progress}%</span>
+                              </div>
+                              {/* Progress Bar */}
+                              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-300 ease-out rounded-full ${file.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                                  style={{ width: `${file.progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
+                      <div className="flex flex-col items-center gap-3">
                         <div className="p-3 rounded-full bg-primary/10">
                           <Upload className="w-6 h-6 text-primary" />
                         </div>
@@ -841,11 +868,11 @@ const AdminSettings = () => {
                               : "Connect Google Drive below to enable uploads"}
                           </p>
                         </div>
-                      </>
+                      </div>
                     )}
                   </label>
                 </div>
-                {!googleDriveConnected && (
+                {!googleDriveConnected && !isUploadingBanner && (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
                     Connect your Google Drive account in the section below to upload images directly.
                   </p>
@@ -887,44 +914,6 @@ const AdminSettings = () => {
                   Paste a Google Drive share link. Make sure the file is set to "Anyone with the link can view".
                 </p>
               </div>
-
-              {/* Uploading Files Progress */}
-              {uploadingFiles.length > 0 && (
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    Uploading {uploadingFiles.length} image{uploadingFiles.length > 1 ? 's' : ''}...
-                  </Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {uploadingFiles.map((file, index) => (
-                      <div key={`uploading-${index}`} className="relative rounded-lg overflow-hidden border bg-muted">
-                        <div className="aspect-[16/9] relative flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
-                          {file.progress < 100 ? (
-                            <>
-                              <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                              <p className="text-sm font-medium text-foreground truncate max-w-[90%] px-2">{file.name}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Uploading to Google Drive...</p>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
-                              <p className="text-sm font-medium text-foreground truncate max-w-[90%] px-2">{file.name}</p>
-                              <p className="text-xs text-green-600 mt-1">Upload complete!</p>
-                            </>
-                          )}
-                          {/* Progress Bar */}
-                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-muted-foreground/20">
-                            <div
-                              className={`h-full transition-all duration-300 ease-out ${file.progress === 100 ? 'bg-green-500' : 'bg-primary'}`}
-                              style={{ width: `${file.progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Current Banner Images with Previews */}
               {formData.heroBannerUrls.length > 0 && (
