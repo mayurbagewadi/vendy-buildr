@@ -13,6 +13,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { generateStoreTXT } from "@/lib/generateStoreTXT";
 import { DeleteMyAccountModal } from "@/components/admin/DeleteMyAccountModal";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +27,7 @@ const AdminSettings = () => {
   const [userEmail, setUserEmail] = useState("");
   const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
@@ -146,13 +148,33 @@ const AdminSettings = () => {
   };
 
   const handleAddBannerUrl = () => {
-    if (newBannerUrl.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        heroBannerUrls: [...prev.heroBannerUrls, newBannerUrl.trim()]
-      }));
-      setNewBannerUrl("");
+    if (!newBannerUrl.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid URL",
+        description: "Please enter a valid image URL",
+      });
+      return;
     }
+
+    // Convert Google Drive share link to direct link
+    let imageUrl = newBannerUrl.trim();
+    if (imageUrl.includes('drive.google.com')) {
+      const converted = convertToDirectImageUrl(imageUrl);
+      if (converted) {
+        imageUrl = converted;
+        toast({
+          title: "Google Drive Link Added",
+          description: "Make sure the file is set to 'Anyone with the link can view'",
+        });
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      heroBannerUrls: [...prev.heroBannerUrls, imageUrl]
+    }));
+    setNewBannerUrl("");
   };
 
   const handleRemoveBannerUrl = (index: number) => {
@@ -160,6 +182,111 @@ const AdminSettings = () => {
       ...prev,
       heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+
+    if (files.length === 0) return;
+
+    // Validate all files first
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      if (!isValidType) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a valid image file`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    if (!googleDriveConnected) {
+      toast({
+        title: "Google Drive Not Connected",
+        description: "Please connect your Google Drive account below to upload images directly.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+
+    setIsUploadingBanner(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      for (const file of validFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await supabase.functions.invoke('upload-to-drive', {
+          body: formData,
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Failed to upload image');
+        }
+
+        if (response.data?.imageUrl) {
+          setFormData(prev => ({
+            ...prev,
+            heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
+          }));
+          toast({
+            title: "Banner Uploaded",
+            description: `${file.name} uploaded successfully to Google Drive`,
+          });
+        }
+      }
+    } catch (error: any) {
+      let errorMessage = error.message || '';
+      if (error.context?.body) {
+        try {
+          const errorBody = JSON.parse(error.context.body);
+          errorMessage = errorBody.error || errorBody.message || errorMessage;
+        } catch (e) {
+          // Could not parse error body
+        }
+      }
+
+      if (errorMessage.toLowerCase().includes('drive') &&
+          errorMessage.toLowerCase().includes('not connected')) {
+        toast({
+          title: "Google Drive Not Connected",
+          description: "Please connect your Google Drive account below first.",
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('expired')) {
+        toast({
+          title: "Google Drive Connection Expired",
+          description: "Your Google Drive connection has expired. Please reconnect below.",
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else {
+        toast({
+          title: "Upload Failed",
+          description: errorMessage || 'Failed to upload to Google Drive. Try using the URL option instead.',
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } finally {
+      setIsUploadingBanner(false);
+      event.target.value = '';
+    }
   };
 
   const handleDownloadStoreInfo = async () => {
@@ -635,14 +762,75 @@ const AdminSettings = () => {
               <p className="text-muted-foreground">Add multiple banner images for auto-sliding carousel (Recommended size: 1920x450px)</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Add New Banner URL */}
-              <div>
-                <Label htmlFor="newBannerUrl">Add New Banner URL (Google Drive Link)</Label>
-                <div className="flex gap-2 mt-2">
+              {/* Option 1: Upload from Device */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Option 1: Upload from Device</Label>
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                  <input
+                    type="file"
+                    id="bannerUpload"
+                    accept="image/*"
+                    multiple
+                    onChange={handleBannerUpload}
+                    className="hidden"
+                    disabled={isUploadingBanner}
+                  />
+                  <label
+                    htmlFor="bannerUpload"
+                    className={`cursor-pointer flex flex-col items-center gap-3 ${isUploadingBanner ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isUploadingBanner ? (
+                      <>
+                        <div className="p-3 rounded-full bg-primary/10">
+                          <Upload className="w-6 h-6 text-primary animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">Uploading to Google Drive...</p>
+                          <p className="text-sm text-muted-foreground">Please wait</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-3 rounded-full bg-primary/10">
+                          <Upload className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">Click to upload banner images</p>
+                          <p className="text-sm text-muted-foreground">
+                            {googleDriveConnected
+                              ? "Images will be uploaded to your Google Drive"
+                              : "Connect Google Drive below to enable uploads"}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </label>
+                </div>
+                {!googleDriveConnected && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Connect your Google Drive account in the section below to upload images directly.
+                  </p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">OR</span>
+                </div>
+              </div>
+
+              {/* Option 2: Manual URL */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Option 2: Paste Google Drive URL</Label>
+                <div className="flex gap-2">
                   <Input
                     id="newBannerUrl"
                     type="text"
-                    placeholder="https://drive.google.com/..."
+                    placeholder="https://drive.google.com/file/d/..."
                     value={newBannerUrl}
                     onChange={(e) => setNewBannerUrl(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddBannerUrl())}
@@ -656,27 +844,41 @@ const AdminSettings = () => {
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Paste a Google Drive share link. Make sure the file is set to "Anyone with the link can view".
+                </p>
               </div>
 
-              {/* List of Banner URLs */}
+              {/* Current Banner Images with Previews */}
               {formData.heroBannerUrls.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Current Banner Images ({formData.heroBannerUrls.length})</Label>
-                  <div className="space-y-2">
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Current Banner Images ({formData.heroBannerUrls.length})</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {formData.heroBannerUrls.map((url, index) => (
-                      <div key={index} className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                        <span className="text-sm text-muted-foreground font-mono flex-1 truncate">
-                          {index + 1}. {url}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveBannerUrl(index)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                      <div key={index} className="relative group rounded-lg overflow-hidden border bg-muted">
+                        <div className="aspect-[16/9] relative">
+                          <img
+                            src={url}
+                            alt={`Banner ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f0f0f0" width="100" height="100"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="12">Image Error</text></svg>';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
+                          <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                            {index + 1}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveBannerUrl(index)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -684,7 +886,11 @@ const AdminSettings = () => {
               )}
 
               {formData.heroBannerUrls.length === 0 && (
-                <p className="text-sm text-muted-foreground">No banner images added yet. Add URLs above to create a carousel.</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No banner images added yet.</p>
+                  <p className="text-xs mt-1">Upload images or paste URLs above to create a carousel.</p>
+                </div>
               )}
             </CardContent>
           </Card>
