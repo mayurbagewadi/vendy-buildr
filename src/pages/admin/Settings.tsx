@@ -29,9 +29,7 @@ const AdminSettings = () => {
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
-    tagline: "",
     logoUrl: "",
-    heroImageUrl: "",
     heroBannerUrls: [] as string[],
     phone: "",
     email: "",
@@ -118,9 +116,7 @@ const AdminSettings = () => {
 
         setFormData({
           storeName: store?.name || "",
-          tagline: store?.description || "",
           logoUrl: store?.logo_url || "",
-          heroImageUrl: store?.hero_banner_url || "",
           heroBannerUrls: (store?.hero_banner_urls || []) as string[],
           phone: profile?.phone || "",
           email: profile?.email || "",
@@ -316,9 +312,7 @@ const AdminSettings = () => {
       // Update stores table
       const updateData: any = {
         name: formData.storeName,
-        description: formData.tagline || null,
         logo_url: formData.logoUrl || null,
-        hero_banner_url: formData.heroImageUrl || null,
         hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
         address: formData.address || null,
@@ -389,9 +383,7 @@ const AdminSettings = () => {
       icon: Store,
       fields: [
         { key: "storeName", label: "Store Name", placeholder: "My Awesome Store", required: true },
-        { key: "tagline", label: "Store Tagline", placeholder: "Your one-stop shop for everything" },
         { key: "logoUrl", label: "Logo URL (Google Drive Link)", placeholder: "https://drive.google.com/..." },
-        { key: "heroImageUrl", label: "Single Hero Banner URL (Legacy - Google Drive Link)", placeholder: "https://drive.google.com/..." },
       ]
     },
     {
