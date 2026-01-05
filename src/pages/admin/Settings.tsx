@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2 } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { generateStoreTXT } from "@/lib/generateStoreTXT";
@@ -29,6 +30,18 @@ const AdminSettings = () => {
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
+  const [showSecrets, setShowSecrets] = useState({
+    razorpay_key_secret: false,
+    phonepe_salt_key: false,
+    cashfree_secret_key: false,
+    payu_merchant_salt: false,
+    paytm_merchant_key: false,
+    stripe_secret_key: false,
+  });
+  const [openGatewayDialog, setOpenGatewayDialog] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
@@ -48,6 +61,28 @@ const AdminSettings = () => {
     shippingPolicy: "",
     termsConditions: "",
     privacyPolicy: "",
+    // Payment Gateway Credentials
+    razorpay_enabled: false,
+    razorpay_key_id: "",
+    razorpay_key_secret: "",
+    phonepe_enabled: false,
+    phonepe_merchant_id: "",
+    phonepe_salt_key: "",
+    phonepe_salt_index: "",
+    cashfree_enabled: false,
+    cashfree_app_id: "",
+    cashfree_secret_key: "",
+    payu_enabled: false,
+    payu_merchant_key: "",
+    payu_merchant_salt: "",
+    paytm_enabled: false,
+    paytm_merchant_id: "",
+    paytm_merchant_key: "",
+    stripe_enabled: false,
+    stripe_publishable_key: "",
+    stripe_secret_key: "",
+    // Payment mode
+    payment_mode: "online_and_cod" as "online_only" | "online_and_cod",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
 
@@ -117,6 +152,11 @@ const AdminSettings = () => {
           .eq('user_id', user.id)
           .single();
 
+        const pgCreds = (store?.payment_gateway_credentials as any) || {};
+
+        console.log('🔍 DEBUG: Store data:', store);
+        console.log('🔍 DEBUG: Payment Gateway Credentials:', pgCreds);
+
         setFormData({
           storeName: store?.name || "",
           logoUrl: store?.logo_url || "",
@@ -135,17 +175,157 @@ const AdminSettings = () => {
           shippingPolicy: (store?.policies as any)?.shippingPolicy || "",
           termsConditions: (store?.policies as any)?.termsConditions || "",
           privacyPolicy: (store?.policies as any)?.privacyPolicy || "",
+          // Payment Gateway Credentials
+          razorpay_enabled: pgCreds?.razorpay?.enabled || false,
+          razorpay_key_id: pgCreds?.razorpay?.key_id || "",
+          razorpay_key_secret: pgCreds?.razorpay?.key_secret || "",
+          phonepe_enabled: pgCreds?.phonepe?.enabled || false,
+          phonepe_merchant_id: pgCreds?.phonepe?.merchant_id || "",
+          phonepe_salt_key: pgCreds?.phonepe?.salt_key || "",
+          phonepe_salt_index: pgCreds?.phonepe?.salt_index || "",
+          cashfree_enabled: pgCreds?.cashfree?.enabled || false,
+          cashfree_app_id: pgCreds?.cashfree?.app_id || "",
+          cashfree_secret_key: pgCreds?.cashfree?.secret_key || "",
+          payu_enabled: pgCreds?.payu?.enabled || false,
+          payu_merchant_key: pgCreds?.payu?.merchant_key || "",
+          payu_merchant_salt: pgCreds?.payu?.merchant_salt || "",
+          paytm_enabled: pgCreds?.paytm?.enabled || false,
+          paytm_merchant_id: pgCreds?.paytm?.merchant_id || "",
+          paytm_merchant_key: pgCreds?.paytm?.merchant_key || "",
+          stripe_enabled: pgCreds?.stripe?.enabled || false,
+          stripe_publishable_key: pgCreds?.stripe?.publishable_key || "",
+          stripe_secret_key: pgCreds?.stripe?.secret_key || "",
+          // Payment mode
+          payment_mode: (store?.payment_mode as "online_only" | "online_and_cod") || "online_and_cod",
         });
       } catch (error) {
         console.error('Error loading settings:', error);
+      } finally {
+        setIsInitialLoad(false);
       }
     };
-    
+
     loadSettings();
   }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Auto-save with debouncing
+  useEffect(() => {
+    // Skip auto-save on initial load
+    if (isInitialLoad) return;
+
+    const timeoutId = setTimeout(() => {
+      performAutoSave();
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [formData, isInitialLoad]);
+
+  // Auto-save function (without strict validation)
+  const performAutoSave = async () => {
+    try {
+      setAutoSaveStatus('saving');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Build update data
+      const updateData: any = {
+        name: formData.storeName,
+        logo_url: formData.logoUrl || null,
+        hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
+        whatsapp_number: formData.whatsappNumber,
+        address: formData.address || null,
+        policies: {
+          deliveryAreas: formData.deliveryAreas || null,
+          returnPolicy: formData.returnPolicy || null,
+          shippingPolicy: formData.shippingPolicy || null,
+          termsConditions: formData.termsConditions || null,
+          privacyPolicy: formData.privacyPolicy || null,
+        },
+        payment_gateway_credentials: {
+          razorpay: {
+            enabled: formData.razorpay_enabled,
+            key_id: formData.razorpay_key_id || null,
+            key_secret: formData.razorpay_key_secret || null,
+          },
+          phonepe: {
+            enabled: formData.phonepe_enabled,
+            merchant_id: formData.phonepe_merchant_id || null,
+            salt_key: formData.phonepe_salt_key || null,
+            salt_index: formData.phonepe_salt_index || null,
+          },
+          cashfree: {
+            enabled: formData.cashfree_enabled,
+            app_id: formData.cashfree_app_id || null,
+            secret_key: formData.cashfree_secret_key || null,
+          },
+          payu: {
+            enabled: formData.payu_enabled,
+            merchant_key: formData.payu_merchant_key || null,
+            merchant_salt: formData.payu_merchant_salt || null,
+          },
+          paytm: {
+            enabled: formData.paytm_enabled,
+            merchant_id: formData.paytm_merchant_id || null,
+            merchant_key: formData.paytm_merchant_key || null,
+          },
+          stripe: {
+            enabled: formData.stripe_enabled,
+            publishable_key: formData.stripe_publishable_key || null,
+            secret_key: formData.stripe_secret_key || null,
+          },
+        },
+        payment_mode: formData.payment_mode,
+      };
+
+      if (subscriptionLimits.enableCustomDomain) {
+        updateData.custom_domain = formData.customDomain.trim().toLowerCase() || null;
+      }
+
+      if (subscriptionLimits.enableAiVoice) {
+        updateData.ai_voice_embed_code = formData.aiVoiceEmbedCode.trim() || null;
+      }
+
+      if (subscriptionLimits.enableLocationSharing) {
+        updateData.force_location_sharing = formData.forceLocationSharing;
+      }
+
+      const { error } = await supabase
+        .from('stores')
+        .update(updateData)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update profiles table
+      if (formData.phone || formData.email) {
+        await supabase
+          .from('profiles')
+          .update({
+            phone: formData.phone || null,
+            email: formData.email || null,
+          })
+          .eq('user_id', user.id);
+      }
+
+      setAutoSaveStatus('saved');
+      setLastSavedAt(new Date());
+
+      // Reset to idle after 3 seconds
+      setTimeout(() => {
+        setAutoSaveStatus('idle');
+      }, 3000);
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      setAutoSaveStatus('error');
+      setTimeout(() => {
+        setAutoSaveStatus('idle');
+      }, 3000);
+    }
   };
 
   const handleAddBannerUrl = () => {
@@ -488,7 +668,41 @@ const AdminSettings = () => {
           shippingPolicy: formData.shippingPolicy || null,
           termsConditions: formData.termsConditions || null,
           privacyPolicy: formData.privacyPolicy || null,
-        }
+        },
+        payment_gateway_credentials: {
+          razorpay: {
+            enabled: formData.razorpay_enabled,
+            key_id: formData.razorpay_key_id || null,
+            key_secret: formData.razorpay_key_secret || null,
+          },
+          phonepe: {
+            enabled: formData.phonepe_enabled,
+            merchant_id: formData.phonepe_merchant_id || null,
+            salt_key: formData.phonepe_salt_key || null,
+            salt_index: formData.phonepe_salt_index || null,
+          },
+          cashfree: {
+            enabled: formData.cashfree_enabled,
+            app_id: formData.cashfree_app_id || null,
+            secret_key: formData.cashfree_secret_key || null,
+          },
+          payu: {
+            enabled: formData.payu_enabled,
+            merchant_key: formData.payu_merchant_key || null,
+            merchant_salt: formData.payu_merchant_salt || null,
+          },
+          paytm: {
+            enabled: formData.paytm_enabled,
+            merchant_id: formData.paytm_merchant_id || null,
+            merchant_key: formData.paytm_merchant_key || null,
+          },
+          stripe: {
+            enabled: formData.stripe_enabled,
+            publishable_key: formData.stripe_publishable_key || null,
+            secret_key: formData.stripe_secret_key || null,
+          },
+        },
+        payment_mode: formData.payment_mode,
       };
 
       // Only update custom_domain if user has permission
@@ -506,10 +720,15 @@ const AdminSettings = () => {
         updateData.force_location_sharing = formData.forceLocationSharing;
       }
 
-      const { error: storeError } = await supabase
+      console.log('💾 DEBUG: Saving payment gateway credentials:', updateData.payment_gateway_credentials);
+
+      const { error: storeError, data: updatedData } = await supabase
         .from('stores')
         .update(updateData)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
+
+      console.log('✅ DEBUG: Save response:', { error: storeError, data: updatedData });
 
       if (storeError) throw storeError;
 
@@ -528,6 +747,10 @@ const AdminSettings = () => {
         }
       }
       
+      // Update auto-save status
+      setAutoSaveStatus('saved');
+      setLastSavedAt(new Date());
+
       toast({
         title: "Settings Saved",
         description: "Your store settings have been updated successfully",
@@ -590,6 +813,28 @@ const AdminSettings = () => {
               Configure your store information and policies
             </p>
           </div>
+
+          {/* Auto-save Status Indicator */}
+          <div className="flex items-center gap-2 text-sm">
+            {autoSaveStatus === 'saving' && (
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Saved{lastSavedAt && ` at ${lastSavedAt.toLocaleTimeString()}`}</span>
+              </div>
+            )}
+            {autoSaveStatus === 'error' && (
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Save failed</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-8">
@@ -638,6 +883,325 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
           ))}
+
+          {/* Payment Gateway Configuration Section */}
+          <Card className="admin-card">
+            <Collapsible>
+              <CardHeader>
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <CardTitle className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <CreditCard className="w-5 h-5 text-primary" />
+                      </div>
+                      Payment Gateway Configuration
+                    </CardTitle>
+                    <ChevronDown className="h-5 w-5 transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </div>
+                </CollapsibleTrigger>
+                <p className="text-muted-foreground mt-2 text-left">Configure payment gateways for your store - click any card to set up</p>
+              </CardHeader>
+
+              <CollapsibleContent>
+                <CardContent className="space-y-6">
+              <Alert>
+                <CreditCard className="h-4 w-4" />
+                <AlertDescription>
+                  Click on any payment gateway card below to configure credentials. Payments go directly to your account.
+                </AlertDescription>
+              </Alert>
+
+              {/* Payment Mode Selector - Only show when at least one gateway is enabled */}
+              {(formData.razorpay_enabled || formData.phonepe_enabled || formData.cashfree_enabled ||
+                formData.payu_enabled || formData.paytm_enabled || formData.stripe_enabled) && (
+                <div className="p-6 rounded-xl border-2 border-primary/20 bg-primary/5">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold mb-1">Payment Methods at Checkout</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Choose which payment options customers will see during checkout
+                      </p>
+                    </div>
+
+                    {/* Segmented Switch Buttons */}
+                    <div className="inline-flex rounded-lg border-2 border-primary/20 p-1 bg-background">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, payment_mode: 'online_only' }))}
+                        className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                          formData.payment_mode === 'online_only'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        💳 Online Payment Only
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, payment_mode: 'online_and_cod' }))}
+                        className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                          formData.payment_mode === 'online_and_cod'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        💳💵 Online + COD
+                      </button>
+                    </div>
+
+                    {/* Description based on selected mode */}
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50">
+                      <div className="mt-0.5">
+                        {formData.payment_mode === 'online_only' ? (
+                          <AlertTriangle className="w-4 h-4 text-blue-600" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.payment_mode === 'online_only' ? (
+                          <>
+                            <strong>Online Payment Only:</strong> Customers can only pay using configured payment gateways.
+                            Cash on Delivery will not be available.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Online + COD:</strong> Customers can choose to pay online or via Cash on Delivery.
+                            This gives maximum flexibility to your customers.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Show COD-only message when no gateways configured */}
+              {!(formData.razorpay_enabled || formData.phonepe_enabled || formData.cashfree_enabled ||
+                formData.payu_enabled || formData.paytm_enabled || formData.stripe_enabled) && (
+                <Alert className="bg-amber-500/10 border-amber-500/20">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-900 dark:text-amber-100">
+                    <strong>Cash on Delivery Only:</strong> Configure at least one payment gateway below to enable online payments.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Payment Gateway Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                {/* Razorpay Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('razorpay')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-blue-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.razorpay_enabled ? '#3b82f6' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.razorpay_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">Razorpay</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Popular in India</p>
+                      <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PhonePe Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('phonepe')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-purple-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.phonepe_enabled ? '#a855f7' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.phonepe_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">PhonePe</h3>
+                      <p className="text-sm text-muted-foreground mb-3">UPI & Digital</p>
+                      <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cashfree Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('cashfree')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-green-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.cashfree_enabled ? '#22c55e' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.cashfree_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">Cashfree</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Payments & Payouts</p>
+                      <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PayU Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('payu')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-orange-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.payu_enabled ? '#f97316' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.payu_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">PayU</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Leading Solution</p>
+                      <div className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Paytm Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('paytm')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-sky-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.paytm_enabled ? '#0ea5e9' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.paytm_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-sky-500/10 group-hover:bg-sky-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-sky-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">Paytm</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Wallet & Gateway</p>
+                      <div className="flex items-center gap-2 text-xs text-sky-600 dark:text-sky-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stripe Card */}
+                <div
+                  onClick={() => setOpenGatewayDialog('stripe')}
+                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-indigo-500/50 hover:-translate-y-1"
+                  style={{ borderColor: formData.stripe_enabled ? '#6366f1' : 'transparent' }}
+                >
+                  <div className="absolute top-4 right-4">
+                    {formData.stripe_enabled ? (
+                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-indigo-500/10 group-hover:bg-indigo-500/20 transition-colors">
+                      <CreditCard className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1">Stripe</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Global Platform</p>
+                      <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                        <SettingsIcon className="w-3.5 h-3.5" />
+                        Click to configure
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Info Alert */}
+              <Alert className="bg-amber-500/5 border-amber-500/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-600 dark:text-amber-400">
+                  <strong>Important:</strong> Keep your API credentials secure. Payments go directly to your accounts.
+                  We recommend using test/sandbox credentials first before going live.
+                </AlertDescription>
+              </Alert>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
 
           {/* Custom Domain Section */}
           <Card className="admin-card">
@@ -1235,6 +1799,657 @@ const AdminSettings = () => {
             </Button>
           </div>
         </form>
+
+        {/* Payment Gateway Dialogs */}
+        <Dialog open={openGatewayDialog === 'razorpay'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                </div>
+                Configure Razorpay
+              </DialogTitle>
+              <DialogDescription>
+                Enter your Razorpay API credentials to enable payments
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable Razorpay</Label>
+                <Switch
+                  checked={formData.razorpay_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, razorpay_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="razorpay_key_id">Key ID</Label>
+                <Input
+                  id="razorpay_key_id"
+                  type="text"
+                  placeholder="Enter your Razorpay Key ID"
+                  value={formData.razorpay_key_id}
+                  onChange={(e) => handleInputChange('razorpay_key_id', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from Razorpay Dashboard → Settings → API Keys
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="razorpay_key_secret">Key Secret</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="razorpay_key_secret"
+                    type={showSecrets.razorpay_key_secret ? "text" : "password"}
+                    placeholder="••••••••••••••••••••"
+                    value={formData.razorpay_key_secret}
+                    onChange={(e) => handleInputChange('razorpay_key_secret', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      razorpay_key_secret: !prev.razorpay_key_secret
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.razorpay_key_secret ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly.
+                </p>
+              </div>
+
+              <Alert className="bg-blue-500/5 border-blue-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://razorpay.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">razorpay.com</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://razorpay.com/docs" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">razorpay.com/docs</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "Razorpay Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* PhonePe Dialog */}
+        <Dialog open={openGatewayDialog === 'phonepe'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <CreditCard className="w-5 h-5 text-purple-600" />
+                </div>
+                Configure PhonePe
+              </DialogTitle>
+              <DialogDescription>
+                Enter your PhonePe credentials to enable UPI payments
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable PhonePe</Label>
+                <Switch
+                  checked={formData.phonepe_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, phonepe_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phonepe_merchant_id">Merchant ID</Label>
+                <Input
+                  id="phonepe_merchant_id"
+                  type="text"
+                  placeholder="M123456789012345"
+                  value={formData.phonepe_merchant_id}
+                  onChange={(e) => handleInputChange('phonepe_merchant_id', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from PhonePe Business Dashboard
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="phonepe_salt_key">Salt Key</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="phonepe_salt_key"
+                    type={showSecrets.phonepe_salt_key ? "text" : "password"}
+                    placeholder="••••••••••••••••••••"
+                    value={formData.phonepe_salt_key}
+                    onChange={(e) => handleInputChange('phonepe_salt_key', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      phonepe_salt_key: !prev.phonepe_salt_key
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.phonepe_salt_key ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly.
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="phonepe_salt_index">Salt Index</Label>
+                <Input
+                  id="phonepe_salt_index"
+                  type="text"
+                  placeholder="1"
+                  value={formData.phonepe_salt_index}
+                  onChange={(e) => handleInputChange('phonepe_salt_index', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Usually 1 or 2, check your PhonePe dashboard
+                </p>
+              </div>
+
+              <Alert className="bg-purple-500/5 border-purple-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://business.phonepe.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-600">business.phonepe.com</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://developer.phonepe.com/docs" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-600">developer.phonepe.com/docs</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "PhonePe Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cashfree Dialog */}
+        <Dialog open={openGatewayDialog === 'cashfree'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <CreditCard className="w-5 h-5 text-green-600" />
+                </div>
+                Configure Cashfree
+              </DialogTitle>
+              <DialogDescription>
+                Enter your Cashfree credentials for payments & payouts
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable Cashfree</Label>
+                <Switch
+                  checked={formData.cashfree_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, cashfree_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cashfree_app_id">App ID</Label>
+                <Input
+                  id="cashfree_app_id"
+                  type="text"
+                  placeholder="12345abcdef67890ghij"
+                  value={formData.cashfree_app_id}
+                  onChange={(e) => handleInputChange('cashfree_app_id', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from Cashfree Dashboard → Credentials
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="cashfree_secret_key">Secret Key</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="cashfree_secret_key"
+                    type={showSecrets.cashfree_secret_key ? "text" : "password"}
+                    placeholder="••••••••••••••••••••"
+                    value={formData.cashfree_secret_key}
+                    onChange={(e) => handleInputChange('cashfree_secret_key', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      cashfree_secret_key: !prev.cashfree_secret_key
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.cashfree_secret_key ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly.
+                </p>
+              </div>
+
+              <Alert className="bg-green-500/5 border-green-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://cashfree.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-green-600">cashfree.com</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://docs.cashfree.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-green-600">docs.cashfree.com</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "Cashfree Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* PayU Dialog */}
+        <Dialog open={openGatewayDialog === 'payu'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-500/10">
+                  <CreditCard className="w-5 h-5 text-orange-600" />
+                </div>
+                Configure PayU
+              </DialogTitle>
+              <DialogDescription>
+                Enter your PayU merchant credentials
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable PayU</Label>
+                <Switch
+                  checked={formData.payu_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, payu_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="payu_merchant_key">Merchant Key</Label>
+                <Input
+                  id="payu_merchant_key"
+                  type="text"
+                  placeholder="gtKFFx"
+                  value={formData.payu_merchant_key}
+                  onChange={(e) => handleInputChange('payu_merchant_key', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from PayU Dashboard → Settings → API Credentials
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="payu_merchant_salt">Merchant Salt</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="payu_merchant_salt"
+                    type={showSecrets.payu_merchant_salt ? "text" : "password"}
+                    placeholder="••••••••••••••••••••"
+                    value={formData.payu_merchant_salt}
+                    onChange={(e) => handleInputChange('payu_merchant_salt', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      payu_merchant_salt: !prev.payu_merchant_salt
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.payu_merchant_salt ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly.
+                </p>
+              </div>
+
+              <Alert className="bg-orange-500/5 border-orange-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://payu.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-600">payu.in</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://devguide.payu.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-600">devguide.payu.in</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "PayU Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Paytm Dialog */}
+        <Dialog open={openGatewayDialog === 'paytm'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-sky-500/10">
+                  <CreditCard className="w-5 h-5 text-sky-600" />
+                </div>
+                Configure Paytm
+              </DialogTitle>
+              <DialogDescription>
+                Enter your Paytm merchant credentials
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable Paytm</Label>
+                <Switch
+                  checked={formData.paytm_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, paytm_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="paytm_merchant_id">Merchant ID</Label>
+                <Input
+                  id="paytm_merchant_id"
+                  type="text"
+                  placeholder="YOUR_MID_HERE"
+                  value={formData.paytm_merchant_id}
+                  onChange={(e) => handleInputChange('paytm_merchant_id', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from Paytm Dashboard → Developer Settings
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="paytm_merchant_key">Merchant Key</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="paytm_merchant_key"
+                    type={showSecrets.paytm_merchant_key ? "text" : "password"}
+                    placeholder="••••••••••••••••••••"
+                    value={formData.paytm_merchant_key}
+                    onChange={(e) => handleInputChange('paytm_merchant_key', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      paytm_merchant_key: !prev.paytm_merchant_key
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.paytm_merchant_key ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly.
+                </p>
+              </div>
+
+              <Alert className="bg-sky-500/5 border-sky-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://business.paytm.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-sky-600">business.paytm.com</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://developer.paytm.com/docs" target="_blank" rel="noopener noreferrer" className="underline hover:text-sky-600">developer.paytm.com/docs</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "Paytm Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Stripe Dialog */}
+        <Dialog open={openGatewayDialog === 'stripe'} onOpenChange={(open) => !open && setOpenGatewayDialog(null)}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <CreditCard className="w-5 h-5 text-indigo-600" />
+                </div>
+                Configure Stripe
+              </DialogTitle>
+              <DialogDescription>
+                Enter your Stripe API keys for global payments
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <Label className="text-base font-medium">Enable Stripe</Label>
+                <Switch
+                  checked={formData.stripe_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, stripe_enabled: checked }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="stripe_publishable_key">Publishable Key</Label>
+                <Input
+                  id="stripe_publishable_key"
+                  type="text"
+                  placeholder="Enter your Stripe publishable key"
+                  value={formData.stripe_publishable_key}
+                  onChange={(e) => handleInputChange('stripe_publishable_key', e.target.value)}
+                  className="admin-input mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get from Stripe Dashboard → Developers → API Keys (starts with pk_)
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="stripe_secret_key">Secret Key</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="stripe_secret_key"
+                    type={showSecrets.stripe_secret_key ? "text" : "password"}
+                    placeholder="Enter your Stripe secret key"
+                    value={formData.stripe_secret_key}
+                    onChange={(e) => handleInputChange('stripe_secret_key', e.target.value)}
+                    className="admin-input pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets(prev => ({
+                      ...prev,
+                      stripe_secret_key: !prev.stripe_secret_key
+                    }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecrets.stripe_secret_key ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Keep this secret safe. Never share it publicly. (starts with sk_)
+                </p>
+              </div>
+
+              <Alert className="bg-indigo-500/5 border-indigo-500/20">
+                <ExternalLink className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Sign up:</strong> <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-600">stripe.com</a> •
+                  <strong className="ml-2">Docs:</strong> <a href="https://stripe.com/docs" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-600">stripe.com/docs</a>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenGatewayDialog(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpenGatewayDialog(null);
+                  toast({
+                    title: "Stripe Updated",
+                    description: "Don't forget to save your settings below",
+                  });
+                }}
+                className="admin-button-primary"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Danger Zone - Outside form */}
         <Card className="admin-card border-2 border-destructive/50 bg-destructive/5">
