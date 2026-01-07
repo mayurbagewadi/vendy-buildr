@@ -27,6 +27,11 @@ interface StoreData {
     instagram?: string | null;
     twitter?: string | null;
   } | null;
+  facebook_url?: string | null;
+  instagram_url?: string | null;
+  twitter_url?: string | null;
+  youtube_url?: string | null;
+  linkedin_url?: string | null;
 }
 
 interface ProfileData {

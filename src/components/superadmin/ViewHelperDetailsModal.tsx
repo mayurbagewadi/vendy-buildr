@@ -33,7 +33,6 @@ interface ViewHelperDetailsModalProps {
 
 interface HelperDetails {
   id: string;
-  helper_id: string;
   full_name: string;
   email: string;
   phone: string;
@@ -42,6 +41,10 @@ interface HelperDetails {
   direct_commission_rate: number;
   network_commission_rate: number;
   created_at: string;
+  application_id?: string | null;
+  recruited_by_helper_id?: string | null;
+  helper_recruitment_link?: string;
+  store_referral_link?: string;
 }
 
 interface HelperApplication {
@@ -198,8 +201,8 @@ export default function ViewHelperDetailsModal({
   const loadCommissionData = async () => {
     const { data, error } = await supabase
       .from("network_commissions")
-      .select("amount, commission_type")
-      .eq("helper_id", helperId);
+      .select("direct_commission_amount, network_commission_amount, commission_status")
+      .eq("earning_helper_id", helperId);
 
     if (error) {
       console.error("Error loading commission data:", error);
@@ -329,7 +332,7 @@ export default function ViewHelperDetailsModal({
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Helper ID</p>
-                    <p className="font-mono text-sm">{helperDetails.helper_id}</p>
+                    <p className="font-mono text-sm">{helperDetails.id}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Status</p>

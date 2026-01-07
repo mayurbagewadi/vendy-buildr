@@ -471,7 +471,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* CTA Section */}
         <section className="py-20 bg-primary text-primary-foreground mb-0">
           <div className="container mx-auto px-4 text-center">
-            <AnimateOnScroll animation="scale" duration={0.8}>
+            <AnimateOnScroll animation="scaleUp" duration={0.8}>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Ready to Start Shopping?
               </h2>
