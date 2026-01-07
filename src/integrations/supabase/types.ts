@@ -49,6 +49,110 @@ export type Database = {
           },
         ]
       }
+      commission_audit: {
+        Row: {
+          action: string
+          change_reason: string | null
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          record_id: string | null
+          settings_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          change_reason?: string | null
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          record_id?: string | null
+          settings_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          change_reason?: string | null
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          record_id?: string | null
+          settings_id?: string | null
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_audit_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "commission_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_settings: {
+        Row: {
+          auto_approve_applications: boolean
+          auto_generate_codes: boolean
+          created_at: string
+          created_by: string | null
+          enable_multi_tier: boolean
+          id: string
+          is_active: boolean
+          max_helpers_per_recruiter: number
+          min_payout_threshold: number
+          payment_day: string
+          payment_schedule: string
+          referral_code_prefix: string
+          send_commission_notifications: boolean
+          send_welcome_email: boolean
+          version: number
+        }
+        Insert: {
+          auto_approve_applications?: boolean
+          auto_generate_codes?: boolean
+          created_at?: string
+          created_by?: string | null
+          enable_multi_tier?: boolean
+          id?: string
+          is_active?: boolean
+          max_helpers_per_recruiter?: number
+          min_payout_threshold?: number
+          payment_day?: string
+          payment_schedule?: string
+          referral_code_prefix?: string
+          send_commission_notifications?: boolean
+          send_welcome_email?: boolean
+          version?: number
+        }
+        Update: {
+          auto_approve_applications?: boolean
+          auto_generate_codes?: boolean
+          created_at?: string
+          created_by?: string | null
+          enable_multi_tier?: boolean
+          id?: string
+          is_active?: boolean
+          max_helpers_per_recruiter?: number
+          min_payout_threshold?: number
+          payment_day?: string
+          payment_schedule?: string
+          referral_code_prefix?: string
+          send_commission_notifications?: boolean
+          send_welcome_email?: boolean
+          version?: number
+        }
+        Relationships: []
+      }
       helper_applications: {
         Row: {
           application_status: string
@@ -169,6 +273,181 @@ export type Database = {
           },
         ]
       }
+      instagram_comments: {
+        Row: {
+          comment_id: string
+          comment_text: string | null
+          created_at: string | null
+          from_id: string | null
+          from_username: string | null
+          id: string
+          instagram_id: string
+          media_id: string | null
+          replied: boolean | null
+        }
+        Insert: {
+          comment_id: string
+          comment_text?: string | null
+          created_at?: string | null
+          from_id?: string | null
+          from_username?: string | null
+          id?: string
+          instagram_id: string
+          media_id?: string | null
+          replied?: boolean | null
+        }
+        Update: {
+          comment_id?: string
+          comment_text?: string | null
+          created_at?: string | null
+          from_id?: string | null
+          from_username?: string | null
+          id?: string
+          instagram_id?: string
+          media_id?: string | null
+          replied?: boolean | null
+        }
+        Relationships: []
+      }
+      instagram_messages: {
+        Row: {
+          created_at: string | null
+          direction: string
+          id: string
+          instagram_id: string
+          is_auto_reply: boolean | null
+          message_id: string | null
+          message_text: string | null
+          recipient_id: string
+          sender_id: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string | null
+          direction: string
+          id?: string
+          instagram_id: string
+          is_auto_reply?: boolean | null
+          message_id?: string | null
+          message_text?: string | null
+          recipient_id: string
+          sender_id: string
+          timestamp: string
+        }
+        Update: {
+          created_at?: string | null
+          direction?: string
+          id?: string
+          instagram_id?: string
+          is_auto_reply?: boolean | null
+          message_id?: string | null
+          message_text?: string | null
+          recipient_id?: string
+          sender_id?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      instagram_reels_cache: {
+        Row: {
+          caption: string | null
+          created_at: string | null
+          fetched_at: string | null
+          id: string
+          instagram_id: string
+          media_id: string
+          media_type: string
+          media_url: string | null
+          permalink: string
+          store_id: string
+          thumbnail_url: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          instagram_id: string
+          media_id: string
+          media_type: string
+          media_url?: string | null
+          permalink: string
+          store_id: string
+          thumbnail_url?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          instagram_id?: string
+          media_id?: string
+          media_type?: string
+          media_url?: string | null
+          permalink?: string
+          store_id?: string
+          thumbnail_url?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_reels_cache_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_commission: {
+        Row: {
+          commission_model: string
+          created_at: string
+          id: string
+          onetime_type: string | null
+          onetime_value: number | null
+          recurring_duration: number | null
+          recurring_type: string | null
+          recurring_value: number | null
+          settings_id: string
+          subscription_type: string
+        }
+        Insert: {
+          commission_model: string
+          created_at?: string
+          id?: string
+          onetime_type?: string | null
+          onetime_value?: number | null
+          recurring_duration?: number | null
+          recurring_type?: string | null
+          recurring_value?: number | null
+          settings_id: string
+          subscription_type: string
+        }
+        Update: {
+          commission_model?: string
+          created_at?: string
+          id?: string
+          onetime_type?: string | null
+          onetime_value?: number | null
+          recurring_duration?: number | null
+          recurring_type?: string | null
+          recurring_value?: number | null
+          settings_id?: string
+          subscription_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_commission_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "commission_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_commissions: {
         Row: {
           commission_status: string | null
@@ -243,11 +522,16 @@ export type Database = {
           delivery_longitude: number | null
           delivery_pincode: string | null
           delivery_time: string | null
+          gateway_order_id: string | null
           id: string
           items: Json
           notes: string | null
           order_number: string
+          payment_gateway: string | null
+          payment_id: string | null
           payment_method: string
+          payment_response: Json | null
+          payment_status: string | null
           status: string
           store_id: string
           subtotal: number
@@ -266,11 +550,16 @@ export type Database = {
           delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
+          gateway_order_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number: string
+          payment_gateway?: string | null
+          payment_id?: string | null
           payment_method?: string
+          payment_response?: Json | null
+          payment_status?: string | null
           status?: string
           store_id: string
           subtotal?: number
@@ -289,11 +578,16 @@ export type Database = {
           delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
+          gateway_order_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number?: string
+          payment_gateway?: string | null
+          payment_id?: string | null
           payment_method?: string
+          payment_response?: Json | null
+          payment_status?: string | null
           status?: string
           store_id?: string
           subtotal?: number
@@ -306,6 +600,66 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_commission: {
+        Row: {
+          commission_model: string
+          created_at: string
+          enabled: boolean
+          id: string
+          onetime_type: string | null
+          onetime_value: number | null
+          plan_id: string
+          recurring_duration: number | null
+          recurring_type: string | null
+          recurring_value: number | null
+          settings_id: string
+          subscription_type: string
+        }
+        Insert: {
+          commission_model: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          onetime_type?: string | null
+          onetime_value?: number | null
+          plan_id: string
+          recurring_duration?: number | null
+          recurring_type?: string | null
+          recurring_value?: number | null
+          settings_id: string
+          subscription_type: string
+        }
+        Update: {
+          commission_model?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          onetime_type?: string | null
+          onetime_value?: number | null
+          plan_id?: string
+          recurring_duration?: number | null
+          recurring_type?: string | null
+          recurring_value?: number | null
+          settings_id?: string
+          subscription_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_commission_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_commission_settings_id_fkey"
+            columns: ["settings_id"]
+            isOneToOne: false
+            referencedRelation: "commission_settings"
             referencedColumns: ["id"]
           },
         ]
@@ -641,11 +995,19 @@ export type Database = {
         Row: {
           address: string | null
           ai_voice_embed_code: string | null
+          alternate_names: string | null
+          auto_reply_settings: Json | null
+          business_email: string | null
+          business_phone: string | null
+          city: string | null
+          comment_auto_reply_settings: Json | null
+          country: string | null
           created_at: string
           custom_domain: string | null
           custom_domain_verification_token: string | null
           custom_domain_verified: boolean | null
           description: string | null
+          facebook_url: string | null
           force_location_sharing: boolean | null
           google_access_token: string | null
           google_refresh_token: string | null
@@ -656,27 +1018,53 @@ export type Database = {
           hero_banner_url: string | null
           hero_banner_urls: string[] | null
           id: string
+          instagram_access_token: string | null
+          instagram_business_id: string | null
+          instagram_connected: boolean | null
+          instagram_reels_settings: Json | null
+          instagram_token_expiry: string | null
+          instagram_url: string | null
+          instagram_username: string | null
           is_active: boolean | null
           last_admin_visit: string | null
           last_sheet_sync: string | null
+          linkedin_url: string | null
           logo_url: string | null
           name: string
+          opening_hours: string | null
+          payment_gateway_credentials: Json | null
+          payment_mode: string | null
           policies: Json | null
+          postal_code: string | null
+          price_range: string | null
+          seo_description: string | null
           slug: string
           social_links: Json | null
+          state: string | null
+          street_address: string | null
           subdomain: string | null
+          twitter_url: string | null
           updated_at: string
           user_id: string
           whatsapp_number: string | null
+          youtube_url: string | null
         }
         Insert: {
           address?: string | null
           ai_voice_embed_code?: string | null
+          alternate_names?: string | null
+          auto_reply_settings?: Json | null
+          business_email?: string | null
+          business_phone?: string | null
+          city?: string | null
+          comment_auto_reply_settings?: Json | null
+          country?: string | null
           created_at?: string
           custom_domain?: string | null
           custom_domain_verification_token?: string | null
           custom_domain_verified?: boolean | null
           description?: string | null
+          facebook_url?: string | null
           force_location_sharing?: boolean | null
           google_access_token?: string | null
           google_refresh_token?: string | null
@@ -687,27 +1075,53 @@ export type Database = {
           hero_banner_url?: string | null
           hero_banner_urls?: string[] | null
           id?: string
+          instagram_access_token?: string | null
+          instagram_business_id?: string | null
+          instagram_connected?: boolean | null
+          instagram_reels_settings?: Json | null
+          instagram_token_expiry?: string | null
+          instagram_url?: string | null
+          instagram_username?: string | null
           is_active?: boolean | null
           last_admin_visit?: string | null
           last_sheet_sync?: string | null
+          linkedin_url?: string | null
           logo_url?: string | null
           name: string
+          opening_hours?: string | null
+          payment_gateway_credentials?: Json | null
+          payment_mode?: string | null
           policies?: Json | null
+          postal_code?: string | null
+          price_range?: string | null
+          seo_description?: string | null
           slug: string
           social_links?: Json | null
+          state?: string | null
+          street_address?: string | null
           subdomain?: string | null
+          twitter_url?: string | null
           updated_at?: string
           user_id: string
           whatsapp_number?: string | null
+          youtube_url?: string | null
         }
         Update: {
           address?: string | null
           ai_voice_embed_code?: string | null
+          alternate_names?: string | null
+          auto_reply_settings?: Json | null
+          business_email?: string | null
+          business_phone?: string | null
+          city?: string | null
+          comment_auto_reply_settings?: Json | null
+          country?: string | null
           created_at?: string
           custom_domain?: string | null
           custom_domain_verification_token?: string | null
           custom_domain_verified?: boolean | null
           description?: string | null
+          facebook_url?: string | null
           force_location_sharing?: boolean | null
           google_access_token?: string | null
           google_refresh_token?: string | null
@@ -718,18 +1132,36 @@ export type Database = {
           hero_banner_url?: string | null
           hero_banner_urls?: string[] | null
           id?: string
+          instagram_access_token?: string | null
+          instagram_business_id?: string | null
+          instagram_connected?: boolean | null
+          instagram_reels_settings?: Json | null
+          instagram_token_expiry?: string | null
+          instagram_url?: string | null
+          instagram_username?: string | null
           is_active?: boolean | null
           last_admin_visit?: string | null
           last_sheet_sync?: string | null
+          linkedin_url?: string | null
           logo_url?: string | null
           name?: string
+          opening_hours?: string | null
+          payment_gateway_credentials?: Json | null
+          payment_mode?: string | null
           policies?: Json | null
+          postal_code?: string | null
+          price_range?: string | null
+          seo_description?: string | null
           slug?: string
           social_links?: Json | null
+          state?: string | null
+          street_address?: string | null
           subdomain?: string | null
+          twitter_url?: string | null
           updated_at?: string
           user_id?: string
           whatsapp_number?: string | null
+          youtube_url?: string | null
         }
         Relationships: []
       }
@@ -1009,12 +1441,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_helper_application: {
+        Args: { p_application_id: string }
+        Returns: Json
+      }
       check_and_process_expired_subscriptions: {
         Args: never
         Returns: undefined
       }
       cleanup_old_pending_subscriptions: { Args: never; Returns: undefined }
       generate_referral_code: { Args: never; Returns: string }
+      get_active_commission_settings: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
