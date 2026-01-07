@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.delete-user-account]
 verify_jwt = true
+
+[functions.instagram-fetch-reels]
+verify_jwt = false

@@ -45,7 +45,7 @@ const InstagramReels = ({ storeId, settings, instagramUsername }: InstagramReels
       setError(null);
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/instagram-fetch-reels?store_id=${storeId}`
+        `https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/instagram-fetch-reels?store_id=${storeId}`
       );
 
       const data = await response.json();
