@@ -1,32 +1,27 @@
-import React from 'react';
-import { useScrollAnimation, ScrollAnimationOptions } from '@/hooks/useScrollAnimation';
+import React, { useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-interface AnimateOnScrollProps extends ScrollAnimationOptions {
+gsap.registerPlugin(ScrollTrigger);
+
+interface AnimateOnScrollProps {
   children: React.ReactNode;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  animation?: 'fadeSlideUp' | 'fadeSlideDown' | 'fadeSlideLeft' | 'fadeSlideRight' | 'fadeIn' | 'scaleUp' | 'slideUp';
+  duration?: number;
+  delay?: number;
+  distance?: number;
+  triggerStart?: number;
+  stagger?: number;
+  customProps?: gsap.TweenVars;
 }
 
 /**
  * Enterprise-grade wrapper component for scroll animations
- * Makes it easy to add GSAP scroll animations to any element
- *
- * @example
- * <AnimateOnScroll animation="fadeSlideUp" duration={0.8}>
- *   <h1>Animated Heading</h1>
- * </AnimateOnScroll>
- *
- * @example with stagger
- * <AnimateOnScroll animation="slideUp" stagger={0.1}>
- *   <div>Item 1</div>
- *   <div>Item 2</div>
- *   <div>Item 3</div>
- * </AnimateOnScroll>
  */
 export function AnimateOnScroll({
   children,
   className = '',
-  as: Component = 'div',
   animation = 'fadeSlideUp',
   duration = 0.8,
   delay = 0,
@@ -35,19 +30,69 @@ export function AnimateOnScroll({
   stagger = 0,
   customProps = {},
 }: AnimateOnScrollProps) {
-  const ref = useScrollAnimation({
-    animation,
-    duration,
-    delay,
-    distance,
-    triggerStart,
-    stagger,
-    customProps,
-  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const element = ref.current;
+    let fromVars: gsap.TweenVars = { opacity: 0 };
+
+    switch (animation) {
+      case 'fadeSlideUp':
+        fromVars = { opacity: 0, y: distance };
+        break;
+      case 'fadeSlideDown':
+        fromVars = { opacity: 0, y: -distance };
+        break;
+      case 'fadeSlideLeft':
+        fromVars = { opacity: 0, x: distance };
+        break;
+      case 'fadeSlideRight':
+        fromVars = { opacity: 0, x: -distance };
+        break;
+      case 'fadeIn':
+        fromVars = { opacity: 0 };
+        break;
+      case 'scaleUp':
+        fromVars = { opacity: 0, scale: 0.8 };
+        break;
+      case 'slideUp':
+        fromVars = { y: distance };
+        break;
+    }
+
+    gsap.set(element, fromVars);
+
+    gsap.to(element, {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      scale: 1,
+      duration,
+      delay,
+      ease: 'power2.out',
+      scrollTrigger: {
+        trigger: element,
+        start: `top ${100 - triggerStart * 100}%`,
+        toggleActions: 'play none none none',
+      },
+      stagger: stagger > 0 ? stagger : undefined,
+      ...customProps,
+    });
+
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => {
+        if (trigger.trigger === element) {
+          trigger.kill();
+        }
+      });
+    };
+  }, [animation, duration, delay, distance, triggerStart, stagger, customProps]);
 
   return (
-    <Component ref={ref} className={className}>
+    <div ref={ref} className={className}>
       {children}
-    </Component>
+    </div>
   );
 }

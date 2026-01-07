@@ -72,7 +72,6 @@ interface HelperApplication {
 
 interface Helper {
   id: string;
-  helper_id: string;
   full_name: string;
   email: string;
   phone: string;
@@ -81,7 +80,10 @@ interface Helper {
   status: string;
   direct_commission_rate: number;
   network_commission_rate: number;
-  application_id?: string;
+  application_id?: string | null;
+  recruited_by_helper_id?: string | null;
+  helper_recruitment_link?: string;
+  store_referral_link?: string;
 }
 
 type CombinedData = (HelperApplication | Helper) & {
@@ -229,12 +231,14 @@ export default function HelperManagement() {
         throw new Error(error.message || "Failed to approve helper");
       }
 
-      if (!result?.success) {
+      const resultObj = result as { success?: boolean; error?: string; referralCode?: string } | null;
+
+      if (!resultObj?.success) {
         console.error("Approve helper failed:", result);
-        throw new Error(result?.error || "Approval operation failed");
+        throw new Error(resultObj?.error || "Approval operation failed");
       }
 
-      toast.success(`Helper approved! Referral code: ${result.referralCode}`);
+      toast.success(`Helper approved! Referral code: ${resultObj.referralCode}`);
       await loadData();
     } catch (error: any) {
       console.error("Error approving application:", error);
@@ -685,7 +689,7 @@ export default function HelperManagement() {
                           const helper = item as Helper;
                           return (
                             <TableRow key={helper.id}>
-                              <TableCell className="font-mono">{helper.helper_id}</TableCell>
+                              <TableCell className="font-mono">{helper.id.slice(0, 8)}...</TableCell>
                               <TableCell className="font-medium">{helper.full_name}</TableCell>
                               <TableCell>{helper.email}</TableCell>
                               <TableCell>{helper.phone}</TableCell>

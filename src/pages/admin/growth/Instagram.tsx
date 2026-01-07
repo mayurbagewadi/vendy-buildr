@@ -131,15 +131,15 @@ const GrowthInstagram = () => {
       setTokenExpiry(store.instagram_token_expiry);
 
       if (store.auto_reply_settings) {
-        setAutoReplySettings(store.auto_reply_settings as AutoReplySettings);
+        setAutoReplySettings(store.auto_reply_settings as unknown as AutoReplySettings);
       }
 
       if (store.comment_auto_reply_settings) {
-        setCommentSettings(store.comment_auto_reply_settings as CommentAutoReplySettings);
+        setCommentSettings(store.comment_auto_reply_settings as unknown as CommentAutoReplySettings);
       }
 
       if (store.instagram_reels_settings) {
-        setReelsSettings(store.instagram_reels_settings as ReelsSettings);
+        setReelsSettings(store.instagram_reels_settings as unknown as ReelsSettings);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -191,9 +191,9 @@ const GrowthInstagram = () => {
       const { error } = await supabase
         .from("stores")
         .update({
-          auto_reply_settings: autoReplySettings,
-          comment_auto_reply_settings: commentSettings,
-          instagram_reels_settings: reelsSettings,
+          auto_reply_settings: JSON.parse(JSON.stringify(autoReplySettings)),
+          comment_auto_reply_settings: JSON.parse(JSON.stringify(commentSettings)),
+          instagram_reels_settings: JSON.parse(JSON.stringify(reelsSettings)),
         })
         .eq("id", storeId);
 
