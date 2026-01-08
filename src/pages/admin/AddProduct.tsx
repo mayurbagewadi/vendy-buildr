@@ -20,7 +20,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
-import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 // Utility function to generate URL-friendly slugs from product names
 const generateSlug = (name: string): string => {
@@ -798,14 +797,11 @@ stock: parseInt(data.baseStock),
                     {/* Image Previews */}
                     {imageUrls.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {imageUrls.map((url, index) => {
-                          // Always convert Google Drive URLs to direct image URLs
-                          const directUrl = convertToDirectImageUrl(url) || url;
-                          return (
+                        {imageUrls.map((url, index) => (
                           <div key={`url-${index}`} className="relative group">
                             <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                               <img
-                                src={directUrl}
+                                src={url}
                                 alt={`Product Image ${index + 1}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -826,8 +822,7 @@ stock: parseInt(data.baseStock),
                               Image {index + 1}
                             </p>
                           </div>
-                          );
-                        })}
+                        ))}
                       </div>
                     )}
                   </CardContent>

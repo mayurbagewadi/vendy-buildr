@@ -18,7 +18,6 @@ import { getProductById, updateProduct, getProducts, type Product as SharedProdu
 import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
-import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -833,14 +832,11 @@ stock: parseInt(data.baseStock),
                     {/* Image Previews */}
                     {imageUrls.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {imageUrls.map((url, index) => {
-                          // Always convert Google Drive URLs to direct image URLs
-                          const directUrl = convertToDirectImageUrl(url) || url;
-                          return (
+                        {imageUrls.map((url, index) => (
                           <div key={index} className="relative group">
                             <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                               <img
-                                src={directUrl}
+                                src={url}
                                 alt={`Preview ${index + 1}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -858,8 +854,7 @@ stock: parseInt(data.baseStock),
                               <X className="w-3 h-3" />
                             </Button>
                           </div>
-                          );
-                        })}
+                        ))}
                       </div>
                     )}
                   </CardContent>
