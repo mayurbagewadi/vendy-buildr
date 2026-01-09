@@ -49,7 +49,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     // Initialize products with seed data if empty
     initializeProducts();
-    
+
     const initializeDashboard = async () => {
       // Single auth check for all operations
       const { data: { user } } = await supabase.auth.getUser();

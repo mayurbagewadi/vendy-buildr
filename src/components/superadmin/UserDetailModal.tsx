@@ -119,7 +119,7 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
           description: `Logged in as ${user.email}`,
         });
 
-        // Redirect to admin dashboard
+        // Redirect to admin dashboard (SAME WINDOW)
         window.location.href = '/admin/dashboard';
       } else {
         throw new Error('No access token received from edge function');
