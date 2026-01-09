@@ -321,26 +321,38 @@ export default function SuperAdminDashboard() {
       });
 
       // Get recent subscription changes (last 5)
+      // Step 1: Get all subscription changes (active, trial, cancelled, expired)
       const { data: recentSubs } = await supabase
         .from('subscriptions')
         .select(`
+          id,
           user_id,
           status,
           created_at,
           updated_at,
-          subscription_plans(name),
-          profiles(email, full_name)
+          subscription_plans(name)
         `)
         .order('updated_at', { ascending: false })
         .limit(5);
 
+      // Step 2: Get profile data for those user_ids
+      const subUserIds = recentSubs?.map(sub => sub.user_id) || [];
+      const { data: subProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, email, full_name')
+        .in('user_id', subUserIds);
+
+      // Create a map for quick lookup
+      const profileMap = new Map(subProfiles?.map(p => [p.user_id, p]) || []);
+
       recentSubs?.forEach((sub: any) => {
         if (!superAdminIds.has(sub.user_id)) {
+          const profile = profileMap.get(sub.user_id);
           recentActivity.push({
-            id: `sub-${sub.user_id}`,
+            id: `sub-${sub.id}`,
             type: sub.status === 'active' ? 'upgrade' : 'subscription',
             description: `Subscription ${sub.status}: ${sub.subscription_plans?.name || 'Plan'}`,
-            userEmail: sub.profiles?.email || null,
+            userEmail: profile?.email || null,
             timestamp: sub.updated_at,
             icon: 'trending-up',
           });

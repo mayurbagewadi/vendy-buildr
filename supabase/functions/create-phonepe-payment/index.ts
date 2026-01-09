@@ -10,6 +10,7 @@ const corsHeaders = {
 interface CreatePaymentRequest {
   amount: number; // Amount in paise (e.g., 10000 for ₹100)
   orderId: string;
+  dbOrderId: string; // Database order ID for callback
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
@@ -53,10 +54,10 @@ serve(async (req) => {
     );
 
     const requestBody: CreatePaymentRequest = await req.json();
-    const { amount, orderId, customerName, customerPhone, customerEmail, storeId } = requestBody;
+    const { amount, orderId, dbOrderId, customerName, customerPhone, customerEmail, storeId } = requestBody;
 
     // Validate input
-    if (!amount || !orderId || !customerName || !customerPhone || !storeId) {
+    if (!amount || !orderId || !dbOrderId || !customerName || !customerPhone || !storeId) {
       throw new Error('Missing required parameters');
     }
 
@@ -83,14 +84,19 @@ serve(async (req) => {
     // Generate unique merchant transaction ID
     const merchantTransactionId = `TXN_${orderId}_${Date.now()}`;
 
+    // Build redirect URL for payment success page
+    const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('/v1', '') || 'https://yesgive.shop';
+    const clientBaseUrl = baseUrl.includes('supabase') ? 'https://yesgive.shop' : baseUrl;
+    const redirectUrl = `${clientBaseUrl}${store.slug ? `/${store.slug}` : ''}/payment-success?merchantTransactionId=${merchantTransactionId}&storeId=${storeId}&orderId=${dbOrderId}&storeSlug=${store.slug || ''}`;
+
     // Prepare payment payload
     const paymentPayload = {
       merchantId: merchantId,
       merchantTransactionId: merchantTransactionId,
       merchantUserId: customerPhone,
       amount: Math.round(amount), // Amount in paise
-      redirectUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-phonepe-payment?merchantTransactionId=${merchantTransactionId}&storeId=${storeId}`,
-      redirectMode: 'POST',
+      redirectUrl: redirectUrl,
+      redirectMode: 'REDIRECT',
       callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-phonepe-payment`,
       mobileNumber: customerPhone,
       paymentInstrument: {

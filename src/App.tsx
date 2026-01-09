@@ -29,6 +29,7 @@ import CustomerCategories from "./pages/customer/Categories";
 import ProductDetail from "./pages/customer/ProductDetail";
 import Cart from "./pages/customer/Cart";
 import Checkout from "./pages/customer/Checkout";
+import PaymentSuccess from "./pages/customer/PaymentSuccess";
 import Pricing from "./pages/Pricing";
 import Auth from "./pages/Auth";
 import SuperAdminLogin from "./pages/superadmin/Login";
@@ -44,6 +45,7 @@ import SuperAdminBilling from "./pages/superadmin/Billing";
 import SuperAdminCustomDomains from "./pages/superadmin/CustomDomains";
 import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
+import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import Store from "./pages/customer/Store";
 import Policies from "./pages/customer/Policies";
@@ -91,6 +93,7 @@ const App = () => {
                       <Route path="/products/:slug" element={<ProductDetail slug={storeIdentifier} />} />
                       <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
                       <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
+                      <Route path="/payment-success" element={<PaymentSuccess />} />
                       <Route path="/sitemap.xml" element={<Sitemap />} />
                       <Route path="*" element={<NotFound />} />
                     </>
@@ -119,6 +122,7 @@ const App = () => {
                       <Route path="/products/:slug" element={<ProductDetail />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/checkout" element={<Checkout />} />
+                      <Route path="/payment-success" element={<PaymentSuccess />} />
 
                       {/* Admin Routes */}
                       <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -136,18 +140,20 @@ const App = () => {
 
                       {/* Super Admin Routes */}
                       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
-                      <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
-                      <Route path="/superadmin/users" element={<SuperAdminUsers />} />
-                      <Route path="/superadmin/helpers" element={<HelperManagement />} />
-                      <Route path="/superadmin/commissions" element={<SuperAdminCommissions />} />
-                      <Route path="/superadmin/commission-settings" element={<SuperAdminCommissionSettings />} />
-                      <Route path="/superadmin/reports-analytics" element={<SuperAdminReportsAnalytics />} />
-                      <Route path="/superadmin/subscription-plans" element={<SuperAdminSubscriptionPlans />} />
-                      <Route path="/superadmin/transactions" element={<SuperAdminTransactions />} />
-                      <Route path="/superadmin/billing" element={<SuperAdminBilling />} />
-                      <Route path="/superadmin/custom-domains" element={<SuperAdminCustomDomains />} />
-                      <Route path="/superadmin/settings" element={<SuperAdminPlatformSettings />} />
-                      <Route path="/superadmin/sitemaps" element={<SuperAdminSitemapManager />} />
+                      <Route path="/superadmin" element={<SuperAdminGuard />}>
+                        <Route path="dashboard" element={<SuperAdminDashboard />} />
+                        <Route path="users" element={<SuperAdminUsers />} />
+                        <Route path="helpers" element={<HelperManagement />} />
+                        <Route path="commissions" element={<SuperAdminCommissions />} />
+                        <Route path="commission-settings" element={<SuperAdminCommissionSettings />} />
+                        <Route path="reports-analytics" element={<SuperAdminReportsAnalytics />} />
+                        <Route path="subscription-plans" element={<SuperAdminSubscriptionPlans />} />
+                        <Route path="transactions" element={<SuperAdminTransactions />} />
+                        <Route path="billing" element={<SuperAdminBilling />} />
+                        <Route path="custom-domains" element={<SuperAdminCustomDomains />} />
+                        <Route path="settings" element={<SuperAdminPlatformSettings />} />
+                        <Route path="sitemaps" element={<SuperAdminSitemapManager />} />
+                      </Route>
 
                       {/* Onboarding Routes */}
                       <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
@@ -161,6 +167,7 @@ const App = () => {
                       <Route path="/:slug/products/:productSlug" element={<ProductDetail />} />
                       <Route path="/:slug/cart" element={<Cart />} />
                       <Route path="/:slug/checkout" element={<Checkout />} />
+                      <Route path="/:slug/payment-success" element={<PaymentSuccess />} />
                       <Route path="*" element={<NotFound />} />
                     </>
                   )}

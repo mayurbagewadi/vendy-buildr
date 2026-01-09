@@ -102,10 +102,16 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
       }
 
       if (data?.access_token) {
-        // Store current super admin session to restore later
+        // Store current super admin session with metadata
         const { data: currentSession } = await supabase.auth.getSession();
         if (currentSession.session) {
-          localStorage.setItem('superadmin_session', JSON.stringify(currentSession.session));
+          const sessionToSave = {
+            ...currentSession.session,
+            saved_at: Date.now(),
+            user_id: currentSession.session.user.id,
+            reason: 'impersonation'
+          };
+          localStorage.setItem('superadmin_session', JSON.stringify(sessionToSave));
         }
 
         // Set user session
@@ -119,7 +125,7 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
           description: `Logged in as ${user.email}`,
         });
 
-        // Redirect to admin dashboard (SAME WINDOW)
+        // Redirect to admin dashboard (FULL RELOAD for clean state)
         window.location.href = '/admin/dashboard';
       } else {
         throw new Error('No access token received from edge function');
@@ -195,7 +201,7 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>User Details - {user.email}</DialogTitle>
         </DialogHeader>

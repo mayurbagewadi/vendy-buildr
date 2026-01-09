@@ -184,6 +184,39 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 })
                 .eq('id', orderDetails.orderId);
 
+              // Fetch complete order details for WhatsApp message
+              const { data: orderData } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('id', orderDetails.orderId)
+                .single();
+
+              if (orderData) {
+                // Generate WhatsApp message with payment confirmation
+                const whatsappOrderDetails = {
+                  customerName: orderData.customer_name,
+                  phone: orderData.phone,
+                  email: orderData.email,
+                  address: orderData.address,
+                  landmark: orderData.landmark,
+                  pincode: orderData.pincode,
+                  deliveryTime: orderData.delivery_time,
+                  latitude: orderData.latitude,
+                  longitude: orderData.longitude,
+                  cart: cart,
+                  subtotal: cartTotal,
+                  deliveryCharge: 0,
+                  total: cartTotal,
+                  paymentMethod: 'online' as const,
+                  paymentGateway: 'Razorpay',
+                  transactionId: response.razorpay_payment_id,
+                  orderNumber: orderData.order_number,
+                };
+
+                const message = generateOrderMessage(whatsappOrderDetails);
+                await openWhatsApp(message, undefined, storeId);
+              }
+
               toast({
                 title: "Payment successful!",
                 description: "Your order has been confirmed.",

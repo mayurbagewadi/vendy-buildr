@@ -17,6 +17,7 @@ export const initiatePhonePePayment = async (
       body: {
         amount: Math.round(orderDetails.amount * 100), // Convert to paise
         orderId: orderDetails.orderNumber,
+        dbOrderId: orderDetails.orderId, // Database order ID for callback
         customerName: orderDetails.customerName,
         customerPhone: orderDetails.customerPhone,
         customerEmail: orderDetails.customerEmail,

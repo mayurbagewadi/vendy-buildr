@@ -66,6 +66,10 @@ export interface OrderDetails {
   subtotal: number;
   deliveryCharge: number;
   total: number;
+  paymentMethod?: 'cod' | 'online';
+  paymentGateway?: string;
+  transactionId?: string;
+  orderNumber?: string;
 }
 
 export const generateOrderMessage = (order: OrderDetails): string => {
@@ -119,8 +123,21 @@ export const generateOrderMessage = (order: OrderDetails): string => {
   message += `Delivery: ₹${order.deliveryCharge.toFixed(2)}\n`;
   message += `*Total Amount: ₹${order.total.toFixed(2)}*\n\n`;
 
-  message += `💳 Payment Method: Cash on Delivery (COD)\n\n`;
-  message += `Please confirm this order. Thank you! 🙏`;
+  if (order.paymentMethod === 'online') {
+    message += `✅ *PAYMENT COMPLETED*\n`;
+    message += `💳 Payment Method: Online Payment (${order.paymentGateway || 'Gateway'})\n`;
+    if (order.orderNumber) {
+      message += `📋 Order Number: ${order.orderNumber}\n`;
+    }
+    if (order.transactionId) {
+      message += `🔐 Transaction ID: ${order.transactionId}\n`;
+    }
+    message += `💚 Payment Status: PAID\n\n`;
+    message += `Order is confirmed and payment received. Please process this order. Thank you! 🙏`;
+  } else {
+    message += `💳 Payment Method: Cash on Delivery (COD)\n\n`;
+    message += `Please confirm this order. Thank you! 🙏`;
+  }
 
   return message;
 };

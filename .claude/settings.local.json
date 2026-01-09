@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git merge main -m \"$\\(cat <<''EOF''\nMerge main into production: Sync Google Drive image handling\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git log:*)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)"
+    ]
+  }
+}
