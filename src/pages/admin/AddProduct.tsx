@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
+import { compressImage } from "@/lib/imageCompression";
 
 // Utility function to generate URL-friendly slugs from product names
 const generateSlug = (name: string): string => {
@@ -72,6 +73,7 @@ const AddProduct = () => {
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
+  const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -181,14 +183,32 @@ category: "",
       }
 
       for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
+        let file = validFiles[i];
 
         setUploadingFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 10 } : f
         ));
 
+        // Compress image if uploading to VPS
+        if (uploadDestination === 'vps') {
+          try {
+            const originalSize = (file.size / 1024 / 1024).toFixed(2);
+            file = await compressImage(file, 5);
+            const compressedSize = (file.size / 1024 / 1024).toFixed(2);
+            console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+          } catch (compressError) {
+            console.error('Compression failed:', compressError);
+            toast({
+              title: "Compression failed",
+              description: `Failed to compress ${file.name}, uploading original`,
+              variant: "destructive",
+            });
+          }
+        }
+
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
+        uploadFormData.append('type', 'products');
 
         const progressInterval = setInterval(() => {
           setUploadingFiles(prev => prev.map((f, idx) =>
@@ -197,7 +217,8 @@ category: "",
         }, 200);
 
         try {
-          const response = await supabase.functions.invoke('upload-to-drive', {
+          const edgeFunction = uploadDestination === 'vps' ? 'upload-to-vps' : 'upload-to-drive';
+          const response = await supabase.functions.invoke(edgeFunction, {
             body: uploadFormData,
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
@@ -221,9 +242,10 @@ category: "",
             setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
             setImageUrls(prev => [...prev, response.data.imageUrl]);
 
+            const destination = uploadDestination === 'vps' ? 'VPS Server' : 'Google Drive';
             toast({
               title: "Image uploaded",
-              description: `${file.name} uploaded successfully`,
+              description: `${file.name} uploaded to ${destination} successfully`,
             });
           }
         } catch (fileError) {
@@ -725,6 +747,45 @@ stock: parseInt(data.baseStock),
                       </p>
                     </div>
 
+                    {/* Upload Destination Selector */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">Upload Destination</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="uploadDestination"
+                            value="vps"
+                            checked={uploadDestination === 'vps'}
+                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                            className="w-4 h-4 text-primary"
+                          />
+                          <span className="text-sm">
+                            VPS Server <span className="text-xs text-green-600 font-medium">(Recommended - Fast & Reliable)</span>
+                          </span>
+                        </label>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="uploadDestination"
+                            value="drive"
+                            checked={uploadDestination === 'drive'}
+                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                            className="w-4 h-4 text-primary"
+                            disabled={!isDriveConnected}
+                          />
+                          <span className="text-sm">
+                            Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                          </span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {uploadDestination === 'vps'
+                          ? 'Images will be compressed to max 5MB and stored on your server'
+                          : 'Images will be uploaded to your connected Google Drive'}
+                      </p>
+                    </div>
+
                     {/* File Upload */}
                     <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
                       <input
@@ -761,7 +822,9 @@ stock: parseInt(data.baseStock),
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
                                       <p className="text-xs text-muted-foreground">
-                                        {file.progress < 100 ? 'Uploading to Google Drive...' : 'Complete!'}
+                                        {file.progress < 100
+                                          ? `Uploading to ${uploadDestination === 'vps' ? 'VPS Server' : 'Google Drive'}...`
+                                          : 'Complete!'}
                                       </p>
                                     </div>
                                     <span className="text-sm font-medium text-primary">{file.progress}%</span>
@@ -783,7 +846,9 @@ stock: parseInt(data.baseStock),
                             <div className="space-y-2">
                               <p className="text-sm font-medium">Or upload from device</p>
                               <p className="text-xs text-muted-foreground">
-                                PNG, JPG images. Will be uploaded to your Google Drive.
+                                {uploadDestination === 'vps'
+                                  ? 'PNG, JPG images. Auto-compressed to max 5MB and stored on VPS.'
+                                  : 'PNG, JPG images. Will be uploaded to your Google Drive.'}
                               </p>
                             </div>
                             <span className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">

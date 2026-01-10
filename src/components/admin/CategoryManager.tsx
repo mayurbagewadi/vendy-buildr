@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { DEMO_CATEGORIES } from "@/lib/demoProducts";
 import { getRandomDefaultImage } from "@/lib/defaultImages";
+import { compressImage } from "@/lib/imageCompression";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,7 @@ export function CategoryManager() {
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
   const [nameError, setNameError] = useState<string>("");
 
   useEffect(() => {
@@ -267,7 +269,7 @@ export function CategoryManager() {
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, isEditMode: boolean = false) => {
-    const file = event.target.files?.[0];
+    let file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
@@ -292,8 +294,21 @@ export function CategoryManager() {
       // Start progress simulation
       setUploadingFiles([{ name: file.name, progress: 10 }]);
 
+      // Compress image if uploading to VPS
+      if (uploadDestination === 'vps') {
+        try {
+          const originalSize = (file.size / 1024 / 1024).toFixed(2);
+          file = await compressImage(file, 5);
+          const compressedSize = (file.size / 1024 / 1024).toFixed(2);
+          console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+        } catch (compressError) {
+          console.error('Compression failed:', compressError);
+        }
+      }
+
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
+      uploadFormData.append('type', 'categories');
 
       const progressInterval = setInterval(() => {
         setUploadingFiles(prev =>
@@ -302,7 +317,8 @@ export function CategoryManager() {
       }, 200);
 
       try {
-        const response = await supabase.functions.invoke('upload-to-drive', {
+        const edgeFunction = uploadDestination === 'vps' ? 'upload-to-vps' : 'upload-to-drive';
+        const response = await supabase.functions.invoke(edgeFunction, {
           body: uploadFormData,
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -421,6 +437,45 @@ export function CategoryManager() {
           {/* Image Upload Section */}
           <div className="space-y-4">
             <Label className="text-base font-medium">Category Image</Label>
+
+            {/* Upload Destination Selector */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Upload Destination</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="categoryUploadDestination"
+                    value="vps"
+                    checked={uploadDestination === 'vps'}
+                    onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="text-sm">
+                    VPS Server <span className="text-xs text-green-600 font-medium">(Recommended)</span>
+                  </span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="categoryUploadDestination"
+                    value="drive"
+                    checked={uploadDestination === 'drive'}
+                    onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                    className="w-4 h-4 text-primary"
+                    disabled={!isDriveConnected}
+                  />
+                  <span className="text-sm">
+                    Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                  </span>
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {uploadDestination === 'vps'
+                  ? 'Images compressed to max 5MB and stored on server'
+                  : 'Images uploaded to your connected Google Drive'}
+              </p>
+            </div>
 
             {/* Option 1: Upload from Device */}
             <div className="space-y-3">
@@ -724,6 +779,40 @@ export function CategoryManager() {
 
               <div className="space-y-4">
                 <label className="text-sm font-medium">Category Image</label>
+
+                {/* Upload Destination Selector */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Upload Destination</Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editCategoryUploadDestination"
+                        value="vps"
+                        checked={uploadDestination === 'vps'}
+                        onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span className="text-xs">
+                        VPS Server <span className="text-xs text-green-600 font-medium">(Recommended)</span>
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editCategoryUploadDestination"
+                        value="drive"
+                        checked={uploadDestination === 'drive'}
+                        onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                        className="w-4 h-4 text-primary"
+                        disabled={!isDriveConnected}
+                      />
+                      <span className="text-xs">
+                        Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                      </span>
+                    </label>
+                  </div>
+                </div>
 
                 {/* Option 1: Upload from Device */}
                 <div className="space-y-3">
