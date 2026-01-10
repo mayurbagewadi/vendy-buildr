@@ -339,7 +339,28 @@ category: "",
     setNewImageUrl("");
   };
 
-  const removeImageUrl = (index: number) => {
+  const removeImageUrl = async (index: number) => {
+    const imageUrl = imageUrls[index];
+
+    // Delete from VPS if it's a VPS image
+    if (imageUrl.includes('digitaldukandar.in/uploads/')) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.functions.invoke('delete-from-vps', {
+            body: { imageUrl },
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
+          console.log('Image deleted from VPS:', imageUrl);
+        }
+      } catch (error) {
+        console.error('Failed to delete image from VPS:', error);
+        // Don't block UI if deletion fails
+      }
+    }
+
     setImageUrls(prev => prev.filter((_, i) => i !== index));
   };
 

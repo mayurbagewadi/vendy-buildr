@@ -155,6 +155,25 @@ export function CategoryManager() {
     if (!categoryToDelete) return;
 
     try {
+      // Delete image from VPS if it exists
+      if (categoryToDelete.image_url && categoryToDelete.image_url.includes('digitaldukandar.in/uploads/')) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase.functions.invoke('delete-from-vps', {
+              body: { imageUrl: categoryToDelete.image_url },
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            });
+            console.log('Category image deleted from VPS:', categoryToDelete.image_url);
+          }
+        } catch (vpsError) {
+          console.error('Failed to delete image from VPS:', vpsError);
+          // Continue with category deletion even if VPS cleanup fails
+        }
+      }
+
       const { error } = await supabase
         .from("categories")
         .delete()
@@ -201,11 +220,35 @@ export function CategoryManager() {
     try {
       setIsUpdating(true);
 
+      // Delete old image from VPS if it's being replaced with a different one
+      const oldImageUrl = editingCategory.image_url;
+      const newImageUrl = editingCategory.newImageUrl.trim();
+
+      if (oldImageUrl &&
+          oldImageUrl !== newImageUrl &&
+          oldImageUrl.includes('digitaldukandar.in/uploads/')) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase.functions.invoke('delete-from-vps', {
+              body: { imageUrl: oldImageUrl },
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            });
+            console.log('Old category image deleted from VPS:', oldImageUrl);
+          }
+        } catch (vpsError) {
+          console.error('Failed to delete old image from VPS:', vpsError);
+          // Continue with update even if VPS cleanup fails
+        }
+      }
+
       const { error } = await supabase
         .from("categories")
         .update({
           name: editingCategory.newName.trim(),
-          image_url: editingCategory.newImageUrl.trim() || null,
+          image_url: newImageUrl || null,
         })
         .eq("id", editingCategory.id);
 

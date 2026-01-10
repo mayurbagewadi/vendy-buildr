@@ -360,7 +360,28 @@ const AdminSettings = () => {
     setNewBannerUrl("");
   };
 
-  const handleRemoveBannerUrl = (index: number) => {
+  const handleRemoveBannerUrl = async (index: number) => {
+    const bannerUrl = formData.heroBannerUrls[index];
+
+    // Delete from VPS if it's a VPS image
+    if (bannerUrl.includes('digitaldukandar.in/uploads/')) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.functions.invoke('delete-from-vps', {
+            body: { imageUrl: bannerUrl },
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
+          console.log('Banner image deleted from VPS:', bannerUrl);
+        }
+      } catch (error) {
+        console.error('Failed to delete banner from VPS:', error);
+        // Don't block UI if deletion fails
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
