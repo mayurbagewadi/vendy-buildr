@@ -269,9 +269,16 @@ category: "",
       }
       
       console.log('Extracted error message:', errorMessage);
-      
-      // Check if it's a Google Drive connection issue
-      if (errorMessage.toLowerCase().includes('drive') && 
+
+      // Check if it's a storage limit error
+      if (errorMessage.toLowerCase().includes('storage limit')) {
+        toast({
+          title: "Storage Limit Reached",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else if (errorMessage.toLowerCase().includes('drive') &&
           errorMessage.toLowerCase().includes('not connected')) {
         toast({
           title: "Google Drive Not Connected",

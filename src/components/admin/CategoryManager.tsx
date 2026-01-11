@@ -413,7 +413,14 @@ export function CategoryManager() {
         }
       }
 
-      if (errorMessage.toLowerCase().includes('drive') &&
+      if (errorMessage.toLowerCase().includes('storage limit')) {
+        toast({
+          title: "Storage Limit Reached",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else if (errorMessage.toLowerCase().includes('drive') &&
           errorMessage.toLowerCase().includes('not connected')) {
         toast({
           title: "Google Drive Not Connected",

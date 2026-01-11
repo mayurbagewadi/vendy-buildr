@@ -49,6 +49,17 @@ serve(async (req) => {
 
     console.log(`[upload-to-vps] User authenticated: ${user.id}`);
 
+    // Get store and check storage limit
+    const { data: store, error: storeError } = await supabaseClient
+      .from('stores')
+      .select('id, storage_used_mb, storage_limit_mb')
+      .eq('user_id', user.id)
+      .single();
+
+    if (storeError || !store) {
+      throw new Error('Store not found');
+    }
+
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -64,6 +75,17 @@ serve(async (req) => {
     if (!file.type.startsWith('image/')) {
       throw new Error('Only image files are allowed');
     }
+
+    // Check storage limit (server-side enforcement)
+    const fileSizeMB = file.size / 1024 / 1024;
+    const currentUsage = store.storage_used_mb || 0;
+    const storageLimit = store.storage_limit_mb || 100;
+
+    if (currentUsage + fileSizeMB > storageLimit) {
+      throw new Error('Storage limit reached. Delete images to free space.');
+    }
+
+    console.log(`[upload-to-vps] Storage check: ${currentUsage.toFixed(2)} MB + ${fileSizeMB.toFixed(2)} MB / ${storageLimit} MB`);
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -88,6 +110,20 @@ serve(async (req) => {
     await uploadViaSSH(fileBuffer, remotePath);
 
     console.log(`[upload-to-vps] Upload successful: ${imageUrl}`);
+
+    // Update storage usage
+    const newStorageUsed = currentUsage + fileSizeMB;
+    const { error: updateError } = await supabaseClient
+      .from('stores')
+      .update({ storage_used_mb: newStorageUsed })
+      .eq('id', store.id);
+
+    if (updateError) {
+      console.error('[upload-to-vps] Failed to update storage usage:', updateError);
+      // Don't fail the upload if storage tracking fails
+    } else {
+      console.log(`[upload-to-vps] Storage updated: ${currentUsage.toFixed(2)} MB → ${newStorageUsed.toFixed(2)} MB`);
+    }
 
     // Return response in same format as upload-to-drive
     return new Response(

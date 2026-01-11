@@ -87,6 +87,8 @@ const AdminSettings = () => {
     payment_mode: "online_and_cod" as "online_only" | "online_and_cod",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
+  const [storageUsed, setStorageUsed] = useState(0);
+  const [storageLimit, setStorageLimit] = useState(100);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -117,6 +119,10 @@ const AdminSettings = () => {
         if (store?.id) {
           setStoreId(store.id);
         }
+
+        // Set storage tracking
+        setStorageUsed(store?.storage_used_mb || 0);
+        setStorageLimit(store?.storage_limit_mb || 100);
 
         // If we have new Google tokens and a store, save them
         if (store && providerToken) {
@@ -516,7 +522,14 @@ const AdminSettings = () => {
         }
       }
 
-      if (errorMessage.toLowerCase().includes('drive') &&
+      if (errorMessage.toLowerCase().includes('storage limit')) {
+        toast({
+          title: "Storage Limit Reached",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else if (errorMessage.toLowerCase().includes('drive') &&
           errorMessage.toLowerCase().includes('not connected')) {
         toast({
           title: "Google Drive Not Connected",
@@ -1441,6 +1454,39 @@ const AdminSettings = () => {
                     : 'Banners will be uploaded to your connected Google Drive'}
                 </p>
               </div>
+
+              {/* Storage Usage Display (only show for VPS) */}
+              {uploadDestination === 'vps' && (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">VPS Storage Usage</Label>
+                    <span className="text-sm font-medium">
+                      {storageUsed.toFixed(2)} MB / {storageLimit} MB
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full transition-all ${
+                        storageUsed >= storageLimit
+                          ? 'bg-destructive'
+                          : storageUsed >= storageLimit * 0.8
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min((storageUsed / storageLimit) * 100, 100)}%` }}
+                    />
+                  </div>
+                  {storageUsed >= storageLimit && (
+                    <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      Storage limit reached. Delete images to free space.
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Limit: 20 images × 5 MB = 100 MB total
+                  </p>
+                </div>
+              )}
 
               {/* Option 1: Upload from Device */}
               <div className="space-y-3">
