@@ -89,6 +89,9 @@ const AdminSettings = () => {
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [storageUsed, setStorageUsed] = useState(0);
   const [storageLimit, setStorageLimit] = useState(100);
+  const [mediaLibrary, setMediaLibrary] = useState<any[]>([]);
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'products' | 'categories' | 'banners'>('all');
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -214,10 +217,81 @@ const AdminSettings = () => {
     };
 
     loadSettings();
+    loadMediaLibrary();
   }, []);
+
+  const loadMediaLibrary = async () => {
+    try {
+      setIsLoadingMedia(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: store } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!store) return;
+
+      const { data, error } = await supabase
+        .from("media_library")
+        .select("*")
+        .eq("store_id", store.id)
+        .order("uploaded_at", { ascending: false });
+
+      if (error) throw error;
+      setMediaLibrary(data || []);
+    } catch (error: any) {
+      console.error('Error loading media library:', error);
+    } finally {
+      setIsLoadingMedia(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCopyImageUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "URL Copied",
+      description: "Image URL copied to clipboard",
+    });
+  };
+
+  const handleDeleteFromMediaLibrary = async (imageUrl: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await supabase.functions.invoke('delete-from-vps', {
+        body: { imageUrl },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to delete image');
+      }
+
+      toast({
+        title: "Image Deleted",
+        description: "Image removed from media library",
+      });
+
+      // Reload media library and storage stats
+      loadMediaLibrary();
+      loadSettings();
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete image",
+        variant: "destructive",
+      });
+    }
   };
 
   // Auto-save with debouncing
@@ -392,6 +466,12 @@ const AdminSettings = () => {
       ...prev,
       heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
     }));
+
+    // Reload media library after deletion
+    setTimeout(() => {
+      loadMediaLibrary();
+      loadSettings();
+    }, 500);
   };
 
   const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -511,6 +591,10 @@ const AdminSettings = () => {
           throw fileError;
         }
       }
+
+      // Reload media library and storage stats
+      loadMediaLibrary();
+      loadSettings();
     } catch (error: any) {
       let errorMessage = error.message || '';
       if (error.context?.body) {
@@ -1643,6 +1727,132 @@ const AdminSettings = () => {
                   <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No banner images added yet.</p>
                   <p className="text-xs mt-1">Upload images or paste URLs above to create a carousel.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Media Library Section */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Image className="w-5 h-5 text-primary" />
+                </div>
+                Media Library
+              </CardTitle>
+              <p className="text-muted-foreground">All VPS uploaded images</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Storage Stats */}
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Storage Usage</Label>
+                  <span className="text-sm font-medium">
+                    {mediaLibrary.length} images · {storageUsed.toFixed(2)} MB / {storageLimit} MB
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2.5">
+                  <div
+                    className={`h-2.5 rounded-full transition-all ${
+                      storageUsed >= storageLimit
+                        ? 'bg-destructive'
+                        : storageUsed >= storageLimit * 0.8
+                        ? 'bg-yellow-500'
+                        : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min((storageUsed / storageLimit) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Filter */}
+              <div className="flex gap-2">
+                <Button
+                  variant={mediaFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMediaFilter('all')}
+                >
+                  All ({mediaLibrary.length})
+                </Button>
+                <Button
+                  variant={mediaFilter === 'products' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMediaFilter('products')}
+                >
+                  Products ({mediaLibrary.filter(m => m.file_type === 'products').length})
+                </Button>
+                <Button
+                  variant={mediaFilter === 'categories' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMediaFilter('categories')}
+                >
+                  Categories ({mediaLibrary.filter(m => m.file_type === 'categories').length})
+                </Button>
+                <Button
+                  variant={mediaFilter === 'banners' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMediaFilter('banners')}
+                >
+                  Banners ({mediaLibrary.filter(m => m.file_type === 'banners').length})
+                </Button>
+              </div>
+
+              {/* Image Grid */}
+              {isLoadingMedia ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {mediaLibrary
+                    .filter(media => mediaFilter === 'all' || media.file_type === mediaFilter)
+                    .map((media) => (
+                      <div key={media.id} className="group relative border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                        <div className="aspect-square bg-muted">
+                          <img
+                            src={media.file_url}
+                            alt={media.file_name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400';
+                            }}
+                          />
+                        </div>
+                        <div className="p-2 bg-background border-t">
+                          <p className="text-xs font-medium truncate">{media.file_name}</p>
+                          <p className="text-xs text-muted-foreground">{media.file_size_mb.toFixed(2)} MB</p>
+                          <p className="text-xs text-muted-foreground capitalize">{media.file_type}</p>
+                        </div>
+                        {/* Action Buttons */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleCopyImageUrl(media.file_url)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleDeleteFromMediaLibrary(media.file_url)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {mediaLibrary.filter(m => mediaFilter === 'all' || m.file_type === mediaFilter).length === 0 && !isLoadingMedia && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No images in media library</p>
+                  <p className="text-xs mt-1">Upload images to see them here</p>
                 </div>
               )}
             </CardContent>

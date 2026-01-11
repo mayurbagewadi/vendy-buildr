@@ -111,6 +111,19 @@ serve(async (req) => {
       }
     }
 
+    // Remove from media library
+    const { error: mediaError } = await supabaseClient
+      .from('media_library')
+      .delete()
+      .eq('file_url', imageUrl)
+      .eq('store_id', store.id);
+
+    if (mediaError) {
+      console.error('[delete-from-vps] Failed to remove from media library:', mediaError);
+    } else {
+      console.log(`[delete-from-vps] Removed from media library: ${imageUrl}`);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

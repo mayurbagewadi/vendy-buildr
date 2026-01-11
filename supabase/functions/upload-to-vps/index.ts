@@ -125,6 +125,24 @@ serve(async (req) => {
       console.log(`[upload-to-vps] Storage updated: ${currentUsage.toFixed(2)} MB → ${newStorageUsed.toFixed(2)} MB`);
     }
 
+    // Add to media library for tracking
+    const { error: mediaError } = await supabaseClient
+      .from('media_library')
+      .insert({
+        store_id: store.id,
+        file_url: imageUrl,
+        file_name: filename,
+        file_size_mb: fileSizeMB,
+        file_type: subdir, // 'products', 'categories', or 'banners'
+      });
+
+    if (mediaError) {
+      console.error('[upload-to-vps] Failed to add to media library:', mediaError);
+      // Don't fail the upload if media tracking fails
+    } else {
+      console.log(`[upload-to-vps] Added to media library: ${filename}`);
+    }
+
     // Return response in same format as upload-to-drive
     return new Response(
       JSON.stringify({
