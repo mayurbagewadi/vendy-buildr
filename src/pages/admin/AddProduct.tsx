@@ -217,13 +217,31 @@ category: "",
         }, 200);
 
         try {
-          const edgeFunction = uploadDestination === 'vps' ? 'upload-to-vps' : 'upload-to-drive';
-          const response = await supabase.functions.invoke(edgeFunction, {
-            body: uploadFormData,
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          });
+          let response;
+
+          if (uploadDestination === 'vps') {
+            // Direct upload to VPS
+            const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+              method: 'POST',
+              body: uploadFormData,
+            });
+
+            const data = await uploadResponse.json();
+
+            if (!uploadResponse.ok || !data.success) {
+              throw new Error(data.error || 'Failed to upload image');
+            }
+
+            response = { data, error: null };
+          } else {
+            // Google Drive upload via edge function
+            response = await supabase.functions.invoke('upload-to-drive', {
+              body: uploadFormData,
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            });
+          }
 
           clearInterval(progressInterval);
 
