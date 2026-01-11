@@ -51,6 +51,10 @@ export function CategoryManager() {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
   const [nameError, setNameError] = useState<string>("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null); // Store file until save (VPS only)
+  const [previewUrl, setPreviewUrl] = useState<string>(""); // Preview URL for display (VPS only)
+  const [editPendingFile, setEditPendingFile] = useState<File | null>(null); // For edit mode
+  const [editPreviewUrl, setEditPreviewUrl] = useState<string>(""); // For edit mode
 
   useEffect(() => {
     loadCategories();
@@ -114,11 +118,87 @@ export function CategoryManager() {
 
     try {
       setIsAdding(true);
+      let finalImageUrl = newCategoryImage.trim();
+
+      // Upload pending file if VPS is selected
+      if (pendingFile && uploadDestination === 'vps') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
+        // Get store info for storage tracking
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not found');
+
+        const { data: store, error: storeError } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb, storage_limit_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (storeError || !store) {
+          throw new Error('Store not found');
+        }
+
+        const fileSizeMB = pendingFile.size / 1024 / 1024;
+        const currentUsage = store.storage_used_mb || 0;
+        const storageLimit = store.storage_limit_mb || 100;
+
+        if (currentUsage + fileSizeMB > storageLimit) {
+          throw new Error(`Storage limit reached. You have ${(storageLimit - currentUsage).toFixed(2)}MB remaining. Delete images from Media Library to free space.`);
+        }
+
+        setUploadingFiles([{ name: pendingFile.name, progress: 10 }]);
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', pendingFile);
+        uploadFormData.append('type', 'categories');
+
+        const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        const responseData = await uploadResponse.json();
+
+        if (!uploadResponse.ok || !responseData.success) {
+          throw new Error(responseData.error || 'Failed to upload image');
+        }
+
+        finalImageUrl = responseData.imageUrl;
+        const fileName = responseData.fileId || pendingFile.name;
+
+        // Track in media_library
+        const { error: mediaError } = await supabase
+          .from('media_library')
+          .insert({
+            store_id: store.id,
+            file_url: finalImageUrl,
+            file_name: fileName,
+            file_size_mb: fileSizeMB,
+            file_type: 'categories',
+          });
+
+        if (mediaError) {
+          console.error('Failed to add to media library:', mediaError);
+        }
+
+        // Update storage usage
+        const { error: updateError } = await supabase
+          .from('stores')
+          .update({ storage_used_mb: currentUsage + fileSizeMB })
+          .eq('id', store.id);
+
+        if (updateError) {
+          console.error('Failed to update storage usage:', updateError);
+        }
+
+        setUploadingFiles([]);
+      }
 
       // If no image URL provided, assign a random default image
-      let finalImageUrl = newCategoryImage.trim();
       if (!finalImageUrl) {
-        // Use a random image from the default images pool
         finalImageUrl = getRandomDefaultImage();
       }
 
@@ -131,6 +211,11 @@ export function CategoryManager() {
         }]);
 
       if (error) throw error;
+
+      // Cleanup
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPendingFile(null);
+      setPreviewUrl("");
 
       toast({
         title: "Success",
@@ -148,6 +233,7 @@ export function CategoryManager() {
       });
     } finally {
       setIsAdding(false);
+      setUploadingFiles([]);
     }
   };
 
@@ -219,10 +305,87 @@ export function CategoryManager() {
 
     try {
       setIsUpdating(true);
+      let newImageUrl = editingCategory.newImageUrl.trim();
+
+      // Upload pending file if VPS is selected
+      if (editPendingFile && uploadDestination === 'vps') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
+        // Get store info for storage tracking
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not found');
+
+        const { data: store, error: storeError } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb, storage_limit_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (storeError || !store) {
+          throw new Error('Store not found');
+        }
+
+        const fileSizeMB = editPendingFile.size / 1024 / 1024;
+        const currentUsage = store.storage_used_mb || 0;
+        const storageLimit = store.storage_limit_mb || 100;
+
+        if (currentUsage + fileSizeMB > storageLimit) {
+          throw new Error(`Storage limit reached. You have ${(storageLimit - currentUsage).toFixed(2)}MB remaining. Delete images from Media Library to free space.`);
+        }
+
+        setUploadingFiles([{ name: editPendingFile.name, progress: 10 }]);
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', editPendingFile);
+        uploadFormData.append('type', 'categories');
+
+        const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        const responseData = await uploadResponse.json();
+
+        if (!uploadResponse.ok || !responseData.success) {
+          throw new Error(responseData.error || 'Failed to upload image');
+        }
+
+        newImageUrl = responseData.imageUrl;
+        const fileName = responseData.fileId || editPendingFile.name;
+
+        // Track in media_library
+        const { error: mediaError } = await supabase
+          .from('media_library')
+          .insert({
+            store_id: store.id,
+            file_url: newImageUrl,
+            file_name: fileName,
+            file_size_mb: fileSizeMB,
+            file_type: 'categories',
+          });
+
+        if (mediaError) {
+          console.error('Failed to add to media library:', mediaError);
+        }
+
+        // Update storage usage
+        const { error: updateError } = await supabase
+          .from('stores')
+          .update({ storage_used_mb: currentUsage + fileSizeMB })
+          .eq('id', store.id);
+
+        if (updateError) {
+          console.error('Failed to update storage usage:', updateError);
+        }
+
+        setUploadingFiles([]);
+      }
 
       // Delete old image from VPS if it's being replaced with a different one
       const oldImageUrl = editingCategory.image_url;
-      const newImageUrl = editingCategory.newImageUrl.trim();
 
       if (oldImageUrl &&
           oldImageUrl !== newImageUrl &&
@@ -254,6 +417,11 @@ export function CategoryManager() {
 
       if (error) throw error;
 
+      // Cleanup
+      if (editPreviewUrl) URL.revokeObjectURL(editPreviewUrl);
+      setEditPendingFile(null);
+      setEditPreviewUrl("");
+
       toast({
         title: "Success",
         description: "Category updated successfully",
@@ -268,6 +436,7 @@ export function CategoryManager() {
       });
     } finally {
       setIsUpdating(false);
+      setUploadingFiles([]);
     }
   };
 
@@ -325,29 +494,61 @@ export function CategoryManager() {
       return;
     }
 
-    setIsUploadingImage(true);
-    setUploadingFiles([{ name: file.name, progress: 0 }]);
-
     try {
+      // For VPS: Compress and store locally (defer upload until save)
+      if (uploadDestination === 'vps') {
+        try {
+          const originalSize = (file.size / 1024 / 1024).toFixed(2);
+          const compressed = await compressImage(file, 5);
+          const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
+          console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+          file = compressed;
+        } catch (compressError) {
+          console.error('Compression failed:', compressError);
+          toast({
+            title: "Compression failed",
+            description: `Failed to compress ${file.name}, using original`,
+            variant: "destructive",
+          });
+        }
+
+        // Create preview URL and store file
+        const preview = URL.createObjectURL(file);
+
+        if (isEditMode) {
+          // Clean up old preview URL if exists
+          if (editPreviewUrl) URL.revokeObjectURL(editPreviewUrl);
+          setEditPendingFile(file);
+          setEditPreviewUrl(preview);
+          if (editingCategory) {
+            setEditingCategory(prev => prev ? { ...prev, newImageUrl: preview } : null);
+          }
+        } else {
+          // Clean up old preview URL if exists
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          setPendingFile(file);
+          setPreviewUrl(preview);
+          setNewCategoryImage(preview);
+        }
+
+        toast({
+          title: "Image ready",
+          description: `${file.name} will be uploaded when you save the category`,
+        });
+
+        return;
+      }
+
+      // For Google Drive: Upload immediately (keep existing behavior)
+      setIsUploadingImage(true);
+      setUploadingFiles([{ name: file.name, progress: 0 }]);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // Start progress simulation
       setUploadingFiles([{ name: file.name, progress: 10 }]);
-
-      // Compress image if uploading to VPS
-      if (uploadDestination === 'vps') {
-        try {
-          const originalSize = (file.size / 1024 / 1024).toFixed(2);
-          file = await compressImage(file, 5);
-          const compressedSize = (file.size / 1024 / 1024).toFixed(2);
-          console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
-        } catch (compressError) {
-          console.error('Compression failed:', compressError);
-        }
-      }
 
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
@@ -360,31 +561,13 @@ export function CategoryManager() {
       }, 200);
 
       try {
-        let response;
-
-        if (uploadDestination === 'vps') {
-          // Direct upload to VPS
-          const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
-            method: 'POST',
-            body: uploadFormData,
-          });
-
-          const data = await uploadResponse.json();
-
-          if (!uploadResponse.ok || !data.success) {
-            throw new Error(data.error || 'Failed to upload image');
-          }
-
-          response = { data, error: null };
-        } else {
-          // Google Drive upload via edge function
-          response = await supabase.functions.invoke('upload-to-drive', {
-            body: uploadFormData,
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          });
-        }
+        // Google Drive upload via edge function
+        const response = await supabase.functions.invoke('upload-to-drive', {
+          body: uploadFormData,
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
 
         clearInterval(progressInterval);
 
@@ -400,7 +583,6 @@ export function CategoryManager() {
             setEditingCategory(prev => prev ? { ...prev, newImageUrl: response.data.imageUrl } : null);
           } else {
             setNewCategoryImage(response.data.imageUrl);
-            // Scroll to preview after a short delay
             setTimeout(() => {
               const previewElement = document.querySelector('[data-image-preview]');
               if (previewElement) {

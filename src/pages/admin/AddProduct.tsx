@@ -74,6 +74,8 @@ const AddProduct = () => {
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
   const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Store files until save
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]); // Preview URLs for display
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -173,163 +175,51 @@ category: "",
 
     if (validFiles.length === 0) return;
 
-    setIsUploadingToDrive(true);
-    setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
+      // Compress images if uploading to VPS
+      const processedFiles: File[] = [];
 
-      for (let i = 0; i < validFiles.length; i++) {
-        let file = validFiles[i];
-
-        setUploadingFiles(prev => prev.map((f, idx) =>
-          idx === i ? { ...f, progress: 10 } : f
-        ));
-
-        // Compress image if uploading to VPS
+      for (const file of validFiles) {
         if (uploadDestination === 'vps') {
           try {
             const originalSize = (file.size / 1024 / 1024).toFixed(2);
-            file = await compressImage(file, 5);
-            const compressedSize = (file.size / 1024 / 1024).toFixed(2);
+            const compressed = await compressImage(file, 5);
+            const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
             console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+            processedFiles.push(compressed);
           } catch (compressError) {
             console.error('Compression failed:', compressError);
             toast({
               title: "Compression failed",
-              description: `Failed to compress ${file.name}, uploading original`,
+              description: `Failed to compress ${file.name}, using original`,
               variant: "destructive",
             });
+            processedFiles.push(file);
           }
-        }
-
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', file);
-        uploadFormData.append('type', 'products');
-
-        const progressInterval = setInterval(() => {
-          setUploadingFiles(prev => prev.map((f, idx) =>
-            idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
-          ));
-        }, 200);
-
-        try {
-          let response;
-
-          if (uploadDestination === 'vps') {
-            // Direct upload to VPS
-            const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
-              method: 'POST',
-              body: uploadFormData,
-            });
-
-            const data = await uploadResponse.json();
-
-            if (!uploadResponse.ok || !data.success) {
-              throw new Error(data.error || 'Failed to upload image');
-            }
-
-            response = { data, error: null };
-          } else {
-            // Google Drive upload via edge function
-            response = await supabase.functions.invoke('upload-to-drive', {
-              body: uploadFormData,
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-            });
-          }
-
-          clearInterval(progressInterval);
-
-          if (response.error) {
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
-            throw new Error(response.error.message || 'Failed to upload image');
-          }
-
-          if (response.data?.imageUrl) {
-            setUploadingFiles(prev => prev.map((f, idx) =>
-              idx === i ? { ...f, progress: 100 } : f
-            ));
-
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
-            setImageUrls(prev => [...prev, response.data.imageUrl]);
-
-            const destination = uploadDestination === 'vps' ? 'VPS Server' : 'Google Drive';
-            toast({
-              title: "Image uploaded",
-              description: `${file.name} uploaded to ${destination} successfully`,
-            });
-          }
-        } catch (fileError) {
-          clearInterval(progressInterval);
-          throw fileError;
+        } else {
+          processedFiles.push(file);
         }
       }
+
+      // Store files and create preview URLs
+      setPendingFiles(prev => [...prev, ...processedFiles]);
+
+      const newPreviewUrls = processedFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+
+      toast({
+        title: "Images ready",
+        description: `${processedFiles.length} image(s) will be uploaded when you save the product`,
+      });
+
     } catch (error: any) {
-      console.error('Upload error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      
-      // Extract error message from edge function response
-      let errorMessage = error.message || '';
-      if (error.context?.body) {
-        try {
-          const errorBody = JSON.parse(error.context.body);
-          errorMessage = errorBody.error || errorBody.message || errorMessage;
-        } catch (e) {
-          console.error('Could not parse error body:', e);
-        }
-      }
-      
-      console.log('Extracted error message:', errorMessage);
-
-      // Check if it's a storage limit error
-      if (errorMessage.toLowerCase().includes('storage limit')) {
-        toast({
-          title: "Storage Limit Reached",
-          description: errorMessage,
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else if (errorMessage.toLowerCase().includes('drive') &&
-          errorMessage.toLowerCase().includes('not connected')) {
-        toast({
-          title: "Google Drive Not Connected",
-          description: "Please connect your Google Drive account in Store Settings first, or use the Google Drive URL option instead.",
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('authenticated')) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in again to upload images.",
-          variant: "destructive",
-        });
-      } else if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('expired')) {
-        toast({
-          title: "Google Drive Connection Expired",
-          description: "Your Google Drive connection has expired. Please reconnect in Store Settings.",
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else {
-        // Show the actual error message from the edge function
-        const description = errorMessage || 'Failed to upload to Google Drive. Try using the Google Drive URL option instead.';
-        toast({
-          title: "Upload Failed",
-          description: description,
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
+      console.error('Error processing images:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process images",
+        variant: "destructive",
+      });
     } finally {
-      setIsUploadingToDrive(false);
-      setUploadingFiles([]);
       event.target.value = '';
     }
   };
@@ -365,28 +255,43 @@ category: "",
   };
 
   const removeImageUrl = async (index: number) => {
-    const imageUrl = imageUrls[index];
+    const totalManualUrls = imageUrls.length;
 
-    // Delete from VPS if it's a VPS image
-    if (imageUrl.includes('digitaldukandar.in/uploads/')) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.functions.invoke('delete-from-vps', {
-            body: { imageUrl },
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          });
-          console.log('Image deleted from VPS:', imageUrl);
+    // Check if this is a manual URL or a pending file
+    if (index < totalManualUrls) {
+      // Removing a manual URL
+      const imageUrl = imageUrls[index];
+
+      // Delete from VPS if it's a VPS image
+      if (imageUrl.includes('digitaldukandar.in/uploads/')) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase.functions.invoke('delete-from-vps', {
+              body: { imageUrl },
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            });
+            console.log('Image deleted from VPS:', imageUrl);
+          }
+        } catch (error) {
+          console.error('Failed to delete image from VPS:', error);
+          // Don't block UI if deletion fails
         }
-      } catch (error) {
-        console.error('Failed to delete image from VPS:', error);
-        // Don't block UI if deletion fails
       }
-    }
 
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
+      setImageUrls(prev => prev.filter((_, i) => i !== index));
+    } else {
+      // Removing a pending file
+      const previewIndex = index - totalManualUrls;
+
+      // Revoke the preview URL
+      URL.revokeObjectURL(previewUrls[previewIndex]);
+
+      setPendingFiles(prev => prev.filter((_, i) => i !== previewIndex));
+      setPreviewUrls(prev => prev.filter((_, i) => i !== previewIndex));
+    }
   };
 
   const addVariant = () => {
@@ -439,27 +344,155 @@ category: "",
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Use images from URLs, or auto-assign 3 unique random images
-      const allImages = imageUrls.length > 0
-        ? imageUrls
-        : getRandomDefaultImages(3);  // FIX: Assign 3 unique images instead of 1 hardcoded image
+      let uploadedImageUrls: string[] = [...imageUrls];
+
+      // Upload pending files if any
+      if (pendingFiles.length > 0) {
+        setUploadingFiles(pendingFiles.map(f => ({ name: f.name, progress: 0 })));
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
+        // Get store info for storage tracking
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not found');
+
+        const { data: store, error: storeError } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb, storage_limit_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (storeError || !store) {
+          throw new Error('Store not found');
+        }
+
+        // Check storage limit before uploading
+        const totalPendingSize = pendingFiles.reduce((sum, f) => sum + (f.size / 1024 / 1024), 0);
+        let currentUsage = store.storage_used_mb || 0;
+        const storageLimit = store.storage_limit_mb || 100;
+
+        if (currentUsage + totalPendingSize > storageLimit) {
+          throw new Error(`Storage limit reached. You have ${(storageLimit - currentUsage).toFixed(2)}MB remaining. Delete images from Media Library to free space.`);
+        }
+
+        for (let i = 0; i < pendingFiles.length; i++) {
+          const file = pendingFiles[i];
+          const fileSizeMB = file.size / 1024 / 1024;
+
+          setUploadingFiles(prev => prev.map((f, idx) =>
+            idx === i ? { ...f, progress: 10 } : f
+          ));
+
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', file);
+          uploadFormData.append('type', 'products');
+
+          const progressInterval = setInterval(() => {
+            setUploadingFiles(prev => prev.map((f, idx) =>
+              idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
+            ));
+          }, 200);
+
+          try {
+            let response;
+            let fileName = '';
+            let imageUrl = '';
+
+            if (uploadDestination === 'vps') {
+              // Direct upload to VPS
+              const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+                method: 'POST',
+                body: uploadFormData,
+              });
+
+              const responseData = await uploadResponse.json();
+
+              if (!uploadResponse.ok || !responseData.success) {
+                throw new Error(responseData.error || 'Failed to upload image');
+              }
+
+              response = { data: responseData, error: null };
+              imageUrl = responseData.imageUrl;
+              fileName = responseData.fileId || file.name;
+
+              // Track in media_library for VPS uploads
+              const { error: mediaError } = await supabase
+                .from('media_library')
+                .insert({
+                  store_id: store.id,
+                  file_url: imageUrl,
+                  file_name: fileName,
+                  file_size_mb: fileSizeMB,
+                  file_type: 'products',
+                });
+
+              if (mediaError) {
+                console.error('Failed to add to media library:', mediaError);
+              }
+
+              // Update storage usage
+              currentUsage += fileSizeMB;
+              const { error: updateError } = await supabase
+                .from('stores')
+                .update({ storage_used_mb: currentUsage })
+                .eq('id', store.id);
+
+              if (updateError) {
+                console.error('Failed to update storage usage:', updateError);
+              }
+
+            } else {
+              // Google Drive upload via edge function (already handles tracking)
+              response = await supabase.functions.invoke('upload-to-drive', {
+                body: uploadFormData,
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                },
+              });
+            }
+
+            clearInterval(progressInterval);
+
+            if (response.error) {
+              throw new Error(response.error.message || 'Failed to upload image');
+            }
+
+            if (response.data?.imageUrl) {
+              setUploadingFiles(prev => prev.map((f, idx) =>
+                idx === i ? { ...f, progress: 100 } : f
+              ));
+              uploadedImageUrls.push(response.data.imageUrl);
+            }
+          } catch (fileError) {
+            clearInterval(progressInterval);
+            throw fileError;
+          }
+        }
+
+        setUploadingFiles([]);
+      }
+
+      // Use uploaded images or auto-assign 3 unique random images
+      const allImages = uploadedImageUrls.length > 0
+        ? uploadedImageUrls
+        : getRandomDefaultImages(3);
 
       // Create product using shared utility with auto-generated unique ID
       const productData: SharedProduct = {
         id: generatedProductId,
         name: data.name,
-        slug: generateSlug(data.name),  // FIX: Auto-generate SEO-friendly slug from product name
+        slug: generateSlug(data.name),
         description: data.description,
         category: data.category,
-stock: parseInt(data.baseStock),
+        stock: parseInt(data.baseStock),
         sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
-        images: allImages,  // FIX: Always use allImages (already has 3 random or uploaded)
+        images: allImages,
         videoUrl: videoUrl.trim() || undefined,
         variants: variants.map(v => ({
           name: v.name,
@@ -474,20 +507,25 @@ stock: parseInt(data.baseStock),
       // Use shared utility to add product
       addProduct(productData);
 
+      // Cleanup preview URLs
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+
       toast({
         title: "Product created successfully",
         description: `${data.name} has been added to your catalog`,
       });
 
       navigate("/admin/products");
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error saving product:', error);
       toast({
         title: "Error creating product",
-        description: "Please try again later",
+        description: error.message || "Please try again later",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
+      setUploadingFiles([]);
     }
   };
 
@@ -906,8 +944,9 @@ stock: parseInt(data.baseStock),
                     </div>
 
                     {/* Image Previews */}
-                    {imageUrls.length > 0 && (
+                    {(imageUrls.length > 0 || previewUrls.length > 0) && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {/* Display manual URLs */}
                         {imageUrls.map((url, index) => (
                           <div key={`url-${index}`} className="relative group">
                             <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
@@ -931,6 +970,31 @@ stock: parseInt(data.baseStock),
                             </Button>
                             <p className="text-xs text-muted-foreground mt-1 truncate">
                               Image {index + 1}
+                            </p>
+                          </div>
+                        ))}
+
+                        {/* Display pending file previews */}
+                        {previewUrls.map((url, index) => (
+                          <div key={`preview-${index}`} className="relative group">
+                            <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden border-2 border-dashed border-primary/50">
+                              <img
+                                src={url}
+                                alt={`Pending Image ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeImageUrl(imageUrls.length + index)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                              Pending {index + 1} (will upload on save)
                             </p>
                           </div>
                         ))}

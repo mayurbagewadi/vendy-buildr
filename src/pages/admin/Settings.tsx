@@ -92,6 +92,8 @@ const AdminSettings = () => {
   const [mediaLibrary, setMediaLibrary] = useState<any[]>([]);
   const [mediaFilter, setMediaFilter] = useState<'all' | 'products' | 'categories' | 'banners'>('all');
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [pendingBannerFiles, setPendingBannerFiles] = useState<File[]>([]); // Store files until save (VPS only)
+  const [bannerPreviewUrls, setBannerPreviewUrls] = useState<string[]>([]); // Preview URLs for display (VPS only)
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -506,42 +508,69 @@ const AdminSettings = () => {
       return;
     }
 
-    setIsUploadingBanner(true);
-
-    // Add all files to uploading queue with 0% progress
-    setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
-
     try {
+      // For VPS: Compress and store locally (defer upload until save)
+      if (uploadDestination === 'vps') {
+        const processedFiles: File[] = [];
+
+        for (const file of validFiles) {
+          try {
+            const originalSize = (file.size / 1024 / 1024).toFixed(2);
+            const compressed = await compressImage(file, 5);
+            const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
+            console.log(`Banner compressed: ${originalSize}MB → ${compressedSize}MB`);
+            processedFiles.push(compressed);
+          } catch (compressError) {
+            console.error('Compression failed:', compressError);
+            toast({
+              title: "Compression failed",
+              description: `Failed to compress ${file.name}, using original`,
+              variant: "destructive",
+            });
+            processedFiles.push(file);
+          }
+        }
+
+        // Store files and create preview URLs
+        setPendingBannerFiles(prev => [...prev, ...processedFiles]);
+
+        const newPreviewUrls = processedFiles.map(file => URL.createObjectURL(file));
+        setBannerPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+
+        // Add preview URLs to formData for display
+        setFormData(prev => ({
+          ...prev,
+          heroBannerUrls: [...prev.heroBannerUrls, ...newPreviewUrls]
+        }));
+
+        toast({
+          title: "Banners ready",
+          description: `${processedFiles.length} banner(s) will be uploaded when you save settings`,
+        });
+
+        return;
+      }
+
+      // For Google Drive: Upload immediately (keep existing behavior)
+      setIsUploadingBanner(true);
+      setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
       for (let i = 0; i < validFiles.length; i++) {
-        let file = validFiles[i];
+        const file = validFiles[i];
 
-        // Start progress animation for current file
         setUploadingFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 10 } : f
         ));
-
-        // Compress image if uploading to VPS
-        if (uploadDestination === 'vps') {
-          try {
-            const originalSize = (file.size / 1024 / 1024).toFixed(2);
-            file = await compressImage(file, 5);
-            const compressedSize = (file.size / 1024 / 1024).toFixed(2);
-            console.log(`Banner compressed: ${originalSize}MB → ${compressedSize}MB`);
-          } catch (compressError) {
-            console.error('Compression failed:', compressError);
-          }
-        }
 
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
         uploadFormData.append('type', 'banners');
 
-        // Simulate progress while uploading
         const progressInterval = setInterval(() => {
           setUploadingFiles(prev => prev.map((f, idx) =>
             idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
@@ -549,50 +578,28 @@ const AdminSettings = () => {
         }, 200);
 
         try {
-          let response;
-
-          if (uploadDestination === 'vps') {
-            // Direct upload to VPS
-            const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
-              method: 'POST',
-              body: uploadFormData,
-            });
-
-            const data = await uploadResponse.json();
-
-            if (!uploadResponse.ok || !data.success) {
-              throw new Error(data.error || 'Failed to upload image');
-            }
-
-            response = { data, error: null };
-          } else {
-            // Google Drive upload via edge function
-            response = await supabase.functions.invoke('upload-to-drive', {
-              body: uploadFormData,
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-            });
-          }
+          // Google Drive upload via edge function
+          const response = await supabase.functions.invoke('upload-to-drive', {
+            body: uploadFormData,
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          });
 
           clearInterval(progressInterval);
 
           if (response.error) {
-            // Mark as failed
             setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
             throw new Error(response.error.message || 'Failed to upload image');
           }
 
           if (response.data?.imageUrl) {
-            // Set to 100% complete
             setUploadingFiles(prev => prev.map((f, idx) =>
               idx === i ? { ...f, progress: 100 } : f
             ));
 
-            // Small delay to show 100% state
             await new Promise(resolve => setTimeout(resolve, 300));
 
-            // Remove from uploading queue and add to banners
             setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
             setFormData(prev => ({
               ...prev,
@@ -806,6 +813,134 @@ const AdminSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("User not authenticated");
+      }
+
+      // Upload pending banner files (VPS only) before saving settings
+      if (pendingBannerFiles.length > 0 && uploadDestination === 'vps') {
+        try {
+          // Get store info
+          const { data: store, error: storeError } = await supabase
+            .from('stores')
+            .select('id, storage_used_mb, storage_limit_mb')
+            .eq('user_id', user.id)
+            .single();
+
+          if (storeError) throw storeError;
+          if (!store) throw new Error('Store not found');
+
+          const currentUsage = store.storage_used_mb || 0;
+          const storageLimit = store.storage_limit_mb || 100;
+
+          // Calculate total size of pending files
+          const totalPendingSize = pendingBannerFiles.reduce((sum, file) => sum + (file.size / 1024 / 1024), 0);
+
+          // Check storage limit
+          if (currentUsage + totalPendingSize > storageLimit) {
+            toast({
+              variant: "destructive",
+              title: "Storage Limit Exceeded",
+              description: `Cannot upload banners. You need ${(totalPendingSize).toFixed(2)}MB but only have ${(storageLimit - currentUsage).toFixed(2)}MB available. Delete some images from Media Library to free up space.`,
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          // Upload each pending banner file
+          const uploadedUrls: string[] = [];
+          let totalUploadedSize = 0;
+
+          for (let i = 0; i < pendingBannerFiles.length; i++) {
+            const file = pendingBannerFiles[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'banners');
+
+            const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              const errorText = await uploadResponse.text();
+              throw new Error(`Upload failed: ${errorText}`);
+            }
+
+            const responseData = await uploadResponse.json();
+            if (!responseData.success) {
+              throw new Error(responseData.error || 'Upload failed');
+            }
+
+            const imageUrl = responseData.imageUrl;
+            const fileSizeMB = file.size / 1024 / 1024;
+
+            // Track in media_library
+            const { error: mediaError } = await supabase
+              .from('media_library')
+              .insert({
+                store_id: store.id,
+                file_url: imageUrl,
+                file_name: file.name,
+                file_size_mb: fileSizeMB,
+                file_type: 'banners',
+              });
+
+            if (mediaError) {
+              console.error('Error tracking banner in media library:', mediaError);
+            }
+
+            // Update storage usage incrementally
+            const newUsage = currentUsage + totalUploadedSize + fileSizeMB;
+            const { error: storageError } = await supabase
+              .from('stores')
+              .update({ storage_used_mb: newUsage })
+              .eq('id', store.id);
+
+            if (storageError) {
+              console.error('Error updating storage usage:', storageError);
+            }
+
+            uploadedUrls.push(imageUrl);
+            totalUploadedSize += fileSizeMB;
+          }
+
+          // Replace blob URLs with actual uploaded URLs in formData
+          // Find and replace all blob URLs with their corresponding uploaded URLs
+          const updatedBannerUrls = formData.heroBannerUrls.map(url => {
+            const blobIndex = bannerPreviewUrls.indexOf(url);
+            if (blobIndex !== -1 && blobIndex < uploadedUrls.length) {
+              return uploadedUrls[blobIndex];
+            }
+            return url;
+          });
+
+          // Update formData with actual uploaded URLs
+          formData.heroBannerUrls = updatedBannerUrls;
+
+          // Clean up blob URLs
+          bannerPreviewUrls.forEach(url => {
+            if (url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
+
+          // Clear pending files and preview URLs
+          setPendingBannerFiles([]);
+          setBannerPreviewUrls([]);
+
+          toast({
+            title: "Banners Uploaded",
+            description: `Successfully uploaded ${uploadedUrls.length} banner(s) (${totalUploadedSize.toFixed(2)}MB)`,
+          });
+        } catch (uploadError) {
+          console.error('Error uploading pending banners:', uploadError);
+          toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: uploadError instanceof Error ? uploadError.message : "Failed to upload banner images",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Update stores table

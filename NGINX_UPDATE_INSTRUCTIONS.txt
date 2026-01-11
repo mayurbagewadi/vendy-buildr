@@ -1,0 +1,119 @@
+================================================================================
+NGINX UPDATE INSTRUCTIONS FOR VPS
+================================================================================
+
+STEP 1: SSH into your VPS
+--------------------------
+ssh root@147.79.70.113
+
+
+STEP 2: Backup your current NGINX config
+-----------------------------------------
+cp /etc/nginx/sites-available/digitaldukandar.in /etc/nginx/sites-available/digitaldukandar.in.backup
+
+
+STEP 3: Edit the NGINX config
+------------------------------
+nano /etc/nginx/sites-available/digitaldukandar.in
+
+
+STEP 4: Find and ADD these two blocks
+--------------------------------------
+Look for the line that says:
+    location = /robots.txt {
+
+Scroll down past that section, and BEFORE the line:
+    location / {
+
+Add these TWO configuration blocks (copy everything between the lines):
+
+================================================================================
+COPY FROM HERE (including this line and below):
+--------------------------------------------------------------------------------
+
+    # API endpoint for uploads
+    location /api/ {
+        alias /var/www/digitaldukandar.in/api/;
+
+        # CORS headers
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+
+        # Handle PHP files
+        location ~ \.php$ {
+            fastcgi_split_path_info ^(.+\.php)(/.+)$;
+
+            # Try both socket paths (use /var/run/php/ for Ubuntu 24.04)
+            fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+            fastcgi_index index.php;
+
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            # Increase upload limits
+            client_max_body_size 10M;
+            fastcgi_read_timeout 60s;
+        }
+    }
+
+    # Serve uploaded images
+    location /uploads/ {
+        alias /var/www/digitaldukandar.in/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+
+        # Security headers
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+
+        # Only allow image files
+        location ~ \.(jpg|jpeg|png|gif|webp)$ {
+            try_files $uri =404;
+        }
+    }
+
+--------------------------------------------------------------------------------
+STOP COPYING HERE (don't copy this line)
+================================================================================
+
+
+STEP 5: Save and exit nano
+---------------------------
+Press: Ctrl + X
+Then: Y (to confirm save)
+Then: Enter (to confirm filename)
+
+
+STEP 6: Test the NGINX configuration
+-------------------------------------
+nginx -t
+
+You should see:
+  nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+
+STEP 7: If test is successful, reload NGINX
+--------------------------------------------
+systemctl reload nginx
+
+
+STEP 8: Test that PHP is working
+---------------------------------
+Test 1 - GET request (should return error because only POST allowed):
+curl https://digitaldukandar.in/api/upload.php
+
+Expected result: {"success":false,"error":"Method not allowed"}
+
+Test 2 - POST request (should return error because no file):
+curl -X POST https://digitaldukandar.in/api/upload.php
+
+Expected result: {"success":false,"error":"No file uploaded or upload error"}
+
+
+IMPORTANT: Both tests should return JSON (not HTML)
+If you get HTML, PHP is not working yet.
+
+================================================================================
