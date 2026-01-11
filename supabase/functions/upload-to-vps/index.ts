@@ -197,7 +197,6 @@ async function uploadViaSSH(fileBuffer: Uint8Array, remotePath: string): Promise
     // Write SSH key to temp file
     const keyFile = `${tempDir}/ssh_key`;
     await Deno.writeTextFile(keyFile, sshKey);
-    await Deno.chmod(keyFile, 0o600);
 
     // Ensure remote directory exists
     const remoteDir = remotePath.substring(0, remotePath.lastIndexOf('/'));

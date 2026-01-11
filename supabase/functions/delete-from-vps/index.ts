@@ -163,7 +163,6 @@ async function getFileSizeViaSSH(filePath: string): Promise<number> {
     const tempDir = await Deno.makeTempDir();
     const keyFile = `${tempDir}/ssh_key`;
     await Deno.writeTextFile(keyFile, sshKey);
-    await Deno.chmod(keyFile, 0o600);
 
     // Get file size in bytes using stat command
     const statCommand = new Deno.Command('ssh', {
@@ -212,7 +211,6 @@ async function deleteViaSSH(filePath: string): Promise<void> {
     const tempDir = await Deno.makeTempDir();
     const keyFile = `${tempDir}/ssh_key`;
     await Deno.writeTextFile(keyFile, sshKey);
-    await Deno.chmod(keyFile, 0o600);
 
     console.log(`[deleteViaSSH] Deleting file: ${filePath}`);
 
