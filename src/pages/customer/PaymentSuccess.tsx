@@ -190,7 +190,16 @@ export default function PaymentSuccess() {
 
         // Build WhatsApp URL with pre-filled message
         const encodedMessage = encodeURIComponent(whatsappMessage);
-        const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+
+        // ✅ FIX: Use WhatsApp app URL scheme on mobile for direct app opening
+        // Detect if user is on mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // On mobile: Use whatsapp:// scheme to open app directly
+        // On desktop: Use https://wa.me/ to open WhatsApp Web
+        const whatsappUrl = isMobile
+          ? `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`
+          : `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
 
         // Show success status
         setStatus('success');
@@ -204,7 +213,7 @@ export default function PaymentSuccess() {
         // Clear cart
         clearCart();
 
-        // Wait 1 second, then redirect to WhatsApp using window.location.href
+        // Wait 1 second, then redirect to WhatsApp
         setTimeout(() => {
           window.location.href = whatsappUrl;
         }, 1000);
