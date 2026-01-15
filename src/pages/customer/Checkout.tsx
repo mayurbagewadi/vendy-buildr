@@ -173,9 +173,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               gateway: 'razorpay',
               orderId: orderDetails.orderId,
               storeId: storeId,
-              paymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,  // ✅ FIXED: Use response object, not undefined variable
-              signature: response.razorpay_signature,
+              paymentId: response.razorpay_payment_id,      // ✅ Use raw Razorpay field names
+              razorpayOrderId: response.razorpay_order_id,  // ✅ Use raw Razorpay field names
+              signature: response.razorpay_signature,       // ✅ Use raw Razorpay field names
               storeSlug: storeSlug || '',
             });
 
