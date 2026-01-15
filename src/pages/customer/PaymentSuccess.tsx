@@ -148,35 +148,9 @@ export default function PaymentSuccess() {
           throw new Error('Failed to fetch order details');
         }
 
-        // Fetch order items from order_items table
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select(`
-            id,
-            product_id,
-            quantity,
-            price,
-            variant,
-            sku,
-            products (
-              name,
-              slug
-            )
-          `)
-          .eq('order_id', orderId);
-
-        // Convert order items to cart format for WhatsApp message
-        const cartItems = orderItems?.map(item => ({
-          id: item.product_id,
-          productId: item.product_id,
-          productName: item.products?.name || 'Product',
-          productSlug: item.products?.slug || '',
-          quantity: item.quantity,
-          price: item.price,
-          variant: item.variant,
-          sku: item.sku,
-          storeId: storeId,
-        })) || [];
+        // ✅ FIX: Use items from orders table JSONB field (not order_items table)
+        // The cart is stored directly in the orders.items column
+        const cartItems = (orderData.items as any[]) || [];
 
         // Prepare WhatsApp order details with payment confirmation
         const whatsappOrderDetails = {
