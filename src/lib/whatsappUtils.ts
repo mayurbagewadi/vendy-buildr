@@ -198,24 +198,15 @@ export const openWhatsApp = async (message: string, phoneNumber?: string, storeI
 
   const encodedMessage = encodeURIComponent(message);
 
-  // ✅ Detect if user is on mobile device
+  // ✅ SIMPLE & DIRECT - Exactly like COD flow (no fallback, no delays)
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // ✅ Better mobile WhatsApp redirect with fallback
   if (isMobile) {
-    // Try to open WhatsApp app directly
-    const whatsappAppUrl = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
-    const fallbackUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
-
-    window.location.href = whatsappAppUrl;
-
-    // If app doesn't open in 1.5 seconds, fallback to api.whatsapp.com
-    setTimeout(() => {
-      window.location.href = fallbackUrl;
-    }, 1500);
+    // Mobile: Open WhatsApp app directly
+    window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
   } else {
-    // On desktop: Use WhatsApp Web
-    window.open(`https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`, "_blank");
+    // Desktop: Open WhatsApp Web in new tab
+    window.open(`https://wa.me/${formattedNumber}?text=${encodedMessage}`, "_blank");
   }
 
   return { success: true };
