@@ -163,72 +163,20 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         { key_id: paymentCredentials.razorpay.key_id },
         {
           onSuccess: async (response: any) => {
-            // Verify payment
-            const { verified, error: verifyError } = await verifyRazorpayPayment(
-              razorpayOrderId,
-              response.razorpay_payment_id,
-              response.razorpay_signature,
-              storeId
-            );
+            // Redirect to payment success page for verification and WhatsApp redirect
+            // Pass all necessary data via URL parameters
+            const params = new URLSearchParams({
+              gateway: 'razorpay',
+              orderId: orderDetails.orderId,
+              storeId: storeId,
+              paymentId: response.razorpay_payment_id,
+              razorpayOrderId: razorpayOrderId,
+              signature: response.razorpay_signature,
+              storeSlug: storeSlug || '',
+            });
 
-            if (verified) {
-              // Update order with payment details
-              await supabase
-                .from('orders')
-                .update({
-                  payment_status: 'completed',
-                  payment_id: response.razorpay_payment_id,
-                  payment_gateway: 'razorpay',
-                  gateway_order_id: razorpayOrderId,
-                  payment_response: response,
-                })
-                .eq('id', orderDetails.orderId);
-
-              // Fetch complete order details for WhatsApp message
-              const { data: orderData } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('id', orderDetails.orderId)
-                .single();
-
-              if (orderData) {
-                // Generate WhatsApp message with payment confirmation
-                const whatsappOrderDetails = {
-                  customerName: orderData.customer_name,
-                  phone: orderData.phone,
-                  email: orderData.email,
-                  address: orderData.address,
-                  landmark: orderData.landmark,
-                  pincode: orderData.pincode,
-                  deliveryTime: orderData.delivery_time,
-                  latitude: orderData.latitude,
-                  longitude: orderData.longitude,
-                  cart: cart,
-                  subtotal: cartTotal,
-                  deliveryCharge: 0,
-                  total: cartTotal,
-                  paymentMethod: 'online' as const,
-                  paymentGateway: 'Razorpay',
-                  transactionId: response.razorpay_payment_id,
-                  orderNumber: orderData.order_number,
-                };
-
-                const message = generateOrderMessage(whatsappOrderDetails);
-                await openWhatsApp(message, undefined, storeId);
-              }
-
-              toast({
-                title: "Payment successful!",
-                description: "Your order has been confirmed.",
-              });
-
-              clearCart();
-              setTimeout(() => {
-                navigate(storeSlug ? `/${storeSlug}` : "/home");
-              }, 2000);
-            } else {
-              throw new Error(verifyError || 'Payment verification failed');
-            }
+            // Use window.location.href for full page redirect (not navigate)
+            window.location.href = `/payment-success?${params.toString()}`;
           },
           onFailure: (error: any) => {
             toast({

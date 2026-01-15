@@ -1,80 +1,154 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyPhonePePayment } from "@/lib/payment/phonepe";
-import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
+import { generateOrderMessage } from "@/lib/whatsappUtils";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/components/ui/use-toast";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
+/**
+ * Payment Success Page
+ *
+ * Handles payment verification and WhatsApp redirect for all payment gateways
+ * Flow: Verify Payment → Show Success Toast (1 sec) → Auto-redirect to WhatsApp
+ *
+ * Supported Gateways:
+ * - Razorpay
+ * - PhonePe
+ */
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { clearCart } = useCart();
   const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
 
   useEffect(() => {
-    const verifyPaymentAndNotify = async () => {
-      const merchantTransactionId = searchParams.get('merchantTransactionId');
-      const storeId = searchParams.get('storeId');
+    const processPayment = async () => {
+      // Get gateway type from URL
+      const gateway = searchParams.get('gateway');
       const orderId = searchParams.get('orderId');
+      const storeId = searchParams.get('storeId');
       const storeSlug = searchParams.get('storeSlug');
 
-      if (!merchantTransactionId || !storeId || !orderId) {
+      // Validate required parameters
+      if (!gateway || !orderId || !storeId) {
         setStatus('failed');
         toast({
-          title: "Invalid payment link",
-          description: "Missing payment information.",
+          title: "Invalid Payment Link",
+          description: "Missing required payment information.",
           variant: "destructive",
         });
-        setTimeout(() => {
-          navigate(storeSlug ? `/${storeSlug}` : "/home");
-        }, 3000);
         return;
       }
 
       try {
-        // Verify payment with PhonePe
-        const { verified, error: verifyError } = await verifyPhonePePayment(
-          merchantTransactionId,
-          storeId
-        );
+        let verified = false;
+        let verifyError = '';
+        let paymentId = '';
+        let gatewayName = '';
 
+        // Handle different payment gateways
+        if (gateway === 'razorpay') {
+          // Razorpay payment verification
+          const razorpayOrderId = searchParams.get('razorpayOrderId');
+          const razorpayPaymentId = searchParams.get('paymentId');
+          const signature = searchParams.get('signature');
+
+          if (!razorpayOrderId || !razorpayPaymentId || !signature) {
+            throw new Error('Missing Razorpay payment details');
+          }
+
+          // Verify Razorpay payment signature
+          const verifyResult = await verifyRazorpayPayment(
+            razorpayOrderId,
+            razorpayPaymentId,
+            signature,
+            storeId
+          );
+
+          verified = verifyResult.verified;
+          verifyError = verifyResult.error || '';
+          paymentId = razorpayPaymentId;
+          gatewayName = 'Razorpay';
+
+          // Update order with Razorpay payment details
+          if (verified) {
+            await supabase
+              .from('orders')
+              .update({
+                payment_status: 'completed',
+                payment_id: razorpayPaymentId,
+                payment_gateway: 'razorpay',
+                gateway_order_id: razorpayOrderId,
+                payment_response: {
+                  razorpay_payment_id: razorpayPaymentId,
+                  razorpay_order_id: razorpayOrderId,
+                  razorpay_signature: signature,
+                },
+              })
+              .eq('id', orderId);
+          }
+
+        } else if (gateway === 'phonepe') {
+          // PhonePe payment verification
+          const merchantTransactionId = searchParams.get('merchantTransactionId') || searchParams.get('paymentId');
+
+          if (!merchantTransactionId) {
+            throw new Error('Missing PhonePe transaction ID');
+          }
+
+          // Verify PhonePe payment
+          const verifyResult = await verifyPhonePePayment(
+            merchantTransactionId,
+            storeId
+          );
+
+          verified = verifyResult.verified;
+          verifyError = verifyResult.error || '';
+          paymentId = merchantTransactionId;
+          gatewayName = 'PhonePe';
+
+          // Update order with PhonePe payment details
+          if (verified) {
+            await supabase
+              .from('orders')
+              .update({
+                payment_status: 'completed',
+                payment_id: merchantTransactionId,
+                payment_gateway: 'phonepe',
+                gateway_order_id: merchantTransactionId,
+              })
+              .eq('id', orderId);
+          }
+
+        } else {
+          throw new Error(`Unsupported payment gateway: ${gateway}`);
+        }
+
+        // Check if payment was verified
         if (!verified) {
           setStatus('failed');
           toast({
-            title: "Payment verification failed",
-            description: verifyError || "Please contact support.",
+            title: "Payment Verification Failed",
+            description: verifyError || "Unable to verify your payment. Please contact support.",
             variant: "destructive",
           });
-          setTimeout(() => {
-            navigate(storeSlug ? `/${storeSlug}` : "/home");
-          }, 3000);
           return;
         }
 
-        // Update order with payment details
-        await supabase
-          .from('orders')
-          .update({
-            payment_status: 'completed',
-            payment_id: merchantTransactionId,
-            payment_gateway: 'phonepe',
-            gateway_order_id: merchantTransactionId,
-          })
-          .eq('id', orderId);
-
-        // Fetch complete order details for WhatsApp
-        const { data: orderData } = await supabase
+        // Fetch complete order details from database
+        const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('*')
           .eq('id', orderId)
           .single();
 
-        if (!orderData) {
-          throw new Error('Order not found');
+        if (orderError || !orderData) {
+          throw new Error('Failed to fetch order details');
         }
 
-        // Fetch order items from database
+        // Fetch order items from order_items table
         const { data: orderItems } = await supabase
           .from('order_items')
           .select(`
@@ -91,7 +165,7 @@ export default function PaymentSuccess() {
           `)
           .eq('order_id', orderId);
 
-        // Convert order items to cart format
+        // Convert order items to cart format for WhatsApp message
         const cartItems = orderItems?.map(item => ({
           id: item.product_id,
           productId: item.product_id,
@@ -104,98 +178,112 @@ export default function PaymentSuccess() {
           storeId: storeId,
         })) || [];
 
-        // Generate WhatsApp message with payment confirmation
+        // Prepare WhatsApp order details with payment confirmation
         const whatsappOrderDetails = {
           customerName: orderData.customer_name,
-          phone: orderData.phone,
-          email: orderData.email,
-          address: orderData.address,
-          landmark: orderData.landmark,
-          pincode: orderData.pincode,
+          phone: orderData.customer_phone,
+          email: orderData.customer_email,
+          address: orderData.delivery_address,
+          landmark: orderData.delivery_landmark,
+          pincode: orderData.delivery_pincode,
           deliveryTime: orderData.delivery_time,
-          latitude: orderData.latitude,
-          longitude: orderData.longitude,
+          latitude: orderData.delivery_latitude,
+          longitude: orderData.delivery_longitude,
           cart: cartItems,
           subtotal: orderData.subtotal,
           deliveryCharge: orderData.delivery_charge || 0,
           total: orderData.total,
           paymentMethod: 'online' as const,
-          paymentGateway: 'PhonePe',
-          transactionId: merchantTransactionId,
+          paymentGateway: gatewayName,
+          transactionId: paymentId,
           orderNumber: orderData.order_number,
         };
 
-        const message = generateOrderMessage(whatsappOrderDetails);
-        await openWhatsApp(message, undefined, storeId);
+        // Generate WhatsApp message
+        const whatsappMessage = generateOrderMessage(whatsappOrderDetails);
 
+        // Get store WhatsApp number
+        const { data: store } = await supabase
+          .from('stores')
+          .select('whatsapp_number')
+          .eq('id', storeId)
+          .single();
+
+        const whatsappNumber = store?.whatsapp_number || '';
+
+        // Format WhatsApp number (remove non-digits)
+        const formattedNumber = whatsappNumber.replace(/[^0-9]/g, '');
+
+        // Build WhatsApp URL with pre-filled message
+        const encodedMessage = encodeURIComponent(whatsappMessage);
+        const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+
+        // Show success status
         setStatus('success');
+
+        // Show success toast notification
         toast({
-          title: "Payment successful!",
-          description: "Your order has been confirmed.",
+          title: "Payment Successful!",
+          description: "Redirecting to WhatsApp...",
         });
 
         // Clear cart
         clearCart();
 
-        // Navigate to home
+        // Wait 1 second, then redirect to WhatsApp using window.location.href
         setTimeout(() => {
-          navigate(storeSlug ? `/${storeSlug}` : "/home");
-        }, 2000);
+          window.location.href = whatsappUrl;
+        }, 1000);
 
       } catch (error: any) {
-        console.error('Payment verification error:', error);
+        console.error('Payment processing error:', error);
         setStatus('failed');
         toast({
-          title: "Error processing payment",
-          description: error.message || "Please contact support.",
+          title: "Error Processing Payment",
+          description: error.message || "Something went wrong. Please contact support.",
           variant: "destructive",
         });
-        setTimeout(() => {
-          navigate(storeSlug ? `/${storeSlug}` : "/home");
-        }, 3000);
       }
     };
 
-    verifyPaymentAndNotify();
-  }, [searchParams, navigate, clearCart]);
+    processPayment();
+  }, [searchParams, clearCart]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
+
+        {/* Verifying State */}
         {status === 'verifying' && (
-          <>
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment</h2>
-            <p className="text-gray-600">Please wait while we verify your payment...</p>
-          </>
+          <div className="space-y-4">
+            <Loader2 className="h-16 w-16 text-blue-600 mx-auto animate-spin" />
+            <h2 className="text-2xl font-bold text-gray-900">Verifying Payment</h2>
+            <p className="text-gray-600">Please wait while we confirm your payment...</p>
+          </div>
         )}
 
+        {/* Success State */}
         {status === 'success' && (
-          <>
-            <div className="mb-4">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
+          <div className="space-y-4">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-            <p className="text-gray-600">Your order has been confirmed. Redirecting to WhatsApp...</p>
-          </>
+            <h2 className="text-2xl font-bold text-gray-900">Payment Successful!</h2>
+            <p className="text-gray-600">Your order has been confirmed.</p>
+            <p className="text-sm text-gray-500">Redirecting to WhatsApp in 1 second...</p>
+          </div>
         )}
 
+        {/* Failed State */}
         {status === 'failed' && (
-          <>
-            <div className="mb-4">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
-                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
+          <div className="space-y-4">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
+              <XCircle className="h-10 w-10 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h2>
-            <p className="text-gray-600">There was an issue with your payment. Redirecting...</p>
-          </>
+            <h2 className="text-2xl font-bold text-gray-900">Payment Failed</h2>
+            <p className="text-gray-600">There was an issue verifying your payment.</p>
+            <p className="text-sm text-gray-500">Please contact support if the amount was deducted.</p>
+          </div>
         )}
       </div>
     </div>

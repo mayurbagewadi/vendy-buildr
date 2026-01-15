@@ -8,9 +8,9 @@ const corsHeaders = {
 };
 
 interface VerifyPaymentRequest {
-  orderId: string;
-  paymentId: string;
-  signature: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
   storeId: string;
 }
 
@@ -62,16 +62,16 @@ serve(async (req) => {
     );
 
     const requestBody: VerifyPaymentRequest = await req.json();
-    const { orderId, paymentId, signature, storeId } = requestBody;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId } = requestBody;
 
     console.log('🔐 Starting payment verification:', {
-      orderId,
-      paymentId,
+      razorpay_order_id,
+      razorpay_payment_id,
       storeId
     });
 
     // Validate input
-    if (!orderId || !paymentId || !signature || !storeId) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !storeId) {
       throw new Error('Missing required parameters');
     }
 
@@ -95,9 +95,9 @@ serve(async (req) => {
 
     // Verify signature
     const isValid = await verifyRazorpaySignature(
-      orderId,
-      paymentId,
-      signature,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
       razorpayKeySecret
     );
 
