@@ -191,17 +191,10 @@ export default function PaymentSuccess() {
         // Build WhatsApp URL with pre-filled message
         const encodedMessage = encodeURIComponent(whatsappMessage);
 
-        // ✅ FIX: Use WhatsApp app URL scheme on mobile for direct app opening
-        // Detect if user is on mobile device
+        // ✅ Detect if user is on mobile device
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // On mobile: Use whatsapp:// scheme to open app directly
-        // On desktop: Use https://wa.me/ to open WhatsApp Web
-        const whatsappUrl = isMobile
-          ? `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`
-          : `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
-
-        // Show success status
+        // Show success status FIRST before redirect
         setStatus('success');
 
         // Show success toast notification
@@ -213,9 +206,24 @@ export default function PaymentSuccess() {
         // Clear cart
         clearCart();
 
-        // Wait 1 second, then redirect to WhatsApp
+        // ✅ FIX: Better mobile WhatsApp redirect with fallback
         setTimeout(() => {
-          window.location.href = whatsappUrl;
+          if (isMobile) {
+            // On mobile: Try to open WhatsApp app directly
+            const whatsappAppUrl = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+            const fallbackUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
+
+            // Try opening WhatsApp app
+            window.location.href = whatsappAppUrl;
+
+            // If app doesn't open in 1.5 seconds, fallback to api.whatsapp.com
+            setTimeout(() => {
+              window.location.href = fallbackUrl;
+            }, 1500);
+          } else {
+            // On desktop: Use WhatsApp Web
+            window.location.href = `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
+          }
         }, 1000);
 
       } catch (error: any) {
@@ -230,7 +238,8 @@ export default function PaymentSuccess() {
     };
 
     processPayment();
-  }, [searchParams, clearCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // ✅ FIX: Removed clearCart from deps to prevent re-render loop
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">

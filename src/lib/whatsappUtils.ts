@@ -201,13 +201,23 @@ export const openWhatsApp = async (message: string, phoneNumber?: string, storeI
   // ✅ Detect if user is on mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // On mobile: Use whatsapp:// scheme to open app directly
-  // On desktop: Use https://wa.me/ to open WhatsApp Web
-  const whatsappUrl = isMobile
-    ? `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`
-    : `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+  // ✅ Better mobile WhatsApp redirect with fallback
+  if (isMobile) {
+    // Try to open WhatsApp app directly
+    const whatsappAppUrl = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+    const fallbackUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
 
-  window.open(whatsappUrl, "_blank");
+    window.location.href = whatsappAppUrl;
+
+    // If app doesn't open in 1.5 seconds, fallback to api.whatsapp.com
+    setTimeout(() => {
+      window.location.href = fallbackUrl;
+    }, 1500);
+  } else {
+    // On desktop: Use WhatsApp Web
+    window.open(`https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`, "_blank");
+  }
+
   return { success: true };
 };
 
