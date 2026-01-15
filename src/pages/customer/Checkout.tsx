@@ -165,15 +165,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           onSuccess: async (response: any) => {
             // Redirect to payment success page for verification and WhatsApp redirect
             // Pass all necessary data via URL parameters
+
+            // Debug log to verify Razorpay response
+            console.log('Razorpay Success Response:', response);
+
             const params = new URLSearchParams({
               gateway: 'razorpay',
               orderId: orderDetails.orderId,
               storeId: storeId,
               paymentId: response.razorpay_payment_id,
-              razorpayOrderId: razorpayOrderId,
+              razorpayOrderId: response.razorpay_order_id,  // ✅ FIXED: Use response object, not undefined variable
               signature: response.razorpay_signature,
               storeSlug: storeSlug || '',
             });
+
+            console.log('Redirect params:', Object.fromEntries(params));
 
             // Use window.location.href for full page redirect (not navigate)
             window.location.href = `/payment-success?${params.toString()}`;
