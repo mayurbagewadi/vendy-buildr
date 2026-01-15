@@ -246,8 +246,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               clearCart();
               setIsProcessingPayment(false);
 
+              // ✅ Use replace: true to avoid back-button issues
               setTimeout(() => {
-                navigate(storeSlug ? `/${storeSlug}` : "/home");
+                navigate(storeSlug ? `/${storeSlug}` : "/home", { replace: true });
               }, 2000);
 
             } catch (error: any) {

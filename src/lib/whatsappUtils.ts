@@ -198,16 +198,20 @@ export const openWhatsApp = async (message: string, phoneNumber?: string, storeI
 
   const encodedMessage = encodeURIComponent(message);
 
-  // ✅ SIMPLE & DIRECT - Exactly like COD flow (no fallback, no delays)
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // ✅ CORRECT WAY: Use wa.me with window.open (ALL 3 AIs agree)
+  // This keeps current page alive and WhatsApp opens in background
+  const waUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
 
-  if (isMobile) {
-    // Mobile: Open WhatsApp app directly
-    window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
-  } else {
-    // Desktop: Open WhatsApp Web in new tab
-    window.open(`https://wa.me/${formattedNumber}?text=${encodedMessage}`, "_blank");
-  }
+  // Use hidden anchor with target="_blank" to avoid changing current page URL
+  const link = document.createElement('a');
+  link.href = waUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 
   return { success: true };
 };
