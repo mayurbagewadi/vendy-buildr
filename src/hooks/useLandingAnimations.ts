@@ -101,15 +101,15 @@ export const useLandingAnimations = () => {
             opacity: 1,
             y: 0,
             scale: 1,
-            duration: 0.8,
+            duration: 0.3,
             ease: 'power3.out',
             scrollTrigger: {
               trigger: card,
-              start: 'top 95%',
+              start: 'top bottom',
               end: 'bottom 20%',
               toggleActions: 'play none none reverse',
             },
-            delay: index * 0.1
+            delay: 0
           }
         );
 
