@@ -241,25 +241,25 @@ export function CategoryManager() {
     if (!categoryToDelete) return;
 
     try {
-      // Delete image from VPS if it exists
+      // Delete image from VPS and media library if it exists
       if (categoryToDelete.image_url && categoryToDelete.image_url.includes('digitaldukandar.in/uploads/')) {
         try {
-          // Call VPS delete endpoint directly
-          const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+          // 1. Delete from VPS
+          await fetch('https://digitaldukandar.in/api/delete.php', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageUrl: categoryToDelete.image_url }),
           });
 
-          const result = await response.json();
-          if (result.success) {
-            console.log('Category image deleted from VPS:', categoryToDelete.image_url);
-          }
+          // 2. Delete from media_library table
+          await supabase
+            .from('media_library')
+            .delete()
+            .eq('file_url', categoryToDelete.image_url);
+
+          console.log('Category image deleted from VPS and media library:', categoryToDelete.image_url);
         } catch (vpsError) {
-          console.error('Failed to delete image from VPS:', vpsError);
-          // Continue with category deletion even if VPS cleanup fails
+          console.error('Failed to delete image:', vpsError);
         }
       }
 
@@ -387,29 +387,29 @@ export function CategoryManager() {
         setUploadingFiles([]);
       }
 
-      // Delete old image from VPS if it's being replaced with a different one
+      // Delete old image from VPS and media library if it's being replaced
       const oldImageUrl = editingCategory.image_url;
 
       if (oldImageUrl &&
           oldImageUrl !== newImageUrl &&
           oldImageUrl.includes('digitaldukandar.in/uploads/')) {
         try {
-          // Call VPS delete endpoint directly
-          const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+          // 1. Delete from VPS
+          await fetch('https://digitaldukandar.in/api/delete.php', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageUrl: oldImageUrl }),
           });
 
-          const result = await response.json();
-          if (result.success) {
-            console.log('Old category image deleted from VPS:', oldImageUrl);
-          }
+          // 2. Delete from media_library table
+          await supabase
+            .from('media_library')
+            .delete()
+            .eq('file_url', oldImageUrl);
+
+          console.log('Old category image deleted from VPS and media library:', oldImageUrl);
         } catch (vpsError) {
-          console.error('Failed to delete old image from VPS:', vpsError);
-          // Continue with update even if VPS cleanup fails
+          console.error('Failed to delete old image:', vpsError);
         }
       }
 

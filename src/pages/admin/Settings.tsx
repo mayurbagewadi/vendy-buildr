@@ -471,25 +471,25 @@ const AdminSettings = () => {
   const handleRemoveBannerUrl = async (index: number) => {
     const bannerUrl = formData.heroBannerUrls[index];
 
-    // Delete from VPS if it's a VPS image
+    // Delete from VPS and media library if it's a VPS image
     if (bannerUrl.includes('digitaldukandar.in/uploads/')) {
       try {
-        // Call VPS delete endpoint directly
-        const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+        // 1. Delete from VPS
+        await fetch('https://digitaldukandar.in/api/delete.php', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: bannerUrl }),
         });
 
-        const result = await response.json();
-        if (result.success) {
-          console.log('Banner image deleted from VPS:', bannerUrl);
-        }
+        // 2. Delete from media_library table
+        await supabase
+          .from('media_library')
+          .delete()
+          .eq('file_url', bannerUrl);
+
+        console.log('Banner image deleted from VPS and media library:', bannerUrl);
       } catch (error) {
-        console.error('Failed to delete banner from VPS:', error);
-        // Don't block UI if deletion fails
+        console.error('Failed to delete banner:', error);
       }
     }
 

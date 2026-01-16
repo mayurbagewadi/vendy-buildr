@@ -210,8 +210,45 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
   return data as unknown as Product;
 };
 
+// Helper function to delete image from VPS and media library
+const deleteImageFromVPSAndMediaLibrary = async (imageUrl: string): Promise<void> => {
+  if (!imageUrl || !imageUrl.includes('digitaldukandar.in/uploads/')) return;
+
+  try {
+    // 1. Delete from VPS
+    await fetch('https://digitaldukandar.in/api/delete.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl }),
+    });
+
+    // 2. Delete from media_library table
+    await supabase
+      .from('media_library')
+      .delete()
+      .eq('file_url', imageUrl);
+  } catch (error) {
+    console.error('Failed to delete image:', imageUrl, error);
+  }
+};
+
 // Delete product
 export const deleteProduct = async (id: string): Promise<void> => {
+  // 1. Get product images first
+  const { data: product } = await supabase
+    .from('products')
+    .select('images')
+    .eq('id', id)
+    .single();
+
+  // 2. Delete all product images from VPS and media library
+  if (product?.images && Array.isArray(product.images)) {
+    await Promise.all(
+      product.images.map((imageUrl: string) => deleteImageFromVPSAndMediaLibrary(imageUrl))
+    );
+  }
+
+  // 3. Delete the product from database
   const { error } = await supabase
     .from('products')
     .delete()
