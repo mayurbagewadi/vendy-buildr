@@ -130,9 +130,9 @@ export default function PaymentSuccess() {
         setTransactionId(paymentId);
         setStatus('success');
 
-        // ✅ Auto-open WhatsApp after 2 seconds (gives user time to see success message)
+        // ✅ Auto-redirect to WhatsApp after 2 seconds (REDIRECT MODE - changes current page)
         setTimeout(() => {
-          openWhatsApp(message, undefined, storeIdParam);
+          openWhatsApp(message, undefined, storeIdParam, true);  // true = redirect current page
         }, 2000);
 
       } catch (error: any) {
@@ -144,9 +144,9 @@ export default function PaymentSuccess() {
     processPayment();
   }, [searchParams]);
 
-  // Handler for WhatsApp button click (user gesture)
+  // Handler for WhatsApp button click (user gesture - opens in new tab as backup)
   const handleOpenWhatsApp = () => {
-    openWhatsApp(whatsappMessage, undefined, storeId);
+    openWhatsApp(whatsappMessage, undefined, storeId, false);  // false = open in new tab
   };
 
   // Handler for home navigation

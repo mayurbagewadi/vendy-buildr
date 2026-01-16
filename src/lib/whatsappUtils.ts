@@ -174,7 +174,12 @@ export const generateSupportMessage = (): string => {
 };
 
 // Open WhatsApp with pre-filled message
-export const openWhatsApp = async (message: string, phoneNumber?: string, storeId?: string): Promise<{ success: boolean; error?: string }> => {
+export const openWhatsApp = async (
+  message: string,
+  phoneNumber?: string,
+  storeId?: string,
+  redirect: boolean = false  // ✅ New parameter: true = redirect page, false = new tab
+): Promise<{ success: boolean; error?: string }> => {
   // If phoneNumber is not provided, check if WhatsApp is configured
   if (!phoneNumber && !(await isWhatsAppConfigured(storeId))) {
     return {
@@ -197,21 +202,23 @@ export const openWhatsApp = async (message: string, phoneNumber?: string, storeI
   }
 
   const encodedMessage = encodeURIComponent(message);
-
-  // ✅ CORRECT WAY: Use wa.me with window.open (ALL 3 AIs agree)
-  // This keeps current page alive and WhatsApp opens in background
   const waUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
 
-  // Use hidden anchor with target="_blank" to avoid changing current page URL
-  const link = document.createElement('a');
-  link.href = waUrl;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.style.display = 'none';
+  if (redirect) {
+    // ✅ REDIRECT MODE: Change current page to WhatsApp (for automatic redirect after payment)
+    window.location.href = waUrl;
+  } else {
+    // ✅ NEW TAB MODE: Open WhatsApp in new tab (for manual button click)
+    const link = document.createElement('a');
+    link.href = waUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
 
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   return { success: true };
 };
