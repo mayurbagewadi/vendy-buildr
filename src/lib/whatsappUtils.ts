@@ -206,7 +206,17 @@ export const openWhatsApp = async (
 
   if (redirect) {
     // ✅ REDIRECT MODE: Change current page to WhatsApp (for automatic redirect after payment)
-    window.location.href = waUrl;
+    // Detect mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // ✅ MOBILE: Use whatsapp:// scheme for direct app opening (like COD)
+      const whatsappSchemeUrl = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+      window.location.href = whatsappSchemeUrl;
+    } else {
+      // ✅ DESKTOP: Use wa.me web URL
+      window.location.href = waUrl;
+    }
   } else {
     // ✅ NEW TAB MODE: Open WhatsApp in new tab (for manual button click)
     const link = document.createElement('a');
