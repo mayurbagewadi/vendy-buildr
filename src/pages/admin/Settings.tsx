@@ -166,9 +166,6 @@ const AdminSettings = () => {
 
       const pgCreds = (store?.payment_gateway_credentials as any) || {};
 
-      console.log('🔍 DEBUG: Store data:', store);
-      console.log('🔍 DEBUG: Payment Gateway Credentials:', pgCreds);
-
       setFormData({
         storeName: store?.name || "",
         logoUrl: store?.logo_url || "",
@@ -1012,15 +1009,11 @@ const AdminSettings = () => {
         updateData.force_location_sharing = formData.forceLocationSharing;
       }
 
-      console.log('💾 DEBUG: Saving payment gateway credentials:', updateData.payment_gateway_credentials);
-
-      const { error: storeError, data: updatedData } = await supabase
+      const { error: storeError } = await supabase
         .from('stores')
         .update(updateData)
         .eq('user_id', user.id)
         .select();
-
-      console.log('✅ DEBUG: Save response:', { error: storeError, data: updatedData });
 
       if (storeError) throw storeError;
 
