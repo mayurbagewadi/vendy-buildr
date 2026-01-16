@@ -473,10 +473,10 @@ const AdminSettings = () => {
       heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
     }));
 
-    // Reload media library after deletion
+    // Only reload media library - don't call loadSettings() as it would
+    // overwrite the state change before auto-save (2s debounce) fires
     setTimeout(() => {
       loadMediaLibrary();
-      loadSettings();
     }, 500);
   };
 
