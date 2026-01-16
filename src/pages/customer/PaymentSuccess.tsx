@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
-import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
-import { CheckCircle2, XCircle, Loader2, MessageCircle, Home } from "lucide-react";
+import { generateOrderMessage, getWhatsAppNumber, formatWhatsAppNumber, isWhatsAppConfigured } from "@/lib/whatsappUtils";
+import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -12,9 +12,8 @@ import { Button } from "@/components/ui/button";
  * Professional UX Flow:
  * 1. Verify payment in background
  * 2. Show success UI with order details
- * 3. User manually clicks "Open WhatsApp" button (user gesture)
- * 4. WhatsApp opens reliably (browser allows user-initiated action)
- * 5. No automatic redirects, no toast notifications
+ * 3. Auto-redirect to WhatsApp on mobile (deep linking)
+ * 4. Fallback button if auto-redirect fails
  */
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -25,6 +24,72 @@ export default function PaymentSuccess() {
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [storeId, setStoreId] = useState('');
   const [storeSlug, setStoreSlug] = useState('');
+  const [whatsappOpened, setWhatsappOpened] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
+  const autoRedirectAttempted = useRef(false);
+
+  // Detect if mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // Auto-open WhatsApp function with deep linking
+  const autoOpenWhatsApp = async (message: string, storeIdParam: string) => {
+    if (autoRedirectAttempted.current) return;
+    autoRedirectAttempted.current = true;
+
+    try {
+      // Check if WhatsApp is configured
+      const isConfigured = await isWhatsAppConfigured(storeIdParam);
+      if (!isConfigured) {
+        setShowFallback(true);
+        return;
+      }
+
+      const number = await getWhatsAppNumber(storeIdParam);
+      const formattedNumber = formatWhatsAppNumber(number);
+      const encodedMessage = encodeURIComponent(message);
+
+      if (isMobile) {
+        // ✅ MOBILE: Use intent:// for Android and whatsapp:// for iOS
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isAndroid) {
+          // Android Intent URL - most reliable for auto-open
+          const intentUrl = `intent://send/${formattedNumber}#Intent;scheme=whatsapp;package=com.whatsapp;action=android.intent.action.SENDTO;S.android.intent.extra.TEXT=${encodedMessage};end`;
+          
+          // Try intent first, fallback to whatsapp:// scheme
+          try {
+            window.location.href = intentUrl;
+          } catch {
+            window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+          }
+        } else if (isIOS) {
+          // iOS: Use whatsapp:// scheme directly
+          window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+        } else {
+          // Other mobile: Use whatsapp:// scheme
+          window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+        }
+
+        setWhatsappOpened(true);
+        
+        // Show fallback after 3 seconds if user is still on page
+        setTimeout(() => {
+          setShowFallback(true);
+        }, 3000);
+
+      } else {
+        // ✅ DESKTOP: Open wa.me in new tab (don't redirect page)
+        const waUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+        setWhatsappOpened(true);
+        setShowFallback(true);
+      }
+    } catch (error) {
+      console.error('WhatsApp auto-open error:', error);
+      setShowFallback(true);
+    }
+  };
 
   useEffect(() => {
     const processPayment = async () => {
@@ -130,10 +195,11 @@ export default function PaymentSuccess() {
         setTransactionId(paymentId);
         setStatus('success');
 
-        // ✅ Auto-redirect to WhatsApp after 2 seconds (REDIRECT MODE - changes current page)
+        // ✅ IMMEDIATE AUTO-REDIRECT to WhatsApp (deep linking)
+        // Small delay to ensure UI renders first
         setTimeout(() => {
-          openWhatsApp(message, undefined, storeIdParam, true);  // true = redirect current page
-        }, 2000);
+          autoOpenWhatsApp(message, storeIdParam);
+        }, 500);
 
       } catch (error: any) {
         console.error('Payment processing error:', error);
@@ -144,9 +210,21 @@ export default function PaymentSuccess() {
     processPayment();
   }, [searchParams]);
 
-  // Handler for WhatsApp button click (user gesture - opens in new tab as backup)
-  const handleOpenWhatsApp = () => {
-    openWhatsApp(whatsappMessage, undefined, storeId, false);  // false = open in new tab
+  // Handler for WhatsApp button click (manual fallback)
+  const handleOpenWhatsApp = async () => {
+    if (!whatsappMessage || !storeId) return;
+    
+    const number = await getWhatsAppNumber(storeId);
+    const formattedNumber = formatWhatsAppNumber(number);
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+
+    if (isMobile) {
+      // Mobile: Use deep link
+      window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+    } else {
+      // Desktop: Open in new tab
+      window.open(`https://wa.me/${formattedNumber}?text=${encodedMessage}`, '_blank');
+    }
   };
 
   // Handler for home navigation
@@ -192,12 +270,25 @@ export default function PaymentSuccess() {
                 </div>
               </div>
 
-              {/* Important Notice */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
-                <p className="text-blue-900 text-center font-medium leading-relaxed">
-                  Complete your order by sending the details to our WhatsApp
-                </p>
-              </div>
+              {/* Auto-redirect notice */}
+              {!showFallback && whatsappOpened && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center justify-center gap-2 text-green-800 font-medium">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Opening WhatsApp...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback notice - shown after auto-redirect attempt */}
+              {showFallback && (
+                <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+                  <p className="text-amber-900 text-center font-medium leading-relaxed flex items-center justify-center gap-2">
+                    <ExternalLink className="w-5 h-5" />
+                    {isMobile ? "Tap below if WhatsApp didn't open" : "Click below to complete your order on WhatsApp"}
+                  </p>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-3">
@@ -208,7 +299,7 @@ export default function PaymentSuccess() {
                   className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <MessageCircle className="w-6 h-6 mr-3" />
-                  Complete Order on WhatsApp
+                  {showFallback ? "Open WhatsApp Now" : "Complete Order on WhatsApp"}
                 </Button>
 
                 {/* Secondary CTA - Home */}

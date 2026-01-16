@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -95,19 +95,18 @@ const AdminSettings = () => {
   const [pendingBannerFiles, setPendingBannerFiles] = useState<File[]>([]); // Store files until save (VPS only)
   const [bannerPreviewUrls, setBannerPreviewUrls] = useState<string[]>([]); // Preview URLs for display (VPS only)
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const loadSettings = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        // Store user email for delete modal
-        setUserEmail(user.email || "");
+      // Store user email for delete modal
+      setUserEmail(user.email || "");
 
-        // Check if we're returning from Google OAuth with new tokens
-        const { data: { session } } = await supabase.auth.getSession();
-        const providerToken = session?.provider_token;
-        const providerRefreshToken = session?.provider_refresh_token;
+      // Check if we're returning from Google OAuth with new tokens
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = session?.provider_token;
+      const providerRefreshToken = session?.provider_refresh_token;
 
       // Load from stores table
       const { data: store, error: storeError } = await supabase
@@ -120,107 +119,108 @@ const AdminSettings = () => {
         console.error('Error loading store:', storeError);
       }
 
-        // Store the store ID for PDF generation
-        if (store?.id) {
-          setStoreId(store.id);
-        }
-
-        // Set storage tracking
-        setStorageUsed(store?.storage_used_mb || 0);
-        setStorageLimit(store?.storage_limit_mb || 100);
-
-        // If we have new Google tokens and a store, save them
-        if (store && providerToken) {
-          const updates: any = {
-            google_access_token: providerToken,
-          };
-
-          if (providerRefreshToken) {
-            const tokenExpiry = new Date(Date.now() + 3600 * 1000).toISOString();
-            updates.google_refresh_token = providerRefreshToken;
-            updates.google_token_expiry = tokenExpiry;
-          }
-
-          await supabase
-            .from('stores')
-            .update(updates)
-            .eq('id', store.id);
-
-          toast({
-            title: "Google Drive Connected",
-            description: "You can now upload images to Google Drive.",
-          });
-          
-          // Update state
-          setGoogleDriveConnected(true);
-        } else {
-          // Check if Google Drive is connected (access token is enough to treat as connected)
-          setGoogleDriveConnected(!!store?.google_access_token);
-        }
-
-        // Load phone from profiles table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('phone, email')
-          .eq('user_id', user.id)
-          .single();
-
-        const pgCreds = (store?.payment_gateway_credentials as any) || {};
-
-        console.log('🔍 DEBUG: Store data:', store);
-        console.log('🔍 DEBUG: Payment Gateway Credentials:', pgCreds);
-
-        setFormData({
-          storeName: store?.name || "",
-          logoUrl: store?.logo_url || "",
-          heroBannerUrls: (store?.hero_banner_urls || []) as string[],
-          phone: profile?.phone || "",
-          email: profile?.email || "",
-          address: store?.address || "",
-          whatsappNumber: store?.whatsapp_number || "",
-          currency: "INR",
-          currencySymbol: "₹",
-          customDomain: store?.custom_domain || "",
-          aiVoiceEmbedCode: store?.ai_voice_embed_code || "",
-          forceLocationSharing: store?.force_location_sharing || false,
-          deliveryAreas: (store?.policies as any)?.deliveryAreas || "",
-          returnPolicy: (store?.policies as any)?.returnPolicy || "",
-          shippingPolicy: (store?.policies as any)?.shippingPolicy || "",
-          termsConditions: (store?.policies as any)?.termsConditions || "",
-          privacyPolicy: (store?.policies as any)?.privacyPolicy || "",
-          // Payment Gateway Credentials
-          razorpay_enabled: pgCreds?.razorpay?.enabled || false,
-          razorpay_key_id: pgCreds?.razorpay?.key_id || "",
-          razorpay_key_secret: pgCreds?.razorpay?.key_secret || "",
-          phonepe_enabled: pgCreds?.phonepe?.enabled || false,
-          phonepe_merchant_id: pgCreds?.phonepe?.merchant_id || "",
-          phonepe_salt_key: pgCreds?.phonepe?.salt_key || "",
-          phonepe_salt_index: pgCreds?.phonepe?.salt_index || "",
-          cashfree_enabled: pgCreds?.cashfree?.enabled || false,
-          cashfree_app_id: pgCreds?.cashfree?.app_id || "",
-          cashfree_secret_key: pgCreds?.cashfree?.secret_key || "",
-          payu_enabled: pgCreds?.payu?.enabled || false,
-          payu_merchant_key: pgCreds?.payu?.merchant_key || "",
-          payu_merchant_salt: pgCreds?.payu?.merchant_salt || "",
-          paytm_enabled: pgCreds?.paytm?.enabled || false,
-          paytm_merchant_id: pgCreds?.paytm?.merchant_id || "",
-          paytm_merchant_key: pgCreds?.paytm?.merchant_key || "",
-          stripe_enabled: pgCreds?.stripe?.enabled || false,
-          stripe_publishable_key: pgCreds?.stripe?.publishable_key || "",
-          stripe_secret_key: pgCreds?.stripe?.secret_key || "",
-          // Payment mode
-          payment_mode: (store?.payment_mode as "online_only" | "online_and_cod") || "online_and_cod",
-        });
-      } catch (error) {
-        console.error('Error loading settings:', error);
-      } finally {
-        setIsInitialLoad(false);
+      // Store the store ID for PDF generation
+      if (store?.id) {
+        setStoreId(store.id);
       }
-    };
 
+      // Set storage tracking
+      setStorageUsed(store?.storage_used_mb || 0);
+      setStorageLimit(store?.storage_limit_mb || 100);
+
+      // If we have new Google tokens and a store, save them
+      if (store && providerToken) {
+        const updates: any = {
+          google_access_token: providerToken,
+        };
+
+        if (providerRefreshToken) {
+          const tokenExpiry = new Date(Date.now() + 3600 * 1000).toISOString();
+          updates.google_refresh_token = providerRefreshToken;
+          updates.google_token_expiry = tokenExpiry;
+        }
+
+        await supabase
+          .from('stores')
+          .update(updates)
+          .eq('id', store.id);
+
+        toast({
+          title: "Google Drive Connected",
+          description: "You can now upload images to Google Drive.",
+        });
+        
+        // Update state
+        setGoogleDriveConnected(true);
+      } else {
+        // Check if Google Drive is connected (access token is enough to treat as connected)
+        setGoogleDriveConnected(!!store?.google_access_token);
+      }
+
+      // Load phone from profiles table
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone, email')
+        .eq('user_id', user.id)
+        .single();
+
+      const pgCreds = (store?.payment_gateway_credentials as any) || {};
+
+      console.log('🔍 DEBUG: Store data:', store);
+      console.log('🔍 DEBUG: Payment Gateway Credentials:', pgCreds);
+
+      setFormData({
+        storeName: store?.name || "",
+        logoUrl: store?.logo_url || "",
+        heroBannerUrls: (store?.hero_banner_urls || []) as string[],
+        phone: profile?.phone || "",
+        email: profile?.email || "",
+        address: store?.address || "",
+        whatsappNumber: store?.whatsapp_number || "",
+        currency: "INR",
+        currencySymbol: "₹",
+        customDomain: store?.custom_domain || "",
+        aiVoiceEmbedCode: store?.ai_voice_embed_code || "",
+        forceLocationSharing: store?.force_location_sharing || false,
+        deliveryAreas: (store?.policies as any)?.deliveryAreas || "",
+        returnPolicy: (store?.policies as any)?.returnPolicy || "",
+        shippingPolicy: (store?.policies as any)?.shippingPolicy || "",
+        termsConditions: (store?.policies as any)?.termsConditions || "",
+        privacyPolicy: (store?.policies as any)?.privacyPolicy || "",
+        // Payment Gateway Credentials
+        razorpay_enabled: pgCreds?.razorpay?.enabled || false,
+        razorpay_key_id: pgCreds?.razorpay?.key_id || "",
+        razorpay_key_secret: pgCreds?.razorpay?.key_secret || "",
+        phonepe_enabled: pgCreds?.phonepe?.enabled || false,
+        phonepe_merchant_id: pgCreds?.phonepe?.merchant_id || "",
+        phonepe_salt_key: pgCreds?.phonepe?.salt_key || "",
+        phonepe_salt_index: pgCreds?.phonepe?.salt_index || "",
+        cashfree_enabled: pgCreds?.cashfree?.enabled || false,
+        cashfree_app_id: pgCreds?.cashfree?.app_id || "",
+        cashfree_secret_key: pgCreds?.cashfree?.secret_key || "",
+        payu_enabled: pgCreds?.payu?.enabled || false,
+        payu_merchant_key: pgCreds?.payu?.merchant_key || "",
+        payu_merchant_salt: pgCreds?.payu?.merchant_salt || "",
+        paytm_enabled: pgCreds?.paytm?.enabled || false,
+        paytm_merchant_id: pgCreds?.paytm?.merchant_id || "",
+        paytm_merchant_key: pgCreds?.paytm?.merchant_key || "",
+        stripe_enabled: pgCreds?.stripe?.enabled || false,
+        stripe_publishable_key: pgCreds?.stripe?.publishable_key || "",
+        stripe_secret_key: pgCreds?.stripe?.secret_key || "",
+        // Payment mode
+        payment_mode: (store?.payment_mode as "online_only" | "online_and_cod") || "online_and_cod",
+      });
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setIsInitialLoad(false);
+    }
+  }, []);
+
+  useEffect(() => {
     loadSettings();
     loadMediaLibrary();
-  }, []);
+  }, [loadSettings]);
 
   const loadMediaLibrary = async () => {
     try {
