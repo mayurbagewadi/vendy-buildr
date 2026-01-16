@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
 import { generateOrderMessage, getWhatsAppNumber, formatWhatsAppNumber, isWhatsAppConfigured } from "@/lib/whatsappUtils";
-import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink, Clock, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -245,21 +245,59 @@ export default function PaymentSuccess() {
           </div>
         )}
 
-        {/* Success State */}
+        {/* Success State - Redesigned for psychological engagement */}
         {status === 'success' && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-center">
+            {/* Header - Orange/Amber to signal "pending action needed" */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center">
               <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white mb-4">
-                <CheckCircle2 className="h-12 w-12 text-green-600" />
+                <Clock className="h-12 w-12 text-amber-600" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Payment Successful!</h2>
-              <p className="text-green-100">Your order has been confirmed</p>
+              <h2 className="text-3xl font-bold text-white mb-2">Payment Received</h2>
+              <p className="text-amber-100 text-lg">Confirm on WhatsApp to complete your order</p>
+            </div>
+
+            {/* Progress Stepper - Shows user is mid-journey, not finished */}
+            <div className="px-8 pt-6">
+              <div className="flex items-center justify-between relative">
+                {/* Step 1: Payment - Completed */}
+                <div className="flex flex-col items-center z-10">
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-xs mt-2 text-green-600 font-medium">Payment</span>
+                </div>
+
+                {/* Connector Line 1 */}
+                <div className="absolute left-[15%] right-[52%] top-5 h-1 bg-green-500"></div>
+
+                {/* Step 2: Confirm - Current/Active */}
+                <div className="flex flex-col items-center z-10">
+                  <div
+                    className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-200"
+                    style={{ animation: 'pop 2s ease-in-out infinite' }}
+                  >
+                    <Package className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-xs mt-2 text-amber-600 font-bold">Confirm</span>
+                </div>
+
+                {/* Connector Line 2 */}
+                <div className="absolute left-[52%] right-[15%] top-5 h-1 bg-gray-200"></div>
+
+                {/* Step 3: Shipped - Pending */}
+                <div className="flex flex-col items-center z-10">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <span className="text-xs mt-2 text-gray-400 font-medium">Shipped</span>
+                </div>
+              </div>
             </div>
 
             {/* Order Details */}
-            <div className="p-8 space-y-6">
-              <div className="bg-gray-50 rounded-2xl p-6 space-y-3">
+            <div className="p-8 space-y-5">
+              <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Order Number</span>
                   <span className="text-gray-900 font-bold">{orderNumber}</span>
@@ -272,52 +310,51 @@ export default function PaymentSuccess() {
 
               {/* Auto-redirect notice */}
               {!showFallback && whatsappOpened && (
-                <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5 animate-pulse">
-                  <div className="flex items-center justify-center gap-2 text-green-800 font-medium">
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center justify-center gap-2 text-amber-800 font-medium">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Opening WhatsApp...</span>
                   </div>
                 </div>
               )}
 
-              {/* Fallback notice - shown after auto-redirect attempt */}
-              {showFallback && (
-                <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
-                  <p className="text-amber-900 text-center font-medium leading-relaxed flex items-center justify-center gap-2">
-                    <ExternalLink className="w-5 h-5" />
-                    {isMobile ? "Tap below if WhatsApp didn't open" : "Click below to complete your order on WhatsApp"}
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="space-y-3">
-                {/* Primary CTA - WhatsApp */}
+              {/* Primary CTA - WhatsApp Button with urgency */}
+              <div className="space-y-2">
                 <Button
                   onClick={handleOpenWhatsApp}
                   size="lg"
-                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full h-16 text-lg font-bold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200 animate-[pop_2s_ease-in-out_infinite]"
+                  style={{
+                    animation: 'pop 2s ease-in-out infinite',
+                  }}
                 >
-                  <MessageCircle className="w-6 h-6 mr-3" />
-                  {showFallback ? "Open WhatsApp Now" : "Complete Order on WhatsApp"}
+                  <img src="/whatsapp-icon.png" alt="WhatsApp" className="w-7 h-7 mr-3" />
+                  Confirm My Order
                 </Button>
 
-                {/* Secondary CTA - Home */}
-                <Button
-                  onClick={handleGoHome}
-                  variant="outline"
-                  size="lg"
-                  className="w-full h-12 text-gray-700 border-2 hover:bg-gray-50"
-                >
-                  <Home className="w-5 h-5 mr-2" />
-                  Back to Home
-                </Button>
+                {/* Instruction text */}
+                <p className="text-center text-sm text-gray-500">
+                  Click to confirm order & send details via WhatsApp
+                </p>
               </div>
 
-              {/* Footer Note */}
-              <p className="text-center text-sm text-gray-500 mt-6">
-                Your payment has been received. We'll process your order shortly.
-              </p>
+              {/* Pop animation keyframes */}
+              <style>{`
+                @keyframes pop {
+                  0%, 100% { transform: scale(1); }
+                  50% { transform: scale(1.03); }
+                }
+              `}</style>
+
+              {/* Minimized Home Link - just a text link, not a button */}
+              <div className="text-center pt-2">
+                <button
+                  onClick={handleGoHome}
+                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                >
+                  Return to store
+                </button>
+              </div>
             </div>
           </div>
         )}
