@@ -401,6 +401,47 @@ export type Database = {
           },
         ]
       }
+      media_library: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size_mb: number
+          file_type: string
+          file_url: string
+          id: string
+          store_id: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size_mb: number
+          file_type: string
+          file_url: string
+          id?: string
+          store_id: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size_mb?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          store_id?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_library_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_commission: {
         Row: {
           commission_model: string
@@ -1041,6 +1082,8 @@ export type Database = {
           slug: string
           social_links: Json | null
           state: string | null
+          storage_limit_mb: number | null
+          storage_used_mb: number | null
           street_address: string | null
           subdomain: string | null
           twitter_url: string | null
@@ -1098,6 +1141,8 @@ export type Database = {
           slug: string
           social_links?: Json | null
           state?: string | null
+          storage_limit_mb?: number | null
+          storage_used_mb?: number | null
           street_address?: string | null
           subdomain?: string | null
           twitter_url?: string | null
@@ -1155,6 +1200,8 @@ export type Database = {
           slug?: string
           social_links?: Json | null
           state?: string | null
+          storage_limit_mb?: number | null
+          storage_used_mb?: number | null
           street_address?: string | null
           subdomain?: string | null
           twitter_url?: string | null
