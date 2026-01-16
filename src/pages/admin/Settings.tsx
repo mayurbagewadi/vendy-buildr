@@ -265,18 +265,19 @@ const AdminSettings = () => {
 
   const handleDeleteFromMediaLibrary = async (imageUrl: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await supabase.functions.invoke('delete-from-vps', {
-        body: { imageUrl },
+      // Call VPS delete endpoint directly
+      const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ imageUrl }),
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to delete image');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to delete image');
       }
 
       toast({
@@ -448,14 +449,17 @@ const AdminSettings = () => {
     // Delete from VPS if it's a VPS image
     if (bannerUrl.includes('digitaldukandar.in/uploads/')) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.functions.invoke('delete-from-vps', {
-            body: { imageUrl: bannerUrl },
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          });
+        // Call VPS delete endpoint directly
+        const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageUrl: bannerUrl }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
           console.log('Banner image deleted from VPS:', bannerUrl);
         }
       } catch (error) {

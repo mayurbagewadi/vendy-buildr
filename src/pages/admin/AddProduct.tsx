@@ -265,14 +265,17 @@ category: "",
       // Delete from VPS if it's a VPS image
       if (imageUrl.includes('digitaldukandar.in/uploads/')) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await supabase.functions.invoke('delete-from-vps', {
-              body: { imageUrl },
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-            });
+          // Call VPS delete endpoint directly
+          const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl }),
+          });
+
+          const result = await response.json();
+          if (result.success) {
             console.log('Image deleted from VPS:', imageUrl);
           }
         } catch (error) {

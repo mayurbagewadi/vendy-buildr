@@ -244,14 +244,17 @@ export function CategoryManager() {
       // Delete image from VPS if it exists
       if (categoryToDelete.image_url && categoryToDelete.image_url.includes('digitaldukandar.in/uploads/')) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await supabase.functions.invoke('delete-from-vps', {
-              body: { imageUrl: categoryToDelete.image_url },
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-            });
+          // Call VPS delete endpoint directly
+          const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl: categoryToDelete.image_url }),
+          });
+
+          const result = await response.json();
+          if (result.success) {
             console.log('Category image deleted from VPS:', categoryToDelete.image_url);
           }
         } catch (vpsError) {
@@ -391,14 +394,17 @@ export function CategoryManager() {
           oldImageUrl !== newImageUrl &&
           oldImageUrl.includes('digitaldukandar.in/uploads/')) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await supabase.functions.invoke('delete-from-vps', {
-              body: { imageUrl: oldImageUrl },
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-            });
+          // Call VPS delete endpoint directly
+          const response = await fetch('https://digitaldukandar.in/api/delete.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl: oldImageUrl }),
+          });
+
+          const result = await response.json();
+          if (result.success) {
             console.log('Old category image deleted from VPS:', oldImageUrl);
           }
         } catch (vpsError) {
