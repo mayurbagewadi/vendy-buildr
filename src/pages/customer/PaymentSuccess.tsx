@@ -130,6 +130,11 @@ export default function PaymentSuccess() {
         setTransactionId(paymentId);
         setStatus('success');
 
+        // ✅ Auto-open WhatsApp after 2 seconds (gives user time to see success message)
+        setTimeout(() => {
+          openWhatsApp(message, undefined, storeIdParam);
+        }, 2000);
+
       } catch (error: any) {
         console.error('Payment processing error:', error);
         setStatus('failed');
