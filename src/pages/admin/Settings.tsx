@@ -262,7 +262,7 @@ const AdminSettings = () => {
 
   const handleDeleteFromMediaLibrary = async (imageUrl: string) => {
     try {
-      // Call VPS delete endpoint directly
+      // 1. Delete from VPS
       const response = await fetch('https://digitaldukandar.in/api/delete.php', {
         method: 'POST',
         headers: {
@@ -272,9 +272,38 @@ const AdminSettings = () => {
       });
 
       const result = await response.json();
+      console.log('VPS delete response:', result);
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to delete image');
+      // 2. Delete from media_library table in database
+      const { error: dbError } = await supabase
+        .from('media_library')
+        .delete()
+        .eq('file_url', imageUrl);
+
+      if (dbError) {
+        console.error('Failed to delete from database:', dbError);
+      }
+
+      // 3. Update storage usage
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (store) {
+          // Get the file size from media library record before deletion
+          const mediaRecord = mediaLibrary.find(m => m.file_url === imageUrl);
+          if (mediaRecord?.file_size_mb) {
+            const newStorage = Math.max(0, (store.storage_used_mb || 0) - mediaRecord.file_size_mb);
+            await supabase
+              .from('stores')
+              .update({ storage_used_mb: newStorage })
+              .eq('id', store.id);
+          }
+        }
       }
 
       toast({
@@ -282,9 +311,8 @@ const AdminSettings = () => {
         description: "Image removed from media library",
       });
 
-      // Reload media library and storage stats
+      // Reload media library
       loadMediaLibrary();
-      loadSettings();
     } catch (error: any) {
       toast({
         title: "Delete Failed",
@@ -465,13 +493,27 @@ const AdminSettings = () => {
       }
     }
 
+    // Update local state
+    const newBannerUrls = formData.heroBannerUrls.filter((_, i) => i !== index);
     setFormData(prev => ({
       ...prev,
-      heroBannerUrls: prev.heroBannerUrls.filter((_, i) => i !== index)
+      heroBannerUrls: newBannerUrls
     }));
 
-    // Only reload media library - don't call loadSettings() as it would
-    // overwrite the state change before auto-save (2s debounce) fires
+    // Immediately save to database (don't wait for auto-save)
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('stores')
+          .update({ hero_banner_urls: newBannerUrls.length > 0 ? newBannerUrls : null })
+          .eq('user_id', user.id);
+      }
+    } catch (error) {
+      console.error('Failed to save banner changes:', error);
+    }
+
+    // Reload media library
     setTimeout(() => {
       loadMediaLibrary();
     }, 500);
