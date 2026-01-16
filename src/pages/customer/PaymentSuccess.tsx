@@ -1,56 +1,54 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { verifyPhonePePayment } from "@/lib/payment/phonepe";
 import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
-import { generateOrderMessage } from "@/lib/whatsappUtils";
-import { useCart } from "@/contexts/CartContext";
-import { toast } from "@/components/ui/use-toast";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { CheckCircle2, XCircle, Loader2, MessageCircle, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
- * Payment Success Page
+ * Enterprise Payment Success Page
  *
- * Handles payment verification and WhatsApp redirect for all payment gateways
- * Flow: Verify Payment → Show Success Toast (1 sec) → Auto-redirect to WhatsApp
- *
- * Supported Gateways:
- * - Razorpay
- * - PhonePe
+ * Professional UX Flow:
+ * 1. Verify payment in background
+ * 2. Show success UI with order details
+ * 3. User manually clicks "Open WhatsApp" button (user gesture)
+ * 4. WhatsApp opens reliably (browser allows user-initiated action)
+ * 5. No automatic redirects, no toast notifications
  */
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
-  const { clearCart } = useCart();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [storeId, setStoreId] = useState('');
+  const [storeSlug, setStoreSlug] = useState('');
 
   useEffect(() => {
     const processPayment = async () => {
       // Get gateway type from URL
       const gateway = searchParams.get('gateway');
       const orderId = searchParams.get('orderId');
-      const storeId = searchParams.get('storeId');
-      const storeSlug = searchParams.get('storeSlug');
+      const storeIdParam = searchParams.get('storeId');
+      const storeSlugParam = searchParams.get('storeSlug');
+
+      setStoreId(storeIdParam || '');
+      setStoreSlug(storeSlugParam || '');
 
       // Validate required parameters
-      if (!gateway || !orderId || !storeId) {
+      if (!gateway || !orderId || !storeIdParam) {
         setStatus('failed');
-        toast({
-          title: "Invalid Payment Link",
-          description: "Missing required payment information.",
-          variant: "destructive",
-        });
         return;
       }
 
       try {
         let verified = false;
-        let verifyError = '';
         let paymentId = '';
-        let gatewayName = '';
 
-        // Handle different payment gateways
+        // Handle Razorpay payment verification
         if (gateway === 'razorpay') {
-          // Razorpay payment verification
           const razorpayOrderId = searchParams.get('razorpayOrderId');
           const razorpayPaymentId = searchParams.get('paymentId');
           const signature = searchParams.get('signature');
@@ -59,20 +57,18 @@ export default function PaymentSuccess() {
             throw new Error('Missing Razorpay payment details');
           }
 
-          // Verify Razorpay payment signature
+          // Verify payment signature
           const verifyResult = await verifyRazorpayPayment(
             razorpayOrderId,
             razorpayPaymentId,
             signature,
-            storeId
+            storeIdParam
           );
 
           verified = verifyResult.verified;
-          verifyError = verifyResult.error || '';
           paymentId = razorpayPaymentId;
-          gatewayName = 'Razorpay';
 
-          // Update order with Razorpay payment details
+          // Update order with payment details
           if (verified) {
             await supabase
               .from('orders')
@@ -89,55 +85,15 @@ export default function PaymentSuccess() {
               })
               .eq('id', orderId);
           }
-
-        } else if (gateway === 'phonepe') {
-          // PhonePe payment verification
-          const merchantTransactionId = searchParams.get('merchantTransactionId') || searchParams.get('paymentId');
-
-          if (!merchantTransactionId) {
-            throw new Error('Missing PhonePe transaction ID');
-          }
-
-          // Verify PhonePe payment
-          const verifyResult = await verifyPhonePePayment(
-            merchantTransactionId,
-            storeId
-          );
-
-          verified = verifyResult.verified;
-          verifyError = verifyResult.error || '';
-          paymentId = merchantTransactionId;
-          gatewayName = 'PhonePe';
-
-          // Update order with PhonePe payment details
-          if (verified) {
-            await supabase
-              .from('orders')
-              .update({
-                payment_status: 'completed',
-                payment_id: merchantTransactionId,
-                payment_gateway: 'phonepe',
-                gateway_order_id: merchantTransactionId,
-              })
-              .eq('id', orderId);
-          }
-
-        } else {
-          throw new Error(`Unsupported payment gateway: ${gateway}`);
         }
 
         // Check if payment was verified
         if (!verified) {
           setStatus('failed');
-          toast({
-            title: "Payment Verification Failed",
-            description: verifyError || "Unable to verify your payment. Please contact support.",
-            variant: "destructive",
-          });
           return;
         }
 
-        // Fetch complete order details from database
+        // Fetch complete order details
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('*')
@@ -148,12 +104,8 @@ export default function PaymentSuccess() {
           throw new Error('Failed to fetch order details');
         }
 
-        // ✅ FIX: Use items from orders table JSONB field (not order_items table)
-        // The cart is stored directly in the orders.items column
-        const cartItems = (orderData.items as any[]) || [];
-
-        // Prepare WhatsApp order details with payment confirmation
-        const whatsappOrderDetails = {
+        // Prepare WhatsApp message
+        const message = generateOrderMessage({
           customerName: orderData.customer_name,
           phone: orderData.customer_phone,
           email: orderData.customer_email,
@@ -163,118 +115,137 @@ export default function PaymentSuccess() {
           deliveryTime: orderData.delivery_time,
           latitude: orderData.delivery_latitude,
           longitude: orderData.delivery_longitude,
-          cart: cartItems,
+          cart: orderData.items as any[],
           subtotal: orderData.subtotal,
           deliveryCharge: orderData.delivery_charge || 0,
           total: orderData.total,
           paymentMethod: 'online' as const,
-          paymentGateway: gatewayName,
+          paymentGateway: 'Razorpay',
           transactionId: paymentId,
           orderNumber: orderData.order_number,
-        };
-
-        // Generate WhatsApp message
-        const whatsappMessage = generateOrderMessage(whatsappOrderDetails);
-
-        // Get store WhatsApp number
-        const { data: store } = await supabase
-          .from('stores')
-          .select('whatsapp_number')
-          .eq('id', storeId)
-          .single();
-
-        const whatsappNumber = store?.whatsapp_number || '';
-
-        // Format WhatsApp number (remove non-digits)
-        const formattedNumber = whatsappNumber.replace(/[^0-9]/g, '');
-
-        // Build WhatsApp URL with pre-filled message
-        const encodedMessage = encodeURIComponent(whatsappMessage);
-
-        // ✅ Detect if user is on mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        // Show success status FIRST before redirect
-        setStatus('success');
-
-        // Show success toast notification
-        toast({
-          title: "Payment Successful!",
-          description: "Redirecting to WhatsApp...",
         });
 
-        // Clear cart
-        clearCart();
-
-        // ✅ FIX: Better mobile WhatsApp redirect with fallback
-        setTimeout(() => {
-          if (isMobile) {
-            // On mobile: Try to open WhatsApp app directly
-            const whatsappAppUrl = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
-            const fallbackUrl = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
-
-            // Try opening WhatsApp app
-            window.location.href = whatsappAppUrl;
-
-            // If app doesn't open in 1.5 seconds, fallback to api.whatsapp.com
-            setTimeout(() => {
-              window.location.href = fallbackUrl;
-            }, 1500);
-          } else {
-            // On desktop: Use WhatsApp Web
-            window.location.href = `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
-          }
-        }, 1000);
+        setWhatsappMessage(message);
+        setOrderNumber(orderData.order_number);
+        setTransactionId(paymentId);
+        setStatus('success');
 
       } catch (error: any) {
         console.error('Payment processing error:', error);
         setStatus('failed');
-        toast({
-          title: "Error Processing Payment",
-          description: error.message || "Something went wrong. Please contact support.",
-          variant: "destructive",
-        });
       }
     };
 
     processPayment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]); // ✅ FIX: Removed clearCart from deps to prevent re-render loop
+  }, [searchParams]);
+
+  // Handler for WhatsApp button click (user gesture)
+  const handleOpenWhatsApp = () => {
+    openWhatsApp(whatsappMessage, undefined, storeId);
+  };
+
+  // Handler for home navigation
+  const handleGoHome = () => {
+    navigate(storeSlug ? `/${storeSlug}` : "/home");
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 px-4 py-8">
+      <div className="max-w-md w-full">
 
         {/* Verifying State */}
         {status === 'verifying' && (
-          <div className="space-y-4">
-            <Loader2 className="h-16 w-16 text-blue-600 mx-auto animate-spin" />
-            <h2 className="text-2xl font-bold text-gray-900">Verifying Payment</h2>
+          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
+            <Loader2 className="h-20 w-20 text-blue-600 mx-auto animate-spin mb-6" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment</h2>
             <p className="text-gray-600">Please wait while we confirm your payment...</p>
           </div>
         )}
 
         {/* Success State */}
         {status === 'success' && (
-          <div className="space-y-4">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-center">
+              <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white mb-4">
+                <CheckCircle2 className="h-12 w-12 text-green-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-2">Payment Successful!</h2>
+              <p className="text-green-100">Your order has been confirmed</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Payment Successful!</h2>
-            <p className="text-gray-600">Your order has been confirmed.</p>
-            <p className="text-sm text-gray-500">Redirecting to WhatsApp in 1 second...</p>
+
+            {/* Order Details */}
+            <div className="p-8 space-y-6">
+              <div className="bg-gray-50 rounded-2xl p-6 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 font-medium">Order Number</span>
+                  <span className="text-gray-900 font-bold">{orderNumber}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 font-medium">Transaction ID</span>
+                  <span className="text-gray-900 font-mono text-sm">{transactionId.slice(0, 20)}...</span>
+                </div>
+              </div>
+
+              {/* Important Notice */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
+                <p className="text-blue-900 text-center font-medium leading-relaxed">
+                  Complete your order by sending the details to our WhatsApp
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-3">
+                {/* Primary CTA - WhatsApp */}
+                <Button
+                  onClick={handleOpenWhatsApp}
+                  size="lg"
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <MessageCircle className="w-6 h-6 mr-3" />
+                  Complete Order on WhatsApp
+                </Button>
+
+                {/* Secondary CTA - Home */}
+                <Button
+                  onClick={handleGoHome}
+                  variant="outline"
+                  size="lg"
+                  className="w-full h-12 text-gray-700 border-2 hover:bg-gray-50"
+                >
+                  <Home className="w-5 h-5 mr-2" />
+                  Back to Home
+                </Button>
+              </div>
+
+              {/* Footer Note */}
+              <p className="text-center text-sm text-gray-500 mt-6">
+                Your payment has been received. We'll process your order shortly.
+              </p>
+            </div>
           </div>
         )}
 
         {/* Failed State */}
         {status === 'failed' && (
-          <div className="space-y-4">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
-              <XCircle className="h-10 w-10 text-red-600" />
+          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 mb-6">
+              <XCircle className="h-12 w-12 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Payment Failed</h2>
-            <p className="text-gray-600">There was an issue verifying your payment.</p>
-            <p className="text-sm text-gray-500">Please contact support if the amount was deducted.</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Payment Verification Failed</h2>
+            <p className="text-gray-600 mb-6">There was an issue verifying your payment.</p>
+            <p className="text-sm text-gray-500 mb-8">
+              If the amount was deducted from your account, please contact our support with your transaction details.
+            </p>
+            <Button
+              onClick={handleGoHome}
+              size="lg"
+              variant="outline"
+              className="w-full"
+            >
+              <Home className="w-5 h-5 mr-2" />
+              Back to Home
+            </Button>
           </div>
         )}
       </div>
