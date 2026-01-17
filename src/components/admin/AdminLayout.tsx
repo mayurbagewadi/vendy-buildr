@@ -42,7 +42,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [userName, setUserName] = useState<string>("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const [openDropdowns, setOpenDropdowns] = useState<string[]>(["Growth"]); // Growth open by default
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>([]); // All dropdowns collapsed by default
   const [limitWarning, setLimitWarning] = useState<{
     whatsapp: boolean;
     website: boolean;

@@ -575,9 +575,21 @@ category: "",
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Product Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter product name" {...field} />
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                id="product-name"
+                                className="peer h-14 pt-4 px-3"
+                                placeholder=" "
+                              />
+                              <label
+                                htmlFor="product-name"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground bg-background px-1 transition-all duration-200 pointer-events-none peer-focus:-top-0 peer-focus:text-xs peer-focus:text-primary peer-focus:font-semibold peer-[:not(:placeholder-shown)]:-top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-semibold"
+                              >
+                                Product Name
+                              </label>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -589,13 +601,21 @@ category: "",
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Describe your product..."
-                              className="min-h-[120px]"
-                              {...field} 
-                            />
+                            <div className="relative">
+                              <Textarea
+                                {...field}
+                                id="product-description"
+                                placeholder=" "
+                                className="peer min-h-[120px] pt-6 px-3"
+                              />
+                              <label
+                                htmlFor="product-description"
+                                className="absolute left-3 top-4 text-muted-foreground bg-background px-1 transition-all duration-200 pointer-events-none peer-focus:-top-0 peer-focus:text-xs peer-focus:text-primary peer-focus:font-semibold peer-[:not(:placeholder-shown)]:-top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-semibold"
+                              >
+                                Description
+                              </label>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -812,20 +832,29 @@ category: "",
 
                     {/* Google Drive URL Input */}
                     <div className="space-y-3">
-                      <label className="text-sm font-medium">Google Drive Image URL</label>
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Paste Google Drive shareable link"
-                          value={newImageUrl}
-                          onChange={(e) => setNewImageUrl(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addImageUrl();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={addImageUrl} size="sm">
+                        <div className="relative flex-1">
+                          <Input
+                            id="google-drive-url"
+                            placeholder=" "
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addImageUrl();
+                              }
+                            }}
+                            className="peer h-14 pt-4 px-3"
+                          />
+                          <label
+                            htmlFor="google-drive-url"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground bg-background px-1 transition-all duration-200 pointer-events-none peer-focus:-top-0 peer-focus:text-xs peer-focus:text-primary peer-focus:font-semibold peer-[:not(:placeholder-shown)]:-top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-semibold"
+                          >
+                            Google Drive Image URL
+                          </label>
+                        </div>
+                        <Button type="button" onClick={addImageUrl} size="sm" className="h-14">
                           Add URL
                         </Button>
                       </div>
@@ -848,7 +877,7 @@ category: "",
                             className="w-4 h-4 text-primary"
                           />
                           <span className="text-sm">
-                            VPS Server <span className="text-xs text-green-600 font-medium">(Recommended - Fast & Reliable)</span>
+                            VPS Server
                           </span>
                         </label>
                         <label className="flex items-center space-x-2 cursor-pointer">
@@ -862,7 +891,7 @@ category: "",
                             disabled={!isDriveConnected}
                           />
                           <span className="text-sm">
-                            Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                            Google Drive <span className="text-xs text-green-600 font-medium">(Recommended - Safe & Reliable)</span> {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
                           </span>
                         </label>
                       </div>
@@ -1016,12 +1045,21 @@ category: "",
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
-                      <label className="text-sm font-medium">YouTube Video URL</label>
-                      <Input
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="youtube-video-url"
+                          placeholder=" "
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          className="peer h-14 pt-4 px-3"
+                        />
+                        <label
+                          htmlFor="youtube-video-url"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground bg-background px-1 transition-all duration-200 pointer-events-none peer-focus:-top-0 peer-focus:text-xs peer-focus:text-primary peer-focus:font-semibold peer-[:not(:placeholder-shown)]:-top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:font-semibold"
+                        >
+                          YouTube Video URL
+                        </label>
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         Paste a YouTube video URL to show it alongside your product images
                       </p>
