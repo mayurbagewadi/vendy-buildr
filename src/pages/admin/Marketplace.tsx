@@ -58,6 +58,7 @@ const AdminMarketplace = () => {
   const [storeData, setStoreData] = useState<StoreData | null>(null);
   const [features, setFeatures] = useState<MarketplaceFeature[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addingFeature, setAddingFeature] = useState<string | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -150,8 +151,58 @@ const AdminMarketplace = () => {
     { value: 'added', label: 'Added' },
   ];
 
-  const handleAddFeature = (feature: MarketplaceFeature) => {
-    navigate(getFeatureRoute(feature.slug));
+  const handleAddFeature = async (feature: MarketplaceFeature) => {
+    const isAdded = enabledFeatures.includes(feature.slug);
+
+    // If already added, just navigate to configure
+    if (isAdded) {
+      navigate(getFeatureRoute(feature.slug));
+      return;
+    }
+
+    // Add feature to enabled_features
+    if (!storeData) {
+      toast({
+        title: "Error",
+        description: "Store data not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAddingFeature(feature.slug);
+
+    try {
+      const newEnabledFeatures = [...enabledFeatures, feature.slug];
+
+      const { error } = await supabase
+        .from('stores')
+        .update({ enabled_features: newEnabledFeatures })
+        .eq('id', storeData.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setEnabledFeatures(newEnabledFeatures);
+      setStoreData({ ...storeData, enabled_features: newEnabledFeatures });
+
+      toast({
+        title: "Feature Added",
+        description: `${feature.name} has been added to your store`,
+      });
+
+      // Navigate to feature page
+      navigate(getFeatureRoute(feature.slug));
+    } catch (error) {
+      console.error('Failed to add feature:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add feature. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingFeature(null);
+    }
   };
 
   if (loading) {
@@ -270,8 +321,14 @@ const AdminMarketplace = () => {
                       onClick={() => handleAddFeature(feature)}
                       className="w-full"
                       variant={isAdded ? "outline" : "default"}
+                      disabled={addingFeature === feature.slug}
                     >
-                      {isAdded ? (
+                      {addingFeature === feature.slug ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : isAdded ? (
                         <>
                           Configure
                           <ArrowRight className="h-4 w-4 ml-2" />
@@ -300,8 +357,8 @@ const AdminMarketplace = () => {
               <div>
                 <h3 className="font-semibold mb-1">How Marketplace Works</h3>
                 <p className="text-sm text-muted-foreground">
-                  Click "Add Feature" to go to the feature page where you can configure and enable it.
-                  Once enabled, the feature will appear in your sidebar menu.
+                  Click "Add Feature" to add it to your store. The feature will appear in your sidebar menu
+                  and you'll be taken to the configuration page.
                 </p>
               </div>
             </div>
