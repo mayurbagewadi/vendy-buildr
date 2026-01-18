@@ -15,6 +15,13 @@ import * as XLSX from 'xlsx';
 import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
 import { EditOrderModal } from "@/components/admin/EditOrderModal";
 import { shiprocketLogin, shiprocketCreateOrder, convertToShiprocketOrder, shiprocketGetPickupLocations } from "@/lib/shiprocket";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Order {
   id: string;
@@ -57,6 +64,8 @@ const Orders = () => {
   const [pickupLocation, setPickupLocation] = useState<string>("");
   const [packageDefaults, setPackageDefaults] = useState({ length: 10, breadth: 10, height: 10, weight: 0.5 });
   const [shippingOrderId, setShippingOrderId] = useState<string | null>(null);
+  const [shipModalOpen, setShipModalOpen] = useState(false);
+  const [orderToShip, setOrderToShip] = useState<Order | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -363,24 +372,28 @@ const Orders = () => {
     }
   };
 
-  const handleShipOrder = async (order: Order) => {
-    if (!shiprocketConnected || !shiprocketToken) {
-      // If Shiprocket not connected, just mark as delivered
-      await handleUpdateOrder(order.id, { status: "delivered" });
-      return;
+  const handleShipClick = (order: Order) => {
+    if (shiprocketConnected) {
+      // Show modal with options
+      setOrderToShip(order);
+      setShipModalOpen(true);
+    } else {
+      // Direct action - mark as delivered
+      handleMarkDelivered(order);
     }
+  };
 
-    setShippingOrderId(order.id);
+  const handleShipViaShiprocket = async () => {
+    if (!orderToShip || !shiprocketToken) return;
+
+    setShipModalOpen(false);
+    setShippingOrderId(orderToShip.id);
 
     try {
-      // Convert order to Shiprocket format
-      const shiprocketOrderData = convertToShiprocketOrder(order, pickupLocation, packageDefaults);
-
-      // Create order in Shiprocket
+      const shiprocketOrderData = convertToShiprocketOrder(orderToShip, pickupLocation, packageDefaults);
       const result = await shiprocketCreateOrder(shiprocketToken, shiprocketOrderData);
 
       if (result.success && result.data) {
-        // Update local order with Shiprocket details
         await supabase
           .from("orders")
           .update({
@@ -388,17 +401,14 @@ const Orders = () => {
             shiprocket_shipment_id: result.data.shipment_id?.toString(),
             status: "processing",
           })
-          .eq("id", order.id);
+          .eq("id", orderToShip.id);
 
         toast({
           title: "Order Created in Shiprocket",
           description: "Opening Shiprocket dashboard...",
         });
 
-        // Open Shiprocket dashboard to the order
         window.open(`https://app.shiprocket.in/seller/orders/details/${result.data.order_id}`, "_blank");
-
-        // Reload orders
         loadOrders();
       } else {
         toast({
@@ -415,7 +425,15 @@ const Orders = () => {
       });
     } finally {
       setShippingOrderId(null);
+      setOrderToShip(null);
     }
+  };
+
+  const handleManualDelivery = async () => {
+    if (!orderToShip) return;
+    setShipModalOpen(false);
+    await handleMarkDelivered(orderToShip);
+    setOrderToShip(null);
   };
 
   const handleMarkDelivered = async (order: Order) => {
@@ -650,33 +668,20 @@ const Orders = () => {
                             <Edit className="h-4 w-4" />
                           </Button>
                           {order.status !== "delivered" && order.status !== "cancelled" && (
-                            <>
-                              {shiprocketConnected && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleShipOrder(order)}
-                                  title="Ship with Shiprocket"
-                                  className="text-blue-600 hover:text-blue-700"
-                                  disabled={shippingOrderId === order.id}
-                                >
-                                  {shippingOrderId === order.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Truck className="h-4 w-4" />
-                                  )}
-                                </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleShipClick(order)}
+                              title={shiprocketConnected ? "Ship Order" : "Mark as Delivered"}
+                              className="text-blue-600 hover:text-blue-700"
+                              disabled={shippingOrderId === order.id}
+                            >
+                              {shippingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Truck className="h-4 w-4" />
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMarkDelivered(order)}
-                                title="Mark as Delivered (Manual)"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            </Button>
                           )}
                           {order.status !== "cancelled" && (
                             <Button
@@ -717,6 +722,51 @@ const Orders = () => {
           onClose={() => setEditModalOpen(false)}
           onSave={handleUpdateOrder}
         />
+
+        {/* Ship Order Modal */}
+        <Dialog open={shipModalOpen} onOpenChange={setShipModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Ship Order
+              </DialogTitle>
+              <DialogDescription>
+                {orderToShip && (
+                  <span>Order #{orderToShip.order_number} • {orderToShip.customer_name}</span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <Button
+                onClick={handleShipViaShiprocket}
+                className="w-full h-14 justify-start gap-4"
+                variant="outline"
+              >
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                  <Truck className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Ship via Shiprocket</div>
+                  <div className="text-xs text-muted-foreground">Create shipment with courier partner</div>
+                </div>
+              </Button>
+              <Button
+                onClick={handleManualDelivery}
+                className="w-full h-14 justify-start gap-4"
+                variant="outline"
+              >
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Manual Delivery</div>
+                  <div className="text-xs text-muted-foreground">Mark as delivered (self-delivery)</div>
+                </div>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
