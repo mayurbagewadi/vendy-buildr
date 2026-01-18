@@ -19,7 +19,9 @@ import {
   Search,
   ChevronDown,
   Share2,
-  Instagram
+  Instagram,
+  Store,
+  Truck
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -57,6 +59,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     expiresAt: string;
   } | null>(null);
   const [showExpirationWarning, setShowExpirationWarning] = useState(true);
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
 
   // Dynamic notifications from existing database tables (orders, products)
   const { notifications, unreadCount } = useNotifications();
@@ -135,6 +138,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       if (store.name) {
         console.log('[AdminLayout] Setting store name:', store.name);
         setStoreName(store.name);
+      }
+
+      // Set enabled features
+      if (store.enabled_features) {
+        setEnabledFeatures(store.enabled_features as string[]);
       }
 
       // Check subscription limits and expiration
@@ -295,6 +303,19 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/subscription",
       icon: CreditCard,
       current: location.pathname === "/admin/subscription",
+    },
+    // Conditionally show Shipping when enabled
+    ...(enabledFeatures.includes('shipping') ? [{
+      name: "Shipping",
+      href: "/admin/shipping",
+      icon: Truck,
+      current: location.pathname === "/admin/shipping",
+    }] : []),
+    {
+      name: "Marketplace",
+      href: "/admin/marketplace",
+      icon: Store,
+      current: location.pathname === "/admin/marketplace",
     },
     {
       name: "Settings",

@@ -30,6 +30,7 @@ import {
   ClipboardList,
   BarChart3,
   FileText,
+  Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -592,6 +593,14 @@ export default function SuperAdminDashboard() {
             >
               <FileText className="mr-2 h-4 w-4" />
               SEO & Sitemaps
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => navigate('/superadmin/marketplace')}
+            >
+              <Package className="mr-2 h-4 w-4" />
+              Marketplace
             </Button>
             <Button
               variant="ghost"

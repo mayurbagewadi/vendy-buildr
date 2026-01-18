@@ -23,6 +23,8 @@ import Subscription from "./pages/admin/Subscription";
 import GrowthSEO from "./pages/admin/growth/SEO";
 import GrowthSocialMedia from "./pages/admin/growth/SocialMedia";
 import GrowthInstagram from "./pages/admin/growth/Instagram";
+import AdminMarketplace from "./pages/admin/Marketplace";
+import AdminShipping from "./pages/admin/Shipping";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import CustomerCategories from "./pages/customer/Categories";
@@ -45,6 +47,7 @@ import SuperAdminBilling from "./pages/superadmin/Billing";
 import SuperAdminCustomDomains from "./pages/superadmin/CustomDomains";
 import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
+import SuperAdminMarketplace from "./pages/superadmin/Marketplace";
 import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import Store from "./pages/customer/Store";
@@ -136,6 +139,8 @@ const App = () => {
                       <Route path="/admin/growth/seo" element={<GrowthSEO />} />
                       <Route path="/admin/growth/social-media" element={<GrowthSocialMedia />} />
                       <Route path="/admin/growth/instagram" element={<GrowthInstagram />} />
+                      <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+                      <Route path="/admin/shipping" element={<AdminShipping />} />
                       <Route path="/admin/settings" element={<AdminSettings />} />
 
                       {/* Super Admin Routes */}
@@ -153,6 +158,7 @@ const App = () => {
                         <Route path="custom-domains" element={<SuperAdminCustomDomains />} />
                         <Route path="settings" element={<SuperAdminPlatformSettings />} />
                         <Route path="sitemaps" element={<SuperAdminSitemapManager />} />
+                        <Route path="marketplace" element={<SuperAdminMarketplace />} />
                       </Route>
 
                       {/* Onboarding Routes */}
