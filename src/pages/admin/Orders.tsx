@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban, AlertTriangle, ArrowUpCircle } from "lucide-react";
+import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban, AlertTriangle, ArrowUpCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
 import { EditOrderModal } from "@/components/admin/EditOrderModal";
+import { shiprocketLogin, shiprocketCreateOrder, convertToShiprocketOrder, shiprocketGetPickupLocations } from "@/lib/shiprocket";
 
 interface Order {
   id: string;
@@ -51,6 +52,11 @@ const Orders = () => {
   const [totalOrderCount, setTotalOrderCount] = useState<number>(0);
   const [viewLimit, setViewLimit] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string>("");
+  const [shiprocketConnected, setShiprocketConnected] = useState(false);
+  const [shiprocketToken, setShiprocketToken] = useState<string | null>(null);
+  const [pickupLocation, setPickupLocation] = useState<string>("");
+  const [packageDefaults, setPackageDefaults] = useState({ length: 10, breadth: 10, height: 10, weight: 0.5 });
+  const [shippingOrderId, setShippingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -76,11 +82,29 @@ const Orders = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id")
+        .select("id, shiprocket_token, shiprocket_pickup_location, package_length, package_breadth, package_height, package_weight")
         .eq("user_id", user.id)
         .single();
 
       if (!store) return;
+
+      // Check Shiprocket connection
+      if (store.shiprocket_token) {
+        setShiprocketConnected(true);
+        setShiprocketToken(store.shiprocket_token);
+
+        // Get pickup location
+        const locationsResult = await shiprocketGetPickupLocations(store.shiprocket_token);
+        if (locationsResult.success && locationsResult.locations && locationsResult.locations.length > 0) {
+          setPickupLocation(locationsResult.locations[0].pickup_location);
+        }
+
+        // Set package defaults
+        if (store.package_length) setPackageDefaults(prev => ({ ...prev, length: store.package_length }));
+        if (store.package_breadth) setPackageDefaults(prev => ({ ...prev, breadth: store.package_breadth }));
+        if (store.package_height) setPackageDefaults(prev => ({ ...prev, height: store.package_height }));
+        if (store.package_weight) setPackageDefaults(prev => ({ ...prev, weight: store.package_weight }));
+      }
 
       // Get subscription and plan details to check view limit
       const { data: subscription } = await supabase
@@ -340,6 +364,61 @@ const Orders = () => {
   };
 
   const handleShipOrder = async (order: Order) => {
+    if (!shiprocketConnected || !shiprocketToken) {
+      // If Shiprocket not connected, just mark as delivered
+      await handleUpdateOrder(order.id, { status: "delivered" });
+      return;
+    }
+
+    setShippingOrderId(order.id);
+
+    try {
+      // Convert order to Shiprocket format
+      const shiprocketOrderData = convertToShiprocketOrder(order, pickupLocation, packageDefaults);
+
+      // Create order in Shiprocket
+      const result = await shiprocketCreateOrder(shiprocketToken, shiprocketOrderData);
+
+      if (result.success && result.data) {
+        // Update local order with Shiprocket details
+        await supabase
+          .from("orders")
+          .update({
+            shiprocket_order_id: result.data.order_id?.toString(),
+            shiprocket_shipment_id: result.data.shipment_id?.toString(),
+            status: "processing",
+          })
+          .eq("id", order.id);
+
+        toast({
+          title: "Order Created in Shiprocket",
+          description: "Opening Shiprocket dashboard...",
+        });
+
+        // Open Shiprocket dashboard to the order
+        window.open(`https://app.shiprocket.in/seller/orders/details/${result.data.order_id}`, "_blank");
+
+        // Reload orders
+        loadOrders();
+      } else {
+        toast({
+          title: "Shiprocket Error",
+          description: result.error || "Failed to create order in Shiprocket",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to ship order",
+        variant: "destructive",
+      });
+    } finally {
+      setShippingOrderId(null);
+    }
+  };
+
+  const handleMarkDelivered = async (order: Order) => {
     await handleUpdateOrder(order.id, { status: "delivered" });
   };
 
@@ -571,15 +650,33 @@ const Orders = () => {
                             <Edit className="h-4 w-4" />
                           </Button>
                           {order.status !== "delivered" && order.status !== "cancelled" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleShipOrder(order)}
-                              title="Mark as Delivered"
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <Truck className="h-4 w-4" />
-                            </Button>
+                            <>
+                              {shiprocketConnected && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleShipOrder(order)}
+                                  title="Ship with Shiprocket"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  disabled={shippingOrderId === order.id}
+                                >
+                                  {shippingOrderId === order.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Truck className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMarkDelivered(order)}
+                                title="Mark as Delivered (Manual)"
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                           {order.status !== "cancelled" && (
                             <Button
