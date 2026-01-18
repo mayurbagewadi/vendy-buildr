@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Check, Search } from "lucide-react";
+import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Search, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,19 +33,31 @@ const getIconComponent = (iconName: string) => {
   return iconMap[iconName] || Package;
 };
 
+// Map feature slugs to their routes
+const getFeatureRoute = (slug: string): string => {
+  const routeMap: Record<string, string> = {
+    'shipping': '/admin/shipping',
+    'analytics': '/admin/analytics',
+    'live-chat': '/admin/live-chat',
+    'email-marketing': '/admin/email-marketing',
+    'ads': '/admin/ads',
+  };
+  return routeMap[slug] || `/admin/${slug}`;
+};
+
 interface StoreData {
   id: string;
   enabled_features: string[];
 }
 
-type FilterType = 'all' | 'free' | 'paid' | 'enabled' | 'disabled';
+type FilterType = 'all' | 'free' | 'paid' | 'added';
 
 const AdminMarketplace = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [storeData, setStoreData] = useState<StoreData | null>(null);
   const [features, setFeatures] = useState<MarketplaceFeature[]>([]);
   const [loading, setLoading] = useState(true);
-  const [togglingFeature, setTogglingFeature] = useState<string | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -108,12 +120,10 @@ const AdminMarketplace = () => {
   // Filter and search features
   const filteredFeatures = useMemo(() => {
     return features.filter((feature) => {
-      // Search filter
       const matchesSearch = searchQuery === "" ||
         feature.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         feature.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Category filter
       let matchesFilter = true;
       switch (activeFilter) {
         case 'free':
@@ -122,11 +132,8 @@ const AdminMarketplace = () => {
         case 'paid':
           matchesFilter = !feature.is_free;
           break;
-        case 'enabled':
+        case 'added':
           matchesFilter = enabledFeatures.includes(feature.slug);
-          break;
-        case 'disabled':
-          matchesFilter = !enabledFeatures.includes(feature.slug);
           break;
         default:
           matchesFilter = true;
@@ -140,54 +147,11 @@ const AdminMarketplace = () => {
     { value: 'all', label: 'All' },
     { value: 'free', label: 'Free' },
     { value: 'paid', label: 'Paid' },
-    { value: 'enabled', label: 'Enabled' },
-    { value: 'disabled', label: 'Disabled' },
+    { value: 'added', label: 'Added' },
   ];
 
-  const toggleFeature = async (feature: MarketplaceFeature) => {
-    if (!storeData?.id) return;
-
-    setTogglingFeature(feature.slug);
-
-    try {
-      const isCurrentlyEnabled = isFeatureEnabled(feature.slug);
-      let newEnabledFeatures: string[];
-
-      if (isCurrentlyEnabled) {
-        // Remove feature
-        newEnabledFeatures = enabledFeatures.filter(f => f !== feature.slug);
-      } else {
-        // Add feature
-        newEnabledFeatures = [...enabledFeatures, feature.slug];
-      }
-
-      const { error } = await supabase
-        .from('stores')
-        .update({ enabled_features: newEnabledFeatures })
-        .eq('id', storeData.id);
-
-      if (error) throw error;
-
-      setEnabledFeatures(newEnabledFeatures);
-
-      toast({
-        title: isCurrentlyEnabled ? "Feature Disabled" : "Feature Enabled",
-        description: isCurrentlyEnabled
-          ? `${feature.name} has been removed from your store`
-          : `${feature.name} has been added to your store`,
-      });
-
-      // Reload page to update sidebar
-      window.location.reload();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update feature",
-        variant: "destructive",
-      });
-    } finally {
-      setTogglingFeature(null);
-    }
+  const handleAddFeature = (feature: MarketplaceFeature) => {
+    navigate(getFeatureRoute(feature.slug));
   };
 
   if (loading) {
@@ -207,13 +171,12 @@ const AdminMarketplace = () => {
         <div>
           <h1 className="text-2xl font-bold">Marketplace</h1>
           <p className="text-muted-foreground">
-            Add features to enhance your store. Enable or disable features as needed.
+            Discover and add features to enhance your store
           </p>
         </div>
 
         {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -224,7 +187,6 @@ const AdminMarketplace = () => {
             />
           </div>
 
-          {/* Filter Buttons */}
           <div className="flex gap-2 flex-wrap">
             {filterOptions.map((option) => (
               <Button
@@ -270,55 +232,57 @@ const AdminMarketplace = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFeatures.map((feature) => {
               const IconComponent = getIconComponent(feature.icon);
-              const isEnabled = isFeatureEnabled(feature.slug);
-              const isToggling = togglingFeature === feature.slug;
+              const isAdded = isFeatureEnabled(feature.slug);
 
               return (
                 <Card
                   key={feature.id}
-                  className={`transition-all duration-200 ${isEnabled ? 'ring-2 ring-primary' : ''}`}
+                  className={`transition-all duration-200 hover:shadow-lg ${isAdded ? 'border-primary/50' : ''}`}
                 >
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${isEnabled ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
-                          <IconComponent className={`h-6 w-6 ${isEnabled ? '' : 'text-primary'}`} />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            {feature.name}
-                            {isEnabled && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
-                          </CardTitle>
-                        </div>
+                      <div className={`p-3 rounded-xl ${isAdded ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        <IconComponent className="h-6 w-6" />
                       </div>
                       <div className="flex items-center gap-2">
+                        {isAdded && (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Added
+                          </Badge>
+                        )}
                         {feature.is_free ? (
                           <Badge variant="secondary">Free</Badge>
                         ) : (
-                          <Badge variant="default">₹{feature.price}</Badge>
+                          <Badge>₹{feature.price}</Badge>
                         )}
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <CardDescription className="mb-4">
-                      {feature.description}
-                    </CardDescription>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {isEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                      {isToggling ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={() => toggleFeature(feature)}
-                        />
-                      )}
+                  <CardContent className="space-y-4">
+                    <div>
+                      <CardTitle className="text-lg mb-1">{feature.name}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {feature.description}
+                      </CardDescription>
                     </div>
+                    <Button
+                      onClick={() => handleAddFeature(feature)}
+                      className="w-full"
+                      variant={isAdded ? "outline" : "default"}
+                    >
+                      {isAdded ? (
+                        <>
+                          Configure
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Feature
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -336,8 +300,8 @@ const AdminMarketplace = () => {
               <div>
                 <h3 className="font-semibold mb-1">How Marketplace Works</h3>
                 <p className="text-sm text-muted-foreground">
-                  Enable features to add new capabilities to your store. Each feature adds a new menu item
-                  to your sidebar. You can disable features at any time to simplify your dashboard.
+                  Click "Add Feature" to go to the feature page where you can configure and enable it.
+                  Once enabled, the feature will appear in your sidebar menu.
                 </p>
               </div>
             </div>

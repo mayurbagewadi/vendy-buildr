@@ -16,7 +16,7 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-# AI Crawlers - Allow for AI search and recommendations
+# AI Crawlers - Explicitly allow for AI search and recommendations
 # ChatGPT / OpenAI
 User-agent: GPTBot
 Allow: /
@@ -30,6 +30,9 @@ Allow: /
 
 # Anthropic Claude
 User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
 Allow: /
 
 User-agent: Claude-Web
@@ -46,20 +49,16 @@ Allow: /
 # Allow all bots by default
 User-agent: *
 Allow: /
-Allow: /pricing
-Allow: /auth
-Allow: /become-helper
-Allow: /privacy-policy
-Allow: /terms-of-service
 
-# Disallow admin and internal pages from indexing
+# Block pages with no SEO value or sensitive data
+Disallow: /auth
+Disallow: /cart
+Disallow: /checkout
 Disallow: /admin/
 Disallow: /superadmin/
 Disallow: /onboarding/
 Disallow: /helper/
 Disallow: /application-status
-
-# Disallow API endpoints
 Disallow: /api/
 
 # Sitemap location
