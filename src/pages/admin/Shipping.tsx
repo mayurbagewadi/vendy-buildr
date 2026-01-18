@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Package, Settings, AlertCircle, CheckCircle2, Loader2, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Truck, Package, Settings, AlertCircle, CheckCircle2, Loader2, Eye, EyeOff, ExternalLink, Power } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,6 +31,8 @@ const AdminShipping = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [pickupLocations, setPickupLocations] = useState<PickupLocation[]>([]);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [shippingEnabled, setShippingEnabled] = useState(false);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
 
   const [credentials, setCredentials] = useState({
     email: "",
@@ -54,12 +57,13 @@ const AdminShipping = () => {
 
       const { data: store } = await supabase
         .from('stores')
-        .select('id, shiprocket_email, shiprocket_token, shiprocket_pickup_location, package_length, package_breadth, package_height, package_weight')
+        .select('id, shiprocket_email, shiprocket_token, shiprocket_pickup_location, package_length, package_breadth, package_height, package_weight, shipping_popup_enabled')
         .eq('user_id', session.user.id)
         .single();
 
       if (store) {
         setStoreId(store.id);
+        setShippingEnabled(store.shipping_popup_enabled || false);
 
         if (store.shiprocket_email) {
           setCredentials(prev => ({ ...prev, email: store.shiprocket_email }));
@@ -214,6 +218,34 @@ const AdminShipping = () => {
     }
   };
 
+  const handleToggleShipping = async (enabled: boolean) => {
+    setTogglingEnabled(true);
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .update({ shipping_popup_enabled: enabled })
+        .eq('id', storeId);
+
+      if (error) throw error;
+
+      setShippingEnabled(enabled);
+      toast({
+        title: enabled ? "Shipping Enabled" : "Shipping Disabled",
+        description: enabled
+          ? "Shipping popup will appear in Orders"
+          : "Orders will be marked as delivered directly",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update setting",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingEnabled(false);
+    }
+  };
+
   const handleSavePackageDefaults = async () => {
     setSaving(true);
     try {
@@ -275,6 +307,37 @@ const AdminShipping = () => {
             </Badge>
           )}
         </div>
+
+        {/* Enable/Disable Toggle Card */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${shippingEnabled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                  <Power className={`h-6 w-6 ${shippingEnabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Shipping Feature</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {shippingEnabled
+                      ? "Enabled - Shipping popup will appear in Orders"
+                      : "Disabled - Orders will be marked as delivered directly"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-medium ${shippingEnabled ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {shippingEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+                <Switch
+                  checked={shippingEnabled}
+                  onCheckedChange={handleToggleShipping}
+                  disabled={togglingEnabled}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Connection Card */}
         <Card>

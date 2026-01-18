@@ -66,6 +66,7 @@ const Orders = () => {
   const [shippingOrderId, setShippingOrderId] = useState<string | null>(null);
   const [shipModalOpen, setShipModalOpen] = useState(false);
   const [orderToShip, setOrderToShip] = useState<Order | null>(null);
+  const [shippingPopupEnabled, setShippingPopupEnabled] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -91,11 +92,14 @@ const Orders = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, shiprocket_token, shiprocket_pickup_location, package_length, package_breadth, package_height, package_weight")
+        .select("id, shiprocket_token, shiprocket_pickup_location, package_length, package_breadth, package_height, package_weight, shipping_popup_enabled")
         .eq("user_id", user.id)
         .single();
 
       if (!store) return;
+
+      // Check shipping popup enabled setting
+      setShippingPopupEnabled(store.shipping_popup_enabled || false);
 
       // Check Shiprocket connection
       if (store.shiprocket_token) {
@@ -373,7 +377,7 @@ const Orders = () => {
   };
 
   const handleShipClick = (order: Order) => {
-    if (shiprocketConnected) {
+    if (shippingPopupEnabled) {
       // Show modal with options
       setOrderToShip(order);
       setShipModalOpen(true);
@@ -672,7 +676,7 @@ const Orders = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleShipClick(order)}
-                              title={shiprocketConnected ? "Ship Order" : "Mark as Delivered"}
+                              title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
                               className="text-blue-600 hover:text-blue-700"
                               disabled={shippingOrderId === order.id}
                             >
@@ -738,19 +742,21 @@ const Orders = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 py-4">
-              <Button
-                onClick={handleShipViaShiprocket}
-                className="w-full h-14 justify-start gap-4"
-                variant="outline"
-              >
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Truck className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <div className="font-medium">Ship via Shiprocket</div>
-                  <div className="text-xs text-muted-foreground">Create shipment with courier partner</div>
-                </div>
-              </Button>
+              {shiprocketConnected && (
+                <Button
+                  onClick={handleShipViaShiprocket}
+                  className="w-full h-14 justify-start gap-4"
+                  variant="outline"
+                >
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                    <Truck className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Ship via Shiprocket</div>
+                    <div className="text-xs text-muted-foreground">Create shipment with courier partner</div>
+                  </div>
+                </Button>
+              )}
               <Button
                 onClick={handleManualDelivery}
                 className="w-full h-14 justify-start gap-4"
