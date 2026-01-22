@@ -38,6 +38,27 @@ const ReviewList = ({ reviews, maxReviews = 5, showAllReviews = false }: ReviewL
     setImageErrors(prev => ({ ...prev, [index]: true }));
   };
 
+  const getInitials = (name: string) => {
+    const words = name.trim().split(' ');
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-blue-400 to-blue-600',
+      'from-green-400 to-green-600',
+      'from-purple-400 to-purple-600',
+      'from-pink-400 to-pink-600',
+      'from-orange-400 to-orange-600',
+      'from-teal-400 to-teal-600',
+      'from-indigo-400 to-indigo-600',
+      'from-red-400 to-red-600',
+    ];
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   if (!reviews || reviews.length === 0) {
     return null;
   }
@@ -59,13 +80,16 @@ const ReviewList = ({ reviews, maxReviews = 5, showAllReviews = false }: ReviewL
                   <img
                     src={review.profile_photo_url}
                     alt={review.author_name}
-                    className="h-12 w-12 rounded-full border-2 border-gray-200 dark:border-gray-700 object-cover"
+                    className="h-12 w-12 rounded-full border-2 border-white shadow-md object-cover"
                     onError={() => handleImageError(index)}
                     loading="lazy"
+                    crossOrigin="anonymous"
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-full border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                    <User className="h-6 w-6 text-primary/60" />
+                  <div className={`h-12 w-12 rounded-full border-2 border-white shadow-md bg-gradient-to-br ${getAvatarColor(review.author_name)} flex items-center justify-center`}>
+                    <span className="text-white font-bold text-sm">
+                      {getInitials(review.author_name)}
+                    </span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

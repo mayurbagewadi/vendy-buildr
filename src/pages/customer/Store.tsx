@@ -13,6 +13,7 @@ import type { Product as ProductType } from "@/lib/productData";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
 import InstagramReels from "@/components/customer/InstagramReels";
+import { GoogleReviewsSection } from "@/components/store/reviews";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
@@ -430,6 +431,17 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             instagramUsername={store.instagram_username || undefined}
           />
         )}
+
+        {/* Google Reviews Section */}
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <GoogleReviewsSection
+              storeId={store.id}
+              variant="carousel"
+              autoPlay={true}
+            />
+          </div>
+        </section>
 
         {/* New Arrivals */}
         {newArrivals.length > 0 && (

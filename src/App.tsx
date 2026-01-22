@@ -25,6 +25,7 @@ import GrowthSocialMedia from "./pages/admin/growth/SocialMedia";
 import GrowthInstagram from "./pages/admin/growth/Instagram";
 import AdminMarketplace from "./pages/admin/Marketplace";
 import AdminShipping from "./pages/admin/Shipping";
+import AdminGoogleReviews from "./pages/admin/GoogleReviews";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
 import CustomerCategories from "./pages/customer/Categories";
@@ -141,6 +142,7 @@ const App = () => {
                       <Route path="/admin/growth/instagram" element={<GrowthInstagram />} />
                       <Route path="/admin/marketplace" element={<AdminMarketplace />} />
                       <Route path="/admin/shipping" element={<AdminShipping />} />
+                      <Route path="/admin/google-reviews" element={<AdminGoogleReviews />} />
                       <Route path="/admin/settings" element={<AdminSettings />} />
 
                       {/* Super Admin Routes */}

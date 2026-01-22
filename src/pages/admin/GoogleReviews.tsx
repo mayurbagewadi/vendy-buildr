@@ -256,6 +256,27 @@ const AdminGoogleReviews = () => {
     );
   };
 
+  const getInitials = (name: string) => {
+    const words = name.trim().split(' ');
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-blue-400 to-blue-600',
+      'from-green-400 to-green-600',
+      'from-purple-400 to-purple-600',
+      'from-pink-400 to-pink-600',
+      'from-orange-400 to-orange-600',
+      'from-teal-400 to-teal-600',
+      'from-indigo-400 to-indigo-600',
+      'from-red-400 to-red-600',
+    ];
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -467,13 +488,16 @@ const AdminGoogleReviews = () => {
                         <img
                           src={review.profile_photo_url}
                           alt={review.author_name}
-                          className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                          className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
                           onError={() => setImageErrors(prev => ({ ...prev, [index]: true }))}
                           loading="lazy"
+                          crossOrigin="anonymous"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border border-gray-200">
-                          <User className="h-5 w-5 text-primary/60" />
+                        <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarColor(review.author_name)} flex items-center justify-center border-2 border-white shadow-md`}>
+                          <span className="text-white font-bold text-xs">
+                            {getInitials(review.author_name)}
+                          </span>
                         </div>
                       )}
                       <div className="flex-1">

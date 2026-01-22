@@ -48,6 +48,14 @@ interface MarketplaceFeature {
   is_active: boolean;
   menu_order: number;
   created_at: string;
+  pricing_model?: string;
+  price_onetime?: number;
+  price_monthly?: number;
+  price_yearly?: number;
+  quota_onetime?: number;
+  quota_monthly?: number;
+  quota_yearly?: number;
+  quota_period?: string;
 }
 
 const iconOptions = [
@@ -92,6 +100,14 @@ const SuperadminMarketplace = () => {
     price: 0,
     is_active: true,
     menu_order: 0,
+    pricing_model: "onetime",
+    price_onetime: 0,
+    price_monthly: 0,
+    price_yearly: 0,
+    quota_onetime: 15,
+    quota_monthly: 30,
+    quota_yearly: 50,
+    quota_period: "monthly",
   });
 
   useEffect(() => {
@@ -156,6 +172,14 @@ const SuperadminMarketplace = () => {
       price: 0,
       is_active: true,
       menu_order: features.length + 1,
+      pricing_model: "onetime",
+      price_onetime: 0,
+      price_monthly: 0,
+      price_yearly: 0,
+      quota_onetime: 15,
+      quota_monthly: 30,
+      quota_yearly: 50,
+      quota_period: "monthly",
     });
     setDialogOpen(true);
   };
@@ -172,6 +196,14 @@ const SuperadminMarketplace = () => {
       price: feature.price,
       is_active: feature.is_active,
       menu_order: feature.menu_order,
+      pricing_model: feature.pricing_model || "onetime",
+      price_onetime: feature.price_onetime || 0,
+      price_monthly: feature.price_monthly || 0,
+      price_yearly: feature.price_yearly || 0,
+      quota_onetime: feature.quota_onetime || 15,
+      quota_monthly: feature.quota_monthly || 30,
+      quota_yearly: feature.quota_yearly || 50,
+      quota_period: feature.quota_period || "monthly",
     });
     setDialogOpen(true);
   };
@@ -200,6 +232,14 @@ const SuperadminMarketplace = () => {
             price: formData.is_free ? 0 : formData.price,
             is_active: formData.is_active,
             menu_order: formData.menu_order,
+            pricing_model: formData.pricing_model,
+            price_onetime: formData.price_onetime,
+            price_monthly: formData.price_monthly,
+            price_yearly: formData.price_yearly,
+            quota_onetime: formData.quota_onetime,
+            quota_monthly: formData.quota_monthly,
+            quota_yearly: formData.quota_yearly,
+            quota_period: formData.quota_period,
           });
 
         if (error) throw error;
@@ -220,6 +260,14 @@ const SuperadminMarketplace = () => {
             price: formData.is_free ? 0 : formData.price,
             is_active: formData.is_active,
             menu_order: formData.menu_order,
+            pricing_model: formData.pricing_model,
+            price_onetime: formData.price_onetime,
+            price_monthly: formData.price_monthly,
+            price_yearly: formData.price_yearly,
+            quota_onetime: formData.quota_onetime,
+            quota_monthly: formData.quota_monthly,
+            quota_yearly: formData.quota_yearly,
+            quota_period: formData.quota_period,
           })
           .eq('id', selectedFeature?.id);
 
@@ -380,7 +428,7 @@ const SuperadminMarketplace = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{dialogMode === "add" ? "Add Feature" : "Edit Feature"}</DialogTitle>
             <DialogDescription>
@@ -481,6 +529,102 @@ const SuperadminMarketplace = () => {
                 placeholder="1"
               />
             </div>
+
+            {/* Google Reviews Specific Pricing & Quota */}
+            {formData.slug === 'google-reviews' && (
+              <>
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-semibold text-sm">Google Reviews Pricing & API Quota</h4>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pricing_model">Pricing Model</Label>
+                    <Select
+                      value={formData.pricing_model}
+                      onValueChange={(value) => setFormData({ ...formData, pricing_model: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="onetime">One-time Only</SelectItem>
+                        <SelectItem value="monthly">Monthly Only</SelectItem>
+                        <SelectItem value="yearly">Yearly Only</SelectItem>
+                        <SelectItem value="mixed">Mixed (All Options)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(formData.pricing_model === 'onetime' || formData.pricing_model === 'mixed') && (
+                    <div className="grid grid-cols-2 gap-4 p-3 border rounded-lg">
+                      <div className="space-y-2">
+                        <Label htmlFor="price_onetime">One-time Price (₹)</Label>
+                        <Input
+                          id="price_onetime"
+                          type="number"
+                          value={formData.price_onetime}
+                          onChange={(e) => setFormData({ ...formData, price_onetime: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="quota_onetime">API Calls/Month</Label>
+                        <Input
+                          id="quota_onetime"
+                          type="number"
+                          value={formData.quota_onetime}
+                          onChange={(e) => setFormData({ ...formData, quota_onetime: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(formData.pricing_model === 'monthly' || formData.pricing_model === 'mixed') && (
+                    <div className="grid grid-cols-2 gap-4 p-3 border rounded-lg">
+                      <div className="space-y-2">
+                        <Label htmlFor="price_monthly">Monthly Price (₹)</Label>
+                        <Input
+                          id="price_monthly"
+                          type="number"
+                          value={formData.price_monthly}
+                          onChange={(e) => setFormData({ ...formData, price_monthly: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="quota_monthly">API Calls/Month</Label>
+                        <Input
+                          id="quota_monthly"
+                          type="number"
+                          value={formData.quota_monthly}
+                          onChange={(e) => setFormData({ ...formData, quota_monthly: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(formData.pricing_model === 'yearly' || formData.pricing_model === 'mixed') && (
+                    <div className="grid grid-cols-2 gap-4 p-3 border rounded-lg">
+                      <div className="space-y-2">
+                        <Label htmlFor="price_yearly">Yearly Price (₹)</Label>
+                        <Input
+                          id="price_yearly"
+                          type="number"
+                          value={formData.price_yearly}
+                          onChange={(e) => setFormData({ ...formData, price_yearly: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="quota_yearly">API Calls/Month</Label>
+                        <Input
+                          id="quota_yearly"
+                          type="number"
+                          value={formData.quota_yearly}
+                          onChange={(e) => setFormData({ ...formData, quota_yearly: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

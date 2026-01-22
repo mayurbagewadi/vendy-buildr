@@ -53,6 +53,8 @@ const planFormSchema = z.object({
   enable_custom_domain: z.boolean().default(false),
   enable_order_emails: z.boolean().default(false),
   enable_ai_voice: z.boolean().default(false),
+  google_reviews_calls_limit: z.coerce.number().min(0).default(15),
+  google_reviews_period: z.enum(["monthly", "yearly"]).default("monthly"),
 });
 
 type PlanFormValues = z.infer<typeof planFormSchema>;
@@ -96,6 +98,8 @@ export const PlanFormDialog = ({
       enable_custom_domain: false,
       enable_order_emails: false,
       enable_ai_voice: false,
+      google_reviews_calls_limit: 15,
+      google_reviews_period: "monthly",
     },
   });
 
@@ -126,6 +130,8 @@ export const PlanFormDialog = ({
         enable_custom_domain: false,
         enable_order_emails: false,
         enable_ai_voice: false,
+        google_reviews_calls_limit: 15,
+        google_reviews_period: "monthly",
       });
     }
   }, [open, defaultValues, form]);
@@ -555,6 +561,59 @@ export const PlanFormDialog = ({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <Separator />
+
+            {/* Google Reviews Quota */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Google Reviews API Quota</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="google_reviews_calls_limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Calls Limit</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="15"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Number of API calls allowed per period
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="google_reviews_period"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Period</FormLabel>
+                      <FormControl>
+                        <select
+                          className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                          {...field}
+                        >
+                          <option value="monthly">Monthly</option>
+                          <option value="yearly">Yearly</option>
+                        </select>
+                      </FormControl>
+                      <FormDescription>
+                        Quota reset period
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <Separator />

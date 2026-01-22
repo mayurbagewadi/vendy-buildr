@@ -21,7 +21,8 @@ import {
   Share2,
   Instagram,
   Store,
-  Truck
+  Truck,
+  Star
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -310,6 +311,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/shipping",
       icon: Truck,
       current: location.pathname === "/admin/shipping",
+    }] : []),
+    // Conditionally show Google Reviews when enabled
+    ...(enabledFeatures.includes('google-reviews') ? [{
+      name: "Google Reviews",
+      href: "/admin/google-reviews",
+      icon: Star,
+      current: location.pathname === "/admin/google-reviews",
     }] : []),
     {
       name: "Marketplace",
