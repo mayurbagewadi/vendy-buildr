@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Search, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Search, Plus, ArrowRight, CheckCircle2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { MarketplacePaymentModal } from "@/components/marketplace/MarketplacePaymentModal";
+import { checkExistingPurchase, enableFreeFeature } from "@/lib/marketplace/paymentService";
 
 interface MarketplaceFeature {
   id: string;
@@ -59,9 +61,18 @@ const AdminMarketplace = () => {
   const [features, setFeatures] = useState<MarketplaceFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingFeature, setAddingFeature] = useState<string | null>(null);
+  const [removingFeature, setRemovingFeature] = useState<string | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedFeatureForPayment, setSelectedFeatureForPayment] = useState<MarketplaceFeature | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [customerDetails, setCustomerDetails] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  });
 
   useEffect(() => {
     fetchStoreData();
@@ -72,6 +83,8 @@ const AdminMarketplace = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      setUserId(session.user.id);
 
       const { data: store, error } = await supabase
         .from('stores')
@@ -87,6 +100,27 @@ const AdminMarketplace = () => {
           enabled_features: (store.enabled_features as string[]) || []
         });
         setEnabledFeatures((store.enabled_features as string[]) || []);
+      }
+
+      // Fetch customer details for payment
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setCustomerDetails({
+          name: profile.full_name || session.user.email || '',
+          email: profile.email || session.user.email || '',
+          phone: profile.phone || '',
+        });
+      } else {
+        setCustomerDetails({
+          name: session.user.email || '',
+          email: session.user.email || '',
+          phone: '',
+        });
       }
     } catch (error) {
       console.error('Failed to fetch store data:', error);
@@ -160,7 +194,6 @@ const AdminMarketplace = () => {
       return;
     }
 
-    // Add feature to enabled_features
     if (!storeData) {
       toast({
         title: "Error",
@@ -173,7 +206,83 @@ const AdminMarketplace = () => {
     setAddingFeature(feature.slug);
 
     try {
-      const newEnabledFeatures = [...enabledFeatures, feature.slug];
+      // Check if feature is free
+      if (feature.is_free) {
+        // Free feature - add directly
+        const result = await enableFreeFeature(storeData.id, feature.slug, enabledFeatures);
+
+        if (result.success) {
+          const newEnabledFeatures = [...enabledFeatures, feature.slug];
+          setEnabledFeatures(newEnabledFeatures);
+          setStoreData({ ...storeData, enabled_features: newEnabledFeatures });
+
+          toast({
+            title: "Feature Added",
+            description: `${feature.name} has been added to your store`,
+          });
+
+          navigate(getFeatureRoute(feature.slug));
+        } else {
+          throw new Error(result.error);
+        }
+      } else {
+        // Paid feature - check if already purchased
+        const { purchased } = await checkExistingPurchase(storeData.id, feature.slug);
+
+        if (purchased) {
+          // Already purchased - just add to enabled_features
+          const newEnabledFeatures = [...enabledFeatures, feature.slug];
+
+          const { error } = await supabase
+            .from('stores')
+            .update({ enabled_features: newEnabledFeatures })
+            .eq('id', storeData.id);
+
+          if (error) throw error;
+
+          setEnabledFeatures(newEnabledFeatures);
+          setStoreData({ ...storeData, enabled_features: newEnabledFeatures });
+
+          toast({
+            title: "Feature Enabled",
+            description: `${feature.name} has been enabled`,
+          });
+
+          navigate(getFeatureRoute(feature.slug));
+        } else {
+          // Not purchased - show payment modal
+          setSelectedFeatureForPayment(feature);
+          setPaymentModalOpen(true);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to add feature:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add feature. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingFeature(null);
+    }
+  };
+
+  const handleRemoveFeature = async (feature: MarketplaceFeature, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering handleAddFeature
+
+    if (!storeData) {
+      toast({
+        title: "Error",
+        description: "Store data not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRemovingFeature(feature.slug);
+
+    try {
+      const newEnabledFeatures = enabledFeatures.filter(f => f !== feature.slug);
 
       const { error } = await supabase
         .from('stores')
@@ -187,21 +296,48 @@ const AdminMarketplace = () => {
       setStoreData({ ...storeData, enabled_features: newEnabledFeatures });
 
       toast({
-        title: "Feature Added",
-        description: `${feature.name} has been added to your store`,
+        title: "Feature Removed",
+        description: `${feature.name} has been removed from your store`,
       });
-
-      // Navigate to feature page
-      navigate(getFeatureRoute(feature.slug));
     } catch (error) {
-      console.error('Failed to add feature:', error);
+      console.error('Failed to remove feature:', error);
       toast({
         title: "Error",
-        description: "Failed to add feature. Please try again.",
+        description: "Failed to remove feature. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setAddingFeature(null);
+      setRemovingFeature(null);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!selectedFeatureForPayment || !storeData) return;
+
+    try {
+      // Add feature to enabled_features after successful payment
+      const newEnabledFeatures = [...enabledFeatures, selectedFeatureForPayment.slug];
+
+      const { error } = await supabase
+        .from('stores')
+        .update({ enabled_features: newEnabledFeatures })
+        .eq('id', storeData.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setEnabledFeatures(newEnabledFeatures);
+      setStoreData({ ...storeData, enabled_features: newEnabledFeatures });
+
+      // Navigate to feature page
+      navigate(getFeatureRoute(selectedFeatureForPayment.slug));
+    } catch (error) {
+      console.error('Failed to enable feature after payment:', error);
+      toast({
+        title: "Warning",
+        description: "Payment successful but failed to enable feature. Please contact support.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -317,29 +453,48 @@ const AdminMarketplace = () => {
                         {feature.description}
                       </CardDescription>
                     </div>
-                    <Button
-                      onClick={() => handleAddFeature(feature)}
-                      className="w-full"
-                      variant={isAdded ? "outline" : "default"}
-                      disabled={addingFeature === feature.slug}
-                    >
-                      {addingFeature === feature.slug ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Adding...
-                        </>
-                      ) : isAdded ? (
-                        <>
+                    {isAdded ? (
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1"
+                          onClick={() => handleAddFeature(feature)}
+                          variant="outline"
+                        >
                           Configure
                           <ArrowRight className="h-4 w-4 ml-2" />
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Feature
-                        </>
-                      )}
-                    </Button>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={(e) => handleRemoveFeature(feature, e)}
+                          disabled={removingFeature === feature.slug}
+                        >
+                          {removingFeature === feature.slug ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => handleAddFeature(feature)}
+                        className="w-full"
+                        disabled={addingFeature === feature.slug}
+                      >
+                        {addingFeature === feature.slug ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Feature
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -357,14 +512,27 @@ const AdminMarketplace = () => {
               <div>
                 <h3 className="font-semibold mb-1">How Marketplace Works</h3>
                 <p className="text-sm text-muted-foreground">
-                  Click "Add Feature" to add it to your store. The feature will appear in your sidebar menu
-                  and you'll be taken to the configuration page.
+                  Click "Add Feature" to add it to your store. Free features are added instantly.
+                  Paid features require payment before activation.
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Modal */}
+      {selectedFeatureForPayment && storeData && userId && (
+        <MarketplacePaymentModal
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          feature={selectedFeatureForPayment}
+          storeId={storeData.id}
+          userId={userId}
+          customerDetails={customerDetails}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </AdminLayout>
   );
 };
