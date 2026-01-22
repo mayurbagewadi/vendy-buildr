@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Star, CheckCircle2, Loader2, ExternalLink, Power, RefreshCw, AlertCircle } from "lucide-react";
+import { Star, CheckCircle2, Loader2, ExternalLink, Power, RefreshCw, AlertCircle, User } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,7 @@ const AdminGoogleReviews = () => {
   const [enabled, setEnabled] = useState(false);
   const [placeId, setPlaceId] = useState("");
   const [reviewsCache, setReviewsCache] = useState<ReviewsCache | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [quota, setQuota] = useState<{
     used: number;
     limit: number;
@@ -462,11 +463,19 @@ const AdminGoogleReviews = () => {
                 {reviewsCache.reviews?.slice(0, 5).map((review, index) => (
                   <div key={index} className="p-4 border rounded-lg space-y-2">
                     <div className="flex items-start gap-3">
-                      <img
-                        src={review.profile_photo_url}
-                        alt={review.author_name}
-                        className="h-10 w-10 rounded-full"
-                      />
+                      {review.profile_photo_url && !imageErrors[index] ? (
+                        <img
+                          src={review.profile_photo_url}
+                          alt={review.author_name}
+                          className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                          onError={() => setImageErrors(prev => ({ ...prev, [index]: true }))}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center border border-gray-200">
+                          <User className="h-5 w-5 text-primary/60" />
+                        </div>
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium">{review.author_name}</h4>
