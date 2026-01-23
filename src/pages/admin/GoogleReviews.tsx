@@ -10,6 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Review {
   author_name: string;
@@ -33,9 +40,12 @@ const AdminGoogleReviews = () => {
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [placeId, setPlaceId] = useState("");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [displayType, setDisplayType] = useState<"carousel" | "column" | "google-widget">("carousel");
   const [reviewsCache, setReviewsCache] = useState<ReviewsCache | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [quota, setQuota] = useState<{
@@ -56,7 +66,7 @@ const AdminGoogleReviews = () => {
 
       const { data: store } = await supabase
         .from('stores')
-        .select('id, google_place_id, google_reviews_enabled')
+        .select('id, google_place_id, google_reviews_enabled, google_reviews_display_type, google_maps_url')
         .eq('user_id', session.user.id)
         .single();
 
@@ -64,6 +74,8 @@ const AdminGoogleReviews = () => {
         setStoreId(store.id);
         setEnabled(store.google_reviews_enabled || false);
         setPlaceId(store.google_place_id || "");
+        setGoogleMapsUrl(store.google_maps_url || "");
+        setDisplayType(store.google_reviews_display_type || "carousel");
 
         // Check if user has purchased Google Reviews from marketplace
         const { data: purchase } = await supabase
@@ -241,6 +253,87 @@ const AdminGoogleReviews = () => {
     }
   };
 
+  const handleSaveDisplayType = async (type: "carousel" | "column" | "google-widget") => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .update({ google_reviews_display_type: type })
+        .eq('id', storeId);
+
+      if (error) throw error;
+
+      setDisplayType(type);
+      const displayNames: Record<string, string> = {
+        'carousel': 'Carousel (Auto-scroll)',
+        'column': 'Column (Side-by-side)',
+        'google-widget': 'Google Widget (All Reviews)'
+      };
+      toast({
+        title: "Success",
+        description: `Display type changed to ${displayNames[type]}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save display type",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveGoogleMapsUrl = async () => {
+    console.log('Saving Google Maps URL:', googleMapsUrl);
+    console.log('Store ID:', storeId);
+
+    if (!googleMapsUrl.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a Google Maps URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!storeId) {
+      toast({
+        title: "Error",
+        description: "Store ID not found. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error, data } = await supabase
+        .from('stores')
+        .update({ google_maps_url: googleMapsUrl.trim() })
+        .eq('id', storeId)
+        .select();
+
+      console.log('Update result:', { error, data });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success ✓",
+        description: "Google Maps URL saved successfully! Your store will now show reviews.",
+      });
+    } catch (error: any) {
+      console.error('Save error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save URL",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex gap-0.5">
@@ -340,6 +433,95 @@ const AdminGoogleReviews = () => {
           </CardContent>
         </Card>
 
+        {/* Display Type Selector */}
+        {enabled && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Display Type</CardTitle>
+              <CardDescription>
+                Choose how reviews are displayed on your store
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label htmlFor="display-type">Review Display Style</Label>
+                <Select value={displayType} onValueChange={(value) => handleSaveDisplayType(value as "carousel" | "column" | "google-widget")}>
+                  <SelectTrigger id="display-type" disabled={saving}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="carousel">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Carousel (Auto-scroll)</span>
+                        <span className="text-xs text-muted-foreground">Smooth left-sliding auto-scroll with 5 reviews</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="column">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Column (Side-by-side)</span>
+                        <span className="text-xs text-muted-foreground">Grid layout with 5 reviews max</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="google-widget">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Google Widget (All Reviews)</span>
+                        <span className="text-xs text-muted-foreground">Links to all reviews on Google Maps</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Display Type Description */}
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <h4 className="font-semibold text-sm mb-2">
+                  {displayType === 'carousel' ? '🎠 Carousel Mode' : displayType === 'column' ? '📊 Column Mode' : '🔗 Google Widget'}
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  {displayType === 'carousel'
+                    ? 'Reviews will smoothly auto-scroll left, displaying 5 cards at a time. Mobile visitors can swipe to see more reviews.'
+                    : displayType === 'column'
+                    ? 'Reviews will be displayed in a responsive grid layout. Desktop shows 3 columns, tablet shows 2 columns, mobile shows 1 column.'
+                    : 'Displays a button linking to your Google Business Profile showing all reviews. Shows complete review count and authentic ratings.'}
+                </p>
+              </div>
+
+              {/* Google Maps URL Field (for google-widget) */}
+              {displayType === 'google-widget' && (
+                <div className="space-y-3 pt-4 border-t">
+                  <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <AlertCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      <strong>Google Widget Mode:</strong> No Place ID or API needed! Just paste your Google Maps link below.
+                      Your store will display reviews from the cache (if available) or show a link to Google.
+                    </AlertDescription>
+                  </Alert>
+
+                  <Label htmlFor="google_maps_url">Google Maps URL</Label>
+                  <Input
+                    id="google_maps_url"
+                    type="url"
+                    placeholder="https://maps.app.goo.gl/xxxxx or full Google Maps URL"
+                    value={googleMapsUrl}
+                    onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste the Google Maps link from your business profile (e.g., https://maps.app.goo.gl/1FiEnfPeVMheDDdz5)
+                  </p>
+                  <Button
+                    onClick={handleSaveGoogleMapsUrl}
+                    disabled={saving}
+                    className="w-full md:w-auto"
+                  >
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {saving ? 'Saving...' : 'Save Google Maps URL'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quota Display */}
         {quota && (
           <Card>
@@ -380,9 +562,11 @@ const AdminGoogleReviews = () => {
         {/* Setup Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Google Place ID</CardTitle>
+            <CardTitle>Google Place ID {displayType === 'google-widget' && <span className="text-sm font-normal text-muted-foreground">(Optional for Widget mode)</span>}</CardTitle>
             <CardDescription>
-              Enter your Google Place ID to fetch reviews from Google
+              {displayType === 'google-widget'
+                ? 'Optional: Fetch reviews to display them on your store. Or skip this and just use the Google Maps URL below.'
+                : 'Enter your Google Place ID to fetch reviews from Google'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -416,6 +600,15 @@ const AdminGoogleReviews = () => {
                     </p>
                   </div>
                 </div>
+              </AlertDescription>
+            </Alert>
+
+            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
+                <strong>Google API Limitation:</strong> Google Places API returns a maximum of 5 reviews,
+                sorted by relevance (not date). New reviews may take time to appear as Google rotates
+                which reviews it considers "most helpful". This is a Google limitation, not our system.
               </AlertDescription>
             </Alert>
 

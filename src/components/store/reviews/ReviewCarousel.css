@@ -1,0 +1,32 @@
+/* Hide scrollbar while keeping scroll functionality */
+.review-carousel-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.review-carousel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Infinite Marquee Animation */
+.review-marquee-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.review-marquee-track {
+  display: flex;
+  gap: 1rem; /* 16px to match gap-4 */
+  animation: marquee linear infinite;
+  will-change: transform;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* Scroll exactly 50% (through first set of reviews) */
+    transform: translateX(-50%);
+  }
+}

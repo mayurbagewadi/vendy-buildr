@@ -437,7 +437,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           <div className="container mx-auto px-4">
             <GoogleReviewsSection
               storeId={store.id}
-              variant="carousel"
               autoPlay={true}
             />
           </div>

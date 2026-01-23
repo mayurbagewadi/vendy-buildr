@@ -122,7 +122,9 @@ serve(async (req) => {
     }
 
     // Fetch reviews from Google Places API
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${google_place_id}&fields=name,rating,user_ratings_total,reviews&key=${GOOGLE_API_KEY}`;
+    // Note: Google Places API returns max 5 reviews, sorted by relevance (not date)
+    // Adding reviews_sort=newest attempts to get recent reviews (undocumented parameter)
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${google_place_id}&fields=name,rating,user_ratings_total,reviews&reviews_sort=newest&key=${GOOGLE_API_KEY}`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -137,11 +139,19 @@ serve(async (req) => {
     const result = data.result;
     const reviews = result.reviews || [];
 
-    // Log photo URLs for debugging (first review only)
+    // Enhanced logging for debugging
+    console.log('=== Google Reviews Fetch Debug ===');
+    console.log('Total reviews on Google:', result.user_ratings_total);
+    console.log('Reviews returned by API:', reviews.length);
     if (reviews.length > 0) {
-      console.log('Sample review photo URL:', reviews[0].profile_photo_url);
-      console.log('Sample review author:', reviews[0].author_name);
+      console.log('Review dates (time):', reviews.map((r: any) => ({
+        author: r.author_name,
+        time: r.time,
+        date: new Date(r.time * 1000).toISOString(),
+        relative: r.relative_time_description
+      })));
     }
+    console.log('================================');
 
     // Increment API call counter
     await supabase
