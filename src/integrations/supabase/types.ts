@@ -153,6 +153,50 @@ export type Database = {
         }
         Relationships: []
       }
+      google_reviews_cache: {
+        Row: {
+          average_rating: number | null
+          created_at: string | null
+          google_place_id: string
+          id: string
+          last_fetched: string | null
+          reviews: Json | null
+          store_id: string
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          average_rating?: number | null
+          created_at?: string | null
+          google_place_id: string
+          id?: string
+          last_fetched?: string | null
+          reviews?: Json | null
+          store_id: string
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          average_rating?: number | null
+          created_at?: string | null
+          google_place_id?: string
+          id?: string
+          last_fetched?: string | null
+          reviews?: Json | null
+          store_id?: string
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_reviews_cache_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       helper_applications: {
         Row: {
           application_status: string
@@ -401,6 +445,137 @@ export type Database = {
           },
         ]
       }
+      marketplace_features: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          is_free: boolean | null
+          menu_order: number | null
+          name: string
+          price: number | null
+          price_monthly: number | null
+          price_onetime: number | null
+          price_yearly: number | null
+          pricing_model: string | null
+          quota_monthly: number | null
+          quota_onetime: number | null
+          quota_period: string | null
+          quota_yearly: number | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          menu_order?: number | null
+          name: string
+          price?: number | null
+          price_monthly?: number | null
+          price_onetime?: number | null
+          price_yearly?: number | null
+          pricing_model?: string | null
+          quota_monthly?: number | null
+          quota_onetime?: number | null
+          quota_period?: string | null
+          quota_yearly?: number | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          menu_order?: number | null
+          name?: string
+          price?: number | null
+          price_monthly?: number | null
+          price_onetime?: number | null
+          price_yearly?: number | null
+          pricing_model?: string | null
+          quota_monthly?: number | null
+          quota_onetime?: number | null
+          quota_period?: string | null
+          quota_yearly?: number | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_purchases: {
+        Row: {
+          amount_paid: number
+          auto_renew: boolean | null
+          calls_used: number | null
+          created_at: string | null
+          expires_at: string | null
+          feature_slug: string
+          id: string
+          last_reset: string | null
+          payment_id: string | null
+          pricing_type: string
+          purchased_at: string | null
+          quota_limit: number | null
+          status: string | null
+          store_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_paid: number
+          auto_renew?: boolean | null
+          calls_used?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          feature_slug: string
+          id?: string
+          last_reset?: string | null
+          payment_id?: string | null
+          pricing_type: string
+          purchased_at?: string | null
+          quota_limit?: number | null
+          status?: string | null
+          store_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          auto_renew?: boolean | null
+          calls_used?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          feature_slug?: string
+          id?: string
+          last_reset?: string | null
+          payment_id?: string | null
+          pricing_type?: string
+          purchased_at?: string | null
+          quota_limit?: number | null
+          status?: string | null
+          store_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_purchases_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_library: {
         Row: {
           created_at: string | null
@@ -552,6 +727,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          awb_code: string | null
+          courier_name: string | null
           created_at: string
           customer_email: string | null
           customer_name: string
@@ -573,13 +750,19 @@ export type Database = {
           payment_method: string
           payment_response: Json | null
           payment_status: string | null
+          shipping_status: string | null
+          shiprocket_order_id: string | null
+          shiprocket_shipment_id: string | null
           status: string
           store_id: string
           subtotal: number
           total: number
+          tracking_url: string | null
           updated_at: string
         }
         Insert: {
+          awb_code?: string | null
+          courier_name?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name: string
@@ -601,13 +784,19 @@ export type Database = {
           payment_method?: string
           payment_response?: Json | null
           payment_status?: string | null
+          shipping_status?: string | null
+          shiprocket_order_id?: string | null
+          shiprocket_shipment_id?: string | null
           status?: string
           store_id: string
           subtotal?: number
           total?: number
+          tracking_url?: string | null
           updated_at?: string
         }
         Update: {
+          awb_code?: string | null
+          courier_name?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string
@@ -629,10 +818,14 @@ export type Database = {
           payment_method?: string
           payment_response?: Json | null
           payment_status?: string | null
+          shipping_status?: string | null
+          shiprocket_order_id?: string | null
+          shiprocket_shipment_id?: string | null
           status?: string
           store_id?: string
           subtotal?: number
           total?: number
+          tracking_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1048,10 +1241,17 @@ export type Database = {
           custom_domain_verification_token: string | null
           custom_domain_verified: boolean | null
           description: string | null
+          enabled_features: string[] | null
           facebook_url: string | null
           force_location_sharing: boolean | null
           google_access_token: string | null
+          google_maps_url: string | null
+          google_place_id: string | null
           google_refresh_token: string | null
+          google_reviews_calls_used: number | null
+          google_reviews_display_type: string | null
+          google_reviews_enabled: boolean | null
+          google_reviews_last_reset: string | null
           google_sheet_connected: boolean | null
           google_sheet_id: string | null
           google_sheet_url: string | null
@@ -1073,12 +1273,20 @@ export type Database = {
           logo_url: string | null
           name: string
           opening_hours: string | null
+          package_breadth: number | null
+          package_height: number | null
+          package_length: number | null
+          package_weight: number | null
           payment_gateway_credentials: Json | null
           payment_mode: string | null
           policies: Json | null
           postal_code: string | null
           price_range: string | null
           seo_description: string | null
+          shipping_popup_enabled: boolean | null
+          shiprocket_email: string | null
+          shiprocket_pickup_location: string | null
+          shiprocket_token: string | null
           slug: string
           social_links: Json | null
           state: string | null
@@ -1107,10 +1315,17 @@ export type Database = {
           custom_domain_verification_token?: string | null
           custom_domain_verified?: boolean | null
           description?: string | null
+          enabled_features?: string[] | null
           facebook_url?: string | null
           force_location_sharing?: boolean | null
           google_access_token?: string | null
+          google_maps_url?: string | null
+          google_place_id?: string | null
           google_refresh_token?: string | null
+          google_reviews_calls_used?: number | null
+          google_reviews_display_type?: string | null
+          google_reviews_enabled?: boolean | null
+          google_reviews_last_reset?: string | null
           google_sheet_connected?: boolean | null
           google_sheet_id?: string | null
           google_sheet_url?: string | null
@@ -1132,12 +1347,20 @@ export type Database = {
           logo_url?: string | null
           name: string
           opening_hours?: string | null
+          package_breadth?: number | null
+          package_height?: number | null
+          package_length?: number | null
+          package_weight?: number | null
           payment_gateway_credentials?: Json | null
           payment_mode?: string | null
           policies?: Json | null
           postal_code?: string | null
           price_range?: string | null
           seo_description?: string | null
+          shipping_popup_enabled?: boolean | null
+          shiprocket_email?: string | null
+          shiprocket_pickup_location?: string | null
+          shiprocket_token?: string | null
           slug: string
           social_links?: Json | null
           state?: string | null
@@ -1166,10 +1389,17 @@ export type Database = {
           custom_domain_verification_token?: string | null
           custom_domain_verified?: boolean | null
           description?: string | null
+          enabled_features?: string[] | null
           facebook_url?: string | null
           force_location_sharing?: boolean | null
           google_access_token?: string | null
+          google_maps_url?: string | null
+          google_place_id?: string | null
           google_refresh_token?: string | null
+          google_reviews_calls_used?: number | null
+          google_reviews_display_type?: string | null
+          google_reviews_enabled?: boolean | null
+          google_reviews_last_reset?: string | null
           google_sheet_connected?: boolean | null
           google_sheet_id?: string | null
           google_sheet_url?: string | null
@@ -1191,12 +1421,20 @@ export type Database = {
           logo_url?: string | null
           name?: string
           opening_hours?: string | null
+          package_breadth?: number | null
+          package_height?: number | null
+          package_length?: number | null
+          package_weight?: number | null
           payment_gateway_credentials?: Json | null
           payment_mode?: string | null
           policies?: Json | null
           postal_code?: string | null
           price_range?: string | null
           seo_description?: string | null
+          shipping_popup_enabled?: boolean | null
+          shiprocket_email?: string | null
+          shiprocket_pickup_location?: string | null
+          shiprocket_token?: string | null
           slug?: string
           social_links?: Json | null
           state?: string | null
@@ -1225,6 +1463,8 @@ export type Database = {
           enable_location_sharing: boolean | null
           enable_order_emails: boolean | null
           features: Json | null
+          google_reviews_calls_limit: number | null
+          google_reviews_period: string | null
           id: string
           is_active: boolean | null
           is_default_plan: boolean | null
@@ -1252,6 +1492,8 @@ export type Database = {
           enable_location_sharing?: boolean | null
           enable_order_emails?: boolean | null
           features?: Json | null
+          google_reviews_calls_limit?: number | null
+          google_reviews_period?: string | null
           id?: string
           is_active?: boolean | null
           is_default_plan?: boolean | null
@@ -1279,6 +1521,8 @@ export type Database = {
           enable_location_sharing?: boolean | null
           enable_order_emails?: boolean | null
           features?: Json | null
+          google_reviews_calls_limit?: number | null
+          google_reviews_period?: string | null
           id?: string
           is_active?: boolean | null
           is_default_plan?: boolean | null
