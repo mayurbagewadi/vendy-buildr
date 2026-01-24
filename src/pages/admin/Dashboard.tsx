@@ -11,6 +11,7 @@ import {
   Users,
   Star,
   ArrowUpRight,
+  ArrowDownRight,
   Clock
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -234,7 +235,7 @@ const AdminDashboard = () => {
     {
       title: "Total Products",
       value: stats.totalProducts,
-      change: "+12%",
+      change: 12,
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -242,7 +243,7 @@ const AdminDashboard = () => {
     {
       title: "Active Products",
       value: stats.activeProducts,
-      change: "+8%",
+      change: 8,
       icon: TrendingUp,
       color: "text-success",
       bgColor: "bg-success/10",
@@ -250,7 +251,7 @@ const AdminDashboard = () => {
     {
       title: "Total Orders",
       value: stats.totalOrders,
-      change: "+23%",
+      change: 23,
       icon: ShoppingCart,
       color: "text-warning",
       bgColor: "bg-warning/10",
@@ -258,12 +259,33 @@ const AdminDashboard = () => {
     {
       title: "Customers",
       value: stats.totalCustomers,
-      change: "+16%",
+      change: 16,
       icon: Users,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
   ];
+
+  // Function to get change color based on positive/negative
+  const getChangeColor = (change: number): string => {
+    if (change > 0) return "text-success";
+    if (change < 0) return "text-destructive";
+    return "text-muted-foreground";
+  };
+
+  // Function to get change arrow based on positive/negative
+  const getChangeArrow = (change: number) => {
+    if (change > 0) return ArrowUpRight;
+    if (change < 0) return ArrowDownRight;
+    return ArrowUpRight;
+  };
+
+  // Function to format change text
+  const formatChange = (change: number): string => {
+    if (change > 0) return `+${change}%`;
+    if (change < 0) return `${change}%`;
+    return `${change}%`;
+  };
 
   return (
     <AdminLayout>
@@ -311,29 +333,35 @@ const AdminDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((stat, index) => (
-            <Card key={index} className="admin-stat-card group">
-              <CardContent className="p-4 lg:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">
-                      {stat.title}
-                    </p>
-                    <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
-                      {stat.value}
-                    </p>
-                    <p className="flex items-center text-xs lg:text-sm text-success mt-0.5 lg:mt-1">
-                      <ArrowUpRight className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">{stat.change} from last month</span>
-                    </p>
+          {statCards.map((stat, index) => {
+            const changeColor = getChangeColor(stat.change);
+            const ChangeArrow = getChangeArrow(stat.change);
+            const changeText = formatChange(stat.change);
+
+            return (
+              <Card key={index} className="admin-stat-card group">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">
+                        {stat.title}
+                      </p>
+                      <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
+                        {stat.value}
+                      </p>
+                      <p className={`flex items-center text-xs lg:text-sm ${changeColor} mt-0.5 lg:mt-1`}>
+                        <ChangeArrow className="w-3 h-3 mr-1 flex-shrink-0" />
+                        <span className="truncate">{changeText} from last month</span>
+                      </p>
+                    </div>
+                    <div className={`p-2 lg:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200 flex-shrink-0 ml-2`}>
+                      <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.color}`} />
+                    </div>
                   </div>
-                  <div className={`p-2 lg:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200 flex-shrink-0 ml-2`}>
-                    <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Store URL Card */}
