@@ -27,7 +27,19 @@ import {
   UserPlus,
   DollarSign,
   Users,
-  Target
+  Target,
+  Link2,
+  Image,
+  Video,
+  MessageCircle,
+  CreditCard,
+  Search,
+  Instagram,
+  MessageSquare,
+  Boxes,
+  ClipboardList,
+  Play,
+  LineChart
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -46,40 +58,95 @@ const Index = () => {
 
   const features = [
     {
-      icon: Zap,
-      title: "Lightning Fast Setup",
-      description: "Launch your premium store in under 5 minutes. No technical expertise needed.",
-      gradient: "from-amber-500 to-orange-500"
+      icon: Link2,
+      title: "Free Subdomain",
+      description: "Get your own professional subdomain instantly. Launch your store without any domain costs.",
+      gradient: "from-blue-500 to-cyan-500",
+      size: "normal"
     },
     {
-      icon: Package,
-      title: "Smart Inventory",
-      description: "Manage your product catalog efficiently with our intuitive interface.",
-      gradient: "from-emerald-500 to-teal-500"
+      icon: Image,
+      title: "Banner & Carousel",
+      description: "Showcase offers with stunning banners and auto-rotating carousels that grab attention.",
+      gradient: "from-purple-500 to-pink-500",
+      size: "normal"
     },
     {
-      icon: Smartphone,
-      title: "WhatsApp Integration",
-      description: "Connect with customers on their preferred messaging platform.",
-      gradient: "from-green-500 to-emerald-600"
+      icon: Video,
+      title: "Product Videos",
+      description: "Engage customers with high-quality product videos that boost conversions.",
+      gradient: "from-rose-500 to-orange-500",
+      size: "large"
     },
     {
-      icon: Shield,
-      title: "Enterprise Security",
-      description: "Bank-level security with 99.9% uptime guarantee for peace of mind.",
-      gradient: "from-blue-500 to-indigo-500"
+      icon: MessageCircle,
+      title: "WhatsApp Orders",
+      description: "Receive orders directly on WhatsApp. Chat with customers in real-time instantly.",
+      gradient: "from-green-500 to-emerald-500",
+      size: "normal"
     },
     {
-      icon: BarChart3,
-      title: "Advanced Analytics",
-      description: "Make data-driven decisions with real-time insights and reports.",
-      gradient: "from-purple-500 to-pink-500"
+      icon: CreditCard,
+      title: "Online Payments",
+      description: "Accept direct payments online with secure, trusted payment gateways.",
+      gradient: "from-indigo-500 to-blue-500",
+      size: "normal"
     },
     {
-      icon: Crown,
-      title: "Premium Experience",
-      description: "Deliver a luxurious shopping experience that converts visitors to customers.",
-      gradient: "from-yellow-500 to-amber-500"
+      icon: Search,
+      title: "SEO & Indexing",
+      description: "Get found on Google with built-in SEO optimization and automatic indexing.",
+      gradient: "from-yellow-500 to-orange-500",
+      size: "normal"
+    },
+    {
+      icon: MessageSquare,
+      title: "Instagram Auto-Reply",
+      description: "Never miss a customer inquiry with intelligent Instagram auto-reply features.",
+      gradient: "from-pink-500 to-rose-500",
+      size: "normal"
+    },
+    {
+      icon: Star,
+      title: "Google Reviews",
+      description: "Display authentic Google Reviews on your site to build trust and credibility.",
+      gradient: "from-amber-500 to-yellow-500",
+      size: "large"
+    },
+    {
+      icon: Users,
+      title: "Advanced CRM",
+      description: "Manage customer relationships with powerful CRM tools for growth.",
+      gradient: "from-teal-500 to-cyan-500",
+      size: "normal"
+    },
+    {
+      icon: Boxes,
+      title: "Stock Management",
+      description: "Track inventory in real-time. Never oversell with smart stock alerts.",
+      gradient: "from-violet-500 to-purple-500",
+      size: "normal"
+    },
+    {
+      icon: Instagram,
+      title: "Instagram Videos",
+      description: "Embed Instagram videos directly on your website for better engagement.",
+      gradient: "from-fuchsia-500 to-pink-500",
+      size: "normal"
+    },
+    {
+      icon: LineChart,
+      title: "Business Analytics",
+      description: "Advanced insights into sales, customers, and trends. Make data-driven decisions.",
+      gradient: "from-emerald-500 to-teal-500",
+      size: "large"
+    },
+    {
+      icon: ClipboardList,
+      title: "Order Management",
+      description: "Streamline order processing from checkout to delivery with ease.",
+      gradient: "from-sky-500 to-blue-500",
+      size: "normal"
     }
   ];
 
@@ -412,25 +479,60 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Bento-box grid layout with varying sizes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="feature-card relative p-8 hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden"
+                className={`feature-card relative p-6 lg:p-8 hover:shadow-2xl transition-all duration-700 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden
+                  ${feature.size === 'large' ? 'lg:col-span-2 lg:row-span-2' : 'lg:col-span-1'}
+                  hover:-translate-y-2 hover:scale-[1.02]`}
+                style={{
+                  animationDelay: `${index * 50}ms`
+                }}
               >
-                {/* Gradient overlay on hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-                
-                <div className="relative z-10">
-                  <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300`}>
-                    <feature.icon className="w-8 h-8 text-white" />
+                {/* Animated gradient overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-all duration-700`} />
+
+                {/* Animated border glow */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-30 blur-xl transition-all duration-700`} />
+
+                {/* Decorative corner accent */}
+                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-20 transition-opacity duration-500`} />
+
+                <div className="relative z-10 h-full flex flex-col">
+                  {/* Icon with animated background */}
+                  <div className="mb-4 lg:mb-6">
+                    <div className={`relative inline-block`}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-md opacity-40 group-hover:blur-lg group-hover:opacity-60 transition-all duration-500`} />
+                      <div className={`relative w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                        <feature.icon className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="font-playfair font-bold text-xl mb-3 text-foreground">
+
+                  {/* Title with creative typography */}
+                  <h3 className={`font-bold mb-2 lg:mb-3 text-foreground group-hover:bg-gradient-to-br group-hover:${feature.gradient} group-hover:bg-clip-text group-hover:text-transparent transition-all duration-500
+                    ${feature.size === 'large' ? 'text-2xl lg:text-3xl font-playfair' : 'text-lg lg:text-xl'}`}>
                     {feature.title}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">
+
+                  {/* Description */}
+                  <p className={`text-muted-foreground leading-relaxed flex-grow
+                    ${feature.size === 'large' ? 'text-base lg:text-lg' : 'text-sm lg:text-base'}`}>
                     {feature.description}
                   </p>
+
+                  {/* Hover indicator */}
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
+                    <span className={`bg-gradient-to-br ${feature.gradient} bg-clip-text text-transparent`}>
+                      Learn more
+                    </span>
+                    <ArrowRight className={`w-4 h-4 bg-gradient-to-br ${feature.gradient} text-transparent group-hover:translate-x-1 transition-transform duration-300`} style={{
+                      background: `linear-gradient(to bottom right, currentColor, currentColor)`,
+                      WebkitBackgroundClip: 'text'
+                    }} />
+                  </div>
                 </div>
               </Card>
             ))}
