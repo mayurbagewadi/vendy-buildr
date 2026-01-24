@@ -10,8 +10,6 @@ import {
   ShoppingCart,
   Users,
   Star,
-  ArrowUpRight,
-  ArrowDownRight,
   Clock
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -27,13 +25,6 @@ const AdminDashboard = () => {
     activeProducts: 0,
     totalOrders: 0,
     totalCustomers: 0,
-  });
-
-  const [statsChange, setStatsChange] = useState({
-    totalProductsChange: 0,
-    activeProductsChange: 0,
-    totalOrdersChange: 0,
-    totalCustomersChange: 0,
   });
 
   const [storeName, setStoreName] = useState("Your Store");
@@ -145,7 +136,7 @@ const AdminDashboard = () => {
         }
       }
 
-      // Calculate current stats
+      // Calculate stats
       const activeProducts = products.filter(p => p.status === 'published').length;
       const totalOrders = ordersCountResult.count || 0;
 
@@ -157,65 +148,11 @@ const AdminDashboard = () => {
         totalCustomers = uniqueCustomers.size;
       }
 
-      // Calculate previous month stats (30 days ago)
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-
-      const previousProducts = products.filter(p => {
-        if (!p.createdAt) return false;
-        const createdDate = new Date(p.createdAt);
-        return createdDate < thirtyDaysAgo;
-      });
-
-      const previousActiveProducts = previousProducts.filter(p => p.status === 'published').length;
-
-      const previousOrdersResult = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('store_id', store.id)
-        .lt('created_at', thirtyDaysAgo.toISOString());
-
-      const previousTotalOrders = previousOrdersResult.count || 0;
-
-      const previousOrdersDataResult = await supabase
-        .from('orders')
-        .select('customer_email, customer_phone')
-        .eq('store_id', store.id)
-        .lt('created_at', thirtyDaysAgo.toISOString());
-
-      let previousTotalCustomers = 0;
-      if (previousOrdersDataResult.data) {
-        const uniqueCustomers = new Set(
-          previousOrdersDataResult.data.map(order => order.customer_email || order.customer_phone)
-        );
-        previousTotalCustomers = uniqueCustomers.size;
-      }
-
-      // Calculate percentage changes
-      const calculatePercentageChange = (current: number, previous: number): number => {
-        if (previous === 0) {
-          return current > 0 ? 100 : 0;
-        }
-        return Math.round(((current - previous) / previous) * 100);
-      };
-
-      const totalProductsChange = calculatePercentageChange(products.length, previousProducts.length);
-      const activeProductsChange = calculatePercentageChange(activeProducts, previousActiveProducts);
-      const totalOrdersChange = calculatePercentageChange(totalOrders, previousTotalOrders);
-      const totalCustomersChange = calculatePercentageChange(totalCustomers, previousTotalCustomers);
-
       setStats({
         totalProducts: products.length,
         activeProducts,
         totalOrders,
         totalCustomers,
-      });
-
-      setStatsChange({
-        totalProductsChange,
-        activeProductsChange,
-        totalOrdersChange,
-        totalCustomersChange,
       });
 
       // Set recent activity
@@ -296,7 +233,6 @@ const AdminDashboard = () => {
     {
       title: "Total Products",
       value: stats.totalProducts,
-      change: statsChange.totalProductsChange,
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -304,7 +240,6 @@ const AdminDashboard = () => {
     {
       title: "Active Products",
       value: stats.activeProducts,
-      change: statsChange.activeProductsChange,
       icon: TrendingUp,
       color: "text-success",
       bgColor: "bg-success/10",
@@ -312,7 +247,6 @@ const AdminDashboard = () => {
     {
       title: "Total Orders",
       value: stats.totalOrders,
-      change: statsChange.totalOrdersChange,
       icon: ShoppingCart,
       color: "text-warning",
       bgColor: "bg-warning/10",
@@ -320,33 +254,11 @@ const AdminDashboard = () => {
     {
       title: "Customers",
       value: stats.totalCustomers,
-      change: statsChange.totalCustomersChange,
       icon: Users,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
   ];
-
-  // Function to get change color based on positive/negative
-  const getChangeColor = (change: number): string => {
-    if (change > 0) return "text-success";
-    if (change < 0) return "text-destructive";
-    return "text-muted-foreground";
-  };
-
-  // Function to get change arrow based on positive/negative
-  const getChangeArrow = (change: number) => {
-    if (change > 0) return ArrowUpRight;
-    if (change < 0) return ArrowDownRight;
-    return ArrowUpRight;
-  };
-
-  // Function to format change text
-  const formatChange = (change: number): string => {
-    if (change > 0) return `+${change}%`;
-    if (change < 0) return `${change}%`;
-    return `${change}%`;
-  };
 
   return (
     <AdminLayout>
@@ -394,35 +306,25 @@ const AdminDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((stat, index) => {
-            const changeColor = getChangeColor(stat.change);
-            const ChangeArrow = getChangeArrow(stat.change);
-            const changeText = formatChange(stat.change);
-
-            return (
-              <Card key={index} className="admin-stat-card group">
-                <CardContent className="p-4 lg:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">
-                        {stat.title}
-                      </p>
-                      <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
-                        {stat.value}
-                      </p>
-                      <p className={`flex items-center text-xs lg:text-sm ${changeColor} mt-0.5 lg:mt-1`}>
-                        <ChangeArrow className="w-3 h-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{changeText} from last month</span>
-                      </p>
-                    </div>
-                    <div className={`p-2 lg:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200 flex-shrink-0 ml-2`}>
-                      <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.color}`} />
-                    </div>
+          {statCards.map((stat, index) => (
+            <Card key={index} className="admin-stat-card group">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs lg:text-sm font-medium text-muted-foreground truncate">
+                      {stat.title}
+                    </p>
+                    <p className="text-xl lg:text-2xl font-bold text-foreground mt-1 lg:mt-2">
+                      {stat.value}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div className={`p-2 lg:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-200 flex-shrink-0 ml-2`}>
+                    <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.color}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Store URL Card */}
