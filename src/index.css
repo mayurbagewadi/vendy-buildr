@@ -144,7 +144,7 @@
   }
   
   .admin-stat-card {
-    @apply admin-card p-6 hover:shadow-[var(--shadow-elevated)] cursor-pointer transition-[var(--transition-smooth)];
+    @apply admin-card hover:shadow-[var(--shadow-elevated)] cursor-pointer transition-[var(--transition-smooth)];
   }
   
   .admin-button-primary {

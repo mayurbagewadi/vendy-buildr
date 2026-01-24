@@ -263,37 +263,6 @@ const AdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-4 lg:space-y-6">
-        {/* Subscription Status Alert */}
-        {trialDaysRemaining !== null && trialDaysRemaining > 0 && countdown && subscriptionStatus && (
-          <Card className={`border-l-4 ${subscriptionStatus === 'trial' ? 'border-l-warning bg-warning/5' : 'border-l-primary bg-primary/5'}`}>
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <Clock className={`w-5 h-5 mt-0.5 flex-shrink-0 ${subscriptionStatus === 'trial' ? 'text-warning' : 'text-primary'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground text-sm">
-                    {subscriptionStatus === 'trial' ? 'Trial Status' : 'Subscription Status'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {subscriptionStatus === 'trial'
-                      ? 'Your free trial ends in '
-                      : 'Your subscription renews in '}
-                    <span className="font-mono font-semibold text-foreground">
-                      {countdown.days}d {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
-                    </span>
-                  </p>
-                </div>
-              </div>
-              {subscriptionStatus === 'trial' && (
-                <div className="flex flex-wrap gap-2 sm:ml-auto">
-                  <Button size="sm" className="whitespace-nowrap" onClick={() => navigate("/admin/subscription")}>
-                    Upgrade Now
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
