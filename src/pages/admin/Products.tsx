@@ -339,7 +339,11 @@ const Products = () => {
                   </TableHeader>
                   <TableBody>
                     {paginatedProducts.map((product) => (
-                      <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
+                      <TableRow
+                        key={product.id}
+                        className="hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                      >
                         <TableCell className="min-w-[200px]">
                           <div className="flex items-center space-x-2 lg:space-x-3">
                             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
@@ -374,29 +378,38 @@ const Products = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               title="View Details"
-                              onClick={() => window.open(`/products/${product.id}`, '_blank')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`/products/${product.id}`, '_blank');
+                              }}
                               className="h-8 w-8 p-0"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               title="Edit Product"
-                              onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/products/edit/${product.id}`);
+                              }}
                               className="h-8 w-8 p-0"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                              onClick={() => handleDeleteProduct(product.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteProduct(product.id);
+                              }}
                               title="Delete Product"
                             >
                               <Trash2 className="w-4 h-4" />
