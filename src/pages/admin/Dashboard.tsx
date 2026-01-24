@@ -29,6 +29,13 @@ const AdminDashboard = () => {
     totalCustomers: 0,
   });
 
+  const [statsChange, setStatsChange] = useState({
+    totalProductsChange: 0,
+    activeProductsChange: 0,
+    totalOrdersChange: 0,
+    totalCustomersChange: 0,
+  });
+
   const [storeName, setStoreName] = useState("Your Store");
   const [storeUrl, setStoreUrl] = useState("");
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
@@ -138,10 +145,10 @@ const AdminDashboard = () => {
         }
       }
 
-      // Calculate stats
+      // Calculate current stats
       const activeProducts = products.filter(p => p.status === 'published').length;
       const totalOrders = ordersCountResult.count || 0;
-      
+
       let totalCustomers = 0;
       if (ordersResult.data) {
         const uniqueCustomers = new Set(
@@ -150,11 +157,65 @@ const AdminDashboard = () => {
         totalCustomers = uniqueCustomers.size;
       }
 
+      // Calculate previous month stats (30 days ago)
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+      const previousProducts = products.filter(p => {
+        if (!p.createdAt) return false;
+        const createdDate = new Date(p.createdAt);
+        return createdDate < thirtyDaysAgo;
+      });
+
+      const previousActiveProducts = previousProducts.filter(p => p.status === 'published').length;
+
+      const previousOrdersResult = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('store_id', store.id)
+        .lt('created_at', thirtyDaysAgo.toISOString());
+
+      const previousTotalOrders = previousOrdersResult.count || 0;
+
+      const previousOrdersDataResult = await supabase
+        .from('orders')
+        .select('customer_email, customer_phone')
+        .eq('store_id', store.id)
+        .lt('created_at', thirtyDaysAgo.toISOString());
+
+      let previousTotalCustomers = 0;
+      if (previousOrdersDataResult.data) {
+        const uniqueCustomers = new Set(
+          previousOrdersDataResult.data.map(order => order.customer_email || order.customer_phone)
+        );
+        previousTotalCustomers = uniqueCustomers.size;
+      }
+
+      // Calculate percentage changes
+      const calculatePercentageChange = (current: number, previous: number): number => {
+        if (previous === 0) {
+          return current > 0 ? 100 : 0;
+        }
+        return Math.round(((current - previous) / previous) * 100);
+      };
+
+      const totalProductsChange = calculatePercentageChange(products.length, previousProducts.length);
+      const activeProductsChange = calculatePercentageChange(activeProducts, previousActiveProducts);
+      const totalOrdersChange = calculatePercentageChange(totalOrders, previousTotalOrders);
+      const totalCustomersChange = calculatePercentageChange(totalCustomers, previousTotalCustomers);
+
       setStats({
         totalProducts: products.length,
         activeProducts,
         totalOrders,
         totalCustomers,
+      });
+
+      setStatsChange({
+        totalProductsChange,
+        activeProductsChange,
+        totalOrdersChange,
+        totalCustomersChange,
       });
 
       // Set recent activity
@@ -235,7 +296,7 @@ const AdminDashboard = () => {
     {
       title: "Total Products",
       value: stats.totalProducts,
-      change: 12,
+      change: statsChange.totalProductsChange,
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -243,7 +304,7 @@ const AdminDashboard = () => {
     {
       title: "Active Products",
       value: stats.activeProducts,
-      change: 8,
+      change: statsChange.activeProductsChange,
       icon: TrendingUp,
       color: "text-success",
       bgColor: "bg-success/10",
@@ -251,7 +312,7 @@ const AdminDashboard = () => {
     {
       title: "Total Orders",
       value: stats.totalOrders,
-      change: 23,
+      change: statsChange.totalOrdersChange,
       icon: ShoppingCart,
       color: "text-warning",
       bgColor: "bg-warning/10",
@@ -259,7 +320,7 @@ const AdminDashboard = () => {
     {
       title: "Customers",
       value: stats.totalCustomers,
-      change: 16,
+      change: statsChange.totalCustomersChange,
       icon: Users,
       color: "text-primary",
       bgColor: "bg-primary/10",
