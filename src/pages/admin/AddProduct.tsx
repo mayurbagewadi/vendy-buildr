@@ -47,11 +47,6 @@ const productSchema = z.object({
   name: z.string().trim().min(1, "Product name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().trim().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
   category: z.string().min(1, "Category is required"),
-  baseSku: z.string().trim().optional(),
-  baseStock: z.string().refine((val) => {
-    const num = parseInt(val);
-    return !isNaN(num) && num >= 0;
-  }, "Stock must be a valid number (0 or greater)"),
   status: z.enum(["published", "draft", "inactive"]),
   variants: z.array(variantSchema).optional(),
 });
@@ -76,6 +71,8 @@ const AddProduct = () => {
   const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Store files until save
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); // Preview URLs for display
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [editingVariant, setEditingVariant] = useState({ name: "", price: "", sku: "" });
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -84,8 +81,6 @@ const AddProduct = () => {
       name: "",
       description: "",
 category: "",
-      baseSku: "",
-      baseStock: "",
       status: "published",  // FIX: Default to published so products are immediately visible
       variants: [],
     },
@@ -322,6 +317,38 @@ category: "",
     setVariants(prev => prev.filter(v => v.id !== id));
   };
 
+  const startEditVariant = (variant: Variant) => {
+    setEditingVariantId(variant.id);
+    setEditingVariant({ name: variant.name, price: variant.price, sku: variant.sku || "" });
+  };
+
+  const saveEditVariant = () => {
+    if (!editingVariantId || !editingVariant.name.trim() || !editingVariant.price.trim()) {
+      toast({
+        title: "Invalid variant",
+        description: "Please provide variant name and price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setVariants(prev =>
+      prev.map(v =>
+        v.id === editingVariantId
+          ? { ...v, name: editingVariant.name.trim(), price: editingVariant.price, sku: editingVariant.sku.trim() || undefined }
+          : v
+      )
+    );
+
+    setEditingVariantId(null);
+    setEditingVariant({ name: "", price: "", sku: "" });
+  };
+
+  const cancelEditVariant = () => {
+    setEditingVariantId(null);
+    setEditingVariant({ name: "", price: "", sku: "" });
+  };
+
   const getPriceRange = () => {
     if (variants.length === 0) return null;
     
@@ -492,8 +519,6 @@ category: "",
         slug: generateSlug(data.name),
         description: data.description,
         category: data.category,
-        stock: parseInt(data.baseStock),
-        sku: data.baseSku || undefined,
         status: data.status as 'published' | 'draft' | 'inactive',
         images: allImages,
         videoUrl: videoUrl.trim() || undefined,
@@ -640,39 +665,6 @@ category: "",
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="baseSku"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Base SKU (Optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Product SKU (optional)" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="baseStock"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Base Stock Quantity</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="0" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -705,12 +697,13 @@ category: "",
                             placeholder="0.00"
                             value={newVariant.price}
                             onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                            className="no-spinner"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">SKU (Optional)</label>
+                          <label className="text-sm font-medium">Stock</label>
                           <Input
-                            placeholder="Optional SKU"
+                            placeholder="0 = Unlimited"
                             value={newVariant.sku}
                             onChange={(e) => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
                           />
@@ -738,29 +731,93 @@ category: "",
                               <TableRow>
                                 <TableHead>Variant Name</TableHead>
                                 <TableHead>Price</TableHead>
-                                <TableHead>SKU</TableHead>
+                                <TableHead>Stock</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {variants.map((variant) => (
                                 <TableRow key={variant.id}>
-                                  <TableCell className="font-medium">{variant.name}</TableCell>
-                                  <TableCell>${parseFloat(variant.price).toFixed(2)}</TableCell>
-                                  <TableCell className="text-muted-foreground">
-                                    {variant.sku || "—"}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removeVariant(variant.id)}
-                                      className="text-destructive hover:text-destructive"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </TableCell>
+                                  {editingVariantId === variant.id ? (
+                                    <>
+                                      <TableCell>
+                                        <Input
+                                          value={editingVariant.name}
+                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, name: e.target.value }))}
+                                          className="h-8"
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          value={editingVariant.price}
+                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, price: e.target.value }))}
+                                          className="h-8 no-spinner"
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Input
+                                          placeholder="0 = Unlimited"
+                                          value={editingVariant.sku}
+                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, sku: e.target.value }))}
+                                          className="h-8"
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex gap-1">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={saveEditVariant}
+                                            className="text-green-600 hover:text-green-600 h-8 px-2"
+                                          >
+                                            Save
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={cancelEditVariant}
+                                            className="text-muted-foreground h-8 px-2"
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TableCell className="font-medium">{variant.name}</TableCell>
+                                      <TableCell>${parseFloat(variant.price).toFixed(2)}</TableCell>
+                                      <TableCell className="text-muted-foreground">
+                                        {variant.sku === "0" || variant.sku === "" ? "Unlimited" : (variant.sku || "—")}
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex gap-1">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => startEditVariant(variant)}
+                                            className="text-primary hover:text-primary h-8 px-2"
+                                          >
+                                            Edit
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeVariant(variant.id)}
+                                            className="text-destructive hover:text-destructive h-8 px-2"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </>
+                                  )}
                                 </TableRow>
                               ))}
                             </TableBody>
