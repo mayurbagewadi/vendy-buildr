@@ -76,7 +76,7 @@ const Index = () => {
       title: "Product Videos",
       description: "Engage customers with high-quality product videos that boost conversions.",
       gradient: "from-rose-500 to-orange-500",
-      size: "large"
+      size: "normal"
     },
     {
       icon: MessageCircle,
@@ -111,7 +111,7 @@ const Index = () => {
       title: "Google Reviews",
       description: "Display authentic Google Reviews on your site to build trust and credibility.",
       gradient: "from-amber-500 to-yellow-500",
-      size: "large"
+      size: "normal"
     },
     {
       icon: Users,
@@ -139,7 +139,7 @@ const Index = () => {
       title: "Business Analytics",
       description: "Advanced insights into sales, customers, and trends. Make data-driven decisions.",
       gradient: "from-emerald-500 to-teal-500",
-      size: "large"
+      size: "normal"
     },
     {
       icon: ClipboardList,
@@ -484,42 +484,38 @@ const Index = () => {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className={`feature-card relative p-6 lg:p-8 hover:shadow-2xl transition-all duration-700 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden
-                  ${feature.size === 'large' ? 'lg:col-span-2 lg:row-span-2' : 'lg:col-span-1'}
-                  hover:-translate-y-2 hover:scale-[1.02]`}
+                className={`feature-card relative p-6 lg:p-8 hover:shadow-2xl transition-all duration-700 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden hover:-translate-y-2 hover:scale-[1.02]`}
                 style={{
                   animationDelay: `${index * 50}ms`
                 }}
               >
-                {/* Animated gradient overlay */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-all duration-700`} />
+                {/* Animated gradient overlay - reduced opacity */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-all duration-700`} />
 
-                {/* Animated border glow */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-30 blur-xl transition-all duration-700`} />
+                {/* Animated border glow - reduced by 50% */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-15 blur-xl transition-all duration-700`} />
 
                 {/* Decorative corner accent */}
-                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-20 transition-opacity duration-500`} />
+                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-10 transition-opacity duration-500`} />
 
                 <div className="relative z-10 h-full flex flex-col">
-                  {/* Icon with animated background */}
+                  {/* Icon with animated background - reduced glow by 50% */}
                   <div className="mb-4 lg:mb-6">
                     <div className={`relative inline-block`}>
-                      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-md opacity-40 group-hover:blur-lg group-hover:opacity-60 transition-all duration-500`} />
+                      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-sm opacity-20 group-hover:blur-md group-hover:opacity-30 transition-all duration-500`} />
                       <div className={`relative w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
                         <feature.icon className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Title with creative typography */}
-                  <h3 className={`font-bold mb-2 lg:mb-3 text-foreground group-hover:bg-gradient-to-br group-hover:${feature.gradient} group-hover:bg-clip-text group-hover:text-transparent transition-all duration-500
-                    ${feature.size === 'large' ? 'text-2xl lg:text-3xl font-playfair' : 'text-lg lg:text-xl'}`}>
+                  {/* Title - kept simple, readable, with subtle hover effect */}
+                  <h3 className={`font-bold mb-2 lg:mb-3 text-foreground transition-all duration-300 text-lg lg:text-xl`}>
                     {feature.title}
                   </h3>
 
                   {/* Description */}
-                  <p className={`text-muted-foreground leading-relaxed flex-grow
-                    ${feature.size === 'large' ? 'text-base lg:text-lg' : 'text-sm lg:text-base'}`}>
+                  <p className={`text-muted-foreground leading-relaxed flex-grow text-sm lg:text-base`}>
                     {feature.description}
                   </p>
 
