@@ -399,8 +399,8 @@ const AdminDashboard = () => {
                       <p className="text-xs lg:text-sm text-muted-foreground mb-3">
                         {action.description}
                       </p>
-                      <Button 
-                        variant={action.primary ? "default" : "outline"} 
+                      <Button
+                        variant={action.primary ? "default" : "outline"}
                         size="sm"
                         className={`w-full sm:w-auto ${action.primary ? "admin-button-primary" : "admin-button-secondary"}`}
                         onClick={(e) => {
@@ -409,7 +409,6 @@ const AdminDashboard = () => {
                         }}
                       >
                         Get Started
-                        <ArrowUpRight className="w-4 h-4 ml-2" />
                       </Button>
                     </div>
                   </div>
