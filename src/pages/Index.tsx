@@ -405,7 +405,7 @@ const Index = () => {
               <span className="text-sm font-semibold text-primary uppercase tracking-wider">Premium Features</span>
             </div>
             <h2 className="font-playfair text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Everything You Need to Succeed
+              Unique & Powerful Features
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Powerful features designed to help you launch, manage, and grow your online business with elegance and ease.
