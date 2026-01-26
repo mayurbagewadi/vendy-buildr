@@ -17,25 +17,59 @@ export const GoogleDriveConnectionBlock = ({
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
     verifyConnection();
+
+    // Listen for auth state changes (e.g., after OAuth redirect)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Re-verify connection after auth state changes
+        setTimeout(() => verifyConnection(), 1000);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const verifyConnection = async () => {
+    setIsVerifying(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setIsConnected(false);
+        setIsVerifying(false);
+        return;
+      }
 
-      const { data } = await supabase.functions.invoke('verify-drive-connection', {
+      const { data, error } = await supabase.functions.invoke('verify-drive-connection', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      setIsConnected(data?.connected || false);
+      if (error) {
+        console.error('Drive verification error:', error);
+        setIsConnected(false);
+      } else {
+        setIsConnected(data?.connected || false);
+
+        // Show success toast if just connected
+        if (data?.connected && !isConnected) {
+          toast({
+            title: "Google Drive Connected",
+            description: "You can now upload images to Google Drive",
+          });
+        }
+      }
     } catch (error) {
+      console.error('Error verifying Drive connection:', error);
       setIsConnected(false);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -67,13 +101,13 @@ export const GoogleDriveConnectionBlock = ({
 
   if (variant === "compact") {
     return (
-      <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
+      <div className={`flex items-center justify-between p-4 rounded-lg border ${isConnected ? 'border-green-500 bg-green-50 dark:bg-green-950' : 'border-border bg-card'}`}>
         <div className="flex items-center gap-3">
-          <HardDrive className="w-5 h-5 text-primary" />
+          <HardDrive className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-primary'}`} />
           <div>
-            <p className="font-medium text-sm">Google Drive</p>
-            <p className="text-xs text-muted-foreground">
-              {isConnected ? "Connected" : "Not connected"}
+            <p className={`font-medium text-sm ${isConnected ? 'text-green-700 dark:text-green-400' : ''}`}>Google Drive</p>
+            <p className={`text-xs ${isConnected ? 'text-green-600 dark:text-green-500 font-medium' : 'text-muted-foreground'}`}>
+              {isVerifying ? "Checking..." : isConnected ? "✓ Connected" : "Not connected"}
             </p>
           </div>
         </div>
@@ -105,11 +139,11 @@ export const GoogleDriveConnectionBlock = ({
   }
 
   return (
-    <Card className={`admin-card ${!isConnected ? 'border-red-500 border-2' : ''}`}>
+    <Card className={`admin-card ${!isConnected ? 'border-red-500 border-2' : 'border-green-500 border-2'}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <HardDrive className="w-5 h-5 text-primary" />
+          <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+            <HardDrive className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-primary'}`} />
           </div>
           Connect Your Google Drive
         </CardTitle>
@@ -120,12 +154,12 @@ export const GoogleDriveConnectionBlock = ({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/50">
+        <div className={`flex items-center justify-between p-4 rounded-lg border ${isConnected ? 'border-green-500 bg-green-50 dark:bg-green-950' : 'border-border bg-muted/50'}`}>
           <div className="space-y-1">
-            <p className="font-medium text-sm">
-              {isConnected ? "✓ Connected" : "Not Connected"}
+            <p className={`font-medium text-sm ${isConnected ? 'text-green-700 dark:text-green-400' : ''}`}>
+              {isVerifying ? "Checking..." : isConnected ? "✓ Connected" : "Not Connected"}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${isConnected ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}>
               {isConnected
                 ? "Your Google Drive is ready for image uploads"
                 : "Connect to enable direct uploads"}
