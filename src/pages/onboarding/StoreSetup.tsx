@@ -431,18 +431,11 @@ const StoreSetup = () => {
           </div>
 
           {/* Footer */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/admin/dashboard")}
-              className="order-2 sm:order-1"
-            >
-              I'll do this later
-            </Button>
+          <div className="flex items-center justify-center gap-4 mt-8 pt-6 border-t">
             <Button
               onClick={handleContinue}
               disabled={!isValidForm() || loading}
-              className="w-full sm:w-auto order-1 sm:order-2"
+              className="w-full sm:w-auto"
             >
               {loading ? (
                 <>
