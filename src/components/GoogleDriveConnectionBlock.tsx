@@ -8,11 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 interface GoogleDriveConnectionBlockProps {
   variant?: "default" | "compact";
   showDescription?: boolean;
+  formData?: any;
 }
 
 export const GoogleDriveConnectionBlock = ({
   variant = "default",
-  showDescription = true
+  showDescription = true,
+  formData
 }: GoogleDriveConnectionBlockProps) => {
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
@@ -76,6 +78,11 @@ export const GoogleDriveConnectionBlock = ({
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
+      // Save form data to sessionStorage before OAuth redirect
+      if (formData) {
+        sessionStorage.setItem('storeSetupFormData', JSON.stringify(formData));
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

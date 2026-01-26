@@ -33,6 +33,18 @@ const StoreSetup = () => {
 
   useEffect(() => {
     checkAuthAndLoadData();
+
+    // Restore form data from sessionStorage if available (after OAuth redirect)
+    const savedFormData = sessionStorage.getItem('storeSetupFormData');
+    if (savedFormData) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        setFormData(parsedData);
+        sessionStorage.removeItem('storeSetupFormData');
+      } catch (error) {
+        console.error('Error restoring form data:', error);
+      }
+    }
   }, [navigate]);
 
   const checkAuthAndLoadData = async () => {
@@ -415,7 +427,7 @@ const StoreSetup = () => {
 
           {/* Google Drive Connection */}
           <div className="mt-8">
-            <GoogleDriveConnectionBlock variant="compact" showDescription={false} />
+            <GoogleDriveConnectionBlock variant="compact" showDescription={false} formData={formData} />
           </div>
 
           {/* Footer */}
