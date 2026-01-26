@@ -93,6 +93,24 @@ const App = () => {
                     // SUBDOMAIN/CUSTOM DOMAIN ROUTES (e.g., storename.yesgive.shop)
                     // Store pages without /slug prefix
                     <>
+                      {/* Admin Routes - Protected by StoreGuard - MUST BE FIRST */}
+                      <Route path="/admin/dashboard" element={<StoreGuard><AdminLayout><AdminDashboard /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products" element={<StoreGuard><AdminLayout><Products /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products/add" element={<StoreGuard><AdminLayout><AddProduct /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products/edit/:id" element={<StoreGuard><AdminLayout><EditProduct /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/categories" element={<StoreGuard><AdminLayout><Categories /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/orders" element={<StoreGuard><AdminLayout><Orders /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/analytics" element={<StoreGuard><AdminLayout><Analytics /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/subscription" element={<StoreGuard><AdminLayout><Subscription /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/seo" element={<StoreGuard><AdminLayout><GrowthSEO /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/social-media" element={<StoreGuard><AdminLayout><GrowthSocialMedia /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/instagram" element={<StoreGuard><AdminLayout><GrowthInstagram /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+
+                      {/* Customer Routes */}
                       <Route path="/" element={<Store slug={storeIdentifier} />} />
                       <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
                       <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
@@ -122,6 +140,23 @@ const App = () => {
                       <Route path="/helper/commission-history" element={<CommissionHistory />} />
                       <Route path="/helper/profile" element={<HelperProfile />} />
 
+                      {/* Admin Routes - Protected by StoreGuard - MUST BE BEFORE CUSTOMER ROUTES */}
+                      <Route path="/admin/dashboard" element={<StoreGuard><AdminLayout><AdminDashboard /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products" element={<StoreGuard><AdminLayout><Products /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products/add" element={<StoreGuard><AdminLayout><AddProduct /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/products/edit/:id" element={<StoreGuard><AdminLayout><EditProduct /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/categories" element={<StoreGuard><AdminLayout><Categories /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/orders" element={<StoreGuard><AdminLayout><Orders /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/analytics" element={<StoreGuard><AdminLayout><Analytics /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/subscription" element={<StoreGuard><AdminLayout><Subscription /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/seo" element={<StoreGuard><AdminLayout><GrowthSEO /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/social-media" element={<StoreGuard><AdminLayout><GrowthSocialMedia /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/instagram" element={<StoreGuard><AdminLayout><GrowthInstagram /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+
                       {/* Customer Routes */}
                       <Route path="/home" element={<Home />} />
                       <Route path="/categories" element={<CustomerCategories />} />
@@ -130,34 +165,6 @@ const App = () => {
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/payment-success" element={<PaymentSuccess />} />
-
-                      {/* Admin Routes - Protected by StoreGuard */}
-                      <Route
-                        path="/admin/*"
-                        element={
-                          <StoreGuard>
-                            <AdminLayout>
-                              <Routes>
-                                <Route path="dashboard" element={<AdminDashboard />} />
-                                <Route path="products" element={<Products />} />
-                                <Route path="products/add" element={<AddProduct />} />
-                                <Route path="products/edit/:id" element={<EditProduct />} />
-                                <Route path="categories" element={<Categories />} />
-                                <Route path="orders" element={<Orders />} />
-                                <Route path="analytics" element={<Analytics />} />
-                                <Route path="subscription" element={<Subscription />} />
-                                <Route path="growth/seo" element={<GrowthSEO />} />
-                                <Route path="growth/social-media" element={<GrowthSocialMedia />} />
-                                <Route path="growth/instagram" element={<GrowthInstagram />} />
-                                <Route path="marketplace" element={<AdminMarketplace />} />
-                                <Route path="shipping" element={<AdminShipping />} />
-                                <Route path="google-reviews" element={<AdminGoogleReviews />} />
-                                <Route path="settings" element={<AdminSettings />} />
-                              </Routes>
-                            </AdminLayout>
-                          </StoreGuard>
-                        }
-                      />
 
                       {/* Super Admin Routes */}
                       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
