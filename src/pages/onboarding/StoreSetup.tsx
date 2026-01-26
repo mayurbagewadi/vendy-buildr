@@ -329,9 +329,10 @@ const StoreSetup = () => {
                   <Input
                     id="storeSlug"
                     value={formData.storeSlug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
+                    readOnly
+                    disabled
                     maxLength={30}
-                    className="pr-8"
+                    className="pr-8 bg-muted cursor-not-allowed"
                   />
                   {checkingSlug && (
                     <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -360,13 +361,8 @@ const StoreSetup = () => {
                 <p>• 3-30 characters</p>
                 <p>• Lowercase letters and numbers only</p>
                 <p>• Must start with letter</p>
+                <p>• Auto-generated from store name</p>
               </div>
-              
-              {formData.storeSlug && (
-                <p className="text-xs text-primary font-medium">
-                  Your store will be: {formData.storeSlug}.yourplatform.com
-                </p>
-              )}
             </div>
 
             {/* Description */}
