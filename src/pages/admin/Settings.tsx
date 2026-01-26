@@ -145,17 +145,11 @@ const AdminSettings = () => {
           .update(updates)
           .eq('id', store.id);
 
-        toast({
-          title: "Google Drive Connected",
-          description: "You can now upload images to Google Drive.",
-        });
-        
-        // Update state
-        setGoogleDriveConnected(true);
-      } else {
-        // Check if Google Drive is connected (access token is enough to treat as connected)
-        setGoogleDriveConnected(!!store?.google_access_token);
+        // Don't show success toast yet - verify connection first
       }
+
+      // Always verify Drive connection with actual API call
+      await verifyDriveConnection();
 
       // Load phone from profiles table
       const { data: profile } = await supabase
@@ -245,6 +239,43 @@ const AdminSettings = () => {
       console.error('Error loading media library:', error);
     } finally {
       setIsLoadingMedia(false);
+    }
+  };
+
+  const verifyDriveConnection = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('verify-drive-connection', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Drive verification error:', error);
+        setGoogleDriveConnected(false);
+        return;
+      }
+
+      if (data?.connected) {
+        setGoogleDriveConnected(true);
+        // Only show success toast if we just connected (when there are new tokens)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.provider_token) {
+          toast({
+            title: "Google Drive Connected",
+            description: "You can now upload images to Google Drive.",
+          });
+        }
+      } else {
+        setGoogleDriveConnected(false);
+        console.log('Drive not connected:', data?.reason);
+      }
+    } catch (error: any) {
+      console.error('Error verifying Drive connection:', error);
+      setGoogleDriveConnected(false);
     }
   };
 
@@ -2051,7 +2082,7 @@ const AdminSettings = () => {
           </Card>
 
           {/* Google Drive Connection Section */}
-          <Card className="admin-card">
+          <Card className={`admin-card ${!googleDriveConnected ? 'border-red-500 border-2' : ''}`}>
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -2111,7 +2142,11 @@ const AdminSettings = () => {
               </div>
 
               {!googleDriveConnected && (
-                <Alert>
+                <Alert
+                  style={{
+                    animation: 'popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  }}
+                >
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
                     <strong>Note:</strong> You'll be redirected to Google to grant Drive permissions.

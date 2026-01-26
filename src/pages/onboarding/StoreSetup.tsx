@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Store, Check, X, Loader2, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { seedDemoDataForStore } from "@/lib/seedDemoData";
+import { GoogleDriveConnectionBlock } from "@/components/GoogleDriveConnectionBlock";
 
 const StoreSetup = () => {
   const navigate = useNavigate();
@@ -419,6 +420,11 @@ const StoreSetup = () => {
                 Customers will place orders via WhatsApp to this number
               </p>
             </div>
+          </div>
+
+          {/* Google Drive Connection */}
+          <div className="mt-8">
+            <GoogleDriveConnectionBlock variant="compact" showDescription={false} />
           </div>
 
           {/* Footer */}

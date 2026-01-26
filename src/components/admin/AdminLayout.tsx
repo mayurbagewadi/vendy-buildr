@@ -250,16 +250,16 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       current: location.pathname === "/admin/dashboard",
     },
     {
-      name: "Products",
-      href: "/admin/products",
-      icon: Package,
-      current: location.pathname.startsWith("/admin/products"),
-    },
-    {
       name: "Categories",
       href: "/admin/categories",
       icon: Package,
       current: location.pathname === "/admin/categories",
+    },
+    {
+      name: "Products",
+      href: "/admin/products",
+      icon: Package,
+      current: location.pathname.startsWith("/admin/products"),
     },
     {
       name: "Orders",

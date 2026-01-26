@@ -115,7 +115,7 @@ category: "",
       if (error) throw error;
       if (store) {
         setStoreId(store.id);
-        
+
         // If we have new Google tokens and a store, save them
         if (providerToken && !store.google_access_token) {
           const updates: any = {
@@ -133,16 +133,11 @@ category: "",
             .update(updates)
             .eq('id', store.id);
 
-          toast({
-            title: "Google Drive Connected",
-            description: "You can now upload images from your device.",
-          });
-          
-          setIsDriveConnected(true);
-        } else {
-          // Treat as connected if we have any access token
-          setIsDriveConnected(!!store.google_access_token);
+          // Don't show success toast yet - verify connection first
         }
+
+        // Always verify Drive connection with actual API call
+        await verifyDriveConnection();
       }
     } catch (error: any) {
       toast({
@@ -174,6 +169,43 @@ category: "",
     }
 
     setIsLoading(false);
+  };
+
+  const verifyDriveConnection = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('verify-drive-connection', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Drive verification error:', error);
+        setIsDriveConnected(false);
+        return;
+      }
+
+      if (data?.connected) {
+        setIsDriveConnected(true);
+        // Only show success toast if we just connected (when there are new tokens)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.provider_token) {
+          toast({
+            title: "Google Drive Connected",
+            description: "You can now upload images from your device.",
+          });
+        }
+      } else {
+        setIsDriveConnected(false);
+        console.log('Drive not connected:', data?.reason);
+      }
+    } catch (error: any) {
+      console.error('Error verifying Drive connection:', error);
+      setIsDriveConnected(false);
+    }
   };
 
   const addImageUrl = () => {
@@ -742,7 +774,11 @@ category: "",
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Google Drive Connection Alert */}
-                    <Alert>
+                    <Alert
+                      style={!isDriveConnected ? {
+                        animation: 'popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                      } : {}}
+                    >
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription className="flex items-center justify-between gap-4">
                         {isDriveConnected ? (
@@ -751,7 +787,7 @@ category: "",
                           </span>
                         ) : (
                           <>
-                            <span className="text-sm">
+                            <span className="text-sm font-bold text-red-600 dark:text-red-500">
                               Connect Google Drive to upload images from your device
                             </span>
                             <Button
