@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Store, Check, X, Loader2, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { seedDemoDataForStore } from "@/lib/seedDemoData";
-import { GoogleDriveConnectionBlock } from "@/components/GoogleDriveConnectionBlock";
 
 const StoreSetup = () => {
   const navigate = useNavigate();
@@ -262,7 +261,7 @@ const StoreSetup = () => {
         description: "Your store is ready with demo products."
       });
 
-      navigate("/admin/dashboard");
+      navigate("/onboarding/google-drive");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -284,18 +283,18 @@ const StoreSetup = () => {
       {/* Progress Indicator */}
       <div className="container max-w-4xl mx-auto pt-8 pb-4 px-4">
         <div className="flex items-center justify-center gap-2 md:gap-4">
-          {[1, 2, 3, 4].map((step) => (
+          {[1, 2].map((step) => (
             <div key={step} className="flex items-center">
               <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                 step === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}>
                 {step}
               </div>
-              {step < 4 && <div className={`w-8 md:w-16 h-0.5 ${step < 1 ? "bg-primary" : "bg-muted"}`} />}
+              {step < 2 && <div className={`w-8 md:w-16 h-0.5 ${step < 1 ? "bg-primary" : "bg-muted"}`} />}
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-2">Step 1 of 4</p>
+        <p className="text-center text-sm text-muted-foreground mt-2">Step 1 of 2</p>
       </div>
 
       {/* Main Content */}
@@ -423,11 +422,6 @@ const StoreSetup = () => {
                 Customers will place orders via WhatsApp to this number
               </p>
             </div>
-          </div>
-
-          {/* Google Drive Connection */}
-          <div className="mt-8">
-            <GoogleDriveConnectionBlock variant="compact" showDescription={false} formData={formData} />
           </div>
 
           {/* Footer */}

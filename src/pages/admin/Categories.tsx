@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 
 const Categories = () => {
@@ -19,8 +18,7 @@ const Categories = () => {
   };
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Categories</h1>
           <p className="text-muted-foreground mt-1">
@@ -30,7 +28,6 @@ const Categories = () => {
 
         <CategoryManager />
       </div>
-    </AdminLayout>
   );
 };
 

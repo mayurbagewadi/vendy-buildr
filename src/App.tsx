@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
+import AdminLayout from "./components/admin/AdminLayout";
 import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
@@ -50,7 +51,9 @@ import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
 import SuperAdminMarketplace from "./pages/superadmin/Marketplace";
 import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
+import { StoreGuard } from "./components/admin/StoreGuard";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
+import OnboardingGoogleDrive from "./pages/onboarding/GoogleDriveSetup";
 import Store from "./pages/customer/Store";
 import Policies from "./pages/customer/Policies";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -128,22 +131,33 @@ const App = () => {
                       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/payment-success" element={<PaymentSuccess />} />
 
-                      {/* Admin Routes */}
-                      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                      <Route path="/admin/products" element={<Products />} />
-                      <Route path="/admin/products/add" element={<AddProduct />} />
-                      <Route path="/admin/products/edit/:id" element={<EditProduct />} />
-                      <Route path="/admin/categories" element={<Categories />} />
-                      <Route path="/admin/orders" element={<Orders />} />
-                      <Route path="/admin/analytics" element={<Analytics />} />
-                      <Route path="/admin/subscription" element={<Subscription />} />
-                      <Route path="/admin/growth/seo" element={<GrowthSEO />} />
-                      <Route path="/admin/growth/social-media" element={<GrowthSocialMedia />} />
-                      <Route path="/admin/growth/instagram" element={<GrowthInstagram />} />
-                      <Route path="/admin/marketplace" element={<AdminMarketplace />} />
-                      <Route path="/admin/shipping" element={<AdminShipping />} />
-                      <Route path="/admin/google-reviews" element={<AdminGoogleReviews />} />
-                      <Route path="/admin/settings" element={<AdminSettings />} />
+                      {/* Admin Routes - Protected by StoreGuard */}
+                      <Route
+                        path="/admin/*"
+                        element={
+                          <StoreGuard>
+                            <AdminLayout>
+                              <Routes>
+                                <Route path="dashboard" element={<AdminDashboard />} />
+                                <Route path="products" element={<Products />} />
+                                <Route path="products/add" element={<AddProduct />} />
+                                <Route path="products/edit/:id" element={<EditProduct />} />
+                                <Route path="categories" element={<Categories />} />
+                                <Route path="orders" element={<Orders />} />
+                                <Route path="analytics" element={<Analytics />} />
+                                <Route path="subscription" element={<Subscription />} />
+                                <Route path="growth/seo" element={<GrowthSEO />} />
+                                <Route path="growth/social-media" element={<GrowthSocialMedia />} />
+                                <Route path="growth/instagram" element={<GrowthInstagram />} />
+                                <Route path="marketplace" element={<AdminMarketplace />} />
+                                <Route path="shipping" element={<AdminShipping />} />
+                                <Route path="google-reviews" element={<AdminGoogleReviews />} />
+                                <Route path="settings" element={<AdminSettings />} />
+                              </Routes>
+                            </AdminLayout>
+                          </StoreGuard>
+                        }
+                      />
 
                       {/* Super Admin Routes */}
                       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
@@ -165,6 +179,7 @@ const App = () => {
 
                       {/* Onboarding Routes */}
                       <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
+                      <Route path="/onboarding/google-drive" element={<OnboardingGoogleDrive />} />
 
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       {/* Dynamic Store Route - must be last before 404 */}

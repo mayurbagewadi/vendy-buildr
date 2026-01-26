@@ -10,7 +10,6 @@ import { toast } from "@/hooks/use-toast";
 import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { generateStoreTXT } from "@/lib/generateStoreTXT";
 import { DeleteMyAccountModal } from "@/components/admin/DeleteMyAccountModal";
@@ -1162,8 +1161,7 @@ const AdminSettings = () => {
   ];
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Store Settings</h1>
@@ -3053,7 +3051,6 @@ const AdminSettings = () => {
           storeName={formData.storeName}
         />
       </div>
-    </AdminLayout>
   );
 };
 

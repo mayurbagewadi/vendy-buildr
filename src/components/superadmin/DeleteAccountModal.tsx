@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,14 @@ export function DeleteAccountModal({
   const [confirmation, setConfirmation] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Reset confirmation when modal is closed
+  useEffect(() => {
+    if (!open) {
+      setConfirmation("");
+      setLoading(false);
+    }
+  }, [open]);
+
   const handleDelete = async () => {
     if (confirmation !== "DELETE") {
       toast({
@@ -41,6 +49,31 @@ export function DeleteAccountModal({
 
     try {
       setLoading(true);
+
+      // First check if the user/store still exists in the database
+      if (user.store?.id) {
+        const { data: storeCheck } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('id', user.store.id)
+          .maybeSingle();
+
+        if (!storeCheck) {
+          toast({
+            title: "Already Deleted",
+            description: `${user.email}'s store has already been deleted`,
+            variant: "default",
+          });
+          setLoading(false);
+          setConfirmation("");
+          onClose();
+          // Small delay before refreshing to ensure modal is fully closed
+          setTimeout(() => {
+            onSuccess();
+          }, 100);
+          return;
+        }
+      }
 
       // Call edge function to completely delete user including auth records
       const { data, error } = await supabase.functions.invoke('delete-user-account', {
@@ -58,21 +91,33 @@ export function DeleteAccountModal({
         description: `${user.email}'s account, all data, and authentication records have been permanently deleted`,
       });
 
-      onSuccess();
+      setLoading(false);
+      setConfirmation("");
       onClose();
+
+      // Small delay before refreshing to ensure modal is fully closed and state is settled
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
     } catch (error: any) {
+      setLoading(false);
       toast({
         title: "Error",
         description: error.message || "Failed to delete account. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen && !loading) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Account</DialogTitle>
@@ -130,7 +175,16 @@ export function DeleteAccountModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!loading) {
+                setConfirmation("");
+                onClose();
+              }
+            }}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button

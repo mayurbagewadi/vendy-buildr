@@ -12,7 +12,6 @@ import {
   Star,
   Clock
 } from "lucide-react";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { toast } from "@/hooks/use-toast";
 import { getProducts, initializeProducts } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
@@ -261,8 +260,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <AdminLayout>
-      <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6">
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -480,7 +478,6 @@ const AdminDashboard = () => {
           </Card>
         </div>
       </div>
-    </AdminLayout>
   );
 };
 

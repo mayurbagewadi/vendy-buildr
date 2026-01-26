@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Save, Upload, X, Plus, Trash2, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { getProductById, updateProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
@@ -513,17 +512,14 @@ category: "",
 
   if (isLoading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-96">
-          <p className="text-muted-foreground">Loading product...</p>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-96">
+        <p className="text-muted-foreground">Loading product...</p>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Edit Product</h1>
@@ -1067,7 +1063,6 @@ category: "",
           </form>
         </Form>
       </div>
-    </AdminLayout>
   );
 };
 

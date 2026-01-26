@@ -8,7 +8,6 @@ import { Check, ArrowUpRight, Calendar, Package, Mail, AlertTriangle, RefreshCw,
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import AdminLayout from "@/components/admin/AdminLayout";
 
 interface SubscriptionPlan {
   id: string;
@@ -274,17 +273,14 @@ const SubscriptionPage = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="pt-8">
-          <p className="text-muted-foreground">Loading subscription details...</p>
-        </div>
-      </AdminLayout>
+      <div className="pt-8">
+        <p className="text-muted-foreground">Loading subscription details...</p>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-8 p-6 md:p-8">
+    <div className="space-y-8 p-6 md:p-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Subscription</h1>
           <p className="text-muted-foreground mt-1">Manage your subscription plan</p>
@@ -673,7 +669,6 @@ const SubscriptionPage = () => {
         </div>
       </div>
       </div>
-    </AdminLayout>
   );
 };
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -343,17 +342,14 @@ const AdminMarketplace = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">Marketplace</h1>
@@ -519,21 +515,20 @@ const AdminMarketplace = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Payment Modal */}
-      {selectedFeatureForPayment && storeData && userId && (
-        <MarketplacePaymentModal
-          open={paymentModalOpen}
-          onOpenChange={setPaymentModalOpen}
-          feature={selectedFeatureForPayment}
-          storeId={storeData.id}
-          userId={userId}
-          customerDetails={customerDetails}
-          onSuccess={handlePaymentSuccess}
-        />
-      )}
-    </AdminLayout>
+        {/* Payment Modal */}
+        {selectedFeatureForPayment && storeData && userId && (
+          <MarketplacePaymentModal
+            open={paymentModalOpen}
+            onOpenChange={setPaymentModalOpen}
+            feature={selectedFeatureForPayment}
+            storeId={storeData.id}
+            userId={userId}
+            customerDetails={customerDetails}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
+      </div>
   );
 };
 

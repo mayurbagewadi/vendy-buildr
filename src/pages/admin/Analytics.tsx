@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   TrendingUp,
@@ -232,7 +231,6 @@ const Analytics = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -247,13 +245,11 @@ const Analytics = () => {
           </motion.div>
           <p className="text-muted-foreground mt-4">Loading analytics...</p>
         </motion.div>
-      </AdminLayout>
     );
   }
 
   if (!hasAccess) {
     return (
-      <AdminLayout>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -265,7 +261,6 @@ const Analytics = () => {
             You need a subscription plan with analytics enabled to access this feature.
           </p>
         </motion.div>
-      </AdminLayout>
     );
   }
 
@@ -283,8 +278,7 @@ const Analytics = () => {
 
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -624,7 +618,6 @@ const Analytics = () => {
           </Card>
         </motion.div>
       </div>
-    </AdminLayout>
   );
 };
 

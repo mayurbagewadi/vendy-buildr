@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Save, Upload, X, Plus, Trash2, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { addProduct, getProducts, type Product as SharedProduct, type Variant as SharedVariant } from "@/lib/productData";
 import { generateProductId } from "@/lib/idGenerator";
 import { supabase } from "@/integrations/supabase/client";
@@ -590,8 +589,7 @@ category: "",
   };
 
   return (
-    <AdminLayout>
-      <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Add New Product</h1>
@@ -1253,7 +1251,6 @@ category: "",
           </form>
         </Form>
       </div>
-    </AdminLayout>
   );
 };
 

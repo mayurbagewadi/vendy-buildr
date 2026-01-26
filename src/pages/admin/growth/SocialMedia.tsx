@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,11 +160,9 @@ const SocialMediaPage = () => {
 
   if (isLoading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
@@ -215,8 +212,7 @@ const SocialMediaPage = () => {
   const connectedCount = Object.values(settings).filter(url => url && validateUrl(url)).length;
 
   return (
-    <AdminLayout>
-      <TooltipProvider>
+    <TooltipProvider>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -387,7 +383,6 @@ const SocialMediaPage = () => {
           </div>
         </div>
       </TooltipProvider>
-    </AdminLayout>
   );
 };
 

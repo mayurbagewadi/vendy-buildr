@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Instagram, Check, X, Plus, Trash2, MessageCircle, AtSign, Film, RefreshCw, ExternalLink } from "lucide-react";
-import AdminLayout from "@/components/admin/AdminLayout";
 
 interface AutoReplyRule {
   id: string;
@@ -338,17 +337,14 @@ const GrowthInstagram = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Instagram Settings</h1>
           <p className="text-muted-foreground mt-1">
@@ -735,7 +731,6 @@ const GrowthInstagram = () => {
           </>
         )}
       </div>
-    </AdminLayout>
   );
 };
 

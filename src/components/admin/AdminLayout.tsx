@@ -61,148 +61,120 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     expiresAt: string;
   } | null>(null);
   const [showExpirationWarning, setShowExpirationWarning] = useState(true);
-  const [showStoreDeletedDialog, setShowStoreDeletedDialog] = useState(false);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
 
   // Dynamic notifications from existing database tables (orders, products)
   const { notifications, unreadCount } = useNotifications();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      console.log('[AdminLayout] Checking authentication...');
+    const loadUserData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      // Check Supabase authentication
-      const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate("/auth", { replace: true });
+          return;
+        }
 
-      console.log('[AdminLayout] Session:', session ? 'Found' : 'None');
+        // Set user email
+        if (session.user.email) {
+          setUserEmail(session.user.email);
+        }
 
-      if (!session) {
-        console.log('[AdminLayout] No session - redirecting to auth');
-        navigate("/auth", { replace: true });
-        return;
-      }
-
-      console.log('[AdminLayout] User authenticated:', session.user.email);
-
-      // Set user email
-      if (session.user.email) {
-        setUserEmail(session.user.email);
-      }
-
-      // Get user profile for full name
-      let { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      // If profile doesn't exist, create it (handles cases where trigger didn't fire)
-      if (!profile) {
-        console.log('[AdminLayout] Profile not found - creating profile for user');
-
-        const { data: newProfile, error: createProfileError } = await supabase
+        // Get user profile for full name
+        let { data: profile } = await supabase
           .from('profiles')
-          .insert({
-            user_id: session.user.id,
-            email: session.user.email || '',
-            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-          })
           .select('full_name, email')
-          .single();
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
-        if (createProfileError) {
-          console.error('[AdminLayout] Error creating profile:', createProfileError);
-        } else {
-          console.log('[AdminLayout] Profile created successfully');
+        // If profile doesn't exist, create it
+        if (!profile) {
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: session.user.id,
+              email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+            })
+            .select('full_name, email')
+            .single();
+
           profile = newProfile;
         }
-      }
 
-      if (profile?.full_name) {
-        setUserName(profile.full_name);
-      }
-
-      // Load store data - store owners are automatically admins of their own store
-      const { data: store, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      console.log('[AdminLayout] Store data:', store ? 'Found' : 'None', error ? `Error: ${error.message}` : '');
-
-      // Check if store doesn't exist (new user needs onboarding or store was deleted)
-      if (!store) {
-        console.log('[AdminLayout] No store found - showing store deleted dialog');
-        setShowStoreDeletedDialog(true);
-        // Set a timer to redirect after showing the dialog
-        const redirectTimer = setTimeout(() => {
-          navigate("/onboarding/store-setup", { replace: true });
-        }, 3000);
-        return () => clearTimeout(redirectTimer);
-      }
-
-      if (store.name) {
-        console.log('[AdminLayout] Setting store name:', store.name);
-        setStoreName(store.name);
-      }
-
-      // Set enabled features
-      if (store.enabled_features) {
-        setEnabledFeatures(store.enabled_features as string[]);
-      }
-
-      // Check subscription limits and expiration
-      const { data: subscription } = await supabase
-        .from("subscriptions")
-        .select(`
-          *,
-          subscription_plans (
-            whatsapp_orders_limit,
-            website_orders_limit
-          )
-        `)
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (subscription) {
-        // Check if subscription has expired
-        const now = new Date();
-        const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
-        
-        if (periodEnd && periodEnd < now) {
-          setExpirationWarning({
-            expired: true,
-            expiresAt: periodEnd.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-          });
+        if (profile?.full_name) {
+          setUserName(profile.full_name);
         }
 
-        // Check order limits
-        if (subscription?.subscription_plans) {
-          const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
-          const websiteLimit = subscription.subscription_plans.website_orders_limit;
-          const whatsappUsed = subscription.whatsapp_orders_used || 0;
-          const websiteUsed = subscription.website_orders_used || 0;
+        // Load store data
+        const { data: store } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
-          // Check if limits are reached (100%) or close to limit (90%+)
-          const whatsappAtLimit = whatsappLimit && whatsappLimit > 0 && whatsappUsed >= whatsappLimit;
-          const websiteAtLimit = websiteLimit && websiteLimit > 0 && websiteUsed >= websiteLimit;
+        if (store) {
+          if (store.name) {
+            setStoreName(store.name);
+          }
 
-          if (whatsappAtLimit || websiteAtLimit) {
-            setLimitWarning({
-              whatsapp: whatsappAtLimit,
-              website: websiteAtLimit,
-              whatsappUsed,
-              whatsappLimit: whatsappLimit || 0,
-              websiteUsed,
-              websiteLimit: websiteLimit || 0,
-            });
+          if (store.enabled_features) {
+            setEnabledFeatures(store.enabled_features as string[]);
+          }
+
+          // Check subscription limits and expiration
+          const { data: subscription } = await supabase
+            .from("subscriptions")
+            .select(`
+              *,
+              subscription_plans (
+                whatsapp_orders_limit,
+                website_orders_limit
+              )
+            `)
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (subscription) {
+            const now = new Date();
+            const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+
+            if (periodEnd && periodEnd < now) {
+              setExpirationWarning({
+                expired: true,
+                expiresAt: periodEnd.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+              });
+            }
+
+            if (subscription?.subscription_plans) {
+              const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+              const websiteLimit = subscription.subscription_plans.website_orders_limit;
+              const whatsappUsed = subscription.whatsapp_orders_used || 0;
+              const websiteUsed = subscription.website_orders_used || 0;
+
+              const whatsappAtLimit = whatsappLimit && whatsappLimit > 0 && whatsappUsed >= whatsappLimit;
+              const websiteAtLimit = websiteLimit && websiteLimit > 0 && websiteUsed >= websiteLimit;
+
+              if (whatsappAtLimit || websiteAtLimit) {
+                setLimitWarning({
+                  whatsapp: whatsappAtLimit,
+                  website: websiteAtLimit,
+                  whatsappUsed,
+                  whatsappLimit: whatsappLimit || 0,
+                  websiteUsed,
+                  websiteLimit: websiteLimit || 0,
+                });
+              }
+            }
           }
         }
+      } catch (error) {
+        console.error('[AdminLayout] Error loading user data:', error);
       }
     };
 
-    checkAuth();
+    loadUserData();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -662,35 +634,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       </div>
     </div>
 
-    {/* Store Deleted Dialog */}
-    <Dialog open={showStoreDeletedDialog} onOpenChange={setShowStoreDeletedDialog}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex items-center justify-center mb-4">
-            <div className="rounded-full bg-red-100 p-3">
-              <AlertTriangle className="h-8 w-8 text-red-600" />
-            </div>
-          </div>
-          <DialogTitle className="text-center text-xl font-bold">
-            Store Deleted
-          </DialogTitle>
-          <DialogDescription className="text-center pt-4">
-            Your store has been deleted by an administrator. You will now be redirected to the store setup page where you can create a new store.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex justify-center pt-4">
-          <Button
-            onClick={() => {
-              setShowStoreDeletedDialog(false);
-              navigate("/onboarding/store-setup", { replace: true });
-            }}
-            className="w-full sm:w-auto"
-          >
-            Create New Store
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
     </>
   );
 };
