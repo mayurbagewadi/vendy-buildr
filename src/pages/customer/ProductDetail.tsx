@@ -62,11 +62,20 @@ interface ProductDetailProps {
 
 const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   // Handle both route patterns:
-  // 1. /products/:slug (direct product view)
-  // 2. /:slug/products/:productSlug (store-scoped product view)
+  // 1. SUBDOMAIN: /products/:slug (with slugProp from App.tsx containing storeIdentifier)
+  //    - params.slug = product slug
+  //    - slugProp = store identifier
+  // 2. PATH-BASED: /:slug/products/:productSlug (on main platform)
+  //    - params.slug = store slug
+  //    - params.productSlug = product slug
   const params = useParams();
-  const storeSlugFromRoute = params.slug; // Store slug from /:slug/products/:productSlug route
-  const productSlug = params.productSlug || params.slug;
+
+  // Determine product slug based on route pattern
+  // If slugProp is provided (subdomain route), params.slug is the product slug
+  // Otherwise (path-based route), params.productSlug is the product slug
+  const productSlug = slugProp ? params.slug : params.productSlug;
+  const storeSlugFromRoute = slugProp ? slugProp : params.slug; // Store slug from path or prop
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart, triggerFlyAnimation } = useCart();
@@ -77,7 +86,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(slugProp || storeSlugFromRoute);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(storeSlugFromRoute);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [storeData, setStoreData] = useState<any>(null);
@@ -206,7 +215,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
     };
 
     loadProduct();
-  }, [productSlug, navigate, toast, storeSlug, isSubdomain, storeSlugFromRoute]);
+  }, [productSlug, navigate, toast, storeSlug, isSubdomain]);
 
   // Remove pulse animation when variant is selected
   useEffect(() => {
