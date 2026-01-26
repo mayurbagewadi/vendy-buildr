@@ -56,18 +56,27 @@ export const GoogleDriveConnectionBlock = ({
       if (error) {
         console.error('Drive verification error:', error);
         setIsConnected(false);
-      } else {
-        setIsConnected(data?.connected || false);
+        setIsVerifying(false);
+        return;
+      }
 
-        // Show success toast if just connected
-        if (data?.connected && !isConnected) {
+      // Check if connected based on verification response
+      if (data?.connected) {
+        setIsConnected(true);
+
+        // Show success toast if we just connected (when there are new tokens)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.provider_token) {
           toast({
             title: "Google Drive Connected",
-            description: "You can now upload images to Google Drive",
+            description: "You can now upload images from your device.",
           });
         }
+      } else {
+        setIsConnected(false);
+        console.log('Drive not connected:', data?.reason);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying Drive connection:', error);
       setIsConnected(false);
     } finally {
