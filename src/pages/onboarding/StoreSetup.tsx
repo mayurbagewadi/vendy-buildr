@@ -88,9 +88,7 @@ const StoreSetup = () => {
     return name
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
+      .replace(/[^a-z0-9]/g, "")
       .substring(0, 30);
   };
 
@@ -321,15 +319,12 @@ const StoreSetup = () => {
               </p>
             </div>
 
-            {/* Store Slug */}
+            {/* Store Domain */}
             <div className="space-y-2">
               <Label htmlFor="storeSlug">
-                Store Slug <span className="text-destructive">*</span>
+                Store Domain <span className="text-destructive">*</span>
               </Label>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground whitespace-nowrap hidden md:inline">
-                  yourplatform.com/
-                </span>
                 <div className="flex-1 relative">
                   <Input
                     id="storeSlug"
@@ -363,7 +358,7 @@ const StoreSetup = () => {
               
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• 3-30 characters</p>
-                <p>• Lowercase letters, numbers, hyphens only</p>
+                <p>• Lowercase letters and numbers only</p>
                 <p>• Must start with letter</p>
               </div>
               

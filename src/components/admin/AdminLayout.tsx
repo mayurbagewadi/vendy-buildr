@@ -340,6 +340,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   ];
 
   return (
+    <>
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
@@ -690,6 +691,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 
