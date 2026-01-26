@@ -37,6 +37,7 @@ import { toast } from "@/hooks/use-toast";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { migrateProductSlugs } from "@/lib/migrateProductSlugs";
 
 type Product = SharedProduct & {
   variantCount?: number;
@@ -55,6 +56,20 @@ const Products = () => {
 
   // Load products function
   const loadProducts = async () => {
+    // Run slug migration for products without slugs (one-time fix)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (store?.id) {
+        await migrateProductSlugs(store.id);
+      }
+    }
+
     const loadedProducts = (await getProducts()).map(p => ({
       ...p,
       variantCount: p.variants?.length || 0,
@@ -382,7 +397,7 @@ const Products = () => {
                               title="View Details"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`/products/${product.id}`, '_blank');
+                                window.open(`/products/${product.slug || product.id}`, '_blank');
                               }}
                               className="h-8 w-8 p-0"
                             >
