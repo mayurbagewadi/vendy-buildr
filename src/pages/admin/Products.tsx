@@ -48,6 +48,7 @@ const Products = () => {
   const subscriptionLimits = useSubscriptionLimits();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [storeSlug, setStoreSlug] = useState<string>("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -61,11 +62,12 @@ const Products = () => {
     if (session?.user) {
       const { data: store } = await supabase
         .from('stores')
-        .select('id')
+        .select('id, slug')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
       if (store?.id) {
+        setStoreSlug(store.slug);
         await migrateProductSlugs(store.id);
       }
     }
@@ -397,7 +399,10 @@ const Products = () => {
                               title="View Details"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`/products/${product.slug || product.id}`, '_blank');
+                                const productUrl = storeSlug
+                                  ? `/${storeSlug}/products/${product.slug || product.id}`
+                                  : `/products/${product.slug || product.id}`;
+                                window.open(productUrl, '_blank');
                               }}
                               className="h-8 w-8 p-0"
                             >
