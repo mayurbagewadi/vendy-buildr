@@ -13,7 +13,8 @@
       "Bash(curl:*)",
       "Bash(echo:*)",
       "WebSearch",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

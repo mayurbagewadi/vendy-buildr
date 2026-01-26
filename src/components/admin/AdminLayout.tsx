@@ -27,6 +27,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
@@ -60,6 +61,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     expiresAt: string;
   } | null>(null);
   const [showExpirationWarning, setShowExpirationWarning] = useState(true);
+  const [showStoreDeletedDialog, setShowStoreDeletedDialog] = useState(false);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
 
   // Dynamic notifications from existing database tables (orders, products)
@@ -68,15 +70,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       console.log('[AdminLayout] Checking authentication...');
-      
+
       // Check Supabase authentication
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       console.log('[AdminLayout] Session:', session ? 'Found' : 'None');
-      
+
       if (!session) {
         console.log('[AdminLayout] No session - redirecting to auth');
-        navigate("/auth");
+        navigate("/auth", { replace: true });
         return;
       }
 
@@ -97,7 +99,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       // If profile doesn't exist, create it (handles cases where trigger didn't fire)
       if (!profile) {
         console.log('[AdminLayout] Profile not found - creating profile for user');
-        
+
         const { data: newProfile, error: createProfileError } = await supabase
           .from('profiles')
           .insert({
@@ -129,11 +131,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       console.log('[AdminLayout] Store data:', store ? 'Found' : 'None', error ? `Error: ${error.message}` : '');
 
-      // Check if store doesn't exist (new user needs onboarding)
+      // Check if store doesn't exist (new user needs onboarding or store was deleted)
       if (!store) {
-        console.log('[AdminLayout] No store found - redirecting to onboarding');
-        navigate("/onboarding/store-setup");
-        return;
+        console.log('[AdminLayout] No store found - showing store deleted dialog');
+        setShowStoreDeletedDialog(true);
+        // Set a timer to redirect after showing the dialog
+        const redirectTimer = setTimeout(() => {
+          navigate("/onboarding/store-setup", { replace: true });
+        }, 3000);
+        return () => clearTimeout(redirectTimer);
       }
 
       if (store.name) {
@@ -654,6 +660,36 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </main>
       </div>
     </div>
+
+    {/* Store Deleted Dialog */}
+    <Dialog open={showStoreDeletedDialog} onOpenChange={setShowStoreDeletedDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="flex items-center justify-center mb-4">
+            <div className="rounded-full bg-red-100 p-3">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+          </div>
+          <DialogTitle className="text-center text-xl font-bold">
+            Store Deleted
+          </DialogTitle>
+          <DialogDescription className="text-center pt-4">
+            Your store has been deleted by an administrator. You will now be redirected to the store setup page where you can create a new store.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-center pt-4">
+          <Button
+            onClick={() => {
+              setShowStoreDeletedDialog(false);
+              navigate("/onboarding/store-setup", { replace: true });
+            }}
+            className="w-full sm:w-auto"
+          >
+            Create New Store
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
