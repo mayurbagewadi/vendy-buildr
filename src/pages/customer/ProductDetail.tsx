@@ -65,6 +65,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   // 1. /products/:slug (direct product view)
   // 2. /:slug/products/:productSlug (store-scoped product view)
   const params = useParams();
+  const storeSlugFromRoute = params.slug; // Store slug from /:slug/products/:productSlug route
   const productSlug = params.productSlug || params.slug;
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -76,7 +77,8 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(slugProp);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slugProp || storeSlugFromRoute);
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [storeData, setStoreData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
@@ -95,8 +97,24 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       try {
         setLoading(true);
 
+        // Get store ID if we're on a store-scoped URL
+        let currentStoreId: string | null = null;
+        if (storeSlugFromRoute) {
+          const { data: store } = await supabase
+            .from('stores')
+            .select('id')
+            .eq('slug', storeSlugFromRoute)
+            .maybeSingle();
+
+          if (store?.id) {
+            currentStoreId = store.id;
+            setStoreId(store.id);
+          }
+        }
+
         // Try to fetch by slug first (SEO-friendly URLs)
-        let data = await getProductBySlug(productSlug);
+        // Pass storeId if available for store-scoped lookups
+        let data = await getProductBySlug(productSlug, currentStoreId || undefined);
 
         // Fallback: If slug doesn't work, try as UUID (backward compatibility)
         if (!data) {
@@ -188,7 +206,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
     };
 
     loadProduct();
-  }, [productSlug, navigate, toast, storeSlug, isSubdomain]);
+  }, [productSlug, navigate, toast, storeSlug, isSubdomain, storeSlugFromRoute]);
 
   // Remove pulse animation when variant is selected
   useEffect(() => {
