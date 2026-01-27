@@ -22,7 +22,8 @@ import {
   Instagram,
   Store,
   Truck,
-  Star
+  Star,
+  Ticket
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -257,6 +258,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       isDropdown: true,
       current: location.pathname.startsWith("/admin/growth"),
       subItems: [
+        {
+          name: "Discount & Coupon",
+          href: "/admin/growth/discount-and-coupon",
+          icon: Ticket,
+          current: location.pathname === "/admin/growth/discount-and-coupon",
+        },
         {
           name: "SEO",
           href: "/admin/growth/seo",

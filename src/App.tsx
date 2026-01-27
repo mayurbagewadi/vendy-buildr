@@ -24,6 +24,7 @@ import Subscription from "./pages/admin/Subscription";
 import GrowthSEO from "./pages/admin/growth/SEO";
 import GrowthSocialMedia from "./pages/admin/growth/SocialMedia";
 import GrowthInstagram from "./pages/admin/growth/Instagram";
+import DiscountAndCoupon from "./pages/admin/growth/DiscountAndCoupon";
 import AdminMarketplace from "./pages/admin/Marketplace";
 import AdminShipping from "./pages/admin/Shipping";
 import AdminGoogleReviews from "./pages/admin/GoogleReviews";
@@ -102,6 +103,7 @@ const App = () => {
                       <Route path="/admin/orders" element={<StoreGuard><AdminLayout><Orders /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/analytics" element={<StoreGuard><AdminLayout><Analytics /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/subscription" element={<StoreGuard><AdminLayout><Subscription /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/discount-and-coupon" element={<StoreGuard><AdminLayout><DiscountAndCoupon /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/seo" element={<StoreGuard><AdminLayout><GrowthSEO /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/social-media" element={<StoreGuard><AdminLayout><GrowthSocialMedia /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/instagram" element={<StoreGuard><AdminLayout><GrowthInstagram /></AdminLayout></StoreGuard>} />
@@ -149,6 +151,7 @@ const App = () => {
                       <Route path="/admin/orders" element={<StoreGuard><AdminLayout><Orders /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/analytics" element={<StoreGuard><AdminLayout><Analytics /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/subscription" element={<StoreGuard><AdminLayout><Subscription /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/growth/discount-and-coupon" element={<StoreGuard><AdminLayout><DiscountAndCoupon /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/seo" element={<StoreGuard><AdminLayout><GrowthSEO /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/social-media" element={<StoreGuard><AdminLayout><GrowthSocialMedia /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/growth/instagram" element={<StoreGuard><AdminLayout><GrowthInstagram /></AdminLayout></StoreGuard>} />
