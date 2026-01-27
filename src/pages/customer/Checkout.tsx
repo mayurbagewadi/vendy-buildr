@@ -489,14 +489,6 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       const phone = form.getValues('phone');
       const email = form.getValues('email');
 
-      // Get auth session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setCouponError('Authentication required');
-        setIsValidatingCoupon(false);
-        return;
-      }
-
       // Call Edge Function for server-side validation
       const response = await fetch(
         'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/validate-coupon',
@@ -504,7 +496,6 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             couponCode,
@@ -757,27 +748,23 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Record coupon usage if coupon was applied
       if (appliedCoupon && discountAmount > 0) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await fetch(
-              'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/record-coupon-usage',
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  couponCode: appliedCoupon.code,
-                  storeId: storeId,
-                  orderId: insertedOrder.id,
-                  customerPhone: data.phone,
-                  customerEmail: data.email || undefined,
-                  discountApplied: discountAmount,
-                }),
-              }
-            );
-          }
+          await fetch(
+            'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/record-coupon-usage',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                couponCode: appliedCoupon.code,
+                storeId: storeId,
+                orderId: insertedOrder.id,
+                customerPhone: data.phone,
+                customerEmail: data.email || undefined,
+                discountApplied: discountAmount,
+              }),
+            }
+          );
         } catch (couponUsageError) {
           console.error('Error recording coupon usage:', couponUsageError);
           // Don't fail the order, just log the error
