@@ -496,6 +496,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
           },
           body: JSON.stringify({
             couponCode,
@@ -754,6 +755,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
               },
               body: JSON.stringify({
                 couponCode: appliedCoupon.code,
