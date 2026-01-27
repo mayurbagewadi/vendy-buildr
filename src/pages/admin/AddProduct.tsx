@@ -63,6 +63,7 @@ const AddProduct = () => {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
@@ -101,13 +102,14 @@ category: "",
 
       const { data: store, error } = await supabase
         .from("stores")
-        .select("id, google_access_token, google_refresh_token")
+        .select("id, slug, google_access_token, google_refresh_token")
         .eq("user_id", user.id)
         .single();
 
       if (error) throw error;
       if (store) {
         setStoreId(store.id);
+        setStoreSlug(store.slug);
 
         // If we have new Google tokens and a store, save them
         if (providerToken && !store.google_access_token) {
@@ -452,6 +454,9 @@ category: "",
           const uploadFormData = new FormData();
           uploadFormData.append('file', file);
           uploadFormData.append('type', 'products');
+          if (storeSlug) {
+            uploadFormData.append('store_slug', storeSlug);
+          }
 
           const progressInterval = setInterval(() => {
             setUploadingFiles(prev => prev.map((f, idx) =>

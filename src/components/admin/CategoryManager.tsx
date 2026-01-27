@@ -45,6 +45,7 @@ export function CategoryManager() {
   const [editingCategory, setEditingCategory] = useState<EditingCategory | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
@@ -68,12 +69,13 @@ export function CategoryManager() {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, google_access_token")
+        .select("id, slug, google_access_token")
         .eq("user_id", user.id)
         .single();
 
       if (!store) return;
       setStoreId(store.id);
+      setStoreSlug(store.slug);
       setIsDriveConnected(!!store.google_access_token);
 
       const { data, error } = await supabase
@@ -154,6 +156,9 @@ export function CategoryManager() {
         const uploadFormData = new FormData();
         uploadFormData.append('file', pendingFile);
         uploadFormData.append('type', 'categories');
+        if (storeSlug) {
+          uploadFormData.append('store_slug', storeSlug);
+        }
 
         const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
           method: 'POST',
@@ -344,6 +349,9 @@ export function CategoryManager() {
         const uploadFormData = new FormData();
         uploadFormData.append('file', editPendingFile);
         uploadFormData.append('type', 'categories');
+        if (storeSlug) {
+          uploadFormData.append('store_slug', storeSlug);
+        }
 
         const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
           method: 'POST',

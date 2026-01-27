@@ -45,14 +45,43 @@ try {
     // Extract the relative path from URL
     $relativePath = str_replace($baseUrl, '', $imageUrl);
 
-    // Sanitize path to prevent directory traversal
-    $relativePath = basename(dirname($relativePath)) . '/' . basename($relativePath);
-
-    // Validate the subdirectory
-    $validDirs = ['products', 'categories', 'banners'];
+    // Parse path - could be either:
+    // Old format: type/filename (e.g., products/uuid-timestamp.jpg)
+    // New format: store-slug/type/filename (e.g., my-store/products/uuid-timestamp.jpg)
     $pathParts = explode('/', $relativePath);
-    if (count($pathParts) < 2 || !in_array($pathParts[0], $validDirs)) {
-        throw new Exception('Invalid file path');
+
+    $validDirs = ['products', 'categories', 'banners'];
+
+    // Determine if this is new or old format
+    if (count($pathParts) === 3) {
+        // New format: store/type/filename
+        $storeSlug = $pathParts[0];
+        $type = $pathParts[1];
+        $filename = $pathParts[2];
+
+        if (!in_array($type, $validDirs)) {
+            throw new Exception('Invalid file type');
+        }
+
+        // Sanitize store slug
+        $storeSlug = preg_replace('/[^a-z0-9\-]/i', '', $storeSlug);
+        if (empty($storeSlug)) {
+            throw new Exception('Invalid store slug');
+        }
+
+        $relativePath = $storeSlug . '/' . $type . '/' . basename($filename);
+    } else if (count($pathParts) === 2) {
+        // Old format: type/filename (backward compatibility)
+        $type = $pathParts[0];
+        $filename = $pathParts[1];
+
+        if (!in_array($type, $validDirs)) {
+            throw new Exception('Invalid file type');
+        }
+
+        $relativePath = $type . '/' . basename($filename);
+    } else {
+        throw new Exception('Invalid file path format');
     }
 
     // Build full file path

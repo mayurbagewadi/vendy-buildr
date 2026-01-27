@@ -36,6 +36,7 @@ try {
 
     $file = $_FILES['file'];
     $uploadType = $_POST['type'] ?? 'products'; // products, categories, banners
+    $storeSlug = $_POST['store_slug'] ?? null; // Store identifier
 
     // Validate file size
     if ($file['size'] > $maxFileSize) {
@@ -68,8 +69,20 @@ try {
     $timestamp = round(microtime(true) * 1000);
     $filename = $uuid . '-' . $timestamp . '.' . $extension;
 
+    // Build path with store slug if provided
+    if ($storeSlug) {
+        // Sanitize store slug to prevent directory traversal
+        $storeSlug = preg_replace('/[^a-z0-9\-]/i', '', $storeSlug);
+        if (empty($storeSlug)) {
+            throw new Exception('Invalid store slug');
+        }
+        $targetDir = $uploadBasePath . $storeSlug . '/' . $subdir . '/';
+    } else {
+        // Fallback to old structure for backward compatibility
+        $targetDir = $uploadBasePath . $subdir . '/';
+    }
+
     // Create directory if it doesn't exist
-    $targetDir = $uploadBasePath . $subdir . '/';
     if (!is_dir($targetDir)) {
         mkdir($targetDir, 0755, true);
     }
@@ -87,7 +100,11 @@ try {
     $fileSizeMB = $file['size'] / 1024 / 1024;
 
     // Construct public URL
-    $imageUrl = $baseUrl . $subdir . '/' . $filename;
+    if ($storeSlug) {
+        $imageUrl = $baseUrl . $storeSlug . '/' . $subdir . '/' . $filename;
+    } else {
+        $imageUrl = $baseUrl . $subdir . '/' . $filename;
+    }
 
     // Return success response
     echo json_encode([

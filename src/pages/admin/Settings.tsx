@@ -22,6 +22,7 @@ const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isPoliciesOpen, setIsPoliciesOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
@@ -118,9 +119,12 @@ const AdminSettings = () => {
         console.error('Error loading store:', storeError);
       }
 
-      // Store the store ID for PDF generation
+      // Store the store ID and slug
       if (store?.id) {
         setStoreId(store.id);
+      }
+      if (store?.slug) {
+        setStoreSlug(store.slug);
       }
 
       // Set storage tracking
@@ -927,6 +931,9 @@ const AdminSettings = () => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('type', 'banners');
+            if (storeSlug) {
+              formData.append('store_slug', storeSlug);
+            }
 
             const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
               method: 'POST',
