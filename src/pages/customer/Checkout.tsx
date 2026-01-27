@@ -734,11 +734,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         delivery_latitude: location?.latitude || null,
         delivery_longitude: location?.longitude || null,
         items: cart as any,
-        subtotal: cartTotal,
-        discount_amount: discountAmount,
+        subtotal: Math.round(cartTotal),
+        discount_amount: Math.round(discountAmount),
         coupon_code: appliedCoupon?.code || null,
         delivery_charge: 0,
-        total: finalTotal,
+        total: Math.round(finalTotal),
         status: 'new',
         payment_method: selectedPaymentMethod,
         payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'pending',
@@ -793,7 +793,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: finalTotal,
+          amount: Math.round(finalTotal),
           currency: 'INR',
         });
       } else if (selectedPaymentMethod === 'phonepe') {
@@ -804,7 +804,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: finalTotal,
+          amount: Math.round(finalTotal),
           currency: 'INR',
         });
       } else {
