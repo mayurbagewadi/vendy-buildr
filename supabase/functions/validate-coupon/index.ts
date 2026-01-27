@@ -159,12 +159,25 @@ serve(async (req) => {
 
     // 6. Check customer type targeting (new vs returning)
     if (coupon.customer_type !== 'all') {
-      const { data: orders } = await supabase
+      let query = supabase
         .from('orders')
         .select('id', { count: 'exact' })
         .eq('store_id', storeId)
-        .or(`customer_phone.eq.${customerPhone},customer_email.eq.${customerEmail || ''}`)
-        .limit(1)
+
+      // Build OR condition for phone or email
+      if (customerPhone && customerEmail) {
+        query = query.or(`customer_phone.eq.${customerPhone},customer_email.eq.${customerEmail}`)
+      } else if (customerPhone) {
+        query = query.eq('customer_phone', customerPhone)
+      } else if (customerEmail) {
+        query = query.eq('customer_email', customerEmail)
+      }
+
+      const { data: orders, error: ordersError } = await query.limit(1)
+
+      if (ordersError) {
+        console.error('Error checking customer orders:', ordersError)
+      }
 
       const isNewCustomer = !orders || orders.length === 0
 
@@ -195,12 +208,25 @@ serve(async (req) => {
 
     // 7. Check first order only flag
     if (coupon.is_first_order) {
-      const { data: orders } = await supabase
+      let query = supabase
         .from('orders')
         .select('id', { count: 'exact' })
         .eq('store_id', storeId)
-        .or(`customer_phone.eq.${customerPhone},customer_email.eq.${customerEmail || ''}`)
-        .limit(1)
+
+      // Build OR condition for phone or email
+      if (customerPhone && customerEmail) {
+        query = query.or(`customer_phone.eq.${customerPhone},customer_email.eq.${customerEmail}`)
+      } else if (customerPhone) {
+        query = query.eq('customer_phone', customerPhone)
+      } else if (customerEmail) {
+        query = query.eq('customer_email', customerEmail)
+      }
+
+      const { data: orders, error: ordersError } = await query.limit(1)
+
+      if (ordersError) {
+        console.error('Error checking customer first order:', ordersError)
+      }
 
       const isNewCustomer = !orders || orders.length === 0
       if (!isNewCustomer) {
