@@ -782,7 +782,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: Math.round(finalTotal),
+          amount: finalTotal,
           currency: 'INR',
         });
       } else if (selectedPaymentMethod === 'phonepe') {
@@ -793,7 +793,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: Math.round(finalTotal),
+          amount: finalTotal,
           currency: 'INR',
         });
       } else {
