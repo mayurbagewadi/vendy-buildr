@@ -267,6 +267,9 @@ const Index = () => {
             <a href="#helper-program" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               For Helpers
             </a>
+            <Link to="/guide" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Guide
+            </Link>
             <Link to="/demo" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Demo Store
             </Link>
@@ -324,6 +327,13 @@ const Index = () => {
                   >
                     For Helpers
                   </a>
+                  <Link
+                    to="/guide"
+                    className="text-lg font-medium text-foreground hover:text-primary transition-colors py-3 border-b"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Guide
+                  </Link>
                   <Link
                     to="/demo"
                     className="text-lg font-medium text-foreground hover:text-primary transition-colors py-3 border-b"
@@ -838,6 +848,9 @@ const Index = () => {
               <a href="#helper-program" className="hover:text-foreground transition-colors">
                 For Helpers
               </a>
+              <Link to="/guide" className="hover:text-foreground transition-colors">
+                Guide
+              </Link>
               <Link to="/become-helper" className="hover:text-foreground transition-colors">
                 Apply as Helper
               </Link>

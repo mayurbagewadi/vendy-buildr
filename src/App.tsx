@@ -37,6 +37,7 @@ import Checkout from "./pages/customer/Checkout";
 import PaymentSuccess from "./pages/customer/PaymentSuccess";
 import Pricing from "./pages/Pricing";
 import Auth from "./pages/Auth";
+import Guide from "./pages/Guide";
 import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
@@ -130,6 +131,7 @@ const App = () => {
                       <Route path="/" element={<Index />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/auth" element={<Auth />} />
+                      <Route path="/guide" element={<Guide />} />
                       <Route path="/sitemap.xml" element={<Sitemap />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-of-service" element={<TermsOfService />} />
