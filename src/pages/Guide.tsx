@@ -343,21 +343,29 @@ const Guide = () => {
 
       {/* Header with Search */}
       <header className="border-b border-border/50 bg-background backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 lg:px-8 py-4">
-          {/* Top Row: Menu Button, Search Bar, Back Button */}
-          <div className="flex items-center gap-3 mb-4">
-            {/* Menu Toggle Button - Always Visible */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0 border border-border"
-              aria-label="Toggle sidebar"
-              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+        <div className="container mx-auto px-4 lg:px-8 py-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left Section: Menu Button + Title */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {/* Menu Toggle Button - Always Shows Hamburger Icon */}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 hover:bg-muted rounded-lg transition-colors border border-border"
+                aria-label="Toggle sidebar"
+                title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
 
-            {/* Search Bar - Center */}
-            <div className="relative flex-1 max-w-2xl">
+              {/* Title */}
+              <div className="select-none">
+                <h1 className="text-xl md:text-2xl font-bold font-playfair text-foreground">Documentation</h1>
+                <p className="text-xs text-muted-foreground hidden md:block">Learn how to use DigitalDukandar features effectively</p>
+              </div>
+            </div>
+
+            {/* Center Section: Search Bar */}
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
@@ -368,21 +376,15 @@ const Guide = () => {
               />
             </div>
 
-            {/* Back Button */}
+            {/* Right Section: Back Button */}
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted border border-transparent hover:border-border"
               title="Back to home"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline text-sm">Back</span>
+              <span className="hidden sm:inline text-sm font-medium">Back</span>
             </Link>
-          </div>
-
-          {/* Bottom Row: Title and Subtitle */}
-          <div className="select-none">
-            <h1 className="text-2xl md:text-3xl font-bold font-playfair mb-1 text-foreground">Documentation</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
           </div>
         </div>
       </header>
