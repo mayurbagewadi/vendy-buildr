@@ -316,36 +316,40 @@ const Guide = () => {
 
       {/* Header with Search */}
       <header className="border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent sticky top-0 z-40 backdrop-blur-sm">
-        <div className="container mx-auto px-4 lg:px-8 py-6">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
+        <div className="container mx-auto px-4 lg:px-8 py-4">
+          {/* Top Row: Back Button, Search Bar, Menu Button */}
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0">
               <ArrowLeft className="w-4 h-4" />
-              Back to Home
+              <span className="hidden sm:inline">Back</span>
             </Link>
+
+            {/* Search Bar - Center */}
+            <div className="relative flex-1 max-w-lg mx-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search guides..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 bg-muted/50 border-muted-foreground/20 text-sm"
+              />
+            </div>
+
+            {/* Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
-          <div className="mb-4">
-            <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-2">Documentation</h1>
-            <p className="text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search guides..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 bg-muted/50 border-muted-foreground/20"
-            />
+          {/* Bottom Row: Title and Subtitle */}
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-1">Documentation</h1>
+            <p className="text-sm text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
           </div>
         </div>
       </header>
