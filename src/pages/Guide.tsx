@@ -342,7 +342,7 @@ const Guide = () => {
       </Helmet>
 
       {/* Header with Search */}
-      <header className="border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+      <header className="border-b border-border/50 bg-background backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 lg:px-8 py-4">
           {/* Top Row: Menu Button, Search Bar, Back Button */}
           <div className="flex items-center gap-3 mb-4">
@@ -351,6 +351,7 @@ const Guide = () => {
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0 border border-border"
               aria-label="Toggle sidebar"
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -368,29 +369,33 @@ const Guide = () => {
             </div>
 
             {/* Back Button */}
-            <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted"
+              title="Back to home"
+            >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline text-sm">Back</span>
             </Link>
           </div>
 
           {/* Bottom Row: Title and Subtitle */}
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold font-playfair mb-1">Documentation</h1>
+          <div className="select-none">
+            <h1 className="text-2xl md:text-3xl font-bold font-playfair mb-1 text-foreground">Documentation</h1>
             <p className="text-xs md:text-sm text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="flex gap-6 py-6">
+      <div className="container mx-auto px-4 lg:px-8 pt-6">
+        <div className="flex gap-6 pb-6">
           {/* Sidebar Navigation */}
           <aside className={cn(
             "w-64 lg:w-72 flex-shrink-0 transition-all duration-300 ease-in-out",
             sidebarOpen ? "block" : "hidden"
           )}>
-            <div className="sticky top-24 space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
+            <div className="sticky top-[140px] space-y-2 max-h-[calc(100vh-160px)] overflow-y-auto pr-2">
               {filteredMenuItems.map((item) => (
                 <button
                   key={item.id}
@@ -428,8 +433,8 @@ const Guide = () => {
           {/* Main Content Area */}
           <main className="flex-1 min-w-0">
             {activeSection ? (
-              <article className="max-w-4xl space-y-8">
-                <div className="border-b border-border pb-6">
+              <article className="max-w-4xl space-y-8 scroll-mt-32">
+                <div className="border-b border-border pb-6 pt-2">
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-playfair mb-3">{activeSection.content.title}</h1>
                   <p className="text-base md:text-lg text-muted-foreground">{activeSection.content.description}</p>
                 </div>
@@ -443,13 +448,13 @@ const Guide = () => {
                 ) : (
                   <div className="space-y-10">
                     {activeSection.content.sections.map((section, idx) => (
-                      <section key={idx} className="scroll-mt-24">
-                        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">{section.heading}</h2>
+                      <section key={idx} className="scroll-mt-32">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground pt-4">{section.heading}</h2>
                         {Array.isArray(section.content) ? (
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {section.content.map((item, i) => {
                               if (item === "") {
-                                return <div key={i} className="h-3" />;
+                                return <div key={i} className="h-4" />;
                               }
 
                               const isIndented = item.startsWith('  ');
@@ -460,9 +465,9 @@ const Guide = () => {
                                 <p
                                   key={i}
                                   className={cn(
-                                    "text-foreground/90 leading-relaxed",
+                                    "text-foreground/90 leading-relaxed text-[15px]",
                                     isIndented && "ml-6",
-                                    isBold && "font-semibold"
+                                    isBold && "font-semibold mt-2"
                                   )}
                                 >
                                   {cleanItem}
@@ -471,7 +476,7 @@ const Guide = () => {
                             })}
                           </div>
                         ) : (
-                          <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{section.content}</p>
+                          <p className="text-foreground/90 leading-relaxed text-[15px] whitespace-pre-wrap">{section.content}</p>
                         )}
                       </section>
                     ))}
