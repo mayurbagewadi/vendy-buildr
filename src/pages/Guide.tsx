@@ -24,7 +24,7 @@ interface MenuSection {
 const Guide = () => {
   const [activeMenu, setActiveMenu] = useState("discount-coupon");
   const [searchQuery, setSearchQuery] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems: MenuSection[] = [
     {
@@ -327,18 +327,6 @@ const Guide = () => {
     );
   }, [searchQuery, menuItems]);
 
-  // Highlight search matches in content
-  const highlightText = (text: string) => {
-    if (!searchQuery.trim()) return text;
-
-    const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
-    return parts.map((part, i) =>
-      part.toLowerCase() === searchQuery.toLowerCase()
-        ? `<mark class="bg-yellow-500/30 px-0.5 rounded">${part}</mark>`
-        : part
-    ).join('');
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
@@ -354,157 +342,164 @@ const Guide = () => {
       </Helmet>
 
       {/* Header with Search */}
-      <header className="border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent sticky top-0 z-40 backdrop-blur-sm">
+      <header className="border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 lg:px-8 py-4">
-          {/* Top Row: Back Button, Search Bar, Menu Button */}
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back</span>
-            </Link>
+          {/* Top Row: Menu Button, Search Bar, Back Button */}
+          <div className="flex items-center gap-3 mb-4">
+            {/* Menu Toggle Button - Always Visible */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0 border border-border"
+              aria-label="Toggle sidebar"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
 
             {/* Search Bar - Center */}
-            <div className="relative flex-1 max-w-lg mx-auto">
+            <div className="relative flex-1 max-w-2xl">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search guides..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-muted/50 border-muted-foreground/20 text-sm"
+                className="pl-10 h-10 bg-muted/50 border-muted-foreground/20 text-sm w-full"
               />
             </div>
 
-            {/* Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {/* Back Button */}
+            <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm">Back</span>
+            </Link>
           </div>
 
           {/* Bottom Row: Title and Subtitle */}
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-1">Documentation</h1>
-            <p className="text-sm text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
+            <h1 className="text-2xl md:text-3xl font-bold font-playfair mb-1">Documentation</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Learn how to use DigitalDukandar features effectively</p>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 lg:px-8 py-8 flex gap-8">
-        {/* Sidebar Navigation */}
-        <aside className={cn(
-          "w-full md:w-64 lg:w-72 flex-shrink-0",
-          "fixed md:relative left-0 top-0 h-screen md:h-auto z-30 md:z-auto",
-          "bg-background md:bg-transparent pt-20 md:pt-0 px-4 md:px-0",
-          "overflow-y-auto transition-all duration-300",
-          mobileMenuOpen ? "block" : "hidden md:block"
-        )}>
-          <nav className="space-y-2">
-            {filteredMenuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveMenu(item.id);
-                  setMobileMenuOpen(false);
-                }}
-                disabled={item.disabled}
-                className={cn(
-                  "w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-between group",
-                  activeMenu === item.id
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-foreground hover:bg-muted/50 text-muted-foreground hover:text-foreground",
-                  item.disabled && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-medium text-sm">{item.title}</span>
-                </span>
-                {item.disabled && <Lock className="w-3 h-3" />}
-                {activeMenu === item.id && !item.disabled && (
-                  <ChevronRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
-                )}
-              </button>
-            ))}
-          </nav>
+      <div className="container mx-auto px-4 lg:px-8">
+        <div className="flex gap-6 py-6">
+          {/* Sidebar Navigation */}
+          <aside className={cn(
+            "w-64 lg:w-72 flex-shrink-0 transition-all duration-300 ease-in-out",
+            sidebarOpen ? "block" : "hidden"
+          )}>
+            <div className="sticky top-24 space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
+              {filteredMenuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveMenu(item.id);
+                  }}
+                  disabled={item.disabled}
+                  className={cn(
+                    "w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-between group",
+                    activeMenu === item.id
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "hover:bg-muted/70 text-muted-foreground hover:text-foreground border border-transparent hover:border-border",
+                    item.disabled && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="font-medium text-sm">{item.title}</span>
+                  </span>
+                  {item.disabled && <Lock className="w-3 h-3" />}
+                  {activeMenu === item.id && !item.disabled && (
+                    <ChevronRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
+                  )}
+                </button>
+              ))}
 
-          {searchQuery && filteredMenuItems.length === 0 && (
-            <div className="mt-8 p-4 text-center text-sm text-muted-foreground">
-              No results found for "{searchQuery}"
+              {searchQuery && filteredMenuItems.length === 0 && (
+                <div className="mt-8 p-4 text-center text-sm text-muted-foreground border border-dashed border-muted-foreground/30 rounded-lg">
+                  No results found for "{searchQuery}"
+                </div>
+              )}
             </div>
-          )}
-        </aside>
+          </aside>
 
-        {/* Overlay on mobile */}
-        {mobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-20 md:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0">
+            {activeSection ? (
+              <article className="max-w-4xl space-y-8">
+                <div className="border-b border-border pb-6">
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-playfair mb-3">{activeSection.content.title}</h1>
+                  <p className="text-base md:text-lg text-muted-foreground">{activeSection.content.description}</p>
+                </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 min-w-0">
-          {activeSection ? (
-            <article className="max-w-3xl space-y-8">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold font-playfair mb-4">{activeSection.content.title}</h1>
-                <p className="text-lg text-muted-foreground">{activeSection.content.description}</p>
+                {activeSection.disabled ? (
+                  <div className="bg-muted/30 border border-muted-foreground/20 rounded-lg p-12 text-center">
+                    <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+                    <p className="text-muted-foreground">This guide is under development. Check back later for detailed documentation.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-10">
+                    {activeSection.content.sections.map((section, idx) => (
+                      <section key={idx} className="scroll-mt-24">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">{section.heading}</h2>
+                        {Array.isArray(section.content) ? (
+                          <div className="space-y-2">
+                            {section.content.map((item, i) => {
+                              if (item === "") {
+                                return <div key={i} className="h-3" />;
+                              }
+
+                              const isIndented = item.startsWith('  ');
+                              const isBold = item.includes('Q:') || item.includes('A:');
+                              const cleanItem = item.replace(/^  /, '');
+
+                              return (
+                                <p
+                                  key={i}
+                                  className={cn(
+                                    "text-foreground/90 leading-relaxed",
+                                    isIndented && "ml-6",
+                                    isBold && "font-semibold"
+                                  )}
+                                >
+                                  {cleanItem}
+                                </p>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{section.content}</p>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                )}
+
+                {/* CTA Section */}
+                {!activeSection.disabled && (
+                  <div className="mt-16 bg-gradient-to-r from-primary/20 to-primary/10 rounded-xl p-8 border border-primary/20">
+                    <h3 className="text-xl md:text-2xl font-bold mb-3">Still have questions?</h3>
+                    <p className="text-muted-foreground mb-6">Need help with specific features? Visit your admin dashboard or contact our support team.</p>
+                    <Link to="/auth">
+                      <Button className="gap-2">
+                        Go to Dashboard
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </article>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground text-lg">Select a guide from the sidebar to get started</p>
               </div>
-
-              {activeSection.disabled ? (
-                <div className="bg-muted/30 border border-muted-foreground/20 rounded-lg p-8 text-center">
-                  <Lock className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-muted-foreground">This guide is coming soon. Check back later for detailed documentation.</p>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {activeSection.content.sections.map((section, idx) => (
-                    <section key={idx}>
-                      <h2 className="text-2xl md:text-3xl font-bold mb-4">{section.heading}</h2>
-                      {Array.isArray(section.content) ? (
-                        <ul className="space-y-3 text-foreground/90 leading-relaxed">
-                          {section.content.map((item, i) => (
-                            <li key={i} className={cn(
-                              item.startsWith('  ') ? "ml-6 list-none" : "ml-0 list-disc list-inside"
-                            )}>
-                              {item.replace(/^  /, '')}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{section.content}</p>
-                      )}
-                    </section>
-                  ))}
-                </div>
-              )}
-
-              {/* CTA Section */}
-              {!activeSection.disabled && (
-                <div className="mt-12 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg p-8 border border-primary/20">
-                  <h3 className="text-xl font-bold mb-3">Still have questions?</h3>
-                  <p className="text-muted-foreground mb-6">Need help with specific features? Visit your admin dashboard or contact our support team.</p>
-                  <Link to="/auth">
-                    <Button className="gap-2">
-                      Go to Dashboard
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </article>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No content available</p>
-            </div>
-          )}
+            )}
+          </main>
         </div>
-      </main>
+      </div>
 
       {/* Footer */}
       <footer className="border-t border-border/50 bg-muted/20 mt-20">
