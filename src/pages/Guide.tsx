@@ -37,32 +37,71 @@ const Guide = () => {
         sections: [
           {
             heading: "Overview",
-            content: "DigitalDukandar provides two complementary discount systems to help you maximize revenue and customer satisfaction: Manual Coupons and Automatic Discounts. Each system serves unique business needs and can be used strategically to drive different business outcomes."
-          },
-          {
-            heading: "Services & Features",
-            content: [
-              "Manual Coupons: Create custom discount codes that customers apply manually at checkout",
-              "Automatic Discounts: Set intelligent rules that apply discounts automatically based on customer behavior and order criteria",
-              "Real-time Validation: Server-side validation ensures accurate discount application every time",
-              "Multiple Discount Types: Tiered pricing, customer status-based, category-specific, and quantity-based discounts",
-              "Payment Method Filtering: Apply discounts to specific payment methods (COD, Online, or Both)",
-              "Highest Discount Priority: Automatically selects the best discount when multiple rules apply",
-              "Expiry Management: Set active dates and expiration for all discount rules",
-              "Performance Tracking: Monitor discount usage and impact on revenue"
-            ]
+            content: "DigitalDukandar provides two complementary discount systems to help you maximize revenue and customer satisfaction: Manual Coupons and Automatic Discounts. Each system serves unique business needs and can be used strategically to drive different business outcomes. Together, they create a powerful tool for revenue optimization, customer acquisition, and loyalty building."
           },
           {
             heading: "Business Benefits",
             content: [
-              "Increased Conversion Rates: Attract price-sensitive customers with strategic discounts",
-              "Customer Retention: Reward returning customers and build loyalty with targeted offers",
-              "Average Order Value Growth: Use tiered discounts to encourage larger purchases",
-              "New Customer Acquisition: Welcome discounts effectively reduce purchase friction for first-time buyers",
-              "Inventory Management: Category and quantity-based discounts help move excess stock",
-              "Payment Method Incentives: Encourage preferred payment methods with targeted discounts",
-              "Competitive Advantage: Flexible, real-time discount system responds faster than manual processes",
-              "Data-Driven Insights: Track which discounts drive the most sales and revenue"
+              "📈 Increased Conversion Rates",
+              "Strategic discounts remove price barriers that prevent purchases. Studies show that 40% of cart abandonments are due to unexpected costs. By offering clear, automatic discounts, you reduce friction and encourage checkout completion. Price-sensitive customers are more likely to complete purchases when they see immediate savings.",
+              "",
+              "💝 Customer Retention & Loyalty",
+              "Returning customers are 50% more likely to buy and spend 31% more per transaction than new customers. Automatic returning customer discounts reward loyal buyers and incentivize repeat purchases. Manual coupons in email campaigns keep existing customers engaged with personalized offers.",
+              "",
+              "📊 Average Order Value (AOV) Growth",
+              "Tiered discounts encourage larger purchases. For example, offering 5% off at ₹500 and 15% off at ₹2500 motivates customers to add more items to reach higher tiers. This directly increases your revenue per transaction. A 10% increase in AOV can result in 25-30% profit growth.",
+              "",
+              "🎯 New Customer Acquisition",
+              "First-time purchase hesitation is a major barrier. Welcome discounts (15-20% off) reduce purchase anxiety and convert first-time browsers into customers. New customers acquired with discounts have a 90% probability of making a second purchase within 30 days when managed properly.",
+              "",
+              "📦 Inventory Management",
+              "Excess inventory ties up capital and storage space. Category-based and quantity-based discounts help move slow-moving stock quickly. Instead of marking down prices permanently, use time-limited automatic discounts to clear inventory while maintaining margins on best-sellers.",
+              "",
+              "💳 Payment Method Optimization",
+              "Online payments improve cash flow and reduce payment failure rates. By offering better discounts for online payments vs. COD, you encourage customers to choose faster, more reliable payment methods. This reduces churn due to failed COD collections.",
+              "",
+              "⚡ Competitive Advantage",
+              "Manual discount systems require tracking spreadsheets and manual code creation. Automatic discounts respond instantly to business needs without manual intervention. You can launch new promotional strategies in minutes, not days, staying ahead of competitors.",
+              "",
+              "📉 Reduced Cart Abandonment",
+              "Automatic discounts are applied at checkout, providing a pleasant surprise that recovers abandoned carts. Instead of offering fixed pricing that leads customers to shop elsewhere, dynamic discounts show personalized value based on their order.",
+              "",
+              "🔍 Data-Driven Decision Making",
+              "Track which discount types drive conversions vs. which just lower margins. See exactly how each discount type performs, which customer segments respond best, and optimize your strategy based on real data. This prevents over-discounting and protects profitability."
+            ]
+          },
+          {
+            heading: "Services & Features",
+            content: [
+              "🎟️ Manual Coupons",
+              "Create custom discount codes that customers manually enter at checkout. You control when coupons are active, who can use them, and how they're distributed. Perfect for email campaigns, social media promotions, influencer partnerships, and seasonal sales. Each coupon has its own code, discount amount, expiry date, and usage tracking.",
+              "",
+              "⚙️ Automatic Discounts",
+              "Intelligent rules that automatically apply discounts based on customer behavior and order criteria. No customer action required—discounts appear instantly at checkout. Create once, apply to every relevant transaction. Types: tiered by order value, new customer, returning customer, category-based, quantity-based.",
+              "",
+              "🔐 Real-Time Server-Side Validation",
+              "All discount calculations happen on secure servers, not client browsers. This prevents discount manipulation, ensures accuracy, and protects your system from fraud. Every checkout runs validation to check eligibility across all active rules in milliseconds.",
+              "",
+              "🏆 5 Discount Types for Every Business Need",
+              "Tiered by Value (incentivize larger orders), New Customer (reduce first-purchase friction), Returning Customer (reward loyalty), Category-Based (promote specific products), Quantity-Based (encourage bulk purchases). Mix and match strategies to create sophisticated promotional campaigns.",
+              "",
+              "🛒 Payment Method Filtering",
+              "Apply discounts to specific payment methods: ALL (both COD & Online), ONLINE ONLY (encourage digital payments), COD ONLY (encourage cash orders). This lets you incentivize preferred payment methods without uniform discounting.",
+              "",
+              "🎯 Highest Discount Priority Engine",
+              "When multiple discount rules apply to a single order, the system automatically selects the highest discount amount. No customer confusion, no manual calculation. Example: If a returning customer qualifies for both a 10% loyalty discount AND a 5% category discount, they get 10%.",
+              "",
+              "⏰ Intelligent Expiry Management",
+              "Set start and end dates for all discounts. Automatic discounts have defined active periods so they don't run indefinitely. Coupons have individual expiry dates. The system automatically disables expired discounts with no manual action needed.",
+              "",
+              "📊 Comprehensive Performance Tracking",
+              "See in real-time: How many discounts were applied, total discount amount given, customer segments using each discount, revenue impact. Analytics dashboard shows which discounts drive actual conversions vs. which just commoditize pricing.",
+              "",
+              "👥 Customer Eligibility Validation",
+              "For new/returning customer discounts: System checks customer history via email and phone number. Automatically determines if they're new or returning without any manual verification.",
+              "",
+              "🔄 No Coupon/Discount Duplication",
+              "System prevents fraud by blocking duplicate coupon usage and complex rule combinations that could be exploited. Each transaction gets one discount (coupon takes priority if applied)."
             ]
           },
           {
