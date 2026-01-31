@@ -14,7 +14,11 @@
       "Bash(echo:*)",
       "WebSearch",
       "Bash(npm run build:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(npm run test-video-gen:*)",
+      "Bash(node video-generator/generate-direct.js:*)",
+      "Bash(npm run lint)",
+      "Bash(dir \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\Video\")"
     ]
   }
 }

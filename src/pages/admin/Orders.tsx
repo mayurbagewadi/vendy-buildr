@@ -42,6 +42,9 @@ interface Order {
   payment_method: string;
   notes?: string;
   created_at: string;
+  coupon_code?: string;
+  discount_amount?: number;
+  automatic_discount_id?: string;
 }
 
 const Orders = () => {
@@ -252,6 +255,30 @@ const Orders = () => {
         <Icon className="h-3 w-3" />
         {config.label}
       </Badge>
+    );
+  };
+
+  const getDiscountBadges = (order: Order) => {
+    const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
+    const hasAutoDiscount = order.automatic_discount_id && order.automatic_discount_id.trim() !== "";
+
+    if (!hasCoupon && !hasAutoDiscount) {
+      return null;
+    }
+
+    return (
+      <div className="flex gap-1 mb-1 -ml-1">
+        {hasCoupon && (
+          <Badge variant="outline" className="text-[10px] scale-75 origin-left bg-transparent border-purple-500 text-purple-900 dark:text-purple-300">
+            {order.coupon_code}
+          </Badge>
+        )}
+        {hasAutoDiscount && (
+          <Badge variant="outline" className="text-[10px] scale-75 origin-left bg-transparent border-green-500 text-green-700 dark:text-green-400">
+            Discount
+          </Badge>
+        )}
+      </div>
     );
   };
 
@@ -631,9 +658,18 @@ const Orders = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.order_number}</TableCell>
+                  {filteredOrders.map((order) => {
+                    const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
+                    const hasAutoDiscount = order.automatic_discount_id && order.automatic_discount_id.trim() !== "";
+                    const bothApplied = hasCoupon && hasAutoDiscount;
+                    return (
+                    <TableRow key={order.id} className={bothApplied ? "bg-red-100 dark:bg-red-950" : ""}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col gap-0.5">
+                          {getDiscountBadges(order)}
+                          <span>{order.order_number}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>{formatDate(order.created_at)}</div>
@@ -699,7 +735,8 @@ const Orders = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

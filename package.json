@@ -9,9 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "submit-sitemaps": "node scripts/submit-sitemaps.js",
-    "generate-video": "node video-generator/generate.js",
-    "test-video-gen": "node video-generator/test-generator.js"
+    "submit-sitemaps": "node scripts/submit-sitemaps.js"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.33.0",

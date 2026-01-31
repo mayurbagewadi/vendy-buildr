@@ -330,3 +330,48 @@ export const getCouponStats = async (storeId: string) => {
     };
   }
 };
+
+export interface CouponUsageRecord {
+  id: string;
+  order_id: string;
+  customer_phone?: string;
+  customer_email?: string;
+  discount_applied: number;
+  used_at: string;
+  order_number?: string;
+}
+
+export const getCouponUsageDetails = async (
+  couponId: string
+): Promise<CouponUsageRecord[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('coupon_usage')
+      .select(`
+        id,
+        order_id,
+        customer_phone,
+        customer_email,
+        discount_applied,
+        used_at,
+        orders (order_number)
+      `)
+      .eq('coupon_id', couponId)
+      .order('used_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((record: any) => ({
+      id: record.id,
+      order_id: record.order_id,
+      customer_phone: record.customer_phone,
+      customer_email: record.customer_email,
+      discount_applied: record.discount_applied,
+      used_at: record.used_at,
+      order_number: record.orders?.order_number,
+    }));
+  } catch (error) {
+    console.error('Error getting coupon usage details:', error);
+    return [];
+  }
+};

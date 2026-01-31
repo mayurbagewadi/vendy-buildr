@@ -22,6 +22,7 @@ import { getAvailablePaymentMethods, PaymentMethod, PaymentGatewayCredentials } 
 import { openRazorpayCheckout, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/payment/razorpay";
 import { initiatePhonePePayment, verifyPhonePePayment } from "@/lib/payment/phonepe";
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
+import { type CartItem } from "@/lib/autoDiscountUtils";
 import {
   Form,
   FormControl,
@@ -85,6 +86,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string>('');
+
+  // Auto-discount related state
+  const [autoDiscountApplied, setAutoDiscountApplied] = useState<any>(null);
+  const [autoDiscountAmount, setAutoDiscountAmount] = useState<number>(0);
+  const [isLoadingAutoDiscount, setIsLoadingAutoDiscount] = useState(false);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -290,6 +296,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
   }, [slug, cart]);
 
+  // Load auto discount when cart or payment method changes
+  useEffect(() => {
+    loadAutoDiscount();
+  }, [cart, selectedPaymentMethod, appliedCoupon, couponCode]);
+
   const checkSubscriptionLimits = async () => {
     try {
       setIsCheckingSubscription(true);
@@ -467,6 +478,74 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     setLocationError(false); // Clear error when location is shared
   };
 
+  // Load and evaluate automatic discounts via Edge Function
+  const loadAutoDiscount = async () => {
+    // Don't apply auto-discount if coupon is already applied
+    if (appliedCoupon || couponCode.trim()) {
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
+      return;
+    }
+
+    // Don't load if cart is empty or payment method not selected
+    if (cart.length === 0 || !selectedPaymentMethod) {
+      return;
+    }
+
+    try {
+      setIsLoadingAutoDiscount(true);
+      const storeId = cart[0].storeId;
+      const phone = form.getValues('phone');
+      const email = form.getValues('email');
+
+      // Convert cart items for Edge Function
+      const cartItems: CartItem[] = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        categoryId: item.categoryId,
+        storeId: item.storeId,
+      }));
+
+      // Call Edge Function for server-side validation
+      const response = await fetch(
+        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/validate-auto-discount',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
+          },
+          body: JSON.stringify({
+            storeId,
+            cartItems,
+            cartTotal,
+            selectedPaymentMethod,
+            customerPhone: phone,
+            customerEmail: email || undefined,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.applicable) {
+        setAutoDiscountApplied(data);
+        setAutoDiscountAmount(data.discount);
+      } else {
+        setAutoDiscountApplied(null);
+        setAutoDiscountAmount(0);
+      }
+    } catch (error) {
+      console.error('Error loading auto discount:', error);
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
+    } finally {
+      setIsLoadingAutoDiscount(false);
+    }
+  };
+
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code');
@@ -522,6 +601,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setAppliedCoupon(data.coupon);
       setDiscountAmount(data.discount);
       setCouponError('');
+
+      // Clear auto-discount to prevent race condition
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
 
       toast({
         title: 'Coupon Applied',
@@ -709,8 +792,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Generate order number
       const orderNumber = `ORD${Date.now().toString().slice(-8)}`;
 
-      // Calculate final total with discount
-      const finalTotal = cartTotal - discountAmount;
+      // Calculate final total with discount (coupon takes priority, then auto-discount)
+      const appliedDiscountAmount = discountAmount > 0 ? discountAmount : autoDiscountAmount;
+      const finalTotal = cartTotal - appliedDiscountAmount;
 
       // Prepare order for database
       const orderRecord = {
@@ -727,8 +811,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         delivery_longitude: location?.longitude || null,
         items: cart as any,
         subtotal: cartTotal,
-        discount_amount: discountAmount,
+        discount_amount: appliedDiscountAmount,
         coupon_code: appliedCoupon?.code || null,
+        automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
         delivery_charge: 0,
         total: finalTotal,
         status: 'new',
@@ -1291,7 +1376,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         size="sm"
                         variant="outline"
                         onClick={applyCoupon}
-                        disabled={isValidatingCoupon || !couponCode.trim()}
+                        disabled={isValidatingCoupon || isLoadingAutoDiscount || !couponCode.trim()}
                       >
                         {isValidatingCoupon ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1330,13 +1415,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
 
-                  {discountAmount > 0 && (
+                  {(discountAmount > 0 || autoDiscountAmount > 0) && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Discount</span>
+                      <span className="text-muted-foreground">
+                        {appliedCoupon ? 'Coupon Discount' : autoDiscountApplied ? 'Automatic Discount' : 'Discount'}
+                        {autoDiscountApplied && !appliedCoupon && (
+                          <span className="text-xs text-muted-foreground ml-1">({autoDiscountApplied.ruleName})</span>
+                        )}
+                      </span>
                       <span className="text-destructive font-medium">
-                        -₹{discountAmount.toFixed(2)}
+                        -{(discountAmount > 0 ? discountAmount : autoDiscountAmount).toFixed(2)} ₹
                         {appliedCoupon?.discount_type === 'percentage' && (
                           <span className="text-xs ml-1">({appliedCoupon.discount_value}%)</span>
+                        )}
+                        {autoDiscountApplied && !appliedCoupon && autoDiscountApplied.discountType === 'percentage' && (
+                          <span className="text-xs ml-1">({autoDiscountApplied.discountPercentage}%)</span>
                         )}
                       </span>
                     </div>
@@ -1350,7 +1443,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold">Total</span>
-                  <span className="text-2xl font-bold text-primary">₹{(cartTotal - discountAmount).toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-primary">₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount)).toFixed(2)}</span>
                 </div>
 
                 <div className="bg-accent p-3 rounded-lg">

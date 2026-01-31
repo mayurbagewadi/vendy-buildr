@@ -3,8 +3,42 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search, Menu, X, ChevronRight, Lock } from "lucide-react";
+import { ArrowLeft, Search, Menu, ChevronRight, Lock, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Hide scrollbars while keeping scroll functionality
+const scrollbarHideStyles = `
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .menu-item-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .menu-item-hover:hover {
+    transform: translateX(4px);
+  }
+`;
 
 interface MenuSection {
   id: string;
@@ -22,11 +56,221 @@ interface MenuSection {
 }
 
 const Guide = () => {
-  const [activeMenu, setActiveMenu] = useState("discount-coupon");
+  const [activeMenu, setActiveMenu] = useState("store-signup");
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems: MenuSection[] = [
+    {
+      id: "store-signup",
+      title: "Store Signup",
+      icon: "🚀",
+      content: {
+        title: "Create Your Store - Quick Start Guide",
+        description: "Get started in minutes! Follow this step-by-step guide to create your online store and start selling.",
+        sections: [
+          {
+            heading: "Why Sign Up with DigitalDukandar?",
+            content: [
+              "✅ No coding required - Build your store without technical skills",
+              "✅ Free to start - 14-day free trial, no credit card needed",
+              "✅ WhatsApp integrated - Customers order via WhatsApp directly",
+              "✅ Pre-loaded store - Get demo products and categories automatically",
+              "✅ Instant subdomain - Your store goes live immediately at yourstore.yesgive.shop",
+              "✅ Google Drive integration - Store your product images in Google Drive",
+              "✅ Multi-payment support - Accept both Online and Cash on Delivery",
+              "✅ Easy analytics - Track sales, orders, and customer insights",
+              "✅ Referral program - Earn commissions by referring other sellers",
+              "✅ Professional support - 24/7 help available"
+            ]
+          },
+          {
+            heading: "What You'll Need",
+            content: [
+              "✓ Google Account (for sign-in and Google Drive storage)",
+              "✓ Store Name (what customers will see)",
+              "✓ WhatsApp Business Number (customers order via WhatsApp)",
+              "✓ Internet connection",
+              "✓ 5 minutes to set up"
+            ]
+          },
+          {
+            heading: "Step 1: Open Menu & Get Started",
+            content: [
+              "On your mobile or desktop:",
+              "",
+              "1. Open yesgive.shop",
+              "2. Click the 3-bar Menu icon (☰) at top left",
+              "3. Click 'Get Started' button",
+              "4. Click 'Sign in with Google'",
+              "5. Select your Google account",
+              "6. Approve Google account access",
+              "",
+              "⏱️ Takes less than 1 minute"
+            ]
+          },
+          {
+            heading: "Step 2: Fill Store Details",
+            content: [
+              "After Google sign-in, you'll see the Store Setup form. Fill in:",
+              "",
+              "📝 Store Name (Required)",
+              "  • What customers will see as your business name",
+              "  • Examples: 'Fresh Fruits Market', 'Fashion Hub', 'Electronics Store'",
+              "  • Can be 2-50 characters",
+              "  • Tip: Your store URL is auto-generated from this name",
+              "  • You can change this later in settings",
+              "",
+              "📄 Store Description (Optional)",
+              "  • Brief description of your business",
+              "  • What you sell and why customers should choose you",
+              "  • Max 500 characters",
+              "  • Examples: 'Fresh organic vegetables delivered daily'",
+              "  • Leave blank if you'll add this later",
+              "",
+              "📱 WhatsApp Number (Required)",
+              "  • This is the number where you WILL RECEIVE ORDERS",
+              "  • Customers will message this number to place orders",
+              "  • Select your country code (India: +91, USA: +1, UK: +44, UAE: +971)",
+              "  • Enter your 10-digit phone number",
+              "  • Make sure you have WhatsApp installed on this number",
+              "  • Example: Country: India (+91), Phone: 9876543210",
+              "",
+              "🔗 Store URL (Auto-generated - Read-only)",
+              "  • Your unique web address automatically generated from store name",
+              "  • Example: 'Fresh Fruits Market' → freshfruits.yesgive.shop",
+              "  • Only lowercase letters and numbers",
+              "  • This CANNOT be changed later, so choose your store name carefully!",
+              "  • You'll see a ✓ (available) or ✗ (taken) indicator"
+            ]
+          },
+          {
+            heading: "Step 3: Click 'Continue'",
+            content: [
+              "After filling all required details:",
+              "",
+              "1. Review your information (especially Store Name - it determines your URL)",
+              "2. Verify your WhatsApp number is correct",
+              "3. Click the 'Continue' button",
+              "",
+              "What happens automatically:",
+              "  ✓ Your store is created instantly",
+              "  ✓ Store URL is registered (yourstore.digitaldukandar.in)",
+              "  ✓ Demo products are added (15+ sample products)",
+              "  ✓ Demo categories are added",
+              "  ✓ 14-day free trial is activated",
+              "",
+              "⏱️ Takes less than 2 minutes total"
+            ]
+          },
+          {
+            heading: "Step 4: Google Drive Setup",
+            content: [
+              "After clicking Continue in Step 3, a NEW PAGE opens for Google Drive setup.",
+              "",
+              "What Google Drive does:",
+              "  ✓ Store all your product images in Google Drive",
+              "  ✓ Free cloud storage (up to 15GB for images)",
+              "  ✓ Automatic backup of your images",
+              "  ✓ Easy image management and organization",
+              "  ✓ Access images from anywhere",
+              "",
+              "How to connect Google Drive:",
+              "  1. On the new Google Drive page, click 'Connect Google Drive' button",
+              "  2. Select your Google account",
+              "  3. Approve permissions (allow access to Google Drive)",
+              "  4. Connection is complete",
+              "  5. Click 'Continue' to go to your admin panel",
+              "",
+              "Or you can skip:",
+              "  • Click 'Skip' or 'Continue' without connecting",
+              "  • You can connect anytime from Store Settings later",
+              "  • Optional but recommended for convenience",
+              "",
+              "⏱️ Takes less than 1 minute (or 5 seconds to skip)"
+            ]
+          },
+          {
+            heading: "Step 5: Access Your Admin Panel",
+            content: [
+              "Congratulations! 🎉 You're in your Store Admin Panel!",
+              "",
+              "Your store is NOW LIVE at: yourstore.digitaldukandar.in",
+              "",
+              "Your store automatically comes pre-loaded with:",
+              "  📦 15+ Demo Products - Sample products ready to show customers",
+              "  🏷️ Demo Categories - Electronics, Fashion, Home & Living, etc.",
+              "  💡 Everything is ready - No setup needed!",
+              "",
+              "What you can do right now:",
+              "  📦 Manage Products - Edit, add, or delete products",
+              "  📋 Manage Categories - Create and organize product categories",
+              "  📊 View Analytics - Track sales, visitors, and orders",
+              "  🛒 Manage Orders - See customer orders and process them",
+              "  💰 Set Discounts - Create coupons and automatic discounts",
+              "  ⚙️ Store Settings - Update store info, logo, colors, banner",
+              "  🚀 Growth Tools - Setup SEO, social media, marketing",
+              "  📱 WhatsApp Orders - Customers can order via the WhatsApp number you provided",
+              "",
+              "✅ Your store is ready! Customers can now find you at yourstore.digitaldukandar.in"
+            ]
+          },
+          
+          {
+            heading: "Common Questions About Signup",
+            content: [
+              "Q: Is signup really free?",
+              "A: Yes! 14-day free trial with full features. No credit card required. You only pay after trial if you want to continue.",
+              "",
+              "Q: Do I need technical skills?",
+              "A: No! The platform is designed for non-technical users. All done through simple forms and menus.",
+              "",
+              "Q: Can I change my store URL?",
+              "A: No, once created it cannot be changed. That's why we recommend choosing carefully. The URL shows in all customer emails and WhatsApp messages.",
+              "",
+              "Q: What if my store URL is already taken?",
+              "A: Modify your store name to make the URL unique. The system will automatically generate a new one and show if it's available.",
+              "",
+              "Q: Can I have multiple stores?",
+              "A: Yes! Create separate accounts (with different Google accounts) for multiple stores. Each gets its own dashboard.",
+              "",
+              "Q: What language is the store in?",
+              "A: Currently available in English. Multi-language support coming soon!",
+              "",
+              "Q: Do I need WhatsApp Business Account?",
+              "A: No, regular WhatsApp works fine. You just share the number with customers and they message you.",
+              "",
+              "Q: Can I edit store details later?",
+              "A: Yes! Most details can be changed in Store Settings. Only the store URL cannot be changed.",
+              "",
+              "Q: When does the free trial expire?",
+              "A: 14 days from the date you create your store. You'll get email reminders before it expires.",
+              "",
+              "Q: What payment methods can customers use?",
+              "A: Online payments and Cash on Delivery. You can choose which methods to accept in settings.",
+              "",
+              "Q: Are my products visible immediately?",
+              "A: Yes! Once you add a product, it appears on your store instantly. Customers can see it and order via WhatsApp.",
+              "",
+              "Q: Is customer data secure?",
+              "A: Yes. We use enterprise-grade encryption and follow international security standards. Your data is safe with us."
+            ]
+          },
+          {
+            heading: "Need Help?",
+            content: [
+              "📖 Check our documentation for detailed guides on each feature",
+              "💬 Contact support via WhatsApp or email",
+              "📧 Check your welcome email for quick start tips",
+              "🎓 Watch our video tutorials (coming soon)",
+              "💡 Browse the FAQ section in your dashboard",
+              "",
+              "We're here to help! Don't hesitate to reach out with questions."
+            ]
+          }
+        ]
+      }
+    },
     {
       id: "discount-coupon",
       title: "Discount & Coupon",
@@ -328,7 +572,8 @@ const Guide = () => {
   }, [searchQuery, menuItems]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <style>{scrollbarHideStyles}</style>
       <Helmet>
         <title>Guide | DigitalDukandar</title>
         <meta name="description" content="Comprehensive guides and documentation for DigitalDukandar platform." />
@@ -342,44 +587,53 @@ const Guide = () => {
       </Helmet>
 
       {/* Header with Search */}
-      <header className="border-b border-border/50 bg-background backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 lg:px-8 py-5">
-          <div className="flex items-center justify-between gap-4">
+      <header className="border-b border-border/30 bg-background/95 backdrop-blur-xl sticky top-0 z-50 shadow-lg shadow-black/5">
+        <div className="container mx-auto px-4 lg:px-8 py-8">
+          <div className="flex items-center justify-between gap-6">
             {/* Left Section: Menu Button + Title */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {/* Menu Toggle Button - Always Shows Hamburger Icon */}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {/* Menu Toggle Button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors border border-border"
+                className="p-3 hover:bg-primary/10 rounded-xl transition-all duration-300 border border-border/50 hover:border-primary/30 hover:shadow-md"
                 aria-label="Toggle sidebar"
                 title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-5 h-5 text-foreground" />
               </button>
 
-              {/* Title */}
-              <div className="select-none">
-                <h1 className="text-xl md:text-2xl font-bold font-playfair text-foreground">Documentation</h1>
-                <p className="text-xs text-muted-foreground hidden md:block">Learn how to use DigitalDukandar features effectively</p>
+              {/* Title with Icon */}
+              <div className="select-none flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    Documentation
+                  </h1>
+                  <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
+                    Comprehensive platform guides
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Center Section: Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="relative flex-1 max-w-xl">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search guides..."
+                placeholder="Search documentation..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-muted/50 border-muted-foreground/20 text-sm w-full"
+                className="pl-11 h-12 bg-muted/50 border-border/50 focus:border-primary/50 text-sm w-full rounded-xl shadow-sm"
               />
             </div>
 
             {/* Right Section: Back Button */}
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0 px-3 py-2 rounded-lg hover:bg-muted border border-transparent hover:border-border"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-all duration-300 flex-shrink-0 px-4 py-2.5 rounded-xl hover:bg-primary/10 border border-transparent hover:border-primary/20"
               title="Back to home"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -390,15 +644,21 @@ const Guide = () => {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 lg:px-8 pt-6">
-        <div className="flex gap-6 pb-6">
+      <div className="container mx-auto px-4 lg:px-8 pt-8 min-h-[calc(100vh-140px)]">
+        <div className="flex gap-8 pb-8 h-full">
           {/* Sidebar Navigation */}
           <aside className={cn(
-            "w-64 lg:w-72 flex-shrink-0 transition-all duration-300 ease-in-out",
+            "w-72 lg:w-80 flex-shrink-0 transition-all duration-300 ease-in-out",
             sidebarOpen ? "block" : "hidden"
           )}>
-            <div className="sticky top-[140px] space-y-2 max-h-[calc(100vh-160px)] overflow-y-auto pr-2">
-              {filteredMenuItems.map((item) => (
+            <div className="sticky top-[120px] space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-3 hide-scrollbar">
+              <div className="mb-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 mb-3">
+                  Guide Topics
+                </h2>
+              </div>
+
+              {filteredMenuItems.map((item, index) => (
                 <button
                   key={item.id}
                   onClick={() => {
@@ -406,57 +666,72 @@ const Guide = () => {
                   }}
                   disabled={item.disabled}
                   className={cn(
-                    "w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-between group",
+                    "w-full text-left px-5 py-4 rounded-xl transition-all duration-300 flex items-center justify-between group menu-item-hover",
+                    "animate-fade-in-up",
                     activeMenu === item.id
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "hover:bg-muted/70 text-muted-foreground hover:text-foreground border border-transparent hover:border-border",
-                    item.disabled && "opacity-50 cursor-not-allowed"
+                      ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]"
+                      : "hover:bg-muted/80 text-foreground/90 hover:text-foreground border border-border/30 hover:border-border/50 hover:shadow-md",
+                    item.disabled && "opacity-50 cursor-not-allowed hover:transform-none"
                   )}
+                  style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <span className="flex items-center gap-3">
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="font-medium text-sm">{item.title}</span>
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium text-[15px]">{item.title}</span>
                   </span>
-                  {item.disabled && <Lock className="w-3 h-3" />}
-                  {activeMenu === item.id && !item.disabled && (
-                    <ChevronRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
-                  )}
+                  {item.disabled ? (
+                    <Lock className="w-3.5 h-3.5 opacity-50" />
+                  ) : activeMenu === item.id ? (
+                    <ChevronRight className="w-4 h-4 ml-auto transition-transform group-hover:translate-x-1" />
+                  ) : null}
                 </button>
               ))}
 
               {searchQuery && filteredMenuItems.length === 0 && (
-                <div className="mt-8 p-4 text-center text-sm text-muted-foreground border border-dashed border-muted-foreground/30 rounded-lg">
-                  No results found for "{searchQuery}"
+                <div className="mt-8 p-6 text-center text-sm text-muted-foreground border-2 border-dashed border-muted-foreground/20 rounded-xl bg-muted/30">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No results found for "{searchQuery}"</p>
                 </div>
               )}
             </div>
           </aside>
 
           {/* Main Content Area */}
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0 overflow-y-auto hide-scrollbar" style={{ maxHeight: 'calc(100vh - 160px)' }}>
             {activeSection ? (
-              <article className="max-w-4xl space-y-8 scroll-mt-32">
-                <div className="border-b border-border pb-6 pt-2">
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-playfair mb-3">{activeSection.content.title}</h1>
-                  <p className="text-base md:text-lg text-muted-foreground">{activeSection.content.description}</p>
+              <article className="max-w-4xl space-y-10 animate-fade-in-up pb-12">
+                {/* Title Section */}
+                <div className="border-b border-border/40 pb-8 pt-4">
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
+                    {activeSection.content.title}
+                  </h1>
+                  <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                    {activeSection.content.description}
+                  </p>
                 </div>
 
                 {activeSection.disabled ? (
-                  <div className="bg-muted/30 border border-muted-foreground/20 rounded-lg p-12 text-center">
-                    <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
-                    <p className="text-muted-foreground">This guide is under development. Check back later for detailed documentation.</p>
+                  <div className="bg-gradient-to-br from-muted/40 to-muted/20 border-2 border-dashed border-muted-foreground/20 rounded-2xl p-16 text-center">
+                    <div className="inline-flex p-4 bg-muted/50 rounded-full mb-4">
+                      <Lock className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3">Coming Soon</h3>
+                    <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                      This guide is under development. Check back later for detailed documentation.
+                    </p>
                   </div>
                 ) : (
-                  <div className="space-y-10">
+                  <div className="space-y-12">
                     {activeSection.content.sections.map((section, idx) => (
                       <section key={idx} className="scroll-mt-32">
-                        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground pt-4">{section.heading}</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground pt-4 pb-2 border-l-4 border-primary pl-6">
+                          {section.heading}
+                        </h2>
                         {Array.isArray(section.content) ? (
-                          <div className="space-y-3">
+                          <div className="space-y-4 pl-6">
                             {section.content.map((item, i) => {
                               if (item === "") {
-                                return <div key={i} className="h-4" />;
+                                return <div key={i} className="h-6" />;
                               }
 
                               const isIndented = item.startsWith('  ');
@@ -467,9 +742,9 @@ const Guide = () => {
                                 <p
                                   key={i}
                                   className={cn(
-                                    "text-foreground/90 leading-relaxed text-[15px]",
-                                    isIndented && "ml-6",
-                                    isBold && "font-semibold mt-2"
+                                    "text-foreground/90 leading-relaxed text-base",
+                                    isIndented && "ml-8 pl-4 border-l-2 border-muted-foreground/20",
+                                    isBold && "font-semibold mt-4 text-foreground"
                                   )}
                                 >
                                   {cleanItem}
@@ -478,7 +753,9 @@ const Guide = () => {
                             })}
                           </div>
                         ) : (
-                          <p className="text-foreground/90 leading-relaxed text-[15px] whitespace-pre-wrap">{section.content}</p>
+                          <p className="text-foreground/90 leading-relaxed text-base whitespace-pre-wrap pl-6">
+                            {section.content}
+                          </p>
                         )}
                       </section>
                     ))}
@@ -487,35 +764,36 @@ const Guide = () => {
 
                 {/* CTA Section */}
                 {!activeSection.disabled && (
-                  <div className="mt-16 bg-gradient-to-r from-primary/20 to-primary/10 rounded-xl p-8 border border-primary/20">
-                    <h3 className="text-xl md:text-2xl font-bold mb-3">Still have questions?</h3>
-                    <p className="text-muted-foreground mb-6">Need help with specific features? Visit your admin dashboard or contact our support team.</p>
+                  <div className="mt-20 bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 rounded-2xl p-10 border border-primary/20 shadow-xl shadow-primary/5">
+                    <h3 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">
+                      Still have questions?
+                    </h3>
+                    <p className="text-muted-foreground text-lg mb-8 max-w-2xl">
+                      Need help with specific features? Visit your admin dashboard or contact our support team for personalized assistance.
+                    </p>
                     <Link to="/auth">
-                      <Button className="gap-2">
+                      <Button className="gap-2 h-12 px-6 text-base shadow-lg hover:shadow-xl transition-all duration-300">
                         Go to Dashboard
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-5 h-5" />
                       </Button>
                     </Link>
                   </div>
                 )}
               </article>
             ) : (
-              <div className="text-center py-20">
-                <p className="text-muted-foreground text-lg">Select a guide from the sidebar to get started</p>
+              <div className="text-center py-32">
+                <div className="inline-flex p-6 bg-muted/50 rounded-full mb-6">
+                  <BookOpen className="w-16 h-16 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground text-xl">
+                  Select a guide from the sidebar to get started
+                </p>
               </div>
             )}
           </main>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-muted/20 mt-20">
-        <div className="container mx-auto px-4 lg:px-8 py-8">
-          <p className="text-center text-sm text-muted-foreground">
-            © 2025 DigitalDukandar. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

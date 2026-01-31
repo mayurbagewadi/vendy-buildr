@@ -716,7 +716,7 @@ export function CategoryManager() {
                     className="w-4 h-4 text-primary"
                   />
                   <span className="text-sm">
-                    VPS Server <span className="text-xs text-green-600 font-medium">(Recommended)</span>
+                    VPS Server
                   </span>
                 </label>
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -730,7 +730,7 @@ export function CategoryManager() {
                     disabled={!isDriveConnected}
                   />
                   <span className="text-sm">
-                    Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                    Google Drive <span className="text-xs text-green-600 font-medium">(Recommended)</span> {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
                   </span>
                 </label>
               </div>
@@ -1058,7 +1058,7 @@ export function CategoryManager() {
                         className="w-4 h-4 text-primary"
                       />
                       <span className="text-xs">
-                        VPS Server <span className="text-xs text-green-600 font-medium">(Recommended)</span>
+                        VPS Server
                       </span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
@@ -1072,7 +1072,7 @@ export function CategoryManager() {
                         disabled={!isDriveConnected}
                       />
                       <span className="text-xs">
-                        Google Drive {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                        Google Drive <span className="text-xs text-green-600 font-medium">(Recommended)</span> {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
                       </span>
                     </label>
                   </div>
