@@ -69,6 +69,7 @@ const Orders = () => {
   const [shipModalOpen, setShipModalOpen] = useState(false);
   const [orderToShip, setOrderToShip] = useState<Order | null>(null);
   const [shippingPopupEnabled, setShippingPopupEnabled] = useState(false);
+  const [doubleDiscountWarningDismissed, setDoubleDiscountWarningDismissed] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -474,6 +475,37 @@ const Orders = () => {
     await handleUpdateOrder(order.id, { status: "cancelled" });
   };
 
+  // Check if there are orders with both coupon and auto discount applied
+  const hasDoubleDiscountOrders = () => {
+    return orders.some(order => {
+      const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
+      const hasAutoDiscount = order.automatic_discount_id && order.automatic_discount_id.trim() !== "";
+      const bothApplied = hasCoupon && hasAutoDiscount;
+      const isActive = order.status !== 'cancelled' && order.status !== 'delivered';
+      return bothApplied && isActive;
+    });
+  };
+
+  // Handle dismiss warning
+  const handleDismissDoubleDiscountWarning = () => {
+    setDoubleDiscountWarningDismissed(true);
+    localStorage.setItem('doubleDiscountWarningDismissed', 'true');
+  };
+
+  // Auto-reset warning when no problematic orders exist
+  useEffect(() => {
+    if (!hasDoubleDiscountOrders()) {
+      setDoubleDiscountWarningDismissed(false);
+      localStorage.removeItem('doubleDiscountWarningDismissed');
+    } else {
+      // Check localStorage on mount/update
+      const dismissed = localStorage.getItem('doubleDiscountWarningDismissed');
+      if (dismissed === 'true') {
+        setDoubleDiscountWarningDismissed(true);
+      }
+    }
+  }, [orders]);
+
   const filteredOrders = getFilteredOrders();
   const todayOrders = orders.filter((order) => {
     const today = new Date();
@@ -569,6 +601,33 @@ const Orders = () => {
             </div>
           </Card>
         </div>
+
+        {/* Double Discount Warning Banner */}
+        {hasDoubleDiscountOrders() && !doubleDiscountWarningDismissed && (
+          <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="ml-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-yellow-900 dark:text-yellow-100">
+                    ⚠️ Orders with Multiple Discounts Detected
+                  </p>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                    Some orders have both coupon and automatic discount applied. Please review these orders carefully before processing.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleDismissDoubleDiscountWarning}
+                  size="sm"
+                  className="ml-4 flex-shrink-0"
+                  variant="outline"
+                >
+                  Mark as Read
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* View Limit Warning Banner */}
         {viewLimit !== null && totalOrderCount > viewLimit && (
