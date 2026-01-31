@@ -81,7 +81,7 @@ const Index = () => {
     },
     {
       icon: MessageCircle,
-      title: "WhatsApp Orders",
+      title: "WhatsApp Integration",
       description: "Receive orders directly on WhatsApp. Chat with customers in real-time instantly.",
       gradient: "from-green-500 to-emerald-500",
       size: "normal"
