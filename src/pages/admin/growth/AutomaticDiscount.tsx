@@ -38,6 +38,7 @@ import {
   Eye,
   TrendingUp,
   Activity,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -387,6 +388,21 @@ const AutomaticDiscount = () => {
   return (
     <>
       <div className="space-y-6">
+        {/* Warning Card */}
+        <div className="bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500 rounded-lg p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="w-6 h-6 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
+                Important Notice
+              </h3>
+              <p className="text-orange-800 dark:text-orange-300 text-sm leading-relaxed">
+                Before confirming every order, please verify the product amount and any revenue loss due to discounts and coupons. The platform will not be responsible for losses caused by discounts/coupons. Check every discount/coupon applied order properly.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
