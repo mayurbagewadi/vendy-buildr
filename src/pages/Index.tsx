@@ -39,7 +39,8 @@ import {
   Boxes,
   ClipboardList,
   Play,
-  LineChart
+  LineChart,
+  Percent
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -146,6 +147,20 @@ const Index = () => {
       title: "Order Management",
       description: "Streamline order processing from checkout to delivery with ease.",
       gradient: "from-sky-500 to-blue-500",
+      size: "normal"
+    },
+    {
+      icon: Percent,
+      title: "Discounts",
+      description: "Create flexible discounts with percentage, fixed amounts, or tiered pricing. Boost sales automatically.",
+      gradient: "from-red-500 to-orange-500",
+      size: "normal"
+    },
+    {
+      icon: CreditCard,
+      title: "Coupons",
+      description: "Generate unique coupon codes and track redemptions. Perfect for referrals and loyalty programs.",
+      gradient: "from-purple-500 to-pink-500",
       size: "normal"
     }
   ];
@@ -499,11 +514,11 @@ const Index = () => {
                   animationDelay: `${index * 50}ms`
                 }}
               >
-                {/* Animated gradient overlay - reduced opacity */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-all duration-700`} />
+                {/* Animated gradient overlay - 50% without hover, 100% with hover */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-20 transition-all duration-700`} />
 
-                {/* Animated border glow - reduced by 50% */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-15 blur-xl transition-all duration-700`} />
+                {/* Animated border glow - 50% without hover, 100% with hover */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-20 blur-xl transition-all duration-700`} />
 
                 {/* Decorative corner accent */}
                 <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-10 transition-opacity duration-500`} />
