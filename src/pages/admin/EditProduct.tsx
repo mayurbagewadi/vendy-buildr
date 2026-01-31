@@ -493,12 +493,12 @@ category: "",
 
       await updateProduct(id, productData);
 
-      toast({
-        title: "Product updated successfully",
-        description: `${data.name} has been updated`,
-      });
+      // Mark that products need export
+      localStorage.setItem('products_need_export', 'true');
+      window.dispatchEvent(new Event('productChanged'));
 
-      navigate("/admin/products");
+      // Navigate to products page with highlighted product
+      navigate("/admin/products", { state: { highlightedProductId: id } });
     } catch (error) {
       toast({
         title: "Error updating product",

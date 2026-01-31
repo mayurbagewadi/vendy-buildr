@@ -568,25 +568,42 @@ category: "",
         updatedAt: new Date().toISOString(),
       };
 
-      // Use shared utility to add product
-      addProduct(productData);
+      // Use shared utility to add product and get the actual database ID
+      const createdProduct = await addProduct(productData);
+
+      // Mark that products need export
+      localStorage.setItem('products_need_export', 'true');
+      window.dispatchEvent(new Event('productChanged'));
 
       // Cleanup preview URLs
       previewUrls.forEach(url => URL.revokeObjectURL(url));
 
-      toast({
-        title: "Product created successfully",
-        description: `${data.name} has been added to your catalog`,
-      });
-
-      navigate("/admin/products");
+      // Navigate to products page with highlighted product (use actual database ID)
+      navigate("/admin/products", { state: { highlightedProductId: createdProduct.id } });
     } catch (error: any) {
       console.error('Error saving product:', error);
-      toast({
-        title: "Error creating product",
-        description: error.message || "Please try again later",
-        variant: "destructive",
-      });
+
+      // Check for duplicate product name/slug error
+      if (error?.code === '23505' && error?.message?.includes('products_store_slug_unique')) {
+        // Highlight the name field with error (no toast - cleaner UX)
+        form.setError('name', {
+          type: 'manual',
+          message: 'This product name is already used. Please choose a different name.',
+        });
+
+        // Scroll to name field
+        const nameField = document.querySelector('[name="name"]') as HTMLElement;
+        if (nameField) {
+          nameField.focus();
+          nameField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        toast({
+          title: "Error creating product",
+          description: error.message || "Please try again later",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
       setUploadingFiles([]);

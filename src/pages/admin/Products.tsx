@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ import { getProducts, deleteProduct as deleteProductUtil, type Product as Shared
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { migrateProductSlugs } from "@/lib/migrateProductSlugs";
+import { ProductsImportExport } from "@/components/admin/ProductsImportExport";
 
 type Product = SharedProduct & {
   variantCount?: number;
@@ -45,6 +46,7 @@ type Product = SharedProduct & {
 
 const Products = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const subscriptionLimits = useSubscriptionLimits();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,6 +55,7 @@ const Products = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Load products function
@@ -83,27 +86,66 @@ const Products = () => {
   useEffect(() => {
     // Initial load
     loadProducts();
-    
+
     // Listen for storage changes (cross-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'products') {
         loadProducts();
       }
     };
-    
+
     // Reload when window regains focus (catches external changes)
     const handleFocus = () => {
       loadProducts();
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
+
+  // Handle highlighted product from navigation state
+  useEffect(() => {
+    const state = location.state as { highlightedProductId?: string };
+    if (state?.highlightedProductId) {
+      setHighlightedProductId(state.highlightedProductId);
+
+      // Reset to first page to ensure new product is visible
+      setCurrentPage(1);
+
+      // Scroll to highlighted product after products are loaded and rendered
+      const scrollToProduct = () => {
+        const productRow = document.querySelector(`[data-product-id="${state.highlightedProductId}"]`);
+        if (productRow) {
+          productRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return true;
+        }
+        return false;
+      };
+
+      // Retry scrolling multiple times to ensure product is rendered
+      let attempts = 0;
+      const maxAttempts = 10;
+      const scrollInterval = setInterval(() => {
+        if (scrollToProduct() || attempts >= maxAttempts) {
+          clearInterval(scrollInterval);
+        }
+        attempts++;
+      }, 200);
+
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedProductId(null);
+      }, 3500);
+
+      // Clear navigation state to prevent re-highlighting on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location, products]);
 
   useEffect(() => {
     // Filter products based on search term, category, and status
@@ -149,7 +191,11 @@ const Products = () => {
       variantCount: p.variants?.length || 0,
     }));
     setProducts(loadedProducts);
-    
+
+    // Mark that products need export
+    localStorage.setItem('products_need_export', 'true');
+    window.dispatchEvent(new Event('productChanged'));
+
     toast({
       title: "Product deleted",
       description: "Product removed from catalog",
@@ -195,6 +241,7 @@ const Products = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <ProductsImportExport onImportComplete={loadProducts} />
             <Button onClick={() => navigate("/admin/products/add")} className="touch-target flex-1 sm:flex-initial">
               <Plus className="w-4 h-4 mr-2" />
               Add Product
@@ -356,7 +403,12 @@ const Products = () => {
                     {paginatedProducts.map((product) => (
                       <TableRow
                         key={product.id}
-                        className="hover:bg-muted/50 transition-colors cursor-pointer"
+                        data-product-id={product.id}
+                        className={`hover:bg-muted/50 transition-all duration-500 cursor-pointer ${
+                          highlightedProductId === product.id
+                            ? 'bg-success/10 border-l-4 border-success animate-in fade-in'
+                            : ''
+                        }`}
                         onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                       >
                         <TableCell className="min-w-[200px]">
