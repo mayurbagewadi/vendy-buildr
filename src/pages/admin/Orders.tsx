@@ -475,6 +475,11 @@ const Orders = () => {
     await handleUpdateOrder(order.id, { status: "cancelled" });
   };
 
+  const getPaymentStatusColor = (paymentMethod: string) => {
+    const isCOD = paymentMethod.toLowerCase() === "cod" || paymentMethod.toLowerCase() === "cash on delivery";
+    return isCOD ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400";
+  };
+
   // Check if there are orders with both coupon and auto discount applied
   const hasDoubleDiscountOrders = () => {
     return orders.some(order => {
@@ -742,7 +747,7 @@ const Orders = () => {
                           {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className={`font-medium ${getPaymentStatusColor(order.payment_method)}`}>
                         {formatCurrency(order.total)}
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
