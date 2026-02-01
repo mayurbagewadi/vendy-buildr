@@ -48,6 +48,17 @@ export default function Auth() {
       console.log('[Auth] Checking existing session:', session ? 'Found' : 'None');
 
       if (session) {
+        // CRITICAL: Verify user still exists in Supabase Auth (handles deleted accounts)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          console.log('[Auth] User verification failed - account may be deleted:', userError?.message);
+          // Clear invalid session and redirect to landing page
+          await supabase.auth.signOut();
+          window.location.href = '/?error=account_deleted';
+          return;
+        }
+
         setHasSession(true);
 
         // First check if user is a helper
@@ -108,10 +119,21 @@ export default function Auth() {
 
       if (event === 'SIGNED_IN' && session) {
         setHasSession(true);
-        
+
         // Defer database query to prevent auth deadlock
         setTimeout(async () => {
           try {
+            // CRITICAL: Verify user still exists in Supabase Auth (handles deleted accounts)
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+              console.log('[Auth] SIGNED_IN - User verification failed - account may be deleted:', userError?.message);
+              // Clear invalid session and redirect to landing page
+              await supabase.auth.signOut();
+              window.location.href = '/?error=account_deleted';
+              return;
+            }
+
             // First check if user is a helper
             console.log('[Auth] SIGNED_IN - Checking for helper with ID:', session.user.id);
             const { data: helperData, error: helperError } = await supabase

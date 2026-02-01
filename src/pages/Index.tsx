@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +6,14 @@ import { useLandingAnimations } from "@/hooks/useLandingAnimations";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { AnimatedText } from "@/components/landing/AnimatedText";
 import { GradientBlob } from "@/components/landing/GradientBlob";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ShoppingBag,
   Store,
@@ -40,9 +48,10 @@ import {
   ClipboardList,
   Play,
   LineChart,
-  Percent
+  Percent,
+  AlertCircle
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
 import {
@@ -56,6 +65,18 @@ import {
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { heroRef, featuresRef, stepsRef } = useLandingAnimations();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
+
+  // Check for account deleted error and show dialog
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'account_deleted') {
+      setShowAccountDeletedDialog(true);
+      // Remove the error param from URL without triggering navigation
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const features = [
     {
@@ -220,6 +241,33 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background font-inter">
+      {/* Account Deleted Dialog */}
+      <AlertDialog open={showAccountDeletedDialog} onOpenChange={setShowAccountDeletedDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3">
+                <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <AlertDialogTitle className="text-center text-xl font-bold">
+              Account Deleted
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center pt-4 text-base">
+              Your account has been deleted by the platform administrator. All your data has been permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex justify-center">
+            <Button
+              onClick={() => setShowAccountDeletedDialog(false)}
+              className="w-full sm:w-auto px-8"
+            >
+              OK
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* SEO Meta Tags */}
       <Helmet>
         {/* Primary Meta Tags */}
