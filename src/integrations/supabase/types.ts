@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      automatic_discounts: {
+        Row: {
+          created_at: string
+          expiry_date: string
+          id: string
+          order_type: string
+          rule_description: string | null
+          rule_name: string
+          rule_type: string
+          start_date: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expiry_date: string
+          id?: string
+          order_type?: string
+          rule_description?: string | null
+          rule_name: string
+          rule_type: string
+          start_date?: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expiry_date?: string
+          id?: string
+          order_type?: string
+          rule_description?: string | null
+          rule_name?: string
+          rule_type?: string
+          start_date?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automatic_discounts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -152,6 +202,276 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      coupon_categories: {
+        Row: {
+          category_id: string
+          coupon_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          category_id: string
+          coupon_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          category_id?: string
+          coupon_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_categories_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_products: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          id: string
+          is_excluded: boolean
+          product_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          id?: string
+          is_excluded?: boolean
+          product_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          id?: string
+          is_excluded?: boolean
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_products_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_usage: {
+        Row: {
+          coupon_id: string
+          customer_email: string | null
+          customer_phone: string | null
+          discount_applied: number
+          id: string
+          order_id: string
+          used_at: string
+        }
+        Insert: {
+          coupon_id: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          discount_applied: number
+          id?: string
+          order_id: string
+          used_at?: string
+        }
+        Update: {
+          coupon_id?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          discount_applied?: number
+          id?: string
+          order_id?: string
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          applicable_to: string
+          code: string
+          created_at: string
+          customer_type: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          expiry_date: string
+          id: string
+          is_first_order: boolean
+          max_discount: number | null
+          min_order_value: number | null
+          order_type: string
+          start_date: string
+          status: string
+          store_id: string
+          updated_at: string
+          usage_limit_per_customer: number | null
+          usage_limit_total: number | null
+        }
+        Insert: {
+          applicable_to: string
+          code: string
+          created_at?: string
+          customer_type: string
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          expiry_date: string
+          id?: string
+          is_first_order?: boolean
+          max_discount?: number | null
+          min_order_value?: number | null
+          order_type: string
+          start_date: string
+          status?: string
+          store_id: string
+          updated_at?: string
+          usage_limit_per_customer?: number | null
+          usage_limit_total?: number | null
+        }
+        Update: {
+          applicable_to?: string
+          code?: string
+          created_at?: string
+          customer_type?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          expiry_date?: string
+          id?: string
+          is_first_order?: boolean
+          max_discount?: number | null
+          min_order_value?: number | null
+          order_type?: string
+          start_date?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+          usage_limit_per_customer?: number | null
+          usage_limit_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_rules: {
+        Row: {
+          created_at: string
+          discount_id: string
+          discount_type: string
+          discount_value: number
+          id: string
+          rule_type: string
+          rule_value: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_id: string
+          discount_type: string
+          discount_value: number
+          id?: string
+          rule_type: string
+          rule_value?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_id?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          rule_type?: string
+          rule_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_rules_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "automatic_discounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_tiers: {
+        Row: {
+          created_at: string
+          discount_id: string
+          discount_type: string
+          discount_value: number
+          id: string
+          min_order_value: number | null
+          tier_order: number
+        }
+        Insert: {
+          created_at?: string
+          discount_id: string
+          discount_type: string
+          discount_value: number
+          id?: string
+          min_order_value?: number | null
+          tier_order: number
+        }
+        Update: {
+          created_at?: string
+          discount_id?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          min_order_value?: number | null
+          tier_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_tiers_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "automatic_discounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_reviews_cache: {
         Row: {
@@ -727,7 +1047,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          automatic_discount_id: string | null
           awb_code: string | null
+          coupon_code: string | null
           courier_name: string | null
           created_at: string
           customer_email: string | null
@@ -740,6 +1062,7 @@ export type Database = {
           delivery_longitude: number | null
           delivery_pincode: string | null
           delivery_time: string | null
+          discount_amount: number | null
           gateway_order_id: string | null
           id: string
           items: Json
@@ -761,7 +1084,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          automatic_discount_id?: string | null
           awb_code?: string | null
+          coupon_code?: string | null
           courier_name?: string | null
           created_at?: string
           customer_email?: string | null
@@ -774,6 +1099,7 @@ export type Database = {
           delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
+          discount_amount?: number | null
           gateway_order_id?: string | null
           id?: string
           items?: Json
@@ -795,7 +1121,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          automatic_discount_id?: string | null
           awb_code?: string | null
+          coupon_code?: string | null
           courier_name?: string | null
           created_at?: string
           customer_email?: string | null
@@ -808,6 +1136,7 @@ export type Database = {
           delivery_longitude?: number | null
           delivery_pincode?: string | null
           delivery_time?: string | null
+          discount_amount?: number | null
           gateway_order_id?: string | null
           id?: string
           items?: Json
@@ -829,6 +1158,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_automatic_discount_id_fkey"
+            columns: ["automatic_discount_id"]
+            isOneToOne: false
+            referencedRelation: "automatic_discounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_store_id_fkey"
             columns: ["store_id"]
@@ -1253,6 +1589,7 @@ export type Database = {
           google_reviews_enabled: boolean | null
           google_reviews_last_reset: string | null
           google_sheet_connected: boolean | null
+          google_sheet_created_at: string | null
           google_sheet_id: string | null
           google_sheet_url: string | null
           google_token_expiry: string | null
@@ -1327,6 +1664,7 @@ export type Database = {
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
           google_sheet_connected?: boolean | null
+          google_sheet_created_at?: string | null
           google_sheet_id?: string | null
           google_sheet_url?: string | null
           google_token_expiry?: string | null
@@ -1401,6 +1739,7 @@ export type Database = {
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
           google_sheet_connected?: boolean | null
+          google_sheet_created_at?: string | null
           google_sheet_id?: string | null
           google_sheet_url?: string | null
           google_token_expiry?: string | null
@@ -1724,6 +2063,60 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      video_generations: {
+        Row: {
+          audio_url: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          duration_seconds: number | null
+          error_message: string | null
+          file_size_mb: number | null
+          id: string
+          progress: number
+          script: string
+          status: string
+          template: string
+          title: string
+          video_url: string | null
+          voice_id: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_size_mb?: number | null
+          id?: string
+          progress?: number
+          script: string
+          status?: string
+          template: string
+          title: string
+          video_url?: string | null
+          voice_id?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_size_mb?: number | null
+          id?: string
+          progress?: number
+          script?: string
+          status?: string
+          template?: string
+          title?: string
+          video_url?: string | null
+          voice_id?: string | null
         }
         Relationships: []
       }
