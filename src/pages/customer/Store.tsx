@@ -20,7 +20,7 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { buildDesignCSS } from "@/lib/aiDesigner";
+import { buildDesignCSS, AIDesignResult } from "@/lib/aiDesigner";
 
 interface Product {
   id: string;
@@ -112,6 +112,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [aiDesign, setAiDesign] = useState<AIDesignResult | null>(null);
 
   // Scroll animations
   const categoriesGridRef = useScrollAnimation({ animation: 'slideUp', duration: 0.6, stagger: 0.1, delay: 0.2 });
@@ -140,10 +141,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           .maybeSingle();
 
         if (data?.current_design) {
-          // Build CSS string from design JSON
-          const cssString = buildDesignCSS(data.current_design);
+          setAiDesign(data.current_design as AIDesignResult);
 
-          // Inject CSS into document
+          // Build CSS string from design JSON and inject into document
+          const cssString = buildDesignCSS(data.current_design);
           let styleEl = document.getElementById('ai-designer-styles');
           if (!styleEl) {
             styleEl = document.createElement('style');
@@ -152,6 +153,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           }
           styleEl.textContent = cssString;
         } else {
+          setAiDesign(null);
           // No AI design - remove any existing AI styles (fallback to platform default)
           const styleEl = document.getElementById('ai-designer-styles');
           if (styleEl) styleEl.remove();
@@ -357,6 +359,28 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     );
   }
 
+  // Compute layout classes from AI design
+  const gridColsClass = (() => {
+    const cols = aiDesign?.layout?.product_grid_cols;
+    if (cols === "2") return "grid grid-cols-2 sm:grid-cols-2 gap-6";
+    if (cols === "3") return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6";
+    return "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6";
+  })();
+
+  const sectionPy = (() => {
+    const p = aiDesign?.layout?.section_padding;
+    if (p === "compact") return "py-8";
+    if (p === "spacious") return "py-24";
+    return "py-16";
+  })();
+
+  const sectionPyLarge = (() => {
+    const p = aiDesign?.layout?.section_padding;
+    if (p === "compact") return "py-10";
+    if (p === "spacious") return "py-28";
+    return "py-20";
+  })();
+
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
@@ -384,7 +408,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
         {/* Categories Section - Right after banner */}
         {categories.length > 0 && (
-          <section className="py-20 bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
+          <section className={`${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background relative overflow-hidden`}>
             <div className="container mx-auto px-4 relative z-10">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.8}>
                 <div className="text-center mb-12">
@@ -423,7 +447,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         )}
 
         {/* Featured Products */}
-        <section className="py-16 bg-background">
+        <section className={`${sectionPy} bg-background`}>
           <div className="container mx-auto px-4">
             <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
               <div className="flex justify-between items-center mb-8">
@@ -440,7 +464,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
               </div>
             </AnimateOnScroll>
             {featuredProducts.length > 0 ? (
-              <div ref={featuredProductsGridRef} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div ref={featuredProductsGridRef} className={gridColsClass}>
                 {featuredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -471,7 +495,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         )}
 
         {/* Google Reviews Section */}
-        <section className="py-16 bg-muted/30">
+        <section className={`${sectionPy} bg-muted/30`}>
           <div className="container mx-auto px-4">
             <GoogleReviewsSection
               storeId={store.id}
@@ -482,7 +506,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
         {/* New Arrivals */}
         {newArrivals.length > 0 && (
-          <section className="py-16">
+          <section className={`${sectionPy}`}>
             <div className="container mx-auto px-4">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
                 <div className="flex justify-between items-center mb-8">
@@ -498,7 +522,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   </Link>
                 </div>
               </AnimateOnScroll>
-              <div ref={newArrivalsGridRef} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div ref={newArrivalsGridRef} className={gridColsClass}>
                 {newArrivals.map((product) => (
                   <ProductCard
                     key={product.id}
