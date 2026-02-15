@@ -69,6 +69,7 @@ src/
 │   ├── generateStoreTXT.ts  # Text export functionality
 │   ├── dataValidation.ts    # Form/data validation schemas
 │   ├── platformSettings.ts  # Global settings management
+│   ├── aiDesigner.ts        # AI Designer client library (generate/apply/reset/balance)
 │   └── ...other utilities
 ├── App.tsx                  # Root routing component (domain-aware routing logic)
 ├── main.tsx                 # React DOM entry point
@@ -123,6 +124,7 @@ The app detects two contexts:
 - **Google Reviews**: Review management in admin panel
 - **Instagram**: Social media integration
 - **PDF/Excel Export**: Store data export functionality
+- **OpenRouter / Kimi K2.5**: AI Designer feature (`supabase/functions/ai-designer/index.ts`), API key in `platform_settings.openrouter_api_key`
 
 ### Route Structure
 
@@ -139,6 +141,8 @@ The app detects two contexts:
 /admin/marketplace          → Marketplace integration
 /admin/shipping             → Shipping configuration
 /admin/settings             → Store settings
+/admin/ai-designer          → AI Designer (tokens, generate, publish, reset)
+/admin/buy-tokens           → Token purchase page
 /products                   → Customer product listing
 /products/:slug             → Product detail page
 /cart                       → Shopping cart
@@ -154,6 +158,7 @@ The app detects two contexts:
 /home                       → Authenticated user home
 /admin/*                    → Store admin routes (if owner)
 /superadmin/*               → Super admin routes
+/superadmin/ai-token-pricing → AI token packages + expiry + analytics
 /helper/login               → Helper login
 /helper/dashboard           → Helper dashboard
 /helper/my-referrals        → Referral management
@@ -226,6 +231,94 @@ The app detects two contexts:
 ## Notes
 
 **⚠️ Manual Deployment**: SQL migrations and Supabase Edge Functions require manual deployment. See `supabase/migrations/` and `supabase/functions/` directories.
+
+---
+
+## AI Designer Feature (Added Feb 2026)
+
+### Overview
+AI-powered UI/UX designer for store owners. Uses Kimi K2.5 via OpenRouter API. Credit-based token system. Super admin controls pricing and OpenRouter API key.
+
+### New Routes
+```
+/admin/ai-designer          → AI Designer main page (store admin)
+/admin/buy-tokens           → Token purchase page (store admin)
+/superadmin/ai-token-pricing → Token packages + expiry + analytics (super admin)
+```
+
+### New Files
+```
+supabase/migrations/20260216000000_add_ai_designer_system.sql  ← DB tables
+supabase/functions/ai-designer/index.ts                        ← Edge Function
+src/lib/aiDesigner.ts                                          ← Client library
+src/pages/admin/AIDesigner.tsx                                 ← Main AI page
+src/pages/admin/BuyTokens.tsx                                  ← Token purchase
+src/pages/superadmin/AITokenPricing.tsx                        ← Super admin pricing
+```
+
+### Database Tables
+| Table | Purpose |
+|---|---|
+| `ai_token_packages` | Token packages (Basic/Pro/Enterprise) — super admin manages |
+| `ai_token_purchases` | Per-store token purchases with balance tracking |
+| `ai_token_settings` | Expiry config singleton — ID: `00000000-0000-0000-0000-000000000001` |
+| `ai_designer_history` | Log of all AI generations per store |
+| `store_design_state` | Currently applied AI design per store (delete row = reset to default) |
+
+### Key Constants (hardcoded row IDs, never change)
+```typescript
+SETTINGS_ID       = '00000000-0000-0000-0000-000000000000'  // platform_settings row
+TOKEN_SETTINGS_ID = '00000000-0000-0000-0000-000000000001'  // ai_token_settings row
+```
+
+### OpenRouter API Key
+- Stored in `platform_settings.openrouter_api_key` column
+- Set via: Super Admin → Platform Settings → "AI Designer — OpenRouter API" card
+- Used only in edge function server-side, never exposed to client
+- Model: `moonshotai/kimi-k2`
+
+### Edge Function Actions
+```typescript
+{ action: 'get_token_balance', store_id }       // check remaining tokens
+{ action: 'generate_design', store_id, user_id, prompt }  // call Kimi K2.5
+{ action: 'apply_design', store_id, design, history_id }  // publish to live store
+{ action: 'reset_design', store_id }            // delete design → fallback to platform default
+```
+
+### Reset Behavior
+- Reset = **delete** the `store_design_state` row for that store
+- Store falls back to hardcoded Tailwind defaults in `index.css` (platform default)
+- No snapshot saved — reset always goes back to platform default design
+
+### AI Design Output Format (JSON)
+```json
+{
+  "summary": "Brief description",
+  "css_variables": { "--primary": "142 71% 45%", "--radius": "1rem" },
+  "dark_css_variables": { "--primary": "142 71% 45%" },
+  "layout": { "product_grid_cols": "4", "section_padding": "normal", "hero_style": "gradient" },
+  "changes_list": ["Changed primary color to green", "Increased border radius"]
+}
+```
+
+### Token Flow
+1. Super admin sets token packages + expiry in `/superadmin/ai-token-pricing`
+2. Store owner buys tokens via Razorpay on `/admin/buy-tokens`
+3. Purchase saved to `ai_token_purchases` with `expires_at` calculated from `ai_token_settings`
+4. Each AI generation deducts 1 token from active purchase
+5. Expired tokens auto-deleted on next balance check
+
+### CSS Variables the AI Can Target (store_design_state)
+```
+--primary        Main brand color (HSL)
+--background     Page background (HSL)
+--foreground     Main text (HSL)
+--card           Card background (HSL)
+--muted          Subtle backgrounds (HSL)
+--muted-foreground  Secondary text (HSL)
+--border         Border color (HSL)
+--radius         Border radius (e.g. 0.75rem)
+```
 
 ## Code Modification Rules (PERMANENT)
 
