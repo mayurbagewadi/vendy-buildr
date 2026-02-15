@@ -297,6 +297,195 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
     }
 
     // ============================================
+    // CHAT (Conversational AI with design capability)
+    // ============================================
+    if (action === 'chat') {
+      const { messages } = body; // array of {role: 'user'|'assistant', content: string}
+
+      if (!store_id || !user_id || !messages || !messages.length) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing required fields' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      // Get OpenRouter API key
+      const { data: platformSettings } = await supabase
+        .from('platform_settings')
+        .select('openrouter_api_key')
+        .eq('id', SETTINGS_ID)
+        .single();
+
+      const apiKey = platformSettings?.openrouter_api_key;
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'OpenRouter API key not configured. Please ask the platform admin to add it in Platform Settings.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      // Get store context
+      const { data: store } = await supabase
+        .from('stores')
+        .select('name, description, slug')
+        .eq('id', store_id)
+        .single();
+
+      const storeName = store?.name || 'My Store';
+      const storeDescription = store?.description || '';
+
+      const systemPrompt = `You are an expert AI designer and consultant for an e-commerce store called "${storeName}"${storeDescription ? ` — ${storeDescription}` : ''}.
+
+You help store owners redesign and improve their store's UI/UX. You can:
+1. Give design suggestions, advice, ideas, or answer questions (conversational)
+2. Generate actual CSS design changes to apply to the store
+
+The store uses CSS variables in HSL format:
+- --primary: brand color (buttons, links, accents)
+- --background: page background color
+- --foreground: main text color
+- --card: card background color
+- --muted: subtle background sections
+- --muted-foreground: secondary text color
+- --border: border color
+- --radius: border radius (e.g. 0.5rem, 0.75rem, 1rem)
+
+Store sections: header, hero-banner, categories, featured-products, new-arrivals, footer
+
+IMPORTANT: Always respond in valid JSON only. No markdown, no text outside JSON.
+
+If the user is asking for suggestions, advice, ideas, or general questions, respond with:
+{
+  "type": "text",
+  "message": "Your helpful conversational response here. Be specific and friendly."
+}
+
+If the user wants you to apply/generate/create/change a design, respond with:
+{
+  "type": "design",
+  "message": "Brief friendly explanation of what you changed and why",
+  "design": {
+    "summary": "Brief description of the design",
+    "css_variables": {
+      "--primary": "142 71% 45%"
+    },
+    "dark_css_variables": {
+      "--primary": "142 71% 50%"
+    },
+    "layout": {
+      "product_grid_cols": "3",
+      "section_padding": "normal",
+      "hero_style": "gradient"
+    },
+    "changes_list": ["Changed primary color to green", "Added spacious padding"]
+  }
+}
+
+Only include css_variables keys you are actually changing. Be helpful, creative and specific.`;
+
+      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://yesgive.shop',
+          'X-Title': 'Vendy Buildr AI Designer',
+        },
+        body: JSON.stringify({
+          model: 'moonshotai/kimi-k2',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+          max_tokens: 1200,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorData = await aiResponse.json();
+        return new Response(
+          JSON.stringify({ success: false, error: `AI error: ${errorData.error?.message || 'Failed to get response'}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      const aiData = await aiResponse.json();
+      const aiContent = aiData.choices?.[0]?.message?.content;
+
+      let parsed;
+      try {
+        parsed = JSON.parse(aiContent);
+      } catch {
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI returned invalid response' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      // If design was generated, deduct a token and save to history
+      let historyId;
+      let newTokenBalance;
+
+      if (parsed.type === 'design' && parsed.design) {
+        const now = new Date().toISOString();
+
+        await supabase.from('ai_token_purchases').update({ status: 'expired' })
+          .eq('store_id', store_id).eq('status', 'active').lt('expires_at', now).not('expires_at', 'is', null);
+        await supabase.from('ai_token_purchases').delete()
+          .eq('store_id', store_id).eq('status', 'expired');
+
+        const { data: purchases } = await supabase
+          .from('ai_token_purchases')
+          .select('id, tokens_remaining')
+          .eq('store_id', store_id).eq('status', 'active').gt('tokens_remaining', 0)
+          .order('expires_at', { ascending: true, nullsFirst: false }).limit(1);
+
+        if (!purchases || purchases.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No tokens remaining. Please purchase tokens to continue.' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 402 }
+          );
+        }
+
+        const activePurchase = purchases[0];
+        const { data: currentPurchase } = await supabase
+          .from('ai_token_purchases').select('tokens_used').eq('id', activePurchase.id).single();
+
+        await supabase.from('ai_token_purchases').update({
+          tokens_remaining: activePurchase.tokens_remaining - 1,
+          tokens_used: (currentPurchase?.tokens_used || 0) + 1,
+          updated_at: new Date().toISOString(),
+        }).eq('id', activePurchase.id);
+
+        const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+        const { data: historyRecord } = await supabase
+          .from('ai_designer_history')
+          .insert({ store_id, user_id, prompt: lastUserMsg?.content || '', ai_response: parsed.design, tokens_used: 1, applied: false })
+          .select('id').single();
+        historyId = historyRecord?.id;
+
+        const { data: updatedPurchases } = await supabase
+          .from('ai_token_purchases').select('tokens_remaining')
+          .eq('store_id', store_id).eq('status', 'active');
+        newTokenBalance = (updatedPurchases || []).reduce((sum: number, p: any) => sum + (p.tokens_remaining || 0), 0);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          type: parsed.type,
+          message: parsed.message,
+          design: parsed.design || null,
+          history_id: historyId,
+          tokens_remaining: newTokenBalance,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ============================================
     // APPLY DESIGN (Publish)
     // ============================================
     if (action === 'apply_design') {

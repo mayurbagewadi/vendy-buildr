@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Sparkles,
@@ -16,47 +15,69 @@ import {
   MessageSquare,
   Calendar,
   RefreshCw,
+  Send,
+  Bot,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getTokenBalance,
-  generateDesign,
+  chatWithAI,
   applyDesign,
   resetDesign,
   getAppliedDesign,
+  getTokenBalance,
   buildDesignCSS,
   type AIDesignResult,
   type TokenBalance,
+  type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
+
+// UI message type (shown in the chat UI)
+interface UIMessage {
+  id: string;
+  role: "user" | "ai";
+  content: string;
+  design?: AIDesignResult;
+  historyId?: string;
+  isLoading?: boolean;
+}
 
 // ------- Main AIDesigner Page -------
 const AIDesigner = () => {
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState("My Store");
   const [storeUrl, setStoreUrl] = useState<string | null>(null);
   const [tokenBalance, setTokenBalance] = useState<TokenBalance>({
     tokens_remaining: 0,
     expires_at: null,
     has_tokens: false,
   });
-  const [prompt, setPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [messages, setMessages] = useState<UIMessage[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [currentDesign, setCurrentDesign] = useState<AIDesignResult | null>(null);
   const [pendingDesign, setPendingDesign] = useState<AIDesignResult | null>(null);
   const [pendingHistoryId, setPendingHistoryId] = useState<string | undefined>();
   const [previewDesign, setPreviewDesign] = useState<AIDesignResult | null>(null);
+  const [currentDesign, setCurrentDesign] = useState<AIDesignResult | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "preview">("chat");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Auto-scroll chat to bottom when new messages appear
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const loadInitialData = async () => {
     try {
@@ -79,9 +100,7 @@ const AIDesigner = () => {
       }
 
       setStoreId(store.id);
-      setStoreName(store.name || "My Store");
 
-      // Build store preview URL (same-origin so we can inject CSS into iframe)
       const hostname = window.location.hostname;
       const isSubdomain = store.subdomain && hostname.startsWith(store.subdomain + '.');
       const url = isSubdomain
@@ -99,6 +118,15 @@ const AIDesigner = () => {
         setCurrentDesign(appliedDesign);
         setPreviewDesign(appliedDesign);
       }
+
+      // Welcome message
+      setMessages([
+        {
+          id: "welcome",
+          role: "ai",
+          content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
+        },
+      ]);
     } catch (error: any) {
       toast.error("Failed to load AI Designer");
       console.error(error);
@@ -107,44 +135,94 @@ const AIDesigner = () => {
     }
   };
 
-  const handleGenerate = async () => {
-    if (!storeId || !userId) return;
-    if (!prompt.trim()) {
-      toast.error("Please enter a design prompt");
-      return;
-    }
-    if (!tokenBalance.has_tokens) {
-      toast.error("No tokens remaining. Please buy tokens first.");
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const result = await generateDesign(storeId, userId, prompt.trim());
-      setPendingDesign(result.design);
-      setPendingHistoryId(result.history_id);
-      setPreviewDesign(result.design);
-      injectCSSIntoIframe(result.design);
-      setTokenBalance((prev) => ({
-        ...prev,
-        tokens_remaining: result.tokens_remaining,
-        has_tokens: result.tokens_remaining > 0,
+  // Build API conversation history from UI messages (exclude welcome + loading)
+  const buildAPIHistory = (uiMessages: UIMessage[]): APIChatMessage[] => {
+    return uiMessages
+      .filter((m) => m.id !== "welcome" && !m.isLoading)
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.role === "ai"
+          ? (m.design ? `${m.content}\n\n[Design was generated]` : m.content)
+          : m.content,
       }));
-      toast.success(`Design generated! ${result.tokens_remaining} tokens remaining.`);
+  };
+
+  const handleSend = async () => {
+    if (!storeId || !userId) return;
+    const text = inputValue.trim();
+    if (!text) return;
+
+    const userMsgId = `user-${Date.now()}`;
+    const loadingMsgId = `loading-${Date.now()}`;
+
+    const userMsg: UIMessage = { id: userMsgId, role: "user", content: text };
+    const loadingMsg: UIMessage = { id: loadingMsgId, role: "ai", content: "", isLoading: true };
+
+    setMessages((prev) => [...prev, userMsg, loadingMsg]);
+    setInputValue("");
+    setIsSending(true);
+
+    try {
+      // Build conversation history including the new user message
+      const history = buildAPIHistory([...messages, userMsg]);
+
+      const result = await chatWithAI(storeId, userId, history);
+
+      const aiMsg: UIMessage = {
+        id: `ai-${Date.now()}`,
+        role: "ai",
+        content: result.message,
+        design: result.design,
+        historyId: result.history_id,
+      };
+
+      // Replace loading message with actual response
+      setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
+
+      if (result.type === "design" && result.design) {
+        setPendingDesign(result.design);
+        setPendingHistoryId(result.history_id);
+        setPreviewDesign(result.design);
+        injectCSSIntoIframe(result.design);
+        if (result.tokens_remaining !== undefined) {
+          setTokenBalance((prev) => ({
+            ...prev,
+            tokens_remaining: result.tokens_remaining!,
+            has_tokens: result.tokens_remaining! > 0,
+          }));
+        }
+      }
     } catch (error: any) {
+      setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
       if (error.message?.includes("No tokens")) {
         toast.error("No tokens remaining. Please buy tokens.");
       } else {
-        toast.error(error.message || "Failed to generate design");
+        toast.error(error.message || "Failed to get AI response");
       }
     } finally {
-      setIsGenerating(false);
+      setIsSending(false);
+      inputRef.current?.focus();
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleApplyFromMessage = (design: AIDesignResult, historyId?: string) => {
+    setPendingDesign(design);
+    setPendingHistoryId(historyId);
+    setPreviewDesign(design);
+    injectCSSIntoIframe(design);
+    toast.success("Design loaded into preview. Click Publish to go live.");
   };
 
   const handlePublish = async () => {
     if (!storeId || !pendingDesign) {
-      toast.error("No design to publish. Generate a design first.");
+      toast.error("No design to publish. Ask AI to generate a design first.");
       return;
     }
     setIsPublishing(true);
@@ -188,7 +266,6 @@ const AIDesigner = () => {
     });
   };
 
-  // Inject AI design CSS into the live store iframe
   const injectCSSIntoIframe = (design: AIDesignResult | null) => {
     const iframe = iframeRef.current;
     if (!iframe?.contentDocument?.head) return;
@@ -201,7 +278,6 @@ const AIDesigner = () => {
     styleEl.textContent = design ? buildDesignCSS(design) : '';
   };
 
-  // Re-inject CSS when iframe finishes loading (handles page navigations inside iframe)
   const handleIframeLoad = () => {
     injectCSSIntoIframe(previewDesign);
   };
@@ -216,125 +292,145 @@ const AIDesigner = () => {
 
   // ------- Chat Panel -------
   const ChatPanel = (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Prompt Input */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            Describe your design
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Textarea
-            placeholder={
-              tokenBalance.has_tokens
-                ? 'e.g. "Make it modern with green colors and rounded corners" or "Give it a dark minimal look with large product cards"'
-                : "Purchase tokens to start generating designs"
-            }
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={!tokenBalance.has_tokens || isGenerating}
-            rows={4}
-            className="resize-none"
-          />
-          <Button
-            onClick={handleGenerate}
-            disabled={!tokenBalance.has_tokens || isGenerating || !prompt.trim()}
-            className="w-full"
+    <div className="flex flex-col h-full" style={{ minHeight: "560px" }}>
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
           >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating design...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate Design
-              </>
-            )}
-          </Button>
-          {!tokenBalance.has_tokens && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-              <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-              <p className="text-sm text-destructive">
-                No tokens remaining.{" "}
-                <button
-                  onClick={() => navigate("/admin/buy-tokens")}
-                  className="underline font-medium"
-                >
-                  Buy tokens
-                </button>{" "}
-                to continue.
-              </p>
+            {/* Avatar */}
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                msg.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted border border-border"
+              }`}
+            >
+              {msg.role === "user" ? (
+                <User className="w-3.5 h-3.5" />
+              ) : (
+                <Bot className="w-3.5 h-3.5 text-primary" />
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* AI Response */}
-      {pendingDesign && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-4 space-y-3">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground mb-2">
-                  {pendingDesign.summary}
-                </p>
-                <ul className="space-y-1">
-                  {pendingDesign.changes_list?.map((change, i) => (
-                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                      <span className="text-primary mt-0.5">•</span>
-                      {change}
-                    </li>
-                  ))}
-                </ul>
+            {/* Bubble */}
+            <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
+              <div
+                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                    : "bg-muted border border-border text-foreground rounded-tl-sm"
+                }`}
+              >
+                {msg.isLoading ? (
+                  <div className="flex items-center gap-1.5 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
               </div>
-            </div>
 
-            {pendingDesign.css_variables && Object.keys(pendingDesign.css_variables).length > 0 && (
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Color Changes</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(pendingDesign.css_variables)
-                    .filter(([k]) => k !== "--radius")
-                    .map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-1.5">
-                        <div
-                          className="w-4 h-4 rounded-full border border-border flex-shrink-0"
-                          style={{ background: `hsl(${value})` }}
-                        />
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {key.replace("--", "")}
-                        </span>
-                      </div>
-                    ))}
+              {/* Design card inline — shown under AI message */}
+              {msg.design && !msg.isLoading && (
+                <div className="w-full bg-card border border-border rounded-xl p-3 space-y-2">
+                  {/* Color swatches */}
+                  {msg.design.css_variables && Object.keys(msg.design.css_variables).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(msg.design.css_variables)
+                        .filter(([k]) => k !== "--radius")
+                        .map(([key, value]) => (
+                          <div key={key} className="flex items-center gap-1">
+                            <div
+                              className="w-3.5 h-3.5 rounded-full border border-border flex-shrink-0"
+                              style={{ background: `hsl(${value})` }}
+                            />
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {key.replace("--", "")}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Changes list */}
+                  {msg.design.changes_list && msg.design.changes_list.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {msg.design.changes_list.map((c, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0 mt-0.5" />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Apply button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs h-7"
+                    onClick={() => handleApplyFromMessage(msg.design!, msg.historyId)}
+                  >
+                    <Eye className="w-3 h-3 mr-1" />
+                    Load into Preview
+                  </Button>
                 </div>
-              </div>
-            )}
-
-            <p className="text-xs text-muted-foreground italic">
-              Preview updated on the right. Click Publish to apply to your live store.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {currentDesign && !pendingDesign && (
-        <Card className="border-green-500/30 bg-green-500/5">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <p className="text-sm text-foreground font-medium">AI design is currently live</p>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1 ml-6">
-              Generate a new design or reset to default.
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* No tokens warning */}
+      {!tokenBalance.has_tokens && (
+        <div className="mx-3 mb-2 flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+          <p className="text-xs text-destructive">
+            No tokens.{" "}
+            <button onClick={() => navigate("/admin/buy-tokens")} className="underline font-medium">
+              Buy tokens
+            </button>{" "}
+            to generate designs.
+          </p>
+        </div>
       )}
+
+      {/* Input area */}
+      <div className="border-t border-border px-3 py-2.5 flex gap-2 items-end">
+        <textarea
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            tokenBalance.has_tokens
+              ? "Ask for suggestions or describe a design… (Enter to send)"
+              : "Buy tokens to generate designs"
+          }
+          disabled={isSending}
+          rows={2}
+          className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+          style={{ minHeight: "40px", maxHeight: "120px" }}
+        />
+        <Button
+          size="icon"
+          onClick={handleSend}
+          disabled={isSending || !inputValue.trim()}
+          className="h-9 w-9 flex-shrink-0"
+        >
+          {isSending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 
@@ -391,7 +487,7 @@ const AIDesigner = () => {
           AI Designer
         </h1>
         <p className="text-muted-foreground">
-          Use AI to redesign your store's look and feel
+          Chat with AI to redesign your store's look and feel
         </p>
       </div>
 
@@ -493,13 +589,23 @@ const AIDesigner = () => {
 
       {/* Desktop: Split view | Mobile: Toggle */}
       <div className="hidden md:grid md:grid-cols-2 gap-4" style={{ minHeight: "600px" }}>
-        <div className="overflow-y-auto">{ChatPanel}</div>
+        <Card className="flex flex-col overflow-hidden">
+          <CardContent className="p-0 flex-1 flex flex-col">
+            {ChatPanel}
+          </CardContent>
+        </Card>
         <div>{PreviewPanel}</div>
       </div>
 
       {/* Mobile: Single view */}
       <div className="md:hidden" style={{ minHeight: "500px" }}>
-        {mobileView === "chat" ? ChatPanel : PreviewPanel}
+        {mobileView === "chat" ? (
+          <Card className="flex flex-col overflow-hidden">
+            <CardContent className="p-0 flex-1 flex flex-col">
+              {ChatPanel}
+            </CardContent>
+          </Card>
+        ) : PreviewPanel}
       </div>
     </div>
   );
