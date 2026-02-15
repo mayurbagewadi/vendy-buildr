@@ -20,6 +20,7 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { buildDesignCSS } from "@/lib/aiDesigner";
 
 interface Product {
   id: string;
@@ -125,6 +126,43 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   useEffect(() => {
     loadStoreData();
   }, [slug]);
+
+  // Load and apply AI-generated design from store_design_state
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const loadAndApplyDesign = async () => {
+      try {
+        const { data } = await supabase
+          .from('store_design_state')
+          .select('current_design')
+          .eq('store_id', store.id)
+          .maybeSingle();
+
+        if (data?.current_design) {
+          // Build CSS string from design JSON
+          const cssString = buildDesignCSS(data.current_design);
+
+          // Inject CSS into document
+          let styleEl = document.getElementById('ai-designer-styles');
+          if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'ai-designer-styles';
+            document.head.appendChild(styleEl);
+          }
+          styleEl.textContent = cssString;
+        } else {
+          // No AI design - remove any existing AI styles (fallback to platform default)
+          const styleEl = document.getElementById('ai-designer-styles');
+          if (styleEl) styleEl.remove();
+        }
+      } catch (error) {
+        console.error('Failed to load AI design:', error);
+      }
+    };
+
+    loadAndApplyDesign();
+  }, [store?.id]);
 
   // Load ElevenLabs script dynamically
   useEffect(() => {
