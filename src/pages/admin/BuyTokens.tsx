@@ -71,49 +71,32 @@ const BuyTokens = () => {
 
     setPurchasing(pkg.id);
     try {
-      // Get Razorpay key_id from platform settings (public-safe: key_id only)
-      const { data: platformSettings } = await supabase
-        .from("platform_settings")
-        .select("razorpay_key_id")
-        .eq("id", "00000000-0000-0000-0000-000000000000")
-        .single();
-
-      if (!platformSettings?.razorpay_key_id) {
-        toast.error("Payment not configured. Please contact support.");
-        return;
-      }
-
-      // Call edge function to create Razorpay order
+      // Call ai-designer edge function to create Razorpay order using platform credentials
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
-        "create-razorpay-order",
+        "ai-designer",
         {
           body: {
+            action: "create_payment_order",
+            store_id: storeData.id,
+            package_id: pkg.id,
             amount: pkg.price,
             currency: "INR",
-            receipt: `ai_tokens_${pkg.id}_${Date.now()}`,
-            notes: {
-              type: "ai_tokens",
-              package_id: pkg.id,
-              store_id: storeData.id,
-              user_id: userId,
-              tokens: pkg.tokens_included,
-            },
           },
         }
       );
 
-      if (orderError || !orderData?.id) {
-        throw new Error("Failed to create payment order");
+      if (orderError || !orderData?.success || !orderData?.order_id) {
+        throw new Error(orderData?.error || "Failed to create payment order");
       }
 
       // Load Razorpay and open checkout
       const razorpay = new (window as any).Razorpay({
-        key: platformSettings.razorpay_key_id,
+        key: orderData.razorpay_key_id,
         amount: orderData.amount,
         currency: "INR",
         name: "AI Designer Tokens",
         description: `${pkg.name} — ${pkg.tokens_included} tokens`,
-        order_id: orderData.id,
+        order_id: orderData.order_id,
         prefill: {
           name: customerDetails.name,
           email: customerDetails.email,

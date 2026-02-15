@@ -27,7 +27,7 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { action, store_id, user_id, prompt, design, history_id } = body;
+    const { action, store_id, user_id, prompt, design, history_id, package_id, amount, currency } = body;
 
     // ============================================
     // GET TOKEN BALANCE
@@ -358,6 +358,73 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
 
       return new Response(
         JSON.stringify({ success: true, message: 'Store design reset to platform default' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ============================================
+    // CREATE PAYMENT ORDER (Platform Razorpay)
+    // ============================================
+    if (action === 'create_payment_order') {
+      if (!amount || !currency || !package_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing required fields: amount, currency, package_id' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      // Get platform Razorpay credentials from platform_settings (server-side only)
+      const { data: platformSettings } = await supabase
+        .from('platform_settings')
+        .select('razorpay_key_id, razorpay_key_secret')
+        .eq('id', SETTINGS_ID)
+        .single();
+
+      const keyId = platformSettings?.razorpay_key_id;
+      const keySecret = platformSettings?.razorpay_key_secret;
+
+      if (!keyId || !keySecret) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Payment not configured. Please contact support.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      // Amount must be in paise (multiply rupees by 100)
+      const amountInPaise = Math.round(amount * 100);
+
+      const orderData = {
+        amount: amountInPaise,
+        currency,
+        receipt: `ai_tok_${Date.now().toString().slice(-10)}`, // Max 40 chars (Razorpay limit)
+        notes: { type: 'ai_tokens', package_id, store_id },
+      };
+
+      const basicAuth = btoa(`${keyId}:${keySecret}`);
+      const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${basicAuth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!razorpayResponse.ok) {
+        const err = await razorpayResponse.text();
+        console.error('Razorpay error:', err);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to create payment order' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      const razorpayOrder = await razorpayResponse.json();
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          order_id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          razorpay_key_id: keyId, // key_id is public-safe (publishable key)
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
