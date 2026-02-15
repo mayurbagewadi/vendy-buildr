@@ -76,7 +76,7 @@ const BuyTokens = () => {
         .from("platform_settings")
         .select("razorpay_key_id")
         .eq("id", "00000000-0000-0000-0000-000000000000")
-        .single();
+        .maybeSingle();
 
       if (!platformSettings?.razorpay_key_id) {
         toast.error("Payment not configured. Please contact support.");
