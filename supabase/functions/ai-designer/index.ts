@@ -396,7 +396,7 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
       const orderData = {
         amount: amountInPaise,
         currency,
-        receipt: `ai_tokens_${package_id}_${Date.now()}`,
+        receipt: `ai_tok_${Date.now().toString().slice(-10)}`, // Max 40 chars (Razorpay limit)
         notes: { type: 'ai_tokens', package_id, store_id },
       };
 
