@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ArrowLeft, Save, Trash2, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, Trash2, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -35,6 +35,7 @@ interface PlatformSettings {
   razorpay_key_id: string;
   razorpay_key_secret: string;
   razorpay_test_mode: boolean;
+  openrouter_api_key: string;
 }
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
@@ -55,6 +56,7 @@ const PlatformSettingsPage = () => {
     razorpay_key_id: '',
     razorpay_key_secret: '',
     razorpay_test_mode: false,
+    openrouter_api_key: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +137,7 @@ const PlatformSettingsPage = () => {
             razorpay_key_id: data.razorpay_key_id || '',
             razorpay_key_secret: data.razorpay_key_secret || '',
             razorpay_test_mode: data.razorpay_test_mode || false,
+            openrouter_api_key: data.openrouter_api_key || '',
           });
         }
       } catch (error) {
@@ -171,6 +174,7 @@ const PlatformSettingsPage = () => {
           razorpay_key_id: settings.razorpay_key_id,
           razorpay_key_secret: settings.razorpay_key_secret,
           razorpay_test_mode: settings.razorpay_test_mode,
+          openrouter_api_key: settings.openrouter_api_key,
         })
         .eq('id', SETTINGS_ID);
 
@@ -335,20 +339,11 @@ const PlatformSettingsPage = () => {
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/superadmin/dashboard')}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-2xl font-bold">Platform Settings</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Configure platform-wide settings
-                  </p>
-                </div>
+              <div>
+                <h1 className="text-2xl font-bold">Platform Settings</h1>
+                <p className="text-sm text-muted-foreground">
+                  Configure platform-wide settings
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <ThemeToggle />
@@ -571,6 +566,31 @@ const PlatformSettingsPage = () => {
                   <strong>⚠️ Production Credentials:</strong> Use your LIVE Razorpay credentials (rzp_live_) to accept real payments.
                   These credentials will process actual subscription payments from store owners.
                   Keep them secure and ensure your Razorpay account is properly configured with bank details.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* OpenRouter AI Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Designer — OpenRouter API</CardTitle>
+              <CardDescription>
+                API key for AI Designer (Kimi K2.5 via OpenRouter). Used server-side only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="openrouterApiKey">OpenRouter API Key</Label>
+                <Input
+                  id="openrouterApiKey"
+                  type="password"
+                  placeholder="sk-or-v1-..."
+                  value={settings.openrouter_api_key}
+                  onChange={(e) => setSettings({ ...settings, openrouter_api_key: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Get your API key from openrouter.ai/keys — stored securely, never exposed to clients.
                 </p>
               </div>
             </CardContent>

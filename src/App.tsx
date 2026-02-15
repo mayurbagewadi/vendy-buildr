@@ -27,6 +27,9 @@ import GrowthInstagram from "./pages/admin/growth/Instagram";
 import DiscountAndCoupon from "./pages/admin/growth/DiscountAndCoupon";
 import AdminMarketplace from "./pages/admin/Marketplace";
 import AdminShipping from "./pages/admin/Shipping";
+import AdminAIDesigner from "./pages/admin/AIDesigner";
+import BuyTokens from "./pages/admin/BuyTokens";
+import AITokenPricing from "./pages/superadmin/AITokenPricing";
 import AdminGoogleReviews from "./pages/admin/GoogleReviews";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
@@ -53,6 +56,7 @@ import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
 import SuperAdminMarketplace from "./pages/superadmin/Marketplace";
 import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
+import SuperAdminLayout from "./components/superadmin/SuperAdminLayout";
 import { StoreGuard } from "./components/admin/StoreGuard";
 import OnboardingStoreSetup from "./pages/onboarding/StoreSetup";
 import OnboardingGoogleDrive from "./pages/onboarding/GoogleDriveSetup";
@@ -112,6 +116,8 @@ const App = () => {
                       <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
 
                       {/* Customer Routes */}
                       <Route path="/" element={<Store slug={storeIdentifier} />} />
@@ -161,6 +167,8 @@ const App = () => {
                       <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
 
                       {/* Customer Routes */}
                       <Route path="/home" element={<Home />} />
@@ -174,19 +182,20 @@ const App = () => {
                       {/* Super Admin Routes */}
                       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
                       <Route path="/superadmin" element={<SuperAdminGuard />}>
-                        <Route path="dashboard" element={<SuperAdminDashboard />} />
-                        <Route path="users" element={<SuperAdminUsers />} />
-                        <Route path="helpers" element={<HelperManagement />} />
-                        <Route path="commissions" element={<SuperAdminCommissions />} />
-                        <Route path="commission-settings" element={<SuperAdminCommissionSettings />} />
-                        <Route path="reports-analytics" element={<SuperAdminReportsAnalytics />} />
-                        <Route path="subscription-plans" element={<SuperAdminSubscriptionPlans />} />
-                        <Route path="transactions" element={<SuperAdminTransactions />} />
-                        <Route path="billing" element={<SuperAdminBilling />} />
-                        <Route path="custom-domains" element={<SuperAdminCustomDomains />} />
-                        <Route path="settings" element={<SuperAdminPlatformSettings />} />
-                        <Route path="sitemaps" element={<SuperAdminSitemapManager />} />
-                        <Route path="marketplace" element={<SuperAdminMarketplace />} />
+                        <Route path="dashboard" element={<SuperAdminLayout><SuperAdminDashboard /></SuperAdminLayout>} />
+                        <Route path="users" element={<SuperAdminLayout><SuperAdminUsers /></SuperAdminLayout>} />
+                        <Route path="helpers" element={<SuperAdminLayout><HelperManagement /></SuperAdminLayout>} />
+                        <Route path="commissions" element={<SuperAdminLayout><SuperAdminCommissions /></SuperAdminLayout>} />
+                        <Route path="commission-settings" element={<SuperAdminLayout><SuperAdminCommissionSettings /></SuperAdminLayout>} />
+                        <Route path="reports-analytics" element={<SuperAdminLayout><SuperAdminReportsAnalytics /></SuperAdminLayout>} />
+                        <Route path="subscription-plans" element={<SuperAdminLayout><SuperAdminSubscriptionPlans /></SuperAdminLayout>} />
+                        <Route path="transactions" element={<SuperAdminLayout><SuperAdminTransactions /></SuperAdminLayout>} />
+                        <Route path="billing" element={<SuperAdminLayout><SuperAdminBilling /></SuperAdminLayout>} />
+                        <Route path="custom-domains" element={<SuperAdminLayout><SuperAdminCustomDomains /></SuperAdminLayout>} />
+                        <Route path="settings" element={<SuperAdminLayout><SuperAdminPlatformSettings /></SuperAdminLayout>} />
+                        <Route path="sitemaps" element={<SuperAdminLayout><SuperAdminSitemapManager /></SuperAdminLayout>} />
+                        <Route path="marketplace" element={<SuperAdminLayout><SuperAdminMarketplace /></SuperAdminLayout>} />
+                        <Route path="ai-token-pricing" element={<SuperAdminLayout><AITokenPricing /></SuperAdminLayout>} />
                       </Route>
 
                       {/* Onboarding Routes */}

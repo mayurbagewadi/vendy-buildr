@@ -23,7 +23,8 @@ import {
   Store,
   Truck,
   Star,
-  Ticket
+  Ticket,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -315,6 +316,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/settings",
       icon: Settings,
       current: location.pathname === "/admin/settings",
+    },
+    {
+      name: "AI Designer",
+      href: "/admin/ai-designer",
+      icon: Sparkles,
+      current: location.pathname.startsWith("/admin/ai-designer") || location.pathname.startsWith("/admin/buy-tokens"),
     },
   ];
 
