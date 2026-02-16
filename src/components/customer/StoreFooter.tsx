@@ -73,7 +73,7 @@ const StoreFooter = ({
   const hasSocialLinks = Object.values(resolvedSocial).some(url => url);
 
   return (
-    <footer className="bg-muted border-t border-border">
+    <footer data-ai="section-footer" className="bg-muted border-t border-border">
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About Store */}

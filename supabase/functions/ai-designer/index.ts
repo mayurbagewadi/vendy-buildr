@@ -401,7 +401,7 @@ hero_style controls: "image" shows uploaded banner, "gradient" shows branded gra
 
 --- SECTION 3: CATEGORIES ---
 Condition: shows if categories exist
-Section: \`\${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background\`
+Section: data-ai="section-categories" \`\${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background\`
 Title: "Shop by Category" → text-4xl md:text-5xl font-bold text-foreground mb-4
 Subtitle: text-lg text-muted-foreground
 Layout: horizontal scroll flex gap-2 overflow-x-auto snap-x snap-mandatory
@@ -462,17 +462,53 @@ You can change:
 3. layout.product_grid_cols → "2" | "3" | "4"
 4. layout.section_padding → "compact" | "normal" | "spacious"
 5. layout.hero_style → "image" | "gradient"
-6. css_overrides → raw CSS string injected into the store page (can target any element)
-   Available data-ai selectors you can target:
-   - [data-ai="category-card"] → each category card (the whole card including image)
-   - [data-ai="category-card"] .rounded-2xl → card outer shape
-   - [data-ai="category-card"] .rounded-xl → image container shape
-   - [data-ai="product-card"] → each product card
-   - [data-ai="product-card"] .card → product card inner element
-   Examples:
-   "css_overrides": "[data-ai='category-card'] .rounded-2xl, [data-ai='category-card'] .rounded-xl { border-radius: 9999px !important; }"
-   "css_overrides": "[data-ai='product-card'] .card { box-shadow: 0 8px 30px hsl(var(--primary)/0.2); }"
-   "css_overrides": "[data-ai='category-card'] * { border-radius: 9999px !important; } [data-ai='product-card'] .card { border-radius: 1.5rem !important; }"
+6. css_overrides → raw CSS string injected into the store page. Use data-ai selectors to target sections precisely.
+
+   SECTION SELECTORS (target entire sections):
+   - [data-ai="section-hero"]           → Hero banner section
+   - [data-ai="section-categories"]     → Categories section (has bg-gradient-to-b from-muted/30 to-background)
+   - [data-ai="section-featured"]       → Featured Products section (bg-background)
+   - [data-ai="section-reviews"]        → Google Reviews section (bg-muted/30)
+   - [data-ai="section-new-arrivals"]   → New Arrivals section
+   - [data-ai="section-cta"]            → CTA banner section (bg-primary text-primary-foreground)
+   - [data-ai="section-reels"]          → Instagram Reels section
+   - [data-ai="section-footer"]         → Footer (bg-muted border-t border-border, 4-col grid)
+
+   CARD SELECTORS (target individual cards):
+   - [data-ai="category-card"]          → each category card wrapper
+   - [data-ai="category-card"] .rounded-2xl → card outer border-radius
+   - [data-ai="category-card"] .rounded-xl  → image container border-radius
+   - [data-ai="product-card"]           → each product card wrapper
+   - [data-ai="product-card"] .card     → product card inner element
+
+   ELEMENT SELECTORS (target text/buttons inside sections):
+   - [data-ai="section-categories"] h2  → "Shop by Category" title (text-4xl md:text-5xl)
+   - [data-ai="section-categories"] p   → subtitle text
+   - [data-ai="section-featured"] h2    → "Featured Products" title (text-3xl)
+   - [data-ai="section-new-arrivals"] h2 → "New Arrivals" title (text-3xl)
+   - [data-ai="section-cta"] h2         → CTA title text
+   - [data-ai="section-footer"] footer  → footer background/border
+   - [data-ai="product-card"] .text-lg  → product price (text-primary font-bold)
+   - [data-ai="product-card"] img       → product image
+
+   EXAMPLES:
+   Make category cards circular:
+   "[data-ai='category-card'] .rounded-2xl, [data-ai='category-card'] .rounded-xl { border-radius: 9999px !important; }"
+
+   Change categories section background:
+   "[data-ai='section-categories'] { background: linear-gradient(to bottom, hsl(var(--primary)/0.1), hsl(var(--background))) !important; }"
+
+   Make section titles bigger:
+   "[data-ai='section-featured'] h2, [data-ai='section-new-arrivals'] h2 { font-size: 2.5rem !important; }"
+
+   Add shadow to product cards:
+   "[data-ai='product-card'] .card { box-shadow: 0 8px 30px hsl(var(--primary)/0.15) !important; }"
+
+   Dark footer:
+   "[data-ai='section-footer'] { background: hsl(222 47% 8%) !important; color: hsl(0 0% 95%) !important; }"
+
+   Change CTA section padding/style:
+   "[data-ai='section-cta'] { padding: 5rem 0 !important; background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.7)) !important; }"
 
 IMPORTANT: Always respond in valid JSON only. No markdown, no text outside JSON.
 
