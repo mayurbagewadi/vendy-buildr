@@ -15,6 +15,24 @@ const corsHeaders = {
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 const TOKEN_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
 
+// Robustly extract JSON from AI response — handles markdown wrappers, extra text, etc.
+function extractJSON(content: string): any {
+  // 1. Try direct parse first
+  try { return JSON.parse(content); } catch {}
+  // 2. Try stripping markdown code fences ```json ... ``` or ``` ... ```
+  const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try { return JSON.parse(fenceMatch[1].trim()); } catch {}
+  }
+  // 3. Try extracting from first { to last }
+  const start = content.indexOf('{');
+  const end = content.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(content.slice(start, end + 1)); } catch {}
+  }
+  throw new Error('Could not parse AI response as JSON');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders, status: 200 });
@@ -238,10 +256,11 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
 
       let parsedDesign;
       try {
-        parsedDesign = JSON.parse(aiContent);
+        parsedDesign = extractJSON(aiContent);
       } catch {
+        console.error('generate_design JSON parse failed. Raw content:', aiContent?.slice(0, 300));
         return new Response(
-          JSON.stringify({ success: false, error: 'AI returned invalid JSON response' }),
+          JSON.stringify({ success: false, error: 'AI returned invalid response. Please try again.' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
@@ -490,10 +509,11 @@ Only include css_variables keys you are actually changing. Be helpful, creative 
 
       let parsed;
       try {
-        parsed = JSON.parse(aiContent);
+        parsed = extractJSON(aiContent);
       } catch {
+        console.error('chat JSON parse failed. Raw content:', aiContent?.slice(0, 300));
         return new Response(
-          JSON.stringify({ success: false, error: 'AI returned invalid response' }),
+          JSON.stringify({ success: false, error: 'AI returned invalid response. Please try again.' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
