@@ -354,6 +354,7 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
         .single();
 
       const apiKey = platformSettings?.openrouter_api_key;
+      const aiModel = platformSettings?.openrouter_model || 'moonshotai/kimi-k2';
       if (!apiKey) {
         return new Response(
           JSON.stringify({ success: false, error: 'OpenRouter API key not configured. Please ask the platform admin to add it in Platform Settings.' }),
