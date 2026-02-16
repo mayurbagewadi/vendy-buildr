@@ -55,6 +55,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
       animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
       onClick={handleClick}
       className="cursor-pointer"
+      data-ai="product-card"
     >
       <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
         <CardContent className="p-0">

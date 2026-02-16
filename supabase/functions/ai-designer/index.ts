@@ -461,6 +461,17 @@ You can change:
 3. layout.product_grid_cols → "2" | "3" | "4"
 4. layout.section_padding → "compact" | "normal" | "spacious"
 5. layout.hero_style → "image" | "gradient"
+6. css_overrides → raw CSS string injected into the store page (can target any element)
+   Available data-ai selectors you can target:
+   - [data-ai="category-card"] → each category card (the whole card including image)
+   - [data-ai="category-card"] .rounded-2xl → card outer shape
+   - [data-ai="category-card"] .rounded-xl → image container shape
+   - [data-ai="product-card"] → each product card
+   - [data-ai="product-card"] .card → product card inner element
+   Examples:
+   "css_overrides": "[data-ai='category-card'] .rounded-2xl, [data-ai='category-card'] .rounded-xl { border-radius: 9999px !important; }"
+   "css_overrides": "[data-ai='product-card'] .card { box-shadow: 0 8px 30px hsl(var(--primary)/0.2); }"
+   "css_overrides": "[data-ai='category-card'] * { border-radius: 9999px !important; } [data-ai='product-card'] .card { border-radius: 1.5rem !important; }"
 
 IMPORTANT: Always respond in valid JSON only. No markdown, no text outside JSON.
 
@@ -487,11 +498,12 @@ If the user wants you to apply/generate/create/change a design, respond with:
       "section_padding": "normal",
       "hero_style": "gradient"
     },
-    "changes_list": ["Changed primary color to green", "Added spacious padding"]
+    "css_overrides": "[data-ai='category-card'] * { border-radius: 9999px !important; }",
+    "changes_list": ["Changed primary color to green", "Made category cards circular"]
   }
 }
 
-Only include css_variables keys you are actually changing. Be helpful, creative and specific.`;
+Only include fields you are actually changing. css_overrides is optional — only include it when raw CSS is needed for shape/style changes beyond what css_variables can do. Be helpful, creative and specific.`;
 
       const chatAbort = new AbortController();
       const chatTimeout = setTimeout(() => chatAbort.abort(), 45000);

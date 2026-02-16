@@ -11,6 +11,7 @@ export interface AIDesignResult {
     section_padding?: string;
     hero_style?: string;
   };
+  css_overrides?: string;
   changes_list: string[];
 }
 
@@ -124,6 +125,9 @@ export function buildDesignCSS(design: AIDesignResult): string {
   let css = `:root {\n${lightVars}\n}`;
   if (darkVars) {
     css += `\n.dark {\n${darkVars}\n}`;
+  }
+  if (design.css_overrides) {
+    css += `\n/* AI CSS Overrides */\n${design.css_overrides}`;
   }
   return css;
 }
