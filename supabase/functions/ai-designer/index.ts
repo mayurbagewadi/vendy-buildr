@@ -215,31 +215,48 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
       const userMessage = `Store name: ${storeName}\nStore description: ${storeDescription}\n\nDesign request: ${prompt}`;
 
       // Call OpenRouter API with Kimi K2.5
-      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://yesgive.shop',
-          'X-Title': 'Vendy Buildr AI Designer',
-        },
-        body: JSON.stringify({
-          model: 'moonshotai/kimi-k2',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-      });
+      const genAbort = new AbortController();
+      const genTimeout = setTimeout(() => genAbort.abort(), 45000);
+
+      let aiResponse: Response;
+      try {
+        aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://yesgive.shop',
+            'X-Title': 'Vendy Buildr AI Designer',
+          },
+          body: JSON.stringify({
+            model: 'moonshotai/kimi-k2',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+            max_tokens: 1000,
+          }),
+          signal: genAbort.signal,
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(genTimeout);
+        const msg = fetchErr?.name === 'AbortError' ? 'AI request timed out. Please try again.' : 'Failed to reach AI service.';
+        return new Response(
+          JSON.stringify({ success: false, error: msg }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      clearTimeout(genTimeout);
 
       if (!aiResponse.ok) {
-        const errorData = await aiResponse.json();
-        console.error('OpenRouter error:', errorData);
+        const errText = await aiResponse.text().catch(() => '');
+        let errMsg = 'Failed to generate design';
+        try { errMsg = JSON.parse(errText)?.error?.message || errMsg; } catch {}
+        console.error('OpenRouter generate_design error:', aiResponse.status, errText.slice(0, 200));
         return new Response(
-          JSON.stringify({ success: false, error: `AI API error: ${errorData.error?.message || 'Failed to generate design'}` }),
+          JSON.stringify({ success: false, error: `AI API error (${aiResponse.status}): ${errMsg}` }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
@@ -476,35 +493,53 @@ If the user wants you to apply/generate/create/change a design, respond with:
 
 Only include css_variables keys you are actually changing. Be helpful, creative and specific.`;
 
-      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://yesgive.shop',
-          'X-Title': 'Vendy Buildr AI Designer',
-        },
-        body: JSON.stringify({
-          model: 'moonshotai/kimi-k2',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages,
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-          max_tokens: 1200,
-        }),
-      });
+      const chatAbort = new AbortController();
+      const chatTimeout = setTimeout(() => chatAbort.abort(), 45000);
 
-      if (!aiResponse.ok) {
-        const errorData = await aiResponse.json();
+      let chatAiResponse: Response;
+      try {
+        chatAiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://yesgive.shop',
+            'X-Title': 'Vendy Buildr AI Designer',
+          },
+          body: JSON.stringify({
+            model: 'moonshotai/kimi-k2',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages,
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+            max_tokens: 1200,
+          }),
+          signal: chatAbort.signal,
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(chatTimeout);
+        const msg = fetchErr?.name === 'AbortError' ? 'AI request timed out. Please try again.' : 'Failed to reach AI service.';
         return new Response(
-          JSON.stringify({ success: false, error: `AI error: ${errorData.error?.message || 'Failed to get response'}` }),
+          JSON.stringify({ success: false, error: msg }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      clearTimeout(chatTimeout);
+
+      if (!chatAiResponse.ok) {
+        const errText = await chatAiResponse.text().catch(() => '');
+        let errMsg = 'Failed to get AI response';
+        try { errMsg = JSON.parse(errText)?.error?.message || errMsg; } catch {}
+        console.error('OpenRouter chat error:', chatAiResponse.status, errText.slice(0, 200));
+        return new Response(
+          JSON.stringify({ success: false, error: `AI API error (${chatAiResponse.status}): ${errMsg}` }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
-      const aiData = await aiResponse.json();
+      const aiData = await chatAiResponse.json();
       const aiContent = aiData.choices?.[0]?.message?.content;
 
       let parsed;
