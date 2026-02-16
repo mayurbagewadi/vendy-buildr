@@ -140,11 +140,12 @@ serve(async (req) => {
       // Get OpenRouter API key from platform settings
       const { data: platformSettings } = await supabase
         .from('platform_settings')
-        .select('openrouter_api_key')
+        .select('openrouter_api_key, openrouter_model')
         .eq('id', SETTINGS_ID)
         .single();
 
       const apiKey = platformSettings?.openrouter_api_key;
+      const aiModel = platformSettings?.openrouter_model || 'moonshotai/kimi-k2';
 
       if (!apiKey) {
         return new Response(
@@ -229,7 +230,7 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
             'X-Title': 'Vendy Buildr AI Designer',
           },
           body: JSON.stringify({
-            model: 'moonshotai/kimi-k2',
+            model: aiModel,
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userMessage },
@@ -348,7 +349,7 @@ Only include css_variables keys you are actually changing. Leave out unchanged o
       // Get OpenRouter API key
       const { data: platformSettings } = await supabase
         .from('platform_settings')
-        .select('openrouter_api_key')
+        .select('openrouter_api_key, openrouter_model')
         .eq('id', SETTINGS_ID)
         .single();
 
@@ -519,7 +520,7 @@ Only include fields you are actually changing. css_overrides is optional — onl
             'X-Title': 'Vendy Buildr AI Designer',
           },
           body: JSON.stringify({
-            model: 'moonshotai/kimi-k2',
+            model: aiModel,
             messages: [
               { role: 'system', content: systemPrompt },
               ...messages,

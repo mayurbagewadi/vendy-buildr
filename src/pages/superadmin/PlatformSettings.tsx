@@ -36,6 +36,7 @@ interface PlatformSettings {
   razorpay_key_secret: string;
   razorpay_test_mode: boolean;
   openrouter_api_key: string;
+  openrouter_model: string;
 }
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
@@ -57,6 +58,7 @@ const PlatformSettingsPage = () => {
     razorpay_key_secret: '',
     razorpay_test_mode: false,
     openrouter_api_key: '',
+    openrouter_model: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,6 +140,7 @@ const PlatformSettingsPage = () => {
             razorpay_key_secret: data.razorpay_key_secret || '',
             razorpay_test_mode: data.razorpay_test_mode || false,
             openrouter_api_key: data.openrouter_api_key || '',
+            openrouter_model: data.openrouter_model || '',
           });
         }
       } catch (error) {
@@ -175,6 +178,7 @@ const PlatformSettingsPage = () => {
           razorpay_key_secret: settings.razorpay_key_secret,
           razorpay_test_mode: settings.razorpay_test_mode,
           openrouter_api_key: settings.openrouter_api_key,
+          openrouter_model: settings.openrouter_model,
         })
         .eq('id', SETTINGS_ID);
 
@@ -591,6 +595,19 @@ const PlatformSettingsPage = () => {
                 />
                 <p className="text-xs text-muted-foreground">
                   Get your API key from openrouter.ai/keys — stored securely, never exposed to clients.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="openrouterModel">AI Model ID</Label>
+                <Input
+                  id="openrouterModel"
+                  type="text"
+                  placeholder="moonshotai/kimi-k2"
+                  value={settings.openrouter_model}
+                  onChange={(e) => setSettings({ ...settings, openrouter_model: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  OpenRouter model ID to use for AI Designer (e.g. <span className="font-mono">moonshotai/kimi-k2</span>). Find model IDs at openrouter.ai/models. Leave blank to use default.
                 </p>
               </div>
             </CardContent>
