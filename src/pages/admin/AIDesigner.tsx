@@ -76,8 +76,82 @@ const AIDesigner = () => {
 
   // Auto-scroll chat to bottom when new messages appear
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Use setTimeout to ensure DOM has updated before scrolling
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages]);
+
+  // Load chat history from ai_designer_history table
+  const loadChatHistory = async (storeId: string) => {
+    try {
+      const { data: historyRecords, error } = await supabase
+        .from("ai_designer_history")
+        .select("id, prompt, ai_response, applied, created_at")
+        .eq("store_id", storeId)
+        .order("created_at", { ascending: true }); // oldest first
+
+      if (error) {
+        console.error("Failed to load chat history:", error);
+        // Show welcome message if history fails to load
+        setMessages([
+          {
+            id: "welcome",
+            role: "ai",
+            content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
+          },
+        ]);
+        return;
+      }
+
+      const loadedMessages: UIMessage[] = [];
+
+      // Add welcome message first
+      loadedMessages.push({
+        id: "welcome",
+        role: "ai",
+        content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
+      });
+
+      // Convert history records to chat messages
+      if (historyRecords && historyRecords.length > 0) {
+        historyRecords.forEach((record) => {
+          // User message
+          loadedMessages.push({
+            id: `user-${record.id}`,
+            role: "user",
+            content: record.prompt,
+          });
+
+          // AI response
+          const aiResponse = typeof record.ai_response === 'string'
+            ? JSON.parse(record.ai_response)
+            : record.ai_response;
+
+          loadedMessages.push({
+            id: `ai-${record.id}`,
+            role: "ai",
+            content: aiResponse.summary || "Design generated",
+            design: aiResponse,
+            historyId: record.id,
+          });
+        });
+      }
+
+      setMessages(loadedMessages);
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      // Show welcome message on error
+      setMessages([
+        {
+          id: "welcome",
+          role: "ai",
+          content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
+        },
+      ]);
+    }
+  };
 
   const loadInitialData = async () => {
     try {
@@ -119,14 +193,8 @@ const AIDesigner = () => {
         setPreviewDesign(appliedDesign);
       }
 
-      // Welcome message
-      setMessages([
-        {
-          id: "welcome",
-          role: "ai",
-          content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
-        },
-      ]);
+      // Load chat history from database
+      await loadChatHistory(store.id);
     } catch (error: any) {
       toast.error("Failed to load AI Designer");
       console.error(error);
