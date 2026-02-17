@@ -395,6 +395,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       
       <main className="flex-1">
         {/* Hero Banner Carousel Section */}
+        <section data-ai="section-hero">
         <HeroBannerCarousel
           bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0 
             ? store.hero_banner_urls 
@@ -405,10 +406,11 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           logoUrl={store.logo_url}
           storeDescription={store.description}
         />
+        </section>
 
         {/* Categories Section - Right after banner */}
         {categories.length > 0 && (
-          <section className={`${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background relative overflow-hidden`}>
+          <section data-ai="section-categories" className={`${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background relative overflow-hidden`}>
             <div className="container mx-auto px-4 relative z-10">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.8}>
                 <div className="text-center mb-12">
@@ -447,7 +449,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         )}
 
         {/* Featured Products */}
-        <section className={`${sectionPy} bg-background`}>
+        <section data-ai="section-featured" className={`${sectionPy} bg-background`}>
           <div className="container mx-auto px-4">
             <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
               <div className="flex justify-between items-center mb-8">
@@ -487,15 +489,17 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
         {/* Instagram Reels Section */}
         {store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage && (
+          <section data-ai="section-reels">
           <InstagramReels
             storeId={store.id}
             settings={store.instagram_reels_settings}
             instagramUsername={store.instagram_username || undefined}
           />
+          </section>
         )}
 
         {/* Google Reviews Section */}
-        <section className={`${sectionPy} bg-muted/30`}>
+        <section data-ai="section-reviews" className={`${sectionPy} bg-muted/30`}>
           <div className="container mx-auto px-4">
             <GoogleReviewsSection
               storeId={store.id}
@@ -506,7 +510,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
         {/* New Arrivals */}
         {newArrivals.length > 0 && (
-          <section className={`${sectionPy}`}>
+          <section data-ai="section-new-arrivals" className={`${sectionPy}`}>
             <div className="container mx-auto px-4">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
                 <div className="flex justify-between items-center mb-8">
@@ -542,7 +546,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         )}
 
         {/* CTA Section */}
-        <section className="py-20 bg-primary text-primary-foreground mb-0">
+        <section data-ai="section-cta" className="py-20 bg-primary text-primary-foreground mb-0">
           <div className="container mx-auto px-4 text-center">
             <AnimateOnScroll animation="scaleUp" duration={0.8}>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">

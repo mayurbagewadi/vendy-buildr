@@ -11,6 +11,7 @@ export interface AIDesignResult {
     section_padding?: string;
     hero_style?: string;
   };
+  css_overrides?: string;
   changes_list: string[];
 }
 
@@ -70,6 +71,38 @@ export async function resetDesign(storeId: string): Promise<void> {
   if (!data.success) throw new Error(data.error);
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  type: "text" | "design";
+  message: string;
+  design?: AIDesignResult;
+  history_id?: string;
+  tokens_remaining?: number;
+}
+
+export async function chatWithAI(
+  storeId: string,
+  userId: string,
+  messages: ChatMessage[]
+): Promise<ChatResponse> {
+  const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION, {
+    body: { action: "chat", store_id: storeId, user_id: userId, messages },
+  });
+  if (error) throw error;
+  if (!data.success) throw new Error(data.error);
+  return {
+    type: data.type,
+    message: data.message,
+    design: data.design || undefined,
+    history_id: data.history_id,
+    tokens_remaining: data.tokens_remaining,
+  };
+}
+
 export async function getAppliedDesign(storeId: string): Promise<AIDesignResult | null> {
   const { data } = await supabase
     .from("store_design_state")
@@ -92,6 +125,9 @@ export function buildDesignCSS(design: AIDesignResult): string {
   let css = `:root {\n${lightVars}\n}`;
   if (darkVars) {
     css += `\n.dark {\n${darkVars}\n}`;
+  }
+  if (design.css_overrides) {
+    css += `\n/* AI CSS Overrides */\n${design.css_overrides}`;
   }
   return css;
 }

@@ -51,7 +51,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
   };
 
   return (
-    <div className="block p-2 cursor-pointer" onClick={handleClick}>
+    <div className="block p-2 cursor-pointer" data-ai="category-card" onClick={handleClick}>
       <motion.div
         whileHover={{ y: -8, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
