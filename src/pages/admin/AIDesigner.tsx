@@ -89,6 +89,8 @@ const AIDesigner = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isInitialScrollRef = useRef(true); // true = first load, use instant scroll
+  const previewDesignRef = useRef<AIDesignResult | null>(null); // always-current ref for iframe onLoad
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -116,10 +118,16 @@ const AIDesigner = () => {
 
   // Auto-scroll chat to bottom when new messages appear
   useEffect(() => {
-    // Use setTimeout to ensure DOM has updated before scrolling
+    if (messages.length === 0) return;
+    // On initial load: instant jump (no animation), slightly longer delay for DOM render
+    // On new messages: smooth scroll
+    const isInitial = isInitialScrollRef.current;
+    const delay = isInitial ? 200 : 100;
+    const behavior: ScrollBehavior = isInitial ? "instant" : "smooth";
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 100);
+      messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+      if (isInitial) isInitialScrollRef.current = false;
+    }, delay);
     return () => clearTimeout(timer);
   }, [messages]);
 
@@ -427,8 +435,14 @@ const AIDesigner = () => {
     styleEl.textContent = design ? buildDesignCSS(design) : '';
   };
 
+  // Keep ref in sync so handleIframeLoad always injects the latest design
+  useEffect(() => {
+    previewDesignRef.current = previewDesign;
+  }, [previewDesign]);
+
   const handleIframeLoad = () => {
-    injectCSSIntoIframe(previewDesign);
+    // Use ref (not closure) to always get the latest previewDesign value
+    injectCSSIntoIframe(previewDesignRef.current);
   };
 
   if (isLoading) {
