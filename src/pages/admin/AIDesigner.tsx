@@ -278,12 +278,17 @@ const AIDesigner = () => {
         setCurrentDesign(appliedDesign);
         previewDesignRef.current = appliedDesign;
         setPreviewDesign(appliedDesign);
+        // Clear reset flag — a published design exists, so reset is no longer the last action
+        localStorage.removeItem(`ai_designer_reset_${store.id}`);
       } else if (lastHistoryDesign) {
-        // No published design yet — load last generated design into preview + pending
-        // so Publish Changes and Reset to Default are enabled immediately
-        previewDesignRef.current = lastHistoryDesign;
-        setPreviewDesign(lastHistoryDesign);
-        setPendingDesign(lastHistoryDesign);
+        // No published design — only restore preview/pending if user did NOT explicitly reset
+        const wasReset = localStorage.getItem(`ai_designer_reset_${store.id}`);
+        if (!wasReset) {
+          previewDesignRef.current = lastHistoryDesign;
+          setPreviewDesign(lastHistoryDesign);
+          setPendingDesign(lastHistoryDesign);
+        }
+        // If wasReset: leave preview empty → iframe shows platform default
       }
     } catch (error: any) {
       toast.error("Failed to load AI Designer");
@@ -412,6 +417,8 @@ const AIDesigner = () => {
       setCurrentDesign(pendingDesign);
       setPendingDesign(null);
       setPendingHistoryId(undefined);
+      // Clear reset flag — user has published a new design
+      localStorage.removeItem(`ai_designer_reset_${storeId}`);
       toast.success("Design published to your live store!");
     } catch (error: any) {
       toast.error(error.message || "Failed to publish design");
@@ -428,9 +435,16 @@ const AIDesigner = () => {
       setCurrentDesign(null);
       setPendingDesign(null);
       setPendingHistoryId(undefined);
-      previewDesignRef.current = null; // sync
+      previewDesignRef.current = null; // sync — handleIframeLoad will inject nothing
       setPreviewDesign(null);
-      injectCSSIntoIframe(null);
+      // Remember that user explicitly reset — prevents history design from being restored on refresh
+      localStorage.setItem(`ai_designer_reset_${storeId}`, '1');
+      // Force iframe reload so preview shows the actual platform default immediately
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.location.reload();
+      } else {
+        injectCSSIntoIframe(null); // fallback if reload not possible
+      }
       toast.success("Store reset to platform default design.");
     } catch (error: any) {
       toast.error(error.message || "Failed to reset design");
@@ -786,7 +800,7 @@ const AIDesigner = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleReset}
-                disabled={isResetting || (!currentDesign && !pendingDesign)}
+                disabled={isResetting || !currentDesign}
               >
                 {isResetting ? (
                   <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
