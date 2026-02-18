@@ -88,9 +88,11 @@ const AIDesigner = () => {
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // ref to the scrollable container
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isInitialScrollRef = useRef(true); // true = first load, use instant scroll
   const previewDesignRef = useRef<AIDesignResult | null>(null); // always-current ref for iframe onLoad
+  const cssRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // retry CSS injection after React hydration
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -114,27 +116,28 @@ const AIDesigner = () => {
 
   useEffect(() => {
     loadInitialData();
+    return () => {
+      if (cssRetryTimerRef.current) clearTimeout(cssRetryTimerRef.current);
+    };
   }, []);
 
   // Auto-scroll chat to bottom
-  // Depends on BOTH isLoading and messages:
-  // - messages fires while isLoading=true → DOM not rendered yet → scrollIntoView is a no-op
-  // - isLoading going false → DOM renders → this effect fires again and scrolls correctly
+  // Uses direct scrollTop on the container (more reliable than scrollIntoView for fixed-height overflow containers)
   useEffect(() => {
     if (isLoading || messages.length === 0) return;
     const isInitial = isInitialScrollRef.current;
+    const container = messagesContainerRef.current;
+    if (!container) return;
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: isInitial ? "instant" : "smooth",
-        block: "end",
-      });
+      container.scrollTop = container.scrollHeight;
       if (isInitial) isInitialScrollRef.current = false;
-    }, 200);
+    }, 100);
     return () => clearTimeout(timer);
   }, [isLoading, messages]);
 
   // Load chat history from ai_designer_history table
-  const loadChatHistory = async (storeId: string) => {
+  // Returns the most recent design found in history (for preview fallback)
+  const loadChatHistory = async (storeId: string): Promise<AIDesignResult | null> => {
     try {
       // FIX #4: Include ai_css_overrides column for split storage support
       const { data: historyRecords, error } = await supabase
@@ -153,10 +156,11 @@ const AIDesigner = () => {
             content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
           },
         ]);
-        return;
+        return null;
       }
 
       const loadedMessages: UIMessage[] = [];
+      let lastDesign: AIDesignResult | null = null; // track most recent design for preview fallback
 
       // Add welcome message first
       loadedMessages.push({
@@ -205,11 +209,17 @@ const AIDesigner = () => {
               historyId: record.id,
               timestamp,
             });
+
+            // Track last design for preview fallback (history is ASC so last = most recent)
+            if (aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0) {
+              lastDesign = aiResponse;
+            }
           }
         });
       }
 
       setMessages(loadedMessages);
+      return lastDesign;
     } catch (error) {
       console.error("Error loading chat history:", error);
       // Show welcome message on error
@@ -220,6 +230,7 @@ const AIDesigner = () => {
           content: `Hi! I'm your AI Designer. I can help you redesign your store's colors, layout, and style.\n\nTry asking me:\n• "Give me design suggestions"\n• "Make it look modern and minimal"\n• "Change colors to green theme"\n• "What sections can you customize?"`,
         },
       ]);
+      return null;
     }
   };
 
@@ -258,14 +269,19 @@ const AIDesigner = () => {
       ]);
 
       setTokenBalance(balance);
+
+      // Load chat history — also returns the most recent generated design for preview fallback
+      const lastHistoryDesign = await loadChatHistory(store.id);
+
+      // Set preview: published design takes priority, fall back to last generated design
+      const designForPreview = appliedDesign || lastHistoryDesign;
       if (appliedDesign) {
         setCurrentDesign(appliedDesign);
-        previewDesignRef.current = appliedDesign; // sync before iframe renders
-        setPreviewDesign(appliedDesign);
       }
-
-      // Load chat history from database
-      await loadChatHistory(store.id);
+      if (designForPreview) {
+        previewDesignRef.current = designForPreview; // sync before iframe renders
+        setPreviewDesign(designForPreview);
+      }
     } catch (error: any) {
       toast.error("Failed to load AI Designer");
       console.error(error);
@@ -430,20 +446,29 @@ const AIDesigner = () => {
   };
 
   const injectCSSIntoIframe = (design: AIDesignResult | null) => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentDocument?.head) return;
-    let styleEl = iframe.contentDocument.getElementById('ai-preview-styles') as HTMLStyleElement | null;
-    if (!styleEl) {
-      styleEl = iframe.contentDocument.createElement('style');
-      styleEl.id = 'ai-preview-styles';
-      iframe.contentDocument.head.appendChild(styleEl);
+    try {
+      const iframe = iframeRef.current;
+      if (!iframe?.contentDocument?.head) return;
+      let styleEl = iframe.contentDocument.getElementById('ai-preview-styles') as HTMLStyleElement | null;
+      if (!styleEl) {
+        styleEl = iframe.contentDocument.createElement('style');
+        styleEl.id = 'ai-preview-styles';
+        iframe.contentDocument.head.appendChild(styleEl);
+      }
+      styleEl.textContent = design ? buildDesignCSS(design) : '';
+    } catch {
+      // Cross-origin or contentDocument not accessible — silently skip
     }
-    styleEl.textContent = design ? buildDesignCSS(design) : '';
   };
 
   const handleIframeLoad = () => {
-    // Ref is always current (set synchronously at every setPreviewDesign callsite)
+    // Inject immediately on load
     injectCSSIntoIframe(previewDesignRef.current);
+    // Retry after React hydration completes in the iframe (store SPA may re-apply its own CSS variables)
+    if (cssRetryTimerRef.current) clearTimeout(cssRetryTimerRef.current);
+    cssRetryTimerRef.current = setTimeout(() => {
+      injectCSSIntoIframe(previewDesignRef.current);
+    }, 1500);
   };
 
   if (isLoading) {
@@ -458,7 +483,7 @@ const AIDesigner = () => {
   const ChatPanel = (
     <div className="flex flex-col h-full" style={{ minHeight: "560px" }}>
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
         {messages.map((msg, index) => {
           const previousMsg = index > 0 ? messages[index - 1] : undefined;
           const showDateSeparator = shouldShowDateSeparator(msg, previousMsg);
