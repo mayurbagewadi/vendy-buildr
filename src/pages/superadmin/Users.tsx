@@ -29,7 +29,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, ArrowLeft, RefreshCw } from "lucide-react";
+import { Search, Download, Mail, UserPlus, ExternalLink, Eye, Edit, Trash2, MoreVertical, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -571,14 +571,9 @@ export default function Users() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/dashboard')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Users & Stores Management</h1>
-            <p className="text-muted-foreground">Manage all users and their stores</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold">Users & Stores Management</h1>
+          <p className="text-muted-foreground">Manage all users and their stores</p>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />

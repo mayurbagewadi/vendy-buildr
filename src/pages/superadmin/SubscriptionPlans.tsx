@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PlanFormDialog } from "@/components/superadmin/PlanFormDialog";
@@ -268,20 +268,11 @@ const SubscriptionPlansPage = () => {
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/superadmin/dashboard')}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-2xl font-bold">Subscription Plans</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Manage subscription plans and pricing
-                  </p>
-                </div>
+              <div>
+                <h1 className="text-2xl font-bold">Subscription Plans</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage subscription plans and pricing
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <ThemeToggle />
