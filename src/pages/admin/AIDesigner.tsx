@@ -41,7 +41,45 @@ interface UIMessage {
   design?: AIDesignResult;
   historyId?: string;
   isLoading?: boolean;
+  timestamp?: Date;
 }
+
+// Helper functions for WhatsApp-style timestamps
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const formatDateSeparator = (date: Date): string => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const isToday = date.toDateString() === today.toDateString();
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+};
+
+const shouldShowDateSeparator = (currentMsg: UIMessage, previousMsg?: UIMessage): boolean => {
+  if (!currentMsg.timestamp) return false;
+  if (!previousMsg || !previousMsg.timestamp) return true;
+
+  const currentDate = currentMsg.timestamp.toDateString();
+  const previousDate = previousMsg.timestamp.toDateString();
+
+  return currentDate !== previousDate;
+};
 
 // ------- Main AIDesigner Page -------
 const AIDesigner = () => {
@@ -117,11 +155,14 @@ const AIDesigner = () => {
       // Convert history records to chat messages
       if (historyRecords && historyRecords.length > 0) {
         historyRecords.forEach((record) => {
+          const timestamp = new Date(record.created_at);
+
           // User message
           loadedMessages.push({
             id: `user-${record.id}`,
             role: "user",
             content: record.prompt,
+            timestamp,
           });
 
           // AI response
@@ -135,6 +176,7 @@ const AIDesigner = () => {
             content: aiResponse.summary || "Design generated",
             design: aiResponse,
             historyId: record.id,
+            timestamp,
           });
         });
       }
@@ -222,9 +264,20 @@ const AIDesigner = () => {
 
     const userMsgId = `user-${Date.now()}`;
     const loadingMsgId = `loading-${Date.now()}`;
+    const now = new Date();
 
-    const userMsg: UIMessage = { id: userMsgId, role: "user", content: text };
-    const loadingMsg: UIMessage = { id: loadingMsgId, role: "ai", content: "", isLoading: true };
+    const userMsg: UIMessage = {
+      id: userMsgId,
+      role: "user",
+      content: text,
+      timestamp: now,
+    };
+    const loadingMsg: UIMessage = {
+      id: loadingMsgId,
+      role: "ai",
+      content: "",
+      isLoading: true
+    };
 
     setMessages((prev) => [...prev, userMsg, loadingMsg]);
     setInputValue("");
@@ -242,6 +295,7 @@ const AIDesigner = () => {
         content: result.message,
         design: result.design,
         historyId: result.history_id,
+        timestamp: new Date(),
       };
 
       // Replace loading message with actual response
@@ -363,45 +417,75 @@ const AIDesigner = () => {
     <div className="flex flex-col h-full" style={{ minHeight: "560px" }}>
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-          >
-            {/* Avatar */}
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted border border-border"
-              }`}
-            >
-              {msg.role === "user" ? (
-                <User className="w-3.5 h-3.5" />
-              ) : (
-                <Bot className="w-3.5 h-3.5 text-primary" />
-              )}
-            </div>
+        {messages.map((msg, index) => {
+          const previousMsg = index > 0 ? messages[index - 1] : undefined;
+          const showDateSeparator = shouldShowDateSeparator(msg, previousMsg);
 
-            {/* Bubble */}
-            <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
-              <div
-                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-tr-sm"
-                    : "bg-muted border border-border text-foreground rounded-tl-sm"
-                }`}
-              >
-                {msg.isLoading ? (
-                  <div className="flex items-center gap-1.5 py-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+          return (
+            <div key={msg.id}>
+              {/* Date separator (WhatsApp style) */}
+              {showDateSeparator && msg.timestamp && (
+                <div className="flex justify-center my-4">
+                  <div className="bg-muted/60 px-3 py-1 rounded-full">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {formatDateSeparator(msg.timestamp)}
+                    </span>
                   </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* Message */}
+              <div className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                {/* Avatar */}
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted border border-border"
+                  }`}
+                >
+                  {msg.role === "user" ? (
+                    <User className="w-3.5 h-3.5" />
+                  ) : (
+                    <Bot className="w-3.5 h-3.5 text-primary" />
+                  )}
+                </div>
+
+                {/* Bubble */}
+                <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-2`}>
+                  <div
+                    className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                        : "bg-muted border border-border text-foreground rounded-tl-sm"
+                    }`}
+                  >
+                    {msg.isLoading ? (
+                      <div className="flex items-center gap-1.5 py-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        {/* Timestamp (WhatsApp style - bottom right) */}
+                        {msg.timestamp && (
+                          <div className="flex justify-end mt-1">
+                            <span
+                              className={`text-[10px] ${
+                                msg.role === "user"
+                                  ? "text-primary-foreground/70"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {formatTime(msg.timestamp)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
 
               {/* Design card inline — shown under AI message */}
               {msg.design && !msg.isLoading && (
@@ -451,7 +535,9 @@ const AIDesigner = () => {
               )}
             </div>
           </div>
-        ))}
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
