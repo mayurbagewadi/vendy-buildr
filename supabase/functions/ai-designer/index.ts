@@ -31,6 +31,37 @@ function checkRateLimit(storeId: string, maxRequests = 10, windowMs = 60000): bo
   return true; // allowed
 }
 
+// FIX Issue-3: Strip "--" prefix from css_variable keys (AI sometimes includes them, breaks CSS)
+function normalizeVarKeys(vars: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vars || {})) {
+    out[k.startsWith("--") ? k.slice(2) : k] = v;
+  }
+  return out;
+}
+
+// FIX Issue-2: Unwrap design JSON double-wrapped inside a text message
+// AI sometimes returns { "type": "text", "message": "{\"type\":\"design\",...}" }
+function unwrapNestedDesign(parsed: any): any {
+  if (parsed?.type !== "text" || typeof parsed?.message !== "string") return parsed;
+  const msg = parsed.message;
+  const s = msg.indexOf('{"type"');
+  const s2 = msg.indexOf('{ "type"');
+  const start = s !== -1 ? s : s2;
+  if (start === -1) return parsed;
+  const end = msg.lastIndexOf("}");
+  if (end <= start) return parsed;
+  try {
+    const inner = JSON.parse(msg.slice(start, end + 1));
+    // If inner looks like a design response or a direct design object
+    if (inner.type === "design" && inner.design) return inner;
+    if (inner.css_variables || inner.summary || inner.changes_list) {
+      return { type: "design", message: inner.message || "Design generated", design: inner };
+    }
+  } catch { /* not parseable, keep as text */ }
+  return parsed;
+}
+
 // FIX #16: Detect AI content policy refusal
 function isAIRefusal(content: string): boolean {
   if (!content) return false;
@@ -578,14 +609,17 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
     "--radius: 0.5rem              (border radius)\n";
 
   const responseFormat =
-    "RESPOND IN JSON FORMAT ONLY:\n" +
-    "For text/chat: {\"type\":\"text\",\"message\":\"your response\"}\n" +
-    "For design changes: {\"type\":\"design\",\"message\":\"description\",\"design\":{" +
-    "\"summary\":\"Brief summary\",\"css_variables\":{\"--primary\":\"217 91% 60%\"}," +
+    "RESPOND IN JSON FORMAT ONLY. No markdown. Start with { end with }.\n\n" +
+    "RULE: NEVER ask for approval or clarification. Apply the design immediately.\n" +
+    "RULE: CSS variable keys WITHOUT '--' prefix. Use 'primary' not '--primary'.\n" +
+    "RULE: Full design request = change ALL variables and ALL sections. Specific = change ONLY that element.\n\n" +
+    "For design changes: {\"type\":\"design\",\"message\":\"Applied [X]. Want to adjust?\",\"design\":{" +
+    "\"summary\":\"Brief summary\",\"css_variables\":{\"primary\":\"217 91% 60%\",\"background\":\"0 0% 100%\"}," +
+    "\"dark_css_variables\":{\"primary\":\"217 91% 65%\",\"background\":\"222 47% 8%\"}," +
     "\"layout\":{\"product_grid_cols\":\"3\"}," +
-    "\"css_overrides\":\"[data-ai='section-hero'] { ... }\"," +
+    "\"css_overrides\":\"[data-ai='section-hero'] { background: hsl(217 91% 60%) !important; }\"," +
     "\"changes_list\":[\"Change 1\",\"Change 2\"]}}\n\n" +
-    "Start response with { and end with }. No markdown code blocks.";
+    "For pure chat only (NO design): {\"type\":\"text\",\"message\":\"your response\"}";
 
   return "You are an expert UI/UX designer for the e-commerce store: " + storeName + ".\n" +
     designContext + "\n\n" +
@@ -668,12 +702,27 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
     failureContext +
     historyContext +
     "You have full access to the store's frontend source code and structure below. Use it to give precise, accurate design suggestions.\n\n" +
-    "!!! STRICT RULE - DELTA/ACTIONS ARCHITECTURE !!!\n" +
-    "ONLY CHANGE WHAT THE USER EXPLICITLY ASKS FOR. DO NOT MODIFY ANYTHING ELSE.\n" +
-    "If user says 'fix button color' -> ONLY return css_variables with --primary change. Nothing else.\n" +
-    "If user says 'change footer text' -> ONLY return css_overrides for footer. Nothing else.\n" +
-    "DO NOT include unchanged css_variables, layout options, or css_overrides in your response.\n" +
-    "Omitting a field = keep it unchanged.\n\n";
+    "!!! RULE 1 - SCOPE (READ THIS CAREFULLY) !!!\n" +
+    "FULL DESIGN REQUEST — user says: 'redesign', 'change full design', 'change everything', 'change design', 'make new design', 'make it look different', 'create beautiful design', 'give me a design':\n" +
+    "  → Change ALL css_variables (background, primary, card, border, muted, foreground etc.)\n" +
+    "  → Add css_overrides for ALL sections: header, hero, categories, products, footer\n" +
+    "  → Be COMPREHENSIVE. Do not leave sections untouched.\n\n" +
+    "SPECIFIC REQUEST — user says: 'change button color', 'fix footer', 'update header', 'change primary to blue':\n" +
+    "  → ONLY change the specific element mentioned. Touch NOTHING else.\n" +
+    "  → 'change primary color' → ONLY --primary. Not background, not card, nothing else.\n\n" +
+    "VAGUE REQUEST — user says: 'change color', 'make it better', 'change colors':\n" +
+    "  → USE YOUR CREATIVITY. Apply a complete professional color scheme immediately.\n" +
+    "  → Do NOT ask what color. Pick an excellent one and apply it.\n\n" +
+    "!!! RULE 2 - NEVER ASK BEFORE ACTING !!!\n" +
+    "YOU ARE A DOER. You must ALWAYS apply the design first, then optionally ask for adjustments.\n" +
+    "FORBIDDEN phrases: 'What color?', 'Which section?', 'Would you like me to?', 'Should I?', 'What would you prefer?'\n" +
+    "CORRECT: Apply design → 'I applied [X]. Want to adjust anything?'\n" +
+    "WRONG: Ask → wait → ask again → then apply\n\n" +
+    "!!! RULE 3 - TEXT vs DESIGN TYPES !!!\n" +
+    "type=text: ONLY for greetings, pure questions, explanations with NO design changes.\n" +
+    "type=design: ALWAYS when making ANY visual change. NEVER lie about applying a design in text.\n" +
+    "FORBIDDEN in text responses: 'Design applied', 'Your store now has', 'I've updated', 'I've changed', 'Done!'\n" +
+    "If you make a design change → it MUST be type=design. No exceptions.\n\n";
 
   const storeStructure = "===== STORE FRONTEND STRUCTURE =====\n" +
     "Framework: React + Tailwind CSS + CSS custom properties (HSL values)\n\n" +
@@ -838,33 +887,35 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
 
   const responseRules = "===== CRITICAL RESPONSE RULES =====\n" +
     "YOU MUST RESPOND WITH VALID JSON ONLY. NO PLAIN TEXT, NO MARKDOWN.\n\n" +
-    "YOUR RESPONSE MUST BE ONE OF THESE TWO JSON FORMATS:\n\n" +
-    "FORMAT 1 - Text response (for questions, suggestions, advice):\n" +
-    "{\"type\": \"text\", \"message\": \"Your helpful response here\"}\n\n" +
-    "FORMAT 2 - Design response (when user wants to change/apply design):\n" +
-    "{\"type\": \"design\", \"message\": \"Brief explanation\", \"design\": {" +
-    "\"summary\": \"Brief description\", " +
-    "\"css_variables\": {\"--primary\": \"142 71% 45%\"}, " +
-    "\"dark_css_variables\": {\"--primary\": \"142 71% 50%\"}, " +
-    "\"layout\": {\"product_grid_cols\": \"3\"}, " +
-    "\"css_overrides\": \"[data-ai='category-card'] * { border-radius: 9999px !important; }\", " +
-    "\"changes_list\": [\"Change 1\", \"Change 2\"]}}\n\n" +
-    "REMEMBER: ONLY include fields you are CHANGING. Omit unchanged fields.\n" +
+    "FORMAT 1 — Text (ONLY for pure chat with NO design changes):\n" +
+    "{\"type\": \"text\", \"message\": \"Your helpful response here\"}\n" +
+    "USE THIS ONLY FOR: greetings, factual questions, store advice WITHOUT any style changes.\n" +
+    "NEVER use text type to claim a design was applied. NEVER say 'done' or 'applied' in a text response.\n\n" +
+    "FORMAT 2 — Design (ALWAYS when making ANY visual change):\n" +
+    "{\"type\": \"design\", \"message\": \"I applied [brief description]. Want to adjust anything?\", \"design\": {\n" +
+    "  \"summary\": \"One sentence summary\",\n" +
+    "  \"css_variables\": {\"primary\": \"142 71% 45%\", \"background\": \"0 0% 100%\"},\n" +
+    "  \"dark_css_variables\": {\"primary\": \"142 71% 50%\", \"background\": \"222 47% 8%\"},\n" +
+    "  \"layout\": {\"product_grid_cols\": \"3\"},\n" +
+    "  \"css_overrides\": \"[data-ai='section-hero'] { background: hsl(142 71% 45%) !important; }\",\n" +
+    "  \"changes_list\": [\"Changed primary color to green\", \"Updated hero background\"]\n" +
+    "}}\n\n" +
+    "CSS VARIABLE KEYS: Use WITHOUT '--' prefix. Correct: 'primary', 'background'. Wrong: '--primary', '--background'.\n" +
+    "ONLY include fields you are CHANGING. Omit unchanged fields.\n" +
+    "message field in design response: always end with 'Want to adjust anything?' or similar.\n" +
     "START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.";
 
   return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules;
 }
 
-// Lightweight prompt for casual chat
+// Lightweight prompt for casual chat (non-design messages only)
 function buildChatSystemPrompt(storeName: string): string {
   return "You are a friendly AI design assistant for " + storeName + " e-commerce store.\n\n" +
-    "You help store owners customize their store appearance. You can modify:\n" +
-    "- Colors (primary, background, text, cards, borders)\n" +
-    "- Layout (product grid columns, section padding, hero style)\n" +
-    "- Visual effects (shadows, rounded corners, gradients, hover effects)\n" +
-    "- Section styling (header, hero, categories, products, footer)\n\n" +
-    "For casual chat: {\"type\":\"text\",\"message\":\"Your friendly response\"}\n" +
-    "If user wants design help, ask what they want to change.\n\n" +
+    "RULE: NEVER ask questions before acting. If user wants design changes, make them immediately.\n" +
+    "RULE: NEVER say 'Design applied' or 'Done' in a text response. Design changes MUST use type=design.\n\n" +
+    "Response format — always valid JSON:\n" +
+    "For casual chat only: {\"type\":\"text\",\"message\":\"Your friendly response\"}\n" +
+    "For any design change: {\"type\":\"design\",\"message\":\"Applied [X]. Want to adjust?\",\"design\":{...}}\n\n" +
     "Always respond with valid JSON. Start with { and end with }.";
 }
 
@@ -1057,6 +1108,14 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
       parsedDesign = validation.data;
+
+      // FIX Issue-3: Normalize CSS variable keys (strip "--" prefix if AI included it)
+      if (parsedDesign.css_variables) {
+        parsedDesign.css_variables = normalizeVarKeys(parsedDesign.css_variables);
+      }
+      if ((parsedDesign as any).dark_css_variables) {
+        (parsedDesign as any).dark_css_variables = normalizeVarKeys((parsedDesign as any).dark_css_variables);
+      }
 
       // Sanitize CSS
       let cssSanitized = false;
@@ -1251,6 +1310,8 @@ serve(async (req) => {
       } catch {
         parsed = { type: "text", message: aiContent || "I encountered an error. Please try again." };
       }
+      // FIX Issue-2: Unwrap design JSON double-wrapped inside text message
+      parsed = unwrapNestedDesign(parsed);
 
       let historyId: string | undefined;
       let newTokenBalance: number | undefined;
@@ -1274,6 +1335,14 @@ serve(async (req) => {
         // Convert Delta to Legacy for storage
         if (isDelta) {
           finalDesign = deltaToLegacy(finalDesign, currentDesign);
+        }
+
+        // FIX Issue-3: Normalize CSS variable keys (strip "--" prefix if AI included it)
+        if (finalDesign.css_variables) {
+          finalDesign.css_variables = normalizeVarKeys(finalDesign.css_variables);
+        }
+        if ((finalDesign as any).dark_css_variables) {
+          (finalDesign as any).dark_css_variables = normalizeVarKeys((finalDesign as any).dark_css_variables);
         }
 
         // Sanitize and minify CSS
