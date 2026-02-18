@@ -42,6 +42,8 @@ interface UIMessage {
   historyId?: string;
   isLoading?: boolean;
   timestamp?: Date;
+  isDestructive?: boolean;
+  destructiveInfo?: { changePercent: number; changedFields: string[]; message: string };
 }
 
 // Helper functions for WhatsApp-style timestamps
@@ -312,6 +314,8 @@ const AIDesigner = () => {
         design: result.design,
         historyId: result.history_id,
         timestamp: new Date(),
+        isDestructive: result.is_destructive || false,
+        destructiveInfo: result.destructive_info || undefined,
       };
 
       // Replace loading message with actual response
@@ -512,7 +516,18 @@ const AIDesigner = () => {
 
               {/* Design card inline — shown under AI message */}
               {msg.design && !msg.isLoading && (
-                <div className="w-full bg-card border border-border rounded-xl p-3 space-y-2">
+                <div className={`w-full bg-card border rounded-xl p-3 space-y-2 ${msg.isDestructive ? "border-orange-400" : "border-border"}`}>
+                  {/* Destructive change warning (STRATEGY #6) */}
+                  {msg.isDestructive && msg.destructiveInfo && (
+                    <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg px-2.5 py-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-orange-700">
+                        <span className="font-semibold">Large change detected</span>
+                        {" — "}{msg.destructiveInfo.message}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Color swatches */}
                   {msg.design.css_variables && Object.keys(msg.design.css_variables).length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
