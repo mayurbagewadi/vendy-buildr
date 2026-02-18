@@ -116,20 +116,22 @@ const AIDesigner = () => {
     loadInitialData();
   }, []);
 
-  // Auto-scroll chat to bottom when new messages appear
+  // Auto-scroll chat to bottom
+  // Depends on BOTH isLoading and messages:
+  // - messages fires while isLoading=true → DOM not rendered yet → scrollIntoView is a no-op
+  // - isLoading going false → DOM renders → this effect fires again and scrolls correctly
   useEffect(() => {
-    if (messages.length === 0) return;
-    // On initial load: instant jump (no animation), slightly longer delay for DOM render
-    // On new messages: smooth scroll
+    if (isLoading || messages.length === 0) return;
     const isInitial = isInitialScrollRef.current;
-    const delay = isInitial ? 200 : 100;
-    const behavior: ScrollBehavior = isInitial ? "instant" : "smooth";
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isInitial ? "instant" : "smooth",
+        block: "end",
+      });
       if (isInitial) isInitialScrollRef.current = false;
-    }, delay);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [messages]);
+  }, [isLoading, messages]);
 
   // Load chat history from ai_designer_history table
   const loadChatHistory = async (storeId: string) => {
@@ -258,6 +260,7 @@ const AIDesigner = () => {
       setTokenBalance(balance);
       if (appliedDesign) {
         setCurrentDesign(appliedDesign);
+        previewDesignRef.current = appliedDesign; // sync before iframe renders
         setPreviewDesign(appliedDesign);
       }
 
@@ -332,6 +335,7 @@ const AIDesigner = () => {
       if (result.type === "design" && result.design) {
         setPendingDesign(result.design);
         setPendingHistoryId(result.history_id);
+        previewDesignRef.current = result.design; // sync before any iframe reload
         setPreviewDesign(result.design);
         injectCSSIntoIframe(result.design);
         if (result.tokens_remaining !== undefined) {
@@ -372,6 +376,7 @@ const AIDesigner = () => {
   const handleApplyFromMessage = (design: AIDesignResult, historyId?: string) => {
     setPendingDesign(design);
     setPendingHistoryId(historyId);
+    previewDesignRef.current = design; // sync
     setPreviewDesign(design);
     injectCSSIntoIframe(design);
     toast.success("Design loaded into preview. Click Publish to go live.");
@@ -404,6 +409,7 @@ const AIDesigner = () => {
       setCurrentDesign(null);
       setPendingDesign(null);
       setPendingHistoryId(undefined);
+      previewDesignRef.current = null; // sync
       setPreviewDesign(null);
       injectCSSIntoIframe(null);
       toast.success("Store reset to platform default design.");
@@ -435,13 +441,8 @@ const AIDesigner = () => {
     styleEl.textContent = design ? buildDesignCSS(design) : '';
   };
 
-  // Keep ref in sync so handleIframeLoad always injects the latest design
-  useEffect(() => {
-    previewDesignRef.current = previewDesign;
-  }, [previewDesign]);
-
   const handleIframeLoad = () => {
-    // Use ref (not closure) to always get the latest previewDesign value
+    // Ref is always current (set synchronously at every setPreviewDesign callsite)
     injectCSSIntoIframe(previewDesignRef.current);
   };
 
