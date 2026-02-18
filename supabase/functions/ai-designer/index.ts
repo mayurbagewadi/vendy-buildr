@@ -206,6 +206,88 @@ function isDesignRequest(prompt: string): boolean {
   return designKeywords.some(keyword => lowerPrompt.includes(keyword));
 }
 
+// ============================================
+// STRATEGY #3: Intent Classification
+// ============================================
+function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "NEUTRAL" {
+  const lower = prompt.toLowerCase();
+  const preserveKeywords = [
+    "current", "existing", "keep", "only", "just", "fix", "maintain",
+    "preserve", "dont change", "don't change", "same", "without changing",
+    "leave", "stay", "as is",
+  ];
+  const newKeywords = [
+    "completely", "entirely", "whole new", "fresh", "redesign", "redo",
+    "start over", "from scratch", "different", "brand new", "total", "full redesign",
+  ];
+  const preserveScore = preserveKeywords.filter(k => lower.includes(k)).length;
+  const newScore = newKeywords.filter(k => lower.includes(k)).length;
+
+  if (preserveScore > newScore) return "PRESERVE_EXISTING";
+  if (newScore > preserveScore) return "CREATE_NEW";
+  return "NEUTRAL";
+}
+
+// ============================================
+// STRATEGY #7: Semantic Lock Detection
+// ============================================
+function detectSemanticLocks(prompt: string): string[] {
+  const lower = prompt.toLowerCase();
+  const locks: string[] = [];
+  const lockPatterns: Array<{ pattern: RegExp; lock: string }> = [
+    { pattern: /keep.{0,20}color|color.{0,20}same|don.t.{0,10}change.{0,10}color|preserve.{0,10}color|current.{0,10}color/i, lock: "colors (css_variables)" },
+    { pattern: /keep.{0,20}layout|layout.{0,20}same|don.t.{0,10}change.{0,10}layout/i, lock: "layout" },
+    { pattern: /keep.{0,20}footer|don.t.{0,10}change.{0,10}footer|footer.{0,10}same/i, lock: "footer" },
+    { pattern: /keep.{0,20}header|don.t.{0,10}change.{0,10}header|header.{0,10}same/i, lock: "header" },
+    { pattern: /keep.{0,20}font|current.{0,10}font|font.{0,10}same|typography.{0,10}same/i, lock: "typography" },
+    { pattern: /keep.{0,20}background|background.{0,10}same|don.t.{0,10}change.{0,10}background/i, lock: "background color" },
+  ];
+  lockPatterns.forEach(({ pattern, lock }) => {
+    if (pattern.test(lower)) locks.push(lock);
+  });
+  return locks;
+}
+
+// ============================================
+// STRATEGY #6: Destructive Change Detection
+// ============================================
+function detectDestructiveChange(currentDesign: any, proposedDesign: any): {
+  destructive: boolean;
+  changePercent: number;
+  changedFields: string[];
+} {
+  if (!currentDesign) return { destructive: false, changePercent: 0, changedFields: [] };
+
+  const changedFields: string[] = [];
+
+  // Check css_variables changes
+  const currentVars = currentDesign.css_variables || {};
+  const proposedVars = proposedDesign.css_variables || {};
+  const totalVarKeys = Object.keys(currentVars).length;
+  let changedVarCount = 0;
+
+  Object.keys(proposedVars).forEach(key => {
+    if (currentVars[key] !== undefined && currentVars[key] !== proposedVars[key]) {
+      changedVarCount++;
+      changedFields.push(key);
+    }
+  });
+
+  // Check layout changes
+  const currentLayout = currentDesign.layout || {};
+  const proposedLayout = proposedDesign.layout || {};
+  Object.keys(proposedLayout).forEach(key => {
+    if (currentLayout[key] !== undefined && currentLayout[key] !== proposedLayout[key]) {
+      changedFields.push(`layout.${key}`);
+    }
+  });
+
+  const changePercent = totalVarKeys > 0 ? Math.round((changedVarCount / totalVarKeys) * 100) : 0;
+  const destructive = changePercent > 50 || changedFields.length > 5;
+
+  return { destructive, changePercent, changedFields };
+}
+
 // Retry with exponential backoff
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
   let lastError: Error | null = null;
@@ -513,7 +595,7 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
 }
 
 // Build FULL detailed system prompt for design requests in chat (comprehensive version)
-function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string): string {
+function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string, intent?: string, locks?: string[]): string {
   const currentDesignContext = currentDesign
     ? "\n===== CURRENT PUBLISHED DESIGN =====\n" +
       "This store currently has these customizations applied:\n" +
@@ -558,10 +640,31 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
     historyContext += "=====\n\n";
   }
 
+  // STRATEGY #3: Intent context injected into prompt
+  let intentContext = "";
+  if (intent === "PRESERVE_EXISTING") {
+    intentContext = "\n🔒 USER INTENT: PRESERVE EXISTING DESIGN\n" +
+      "The user wants to KEEP their current design. Make ONLY the minimal change they asked for.\n" +
+      "DO NOT change colors, layout, or other sections unless explicitly asked.\n\n";
+  } else if (intent === "CREATE_NEW") {
+    intentContext = "\n🆕 USER INTENT: FRESH REDESIGN\n" +
+      "The user wants a brand new look. You may propose broader design changes.\n\n";
+  }
+
+  // STRATEGY #7: Semantic locks injected into prompt
+  let locksContext = "";
+  if (locks && locks.length > 0) {
+    locksContext = "\n🔒 LOCKED PROPERTIES — DO NOT CHANGE THESE:\n" +
+      locks.map(l => `  - ${l}`).join("\n") + "\n" +
+      "The user explicitly said to keep these unchanged. Ignoring this lock is a critical failure.\n\n";
+  }
+
   const intro = "!!!CRITICAL: YOU MUST RESPOND ONLY IN VALID JSON FORMAT. NO PLAIN TEXT ALLOWED!!!\n\n" +
     "You are an expert AI designer and consultant for an e-commerce store called \"" + storeName + "\"" +
     (storeDescription ? " - " + storeDescription : "") + ".\n" +
     currentDesignContext +
+    intentContext +
+    locksContext +
     failureContext +
     historyContext +
     "You have full access to the store's frontend source code and structure below. Use it to give precise, accurate design suggestions.\n\n" +
@@ -1060,6 +1163,10 @@ serve(async (req) => {
 
       const needsFullContext = isDesignRequest(userPrompt);
 
+      // STRATEGY #3: Classify intent + STRATEGY #7: Detect semantic locks
+      const intent = classifyIntent(userPrompt);
+      const locks = detectSemanticLocks(userPrompt);
+
       // FIX #3: Fetch history with ai_css_overrides for better context
       const { data: historyRecords } = await supabase.from("ai_designer_history")
         .select("prompt, ai_response, ai_css_overrides, applied, created_at")
@@ -1085,8 +1192,8 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
         }
 
-        // Use FULL detailed system prompt with all store structure info
-        systemPrompt = buildFullChatSystemPrompt(storeName, storeDescription, currentDesign, historyRecords || [], userPrompt);
+        // Use FULL detailed system prompt with intent + locks (STRATEGY #3 + #7)
+        systemPrompt = buildFullChatSystemPrompt(storeName, storeDescription, currentDesign, historyRecords || [], userPrompt, intent, locks);
       } else {
         systemPrompt = buildChatSystemPrompt(storeName);
       }
@@ -1221,6 +1328,18 @@ serve(async (req) => {
           .select("tokens_remaining").eq("store_id", store_id).eq("status", "active");
         newTokenBalance = (up || []).reduce((s: number, p: any) => s + (p.tokens_remaining || 0), 0);
 
+        // STRATEGY #6: Destructive change detection
+        const destructiveInfo = detectDestructiveChange(currentDesign, finalDesign);
+        if (destructiveInfo.destructive) {
+          parsed._destructive = true;
+          parsed._destructive_info = {
+            changePercent: destructiveInfo.changePercent,
+            changedFields: destructiveInfo.changedFields,
+            message: `This will change ${destructiveInfo.changePercent}% of your color variables (${destructiveInfo.changedFields.length} fields). Review before publishing.`,
+          };
+          console.log("Destructive change detected:", destructiveInfo);
+        }
+
         parsed.design = finalDesign;
       } else if (parsed.type === "text" && userPrompt) {
         // Save text responses to ai_designer_history too (tokens_used: 0, no token charge)
@@ -1245,7 +1364,9 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true, type: parsed.type, message: parsed.message,
-        design: parsed.design || null, history_id: historyId, tokens_remaining: newTokenBalance
+        design: parsed.design || null, history_id: historyId, tokens_remaining: newTokenBalance,
+        is_destructive: parsed._destructive || false,
+        destructive_info: parsed._destructive_info || null,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

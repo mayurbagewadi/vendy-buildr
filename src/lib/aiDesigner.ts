@@ -82,6 +82,8 @@ export interface ChatResponse {
   design?: AIDesignResult;
   history_id?: string;
   tokens_remaining?: number;
+  is_destructive?: boolean;
+  destructive_info?: { changePercent: number; changedFields: string[]; message: string };
 }
 
 export async function chatWithAI(
@@ -100,6 +102,8 @@ export async function chatWithAI(
     design: data.design || undefined,
     history_id: data.history_id,
     tokens_remaining: data.tokens_remaining,
+    is_destructive: data.is_destructive || false,
+    destructive_info: data.destructive_info || null,
   };
 }
 
