@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Sparkles,
   Coins,
   Upload,
@@ -107,6 +117,7 @@ const AIDesigner = () => {
   const [isSending, setIsSending] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [pendingDesign, setPendingDesign] = useState<AIDesignResult | null>(null);
   const [pendingHistoryId, setPendingHistoryId] = useState<string | undefined>();
   const [previewDesign, setPreviewDesign] = useState<AIDesignResult | null>(null);
@@ -799,8 +810,8 @@ const AIDesigner = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReset}
-                disabled={isResetting || !currentDesign}
+                onClick={() => setShowResetConfirm(true)}
+                disabled={isResetting}
               >
                 {isResetting ? (
                   <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
@@ -856,6 +867,33 @@ const AIDesigner = () => {
           </Card>
         ) : PreviewPanel}
       </div>
+
+      {/* Reset confirmation dialog */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-destructive" />
+              Reset to Default Design?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all AI-applied customizations and restore your store to the
+              <strong> platform default design</strong> — the standard look every new store starts with.
+              <br /><br />
+              Your chat history and generated designs will not be deleted. You can re-apply any design from the chat at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleReset}
+            >
+              Yes, Reset to Default
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
