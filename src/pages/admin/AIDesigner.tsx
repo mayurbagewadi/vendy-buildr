@@ -318,8 +318,15 @@ const AIDesigner = () => {
       setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
       if (error.message?.includes("No tokens")) {
         toast.error("No tokens remaining. Please buy tokens.");
+      } else if (
+        error.message?.includes("Edge Function") ||
+        error.message?.includes("non-2xx") ||
+        error.message?.includes("status code") ||
+        error.message?.includes("Failed to fetch")
+      ) {
+        toast.error("Unable to connect to AI. Please try again in a moment.");
       } else {
-        toast.error(error.message || "Failed to get AI response");
+        toast.error(error.message || "Something went wrong. Please try again later.");
       }
     } finally {
       setIsSending(false);
