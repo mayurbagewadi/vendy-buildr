@@ -27,7 +27,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  ArrowLeft,
   Download,
   DollarSign,
   TrendingUp,
@@ -410,20 +409,11 @@ export default function Billing() {
       <div className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/superadmin/dashboard')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Billing & Revenue</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage subscriptions, transactions, and revenue
-                </p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold">Billing & Revenue</h1>
+              <p className="text-sm text-muted-foreground">
+                Manage subscriptions, transactions, and revenue
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />

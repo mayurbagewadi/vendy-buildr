@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Edit, Trash2, Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -329,14 +329,9 @@ const SuperadminMarketplace = () => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">Marketplace Features</h1>
-              <p className="text-sm text-muted-foreground">Manage features available to store owners</p>
-            </div>
+          <div>
+            <h1 className="text-xl font-bold">Marketplace Features</h1>
+            <p className="text-sm text-muted-foreground">Manage features available to store owners</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />

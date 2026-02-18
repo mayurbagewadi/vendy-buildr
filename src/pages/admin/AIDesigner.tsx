@@ -124,9 +124,10 @@ const AIDesigner = () => {
   // Load chat history from ai_designer_history table
   const loadChatHistory = async (storeId: string) => {
     try {
+      // FIX #4: Include ai_css_overrides column for split storage support
       const { data: historyRecords, error } = await supabase
         .from("ai_designer_history")
-        .select("id, prompt, ai_response, applied, created_at")
+        .select("id, prompt, ai_response, ai_css_overrides, applied, created_at")
         .eq("store_id", storeId)
         .order("created_at", { ascending: true }); // oldest first
 
@@ -170,14 +171,29 @@ const AIDesigner = () => {
             ? JSON.parse(record.ai_response)
             : record.ai_response;
 
-          loadedMessages.push({
-            id: `ai-${record.id}`,
-            role: "ai",
-            content: aiResponse.summary || "Design generated",
-            design: aiResponse,
-            historyId: record.id,
-            timestamp,
-          });
+          if (aiResponse.type === "text") {
+            // Casual text message — show as plain AI message, no design
+            loadedMessages.push({
+              id: `ai-${record.id}`,
+              role: "ai",
+              content: aiResponse.message || "",
+              timestamp,
+            });
+          } else {
+            // FIX #4: Merge ai_css_overrides back into design object for split storage
+            if (record.ai_css_overrides) {
+              aiResponse.css_overrides = record.ai_css_overrides;
+            }
+
+            loadedMessages.push({
+              id: `ai-${record.id}`,
+              role: "ai",
+              content: aiResponse.summary || "Design generated",
+              design: aiResponse,
+              historyId: record.id,
+              timestamp,
+            });
+          }
         });
       }
 

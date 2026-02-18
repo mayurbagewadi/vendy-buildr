@@ -30,6 +30,7 @@ import AdminShipping from "./pages/admin/Shipping";
 import AdminAIDesigner from "./pages/admin/AIDesigner";
 import BuyTokens from "./pages/admin/BuyTokens";
 import AITokenPricing from "./pages/superadmin/AITokenPricing";
+import AIDesignerAnalytics from "./pages/superadmin/AIDesignerAnalytics";
 import AdminGoogleReviews from "./pages/admin/GoogleReviews";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
@@ -196,6 +197,7 @@ const App = () => {
                         <Route path="sitemaps" element={<SuperAdminLayout><SuperAdminSitemapManager /></SuperAdminLayout>} />
                         <Route path="marketplace" element={<SuperAdminLayout><SuperAdminMarketplace /></SuperAdminLayout>} />
                         <Route path="ai-token-pricing" element={<SuperAdminLayout><AITokenPricing /></SuperAdminLayout>} />
+                        <Route path="ai-designer-analytics" element={<SuperAdminLayout><AIDesignerAnalytics /></SuperAdminLayout>} />
                       </Route>
 
                       {/* Onboarding Routes */}

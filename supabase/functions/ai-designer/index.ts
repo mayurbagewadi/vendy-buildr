@@ -9,12 +9,73 @@ const corsHeaders = {
 };
 
 const SETTINGS_ID = "00000000-0000-0000-0000-000000000000";
+const MAX_CSS_SIZE = 15000; // 15KB limit
+const MAX_RESPONSE_SIZE = 10000; // 10KB limit
 
-// Zod schema for AI design responses
-const DesignSchema = z.object({
+// FIX #6: UUID validation helper
+function isValidUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+// FIX #9: In-memory rate limiting (resets on function restart, good enough for edge functions)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(storeId: string, maxRequests = 10, windowMs = 60000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(storeId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(storeId, { count: 1, resetAt: now + windowMs });
+    return true; // allowed
+  }
+  if (entry.count >= maxRequests) return false; // blocked
+  entry.count++;
+  return true; // allowed
+}
+
+// FIX #16: Detect AI content policy refusal
+function isAIRefusal(content: string): boolean {
+  if (!content) return false;
+  const refusalPhrases = [
+    "i'm sorry", "i cannot", "i can't", "i am not able", "i'm not able",
+    "i'm unable", "i am unable", "not appropriate", "against my guidelines",
+    "i must decline", "i will not", "harmful content", "as an ai",
+  ];
+  const lower = content.toLowerCase();
+  return refusalPhrases.some(phrase => lower.includes(phrase)) && !lower.startsWith("{");
+}
+
+// ============================================
+// DELTA/ACTIONS ARCHITECTURE - NEW SCHEMA
+// ============================================
+
+const DesignChangeSchema = z.object({
+  action_type: z.enum(["css_variable", "css_variable_dark", "css_override", "layout"]),
+  key: z.string().optional(), // for css_variable and layout
+  selector: z.string().optional(), // for css_override
+  css: z.string().optional(), // for css_override
+  value: z.string().optional(), // for css_variable and layout
+});
+
+const DeltaDesignSchema = z.object({
   summary: z.string(),
-  css_variables: z.record(z.string()).optional(),
-  dark_css_variables: z.record(z.string()).optional(),
+  changes: z.array(DesignChangeSchema),
+  changes_list: z.array(z.string()),
+});
+
+// FIX #13: HSL value validator - accepts "217 91% 60%" or "0.5rem" (for --radius) or any valid CSS value
+const cssValueValidator = z.string().refine((val) => {
+  // Allow --radius and other non-color values
+  if (val.includes("rem") || val.includes("px") || val.includes("em")) return true;
+  // HSL format: "H S% L%" (no hsl() wrapper)
+  if (/^\d+(\.\d+)?\s+\d+(\.\d+)?%\s+\d+(\.\d+)?%$/.test(val)) return true;
+  // Allow any short value (less than 50 chars) to be flexible
+  return val.length < 50;
+}, { message: "Invalid CSS variable value" });
+
+// Legacy schema (for backward compatibility during transition)
+const LegacyDesignSchema = z.object({
+  summary: z.string(),
+  css_variables: z.record(cssValueValidator).optional(),
+  dark_css_variables: z.record(cssValueValidator).optional(),
   layout: z.object({
     product_grid_cols: z.enum(["2", "3", "4"]).optional(),
     section_padding: z.enum(["compact", "normal", "spacious"]).optional(),
@@ -23,6 +84,53 @@ const DesignSchema = z.object({
   css_overrides: z.string().optional(),
   changes_list: z.array(z.string()),
 });
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// FIX #6: CSS Minification - preserves strings in content properties
+function minifyCSS(css: string): string {
+  if (!css || typeof css !== "string") return "";
+
+  // Preserve content: "..." strings by temporarily replacing them
+  const contentStrings: string[] = [];
+  let tempCss = css.replace(/content\s*:\s*["']([^"']*)["']/gi, (match) => {
+    contentStrings.push(match);
+    return `CONTENT_PLACEHOLDER_${contentStrings.length - 1}`;
+  });
+
+  // Minify
+  tempCss = tempCss
+    .replace(/\/\*[\s\S]*?\*\//g, "") // Remove comments
+    .replace(/\s+/g, " ") // Collapse whitespace
+    .replace(/\s*([{}:;,])\s*/g, "$1") // Remove spaces around special chars
+    .replace(/;}/g, "}") // Remove last semicolon in block
+    .trim();
+
+  // Restore content strings
+  tempCss = tempCss.replace(/CONTENT_PLACEHOLDER_(\d+)/g, (match, index) => {
+    return contentStrings[parseInt(index)];
+  });
+
+  return tempCss;
+}
+
+// Response size validation
+function validateResponseSize(design: any, cssOverrides: string): { valid: boolean; error?: string } {
+  const designSize = JSON.stringify(design).length;
+  const cssSize = cssOverrides.length;
+
+  if (cssSize > MAX_CSS_SIZE) {
+    return { valid: false, error: `CSS too large (${cssSize} > ${MAX_CSS_SIZE} chars). Please simplify.` };
+  }
+
+  if (designSize > MAX_RESPONSE_SIZE) {
+    return { valid: false, error: `Response too large (${designSize} > ${MAX_RESPONSE_SIZE} chars). Please simplify.` };
+  }
+
+  return { valid: true };
+}
 
 // Extract JSON from AI response (handles markdown wrappers)
 function extractJSON(content: string): any {
@@ -39,6 +147,47 @@ function extractJSON(content: string): any {
   throw new Error("Could not parse AI response as JSON");
 }
 
+// FIX #1: Prompt similarity detection for failure tracking
+function calculatePromptSimilarity(prompt1: string, prompt2: string): number {
+  const keywords1 = extractKeywords(prompt1);
+  const keywords2 = extractKeywords(prompt2);
+
+  if (keywords1.length === 0 || keywords2.length === 0) return 0;
+
+  const intersection = keywords1.filter(k => keywords2.includes(k)).length;
+  const union = new Set([...keywords1, ...keywords2]).size;
+
+  return intersection / union; // Jaccard similarity
+}
+
+// FIX #10: Synonym expansion for better semantic similarity detection
+const DESIGN_SYNONYMS: Record<string, string> = {
+  "colour": "color", "colours": "color", "colors": "color",
+  "btn": "button", "buttons": "button",
+  "bg": "background", "backgrounds": "background",
+  "txt": "text", "texts": "text",
+  "hdr": "header", "nav": "header", "navbar": "header",
+  "ftr": "footer", "foot": "footer",
+  "img": "image", "images": "image", "photo": "image",
+  "card": "product-card", "cards": "product-card",
+  "invisible": "visible", "hidden": "visible", "can't see": "visible",
+  "font": "text", "typography": "text",
+  "padding": "spacing", "margin": "spacing", "space": "spacing",
+  "round": "radius", "rounded": "radius", "circular": "radius",
+  "dark": "theme", "light": "theme", "mode": "theme",
+};
+
+function extractKeywords(prompt: string): string[] {
+  const stopWords = ["the", "a", "an", "is", "are", "not", "to", "in", "on", "it", "make", "change", "please", "can", "you"];
+  const words = prompt
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.includes(word));
+  // Expand synonyms
+  return words.map(word => DESIGN_SYNONYMS[word] || word);
+}
+
 // Classify if prompt needs full design context or is casual chat
 function isDesignRequest(prompt: string): boolean {
   const designKeywords = [
@@ -48,7 +197,7 @@ function isDesignRequest(prompt: string): boolean {
     "font", "text", "size", "padding", "margin", "border", "radius", "round",
     "shadow", "gradient", "background", "foreground", "theme",
     "dark", "light", "modern", "elegant", "minimalist", "bold",
-    "spacing", "grid", "column", "row", "align", "center"
+    "spacing", "grid", "column", "row", "align", "center", "fix", "visible"
   ];
   const lowerPrompt = prompt.toLowerCase();
   if (prompt.length < 20 && !designKeywords.some(kw => lowerPrompt.includes(kw))) {
@@ -188,13 +337,143 @@ async function callAIWithFallback(
   throw lastError || new Error("All AI models failed");
 }
 
-// Build system prompt for design requests
+// ============================================
+// DELTA/ACTIONS: APPLY CHANGES TO CURRENT DESIGN
+// ============================================
+
+// FIX #2 + #4: Parse CSS and extract selectors for deduplication, handles @media/@keyframes
+function parseCSSSelectors(css: string): Map<string, string> {
+  const selectorMap = new Map<string, string>();
+  if (!css) return selectorMap;
+
+  let i = 0;
+  while (i < css.length) {
+    // Skip whitespace
+    while (i < css.length && /\s/.test(css[i])) i++;
+    if (i >= css.length) break;
+
+    // Find start of selector or at-rule
+    const start = i;
+    // Read until first {
+    while (i < css.length && css[i] !== "{") i++;
+    if (i >= css.length) break;
+
+    const selector = css.slice(start, i).trim();
+    i++; // skip {
+
+    // For @media/@keyframes, find matching closing brace (nested)
+    if (selector.startsWith("@media") || selector.startsWith("@keyframes") || selector.startsWith("@supports")) {
+      let depth = 1;
+      const blockStart = i;
+      while (i < css.length && depth > 0) {
+        if (css[i] === "{") depth++;
+        else if (css[i] === "}") depth--;
+        i++;
+      }
+      const blockContent = css.slice(blockStart, i - 1).trim();
+      // Store at-rule with a unique key (append index to handle multiple @media)
+      const key = selector + "_" + selectorMap.size;
+      selectorMap.set(key, blockContent);
+    } else {
+      // Regular selector - read until }
+      const blockStart = i;
+      while (i < css.length && css[i] !== "}") i++;
+      const rules = css.slice(blockStart, i).trim();
+      i++; // skip }
+      if (selector && rules) {
+        selectorMap.set(selector, rules);
+      }
+    }
+  }
+
+  return selectorMap;
+}
+
+// FIX #2 + #4: Rebuild CSS from selector map, handles at-rules
+function rebuildCSS(selectorMap: Map<string, string>): string {
+  const blocks: string[] = [];
+  selectorMap.forEach((rules, selector) => {
+    // Strip _index suffix from at-rule keys (added during parsing for deduplication)
+    const cleanSelector = selector.replace(/_\d+$/, "");
+    if (cleanSelector.startsWith("@media") || cleanSelector.startsWith("@keyframes") || cleanSelector.startsWith("@supports")) {
+      blocks.push(`${cleanSelector} { ${rules} }`);
+    } else {
+      blocks.push(`${selector} { ${rules} }`);
+    }
+  });
+  return blocks.join("\n");
+}
+
+function applyDeltaChanges(currentDesign: any, changes: any[]): any {
+  const result = {
+    css_variables: { ...(currentDesign?.css_variables || {}) },
+    dark_css_variables: { ...(currentDesign?.dark_css_variables || {}) },
+    layout: { ...(currentDesign?.layout || {}) },
+    css_overrides: currentDesign?.css_overrides || "",
+  };
+
+  // FIX #2: Parse existing CSS into selector map for deduplication
+  const cssMap = parseCSSSelectors(result.css_overrides);
+
+  for (const change of changes) {
+    switch (change.action_type) {
+      case "css_variable":
+        if (change.key && change.value) {
+          result.css_variables[change.key] = change.value;
+        }
+        break;
+
+      case "css_variable_dark":
+        if (change.key && change.value) {
+          result.dark_css_variables[change.key] = change.value;
+        }
+        break;
+
+      case "layout":
+        if (change.key && change.value) {
+          result.layout[change.key] = change.value;
+        }
+        break;
+
+      case "css_override":
+        if (change.selector && change.css) {
+          // FIX #2: Replace if selector exists, otherwise add
+          cssMap.set(change.selector, change.css);
+        }
+        break;
+    }
+  }
+
+  // FIX #2: Rebuild CSS from deduplicated selector map
+  result.css_overrides = rebuildCSS(cssMap);
+
+  return result;
+}
+
+// Convert Delta format to Legacy format (for database storage)
+function deltaToLegacy(deltaDesign: any, currentDesign: any): any {
+  const merged = applyDeltaChanges(currentDesign, deltaDesign.changes);
+
+  return {
+    summary: deltaDesign.summary,
+    css_variables: Object.keys(merged.css_variables).length > 0 ? merged.css_variables : undefined,
+    dark_css_variables: Object.keys(merged.dark_css_variables).length > 0 ? merged.dark_css_variables : undefined,
+    layout: Object.keys(merged.layout).length > 0 ? merged.layout : undefined,
+    css_overrides: merged.css_overrides || undefined,
+    changes_list: deltaDesign.changes_list,
+  };
+}
+
+// ============================================
+// SYSTEM PROMPTS (Updated for Delta/Actions with FULL context)
+// ============================================
+
+// Build simple design system prompt (for generate_design action - backward compatibility)
 function buildDesignSystemPrompt(storeName: string, currentDesign: any): string {
   const designContext = currentDesign
     ? "Current store design: " + JSON.stringify(currentDesign) + "\nPreserve existing settings unless user asks to change them."
     : "Store is using platform defaults.";
 
-  // Store sections with data-ai selectors for targeted CSS
   const storeSections =
     "STORE SECTIONS (use data-ai selectors in css_overrides):\n" +
     "1. Header [data-ai=\"header\"] - Logo, navigation, cart icon, search\n" +
@@ -203,61 +482,26 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
     "4. Featured Products [data-ai=\"section-featured\"] - Product cards grid\n" +
     "5. Product Card [data-ai=\"product-card\"] - Image, title, price, add-to-cart\n" +
     "6. Testimonials [data-ai=\"section-testimonials\"] - Customer reviews carousel\n" +
-    "7. Footer [data-ai=\"footer\"] - Links, contact info, social icons\n" +
-    "8. Product Detail [data-ai=\"product-detail\"] - Full product page\n" +
-    "9. Cart Page [data-ai=\"cart-page\"] - Shopping cart items and totals\n" +
-    "10. Checkout [data-ai=\"checkout\"] - Checkout form and payment\n";
+    "7. Footer [data-ai=\"footer\"] - Links, contact info, social icons\n";
 
-  // CSS variables reference
   const cssVariables =
     "CSS VARIABLES (HSL format without hsl() wrapper):\n" +
-    "--primary: 217 91% 60%        (buttons, links, accents - blue default)\n" +
-    "--primary-foreground: 0 0% 100%   (text on primary color)\n" +
-    "--background: 0 0% 100%       (page background - white default)\n" +
-    "--foreground: 222 47% 11%     (main text color - dark default)\n" +
+    "--primary: 217 91% 60%        (buttons, links, accents)\n" +
+    "--background: 0 0% 100%       (page background)\n" +
+    "--foreground: 222 47% 11%     (main text color)\n" +
     "--card: 0 0% 100%             (card backgrounds)\n" +
-    "--card-foreground: 222 47% 11%    (text on cards)\n" +
     "--muted: 210 40% 96%          (subtle backgrounds)\n" +
     "--muted-foreground: 215 16% 47%   (secondary text)\n" +
     "--border: 214 32% 91%         (border color)\n" +
-    "--accent: 210 40% 96%         (accent backgrounds)\n" +
     "--radius: 0.5rem              (border radius)\n";
 
-  // Dark mode variables
-  const darkVariables =
-    "DARK MODE (use dark_css_variables):\n" +
-    "--background: 222 47% 11%     (dark background)\n" +
-    "--foreground: 210 40% 98%     (light text)\n" +
-    "--card: 222 47% 15%           (darker cards)\n" +
-    "--muted: 217 33% 17%          (dark muted)\n" +
-    "--border: 217 33% 20%         (dark borders)\n";
-
-  // CSS override examples
-  const cssOverrideExamples =
-    "CSS_OVERRIDES EXAMPLES (target specific sections):\n" +
-    "[data-ai=\"section-hero\"] { background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%); }\n" +
-    "[data-ai=\"product-card\"] { border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }\n" +
-    "[data-ai=\"product-card\"]:hover { transform: translateY(-8px); }\n" +
-    "[data-ai=\"header\"] { backdrop-filter: blur(10px); background: hsl(var(--background)/0.9); }\n" +
-    "[data-ai=\"section-categories\"] .category-card { border: 2px solid hsl(var(--primary)/0.2); }\n" +
-    "[data-ai=\"footer\"] { background: hsl(var(--muted)); }\n";
-
-  // Layout options
-  const layoutOptions =
-    "LAYOUT OPTIONS:\n" +
-    "- product_grid_cols: \"2\", \"3\", or \"4\" (products per row)\n" +
-    "- section_padding: \"compact\", \"normal\", or \"spacious\"\n" +
-    "- hero_style: \"image\" or \"gradient\"\n";
-
-  // Response format
   const responseFormat =
     "RESPOND IN JSON FORMAT ONLY:\n" +
     "For text/chat: {\"type\":\"text\",\"message\":\"your response\"}\n" +
-    "For design changes: {\"type\":\"design\",\"message\":\"description of changes\",\"design\":{" +
+    "For design changes: {\"type\":\"design\",\"message\":\"description\",\"design\":{" +
     "\"summary\":\"Brief summary\",\"css_variables\":{\"--primary\":\"217 91% 60%\"}," +
-    "\"dark_css_variables\":{\"--primary\":\"217 91% 70%\"}," +
     "\"layout\":{\"product_grid_cols\":\"3\"}," +
-    "\"css_overrides\":\"[data-ai=\\\"section-hero\\\"] { ... }\"," +
+    "\"css_overrides\":\"[data-ai='section-hero'] { ... }\"," +
     "\"changes_list\":[\"Change 1\",\"Change 2\"]}}\n\n" +
     "Start response with { and end with }. No markdown code blocks.";
 
@@ -265,27 +509,11 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
     designContext + "\n\n" +
     storeSections + "\n" +
     cssVariables + "\n" +
-    darkVariables + "\n" +
-    cssOverrideExamples + "\n" +
-    layoutOptions + "\n" +
     responseFormat;
 }
 
-// Build lightweight prompt for casual chat
-function buildChatSystemPrompt(storeName: string): string {
-  return "You are a friendly AI design assistant for " + storeName + " e-commerce store.\n\n" +
-    "You help store owners customize their store appearance. You can modify:\n" +
-    "- Colors (primary, background, text, cards, borders)\n" +
-    "- Layout (product grid columns, section padding, hero style)\n" +
-    "- Visual effects (shadows, rounded corners, gradients, hover effects)\n" +
-    "- Section styling (header, hero, categories, products, footer)\n\n" +
-    "For casual chat: {\"type\":\"text\",\"message\":\"Your friendly response\"}\n" +
-    "If user wants design help, ask what they want to change.\n\n" +
-    "Always respond with valid JSON. Start with { and end with }.";
-}
-
-// Build FULL detailed system prompt for design requests in chat (original 1415-line version content)
-function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[]): string {
+// Build FULL detailed system prompt for design requests in chat (comprehensive version)
+function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string): string {
   const currentDesignContext = currentDesign
     ? "\n===== CURRENT PUBLISHED DESIGN =====\n" +
       "This store currently has these customizations applied:\n" +
@@ -295,26 +523,49 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
       "=====\n"
     : "\n===== CURRENT DESIGN =====\nStore is using platform defaults (no customizations yet).\n=====\n";
 
-  // Problem 1 fix - Option B: Pass last 10-20 history records as context
+  // FIX #1: Improved failure tracking - detect SIMILAR prompts only
+  let failureContext = "";
+  if (historyRecords && historyRecords.length > 0) {
+    const failedAttempts = historyRecords.filter((r: any) => !r.applied);
+
+    const similarFailures = failedAttempts.filter((r: any) => {
+      const similarity = calculatePromptSimilarity(currentPrompt, r.prompt);
+      return similarity > 0.3;
+    });
+
+    if (similarFailures.length >= 2) {
+      failureContext = "\n⚠️ IMPORTANT - FAILURE DETECTED ⚠️\n" +
+        `This SAME issue has been attempted ${similarFailures.length} times and FAILED.\n` +
+        "Previous solutions did NOT work. You MUST try a DIFFERENT technical approach.\n\n" +
+        "Failed attempts for similar issue:\n";
+      similarFailures.slice(0, 2).forEach((record: any, idx: number) => {
+        failureContext += `${idx + 1}. User asked: "${record.prompt}"\n   Status: NOT APPLIED (rejected by user)\n\n`;
+      });
+      failureContext += "Try a completely different CSS strategy this time (e.g., if you used 'color' before, try 'opacity' or 'filter' now).\n=====\n\n";
+    }
+  }
+
+  // History context
   let historyContext = "";
   if (historyRecords && historyRecords.length > 0) {
-    historyContext = "\n===== RECENT DESIGN HISTORY (last " + historyRecords.length + " changes) =====\n" +
-      "Below are the user's recent design requests and your previous responses.\n" +
+    historyContext = "\n===== RECENT DESIGN HISTORY (last " + Math.min(historyRecords.length, 10) + " changes) =====\n" +
+      "Below are the user's recent design requests.\n" +
       "Use this to understand what has already been customized and make ONLY incremental changes.\n\n";
     historyRecords.slice(0, 10).forEach((record: any, idx: number) => {
-      historyContext = historyContext + (idx + 1) + ". User asked: \"" + record.prompt + "\"\n" +
+      historyContext += (idx + 1) + ". User asked: \"" + record.prompt + "\"\n" +
         "   Applied: " + (record.applied ? "YES" : "NO") + "\n\n";
     });
-    historyContext = historyContext + "=====\n\n";
+    historyContext += "=====\n\n";
   }
 
   const intro = "!!!CRITICAL: YOU MUST RESPOND ONLY IN VALID JSON FORMAT. NO PLAIN TEXT ALLOWED!!!\n\n" +
     "You are an expert AI designer and consultant for an e-commerce store called \"" + storeName + "\"" +
     (storeDescription ? " - " + storeDescription : "") + ".\n" +
     currentDesignContext +
+    failureContext +
     historyContext +
     "You have full access to the store's frontend source code and structure below. Use it to give precise, accurate design suggestions.\n\n" +
-    "!!! STRICT RULE (Problem 1 fix - Option A) !!!\n" +
+    "!!! STRICT RULE - DELTA/ACTIONS ARCHITECTURE !!!\n" +
     "ONLY CHANGE WHAT THE USER EXPLICITLY ASKS FOR. DO NOT MODIFY ANYTHING ELSE.\n" +
     "If user says 'fix button color' -> ONLY return css_variables with --primary change. Nothing else.\n" +
     "If user says 'change footer text' -> ONLY return css_overrides for footer. Nothing else.\n" +
@@ -378,8 +629,7 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
     "Links: text-muted-foreground hover:text-foreground\n" +
     "Bottom bar: bg-muted/50 py-4 text-center text-sm text-muted-foreground\n\n";
 
-  // Problem 2 fix: Show AI the actual HTML structure
-  const htmlStructure = "===== ACTUAL HTML STRUCTURE (for reference - DO NOT MODIFY) =====\n" +
+  const htmlStructure = "===== ACTUAL HTML STRUCTURE (for reference) =====\n" +
     "Below is the exact HTML of key components. Use this to write precise CSS selectors.\n\n" +
     "--- PRODUCT CARD HTML ---\n" +
     "<motion.div data-ai=\"product-card\" className=\"group\">\n" +
@@ -400,7 +650,7 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
     "IMPORTANT SELECTORS:\n" +
     "- [data-ai=\"product-card\"] -> outer wrapper\n" +
     "- [data-ai=\"product-card\"] .card -> Card component\n" +
-    "- [data-ai=\"product-card\"] button -> View Details button (variant=outline = white bg, can be invisible on white card)\n" +
+    "- [data-ai=\"product-card\"] button -> View Details button\n" +
     "- [data-ai=\"product-card\"] .text-lg -> price text\n" +
     "- [data-ai=\"product-card\"] img -> product image\n\n" +
     "--- CATEGORY CARD HTML ---\n" +
@@ -458,66 +708,66 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
 
   const selectors = "   SECTION SELECTORS (target entire sections):\n" +
     "   - [data-ai=\"section-hero\"]           -> Hero banner section\n" +
-    "   - [data-ai=\"section-categories\"]     -> Categories section (has bg-gradient-to-b from-muted/30 to-background)\n" +
-    "   - [data-ai=\"section-featured\"]       -> Featured Products section (bg-background)\n" +
-    "   - [data-ai=\"section-reviews\"]        -> Google Reviews section (bg-muted/30)\n" +
+    "   - [data-ai=\"section-categories\"]     -> Categories section\n" +
+    "   - [data-ai=\"section-featured\"]       -> Featured Products section\n" +
+    "   - [data-ai=\"section-reviews\"]        -> Google Reviews section\n" +
     "   - [data-ai=\"section-new-arrivals\"]   -> New Arrivals section\n" +
-    "   - [data-ai=\"section-cta\"]            -> CTA banner section (bg-primary text-primary-foreground)\n" +
+    "   - [data-ai=\"section-cta\"]            -> CTA banner section\n" +
     "   - [data-ai=\"section-reels\"]          -> Instagram Reels section\n" +
-    "   - [data-ai=\"section-footer\"]         -> Footer (bg-muted border-t border-border, 4-col grid)\n\n" +
+    "   - [data-ai=\"section-footer\"]         -> Footer\n\n" +
     "   CARD SELECTORS (target individual cards):\n" +
     "   - [data-ai=\"category-card\"]          -> each category card wrapper\n" +
-    "   - [data-ai=\"category-card\"] .rounded-2xl -> card outer border-radius\n" +
-    "   - [data-ai=\"category-card\"] .rounded-xl  -> image container border-radius\n" +
     "   - [data-ai=\"product-card\"]           -> each product card wrapper\n" +
     "   - [data-ai=\"product-card\"] .card     -> product card inner element\n\n" +
     "   ELEMENT SELECTORS (target text/buttons inside sections):\n" +
-    "   - [data-ai=\"section-categories\"] h2  -> \"Shop by Category\" title (text-4xl md:text-5xl)\n" +
-    "   - [data-ai=\"section-categories\"] p   -> subtitle text\n" +
-    "   - [data-ai=\"section-featured\"] h2    -> \"Featured Products\" title (text-3xl)\n" +
-    "   - [data-ai=\"section-new-arrivals\"] h2 -> \"New Arrivals\" title (text-3xl)\n" +
-    "   - [data-ai=\"section-cta\"] h2         -> CTA title text\n" +
-    "   - [data-ai=\"section-footer\"] footer  -> footer background/border\n" +
-    "   - [data-ai=\"product-card\"] .text-lg  -> product price (text-primary font-bold)\n" +
+    "   - [data-ai=\"section-categories\"] h2  -> \"Shop by Category\" title\n" +
+    "   - [data-ai=\"section-featured\"] h2    -> \"Featured Products\" title\n" +
+    "   - [data-ai=\"product-card\"] .text-lg  -> product price\n" +
     "   - [data-ai=\"product-card\"] img       -> product image\n\n";
 
   const examples = "   EXAMPLES:\n" +
     "   Make category cards circular:\n" +
     "   \"[data-ai='category-card'] .rounded-2xl, [data-ai='category-card'] .rounded-xl { border-radius: 9999px !important; }\"\n\n" +
-    "   Change categories section background:\n" +
-    "   \"[data-ai='section-categories'] { background: linear-gradient(to bottom, hsl(var(--primary)/0.1), hsl(var(--background))) !important; }\"\n\n" +
-    "   Make section titles bigger:\n" +
-    "   \"[data-ai='section-featured'] h2, [data-ai='section-new-arrivals'] h2 { font-size: 2.5rem !important; }\"\n\n" +
     "   Add shadow to product cards:\n" +
     "   \"[data-ai='product-card'] .card { box-shadow: 0 8px 30px hsl(var(--primary)/0.15) !important; }\"\n\n" +
     "   Dark footer:\n" +
-    "   \"[data-ai='section-footer'] { background: hsl(222 47% 8%) !important; color: hsl(0 0% 95%) !important; }\"\n\n" +
-    "   Change CTA section padding/style:\n" +
-    "   \"[data-ai='section-cta'] { padding: 5rem 0 !important; background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.7)) !important; }\"\n\n";
+    "   \"[data-ai='section-footer'] { background: hsl(222 47% 8%) !important; color: hsl(0 0% 95%) !important; }\"\n\n";
 
   const responseRules = "===== CRITICAL RESPONSE RULES =====\n" +
-    "YOU MUST RESPOND WITH VALID JSON ONLY. ABSOLUTELY NO PLAIN TEXT, NO MARKDOWN, NO EXPLANATIONS OUTSIDE JSON.\n\n" +
-    "YOUR ENTIRE RESPONSE MUST BE ONE OF THESE TWO JSON FORMATS:\n\n" +
+    "YOU MUST RESPOND WITH VALID JSON ONLY. NO PLAIN TEXT, NO MARKDOWN.\n\n" +
+    "YOUR RESPONSE MUST BE ONE OF THESE TWO JSON FORMATS:\n\n" +
     "FORMAT 1 - Text response (for questions, suggestions, advice):\n" +
     "{\"type\": \"text\", \"message\": \"Your helpful response here\"}\n\n" +
-    "FORMAT 2 - Design response (when user wants to change/create/apply design):\n" +
-    "{\"type\": \"design\", \"message\": \"Brief explanation of changes\", \"design\": {" +
+    "FORMAT 2 - Design response (when user wants to change/apply design):\n" +
+    "{\"type\": \"design\", \"message\": \"Brief explanation\", \"design\": {" +
     "\"summary\": \"Brief description\", " +
     "\"css_variables\": {\"--primary\": \"142 71% 45%\"}, " +
     "\"dark_css_variables\": {\"--primary\": \"142 71% 50%\"}, " +
-    "\"layout\": {\"product_grid_cols\": \"3\", \"section_padding\": \"normal\", \"hero_style\": \"gradient\"}, " +
+    "\"layout\": {\"product_grid_cols\": \"3\"}, " +
     "\"css_overrides\": \"[data-ai='category-card'] * { border-radius: 9999px !important; }\", " +
     "\"changes_list\": [\"Change 1\", \"Change 2\"]}}\n\n" +
-    "EXAMPLE VALID RESPONSES:\n" +
-    "User: \"What colors should I use?\"\n" +
-    "You: {\"type\": \"text\", \"message\": \"I recommend a vibrant primary color like teal (180 70% 45%) for modern appeal.\"}\n\n" +
-    "User: \"Make it purple\"\n" +
-    "You: {\"type\": \"design\", \"message\": \"Updated to vibrant purple theme\", \"design\": {\"summary\": \"Applied purple color scheme\", \"css_variables\": {\"--primary\": \"270 75% 60%\"}, \"changes_list\": [\"Changed primary to purple\"]}}\n\n" +
-    "DO NOT RESPOND WITH PLAIN TEXT LIKE \"I've updated the search bar...\" - THIS WILL CAUSE SYSTEM FAILURE.\n" +
+    "REMEMBER: ONLY include fields you are CHANGING. Omit unchanged fields.\n" +
     "START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.";
 
   return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules;
 }
+
+// Lightweight prompt for casual chat
+function buildChatSystemPrompt(storeName: string): string {
+  return "You are a friendly AI design assistant for " + storeName + " e-commerce store.\n\n" +
+    "You help store owners customize their store appearance. You can modify:\n" +
+    "- Colors (primary, background, text, cards, borders)\n" +
+    "- Layout (product grid columns, section padding, hero style)\n" +
+    "- Visual effects (shadows, rounded corners, gradients, hover effects)\n" +
+    "- Section styling (header, hero, categories, products, footer)\n\n" +
+    "For casual chat: {\"type\":\"text\",\"message\":\"Your friendly response\"}\n" +
+    "If user wants design help, ask what they want to change.\n\n" +
+    "Always respond with valid JSON. Start with { and end with }.";
+}
+
+// ============================================
+// MAIN SERVE FUNCTION
+// ============================================
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -535,11 +785,26 @@ serve(async (req) => {
 
     // ========== GET TOKEN BALANCE ==========
     if (action === "get_token_balance") {
+      // FIX #6: UUID validation
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Invalid store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
       const now = new Date().toISOString();
-      await supabase.from("ai_token_purchases").update({ status: "expired" })
+      const { error: expireErr } = await supabase.from("ai_token_purchases").update({ status: "expired" })
         .eq("store_id", store_id).eq("status", "active").lt("expires_at", now).not("expires_at", "is", null);
-      await supabase.from("ai_token_purchases").delete()
+      if (expireErr) console.error("FIX #14: Failed to expire tokens:", expireErr.message);
+
+      const { error: deleteErr } = await supabase.from("ai_token_purchases").delete()
         .eq("store_id", store_id).eq("status", "expired");
+      if (deleteErr) console.error("FIX #14: Failed to delete expired tokens:", deleteErr.message);
+
+      // FIX #15: Clean up orphaned 'pending' purchases older than 24 hours
+      const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { error: pendingErr } = await supabase.from("ai_token_purchases").delete()
+        .eq("store_id", store_id).eq("status", "pending").lt("created_at", oneDayAgo);
+      if (pendingErr) console.error("FIX #14: Failed to clean pending tokens:", pendingErr.message);
 
       const { data: purchases } = await supabase.from("ai_token_purchases")
         .select("tokens_remaining, expires_at")
@@ -557,13 +822,29 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== GENERATE DESIGN ==========
+    // ========== GENERATE DESIGN (Backward Compatibility) ==========
     if (action === "generate_design") {
       const startTime = Date.now();
 
-      if (!store_id || !user_id || !prompt) {
+      // FIX #6: UUID validation
+      if (!store_id || !isValidUUID(store_id) || !user_id || !isValidUUID(user_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Invalid store_id or user_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+      if (!prompt) {
         return new Response(JSON.stringify({ success: false, error: "Missing required fields" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+      // FIX #11: Prompt length limit
+      if (prompt.length > 2000) {
+        return new Response(JSON.stringify({ success: false, error: "Prompt too long. Please keep your request under 2000 characters." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // FIX #9: Rate limiting
+      if (!checkRateLimit(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Too many requests. Please wait a moment before trying again." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 429 });
       }
 
       // Check tokens
@@ -573,7 +854,7 @@ serve(async (req) => {
         .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
 
       if (!purchases || purchases.length === 0) {
-        return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please purchase tokens." }),
+        return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please buy tokens to continue." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
       }
 
@@ -591,11 +872,20 @@ serve(async (req) => {
 
       const { data: store } = await supabase.from("stores").select("name, description").eq("id", store_id).single();
       const storeName = store?.name || "My Store";
+      const storeDescription = store?.description || "";
 
       const { data: designState } = await supabase.from("store_design_state")
         .select("current_design").eq("store_id", store_id).single();
 
-      const systemPrompt = buildDesignSystemPrompt(storeName, designState?.current_design);
+      // FIX: Failure tracking - fetch history same as chat action
+      const { data: historyRecords } = await supabase.from("ai_designer_history")
+        .select("prompt, ai_response, applied, created_at")
+        .eq("store_id", store_id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      // Use full system prompt with failure tracking context (same as chat action)
+      const systemPrompt = buildFullChatSystemPrompt(storeName, storeDescription, designState?.current_design, historyRecords || [], prompt);
 
       // Call AI with timeout
       const controller = new AbortController();
@@ -614,44 +904,53 @@ serve(async (req) => {
               { role: "user", content: "Store: " + storeName + ". Request: " + prompt }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.7,
-            max_tokens: 1000
+            temperature: 0.5, // FIX #12: Consistent temperature across all actions
+            max_tokens: 1500
           },
           controller.signal
         );
         modelUsed = aiResult.modelUsed;
       } catch (error: any) {
         clearTimeout(timeout);
-        const errMsg = error.name === "AbortError" ? "Request timed out" : "AI service failed";
-        await logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: errMsg, prompt_length: prompt.length });
+        // FIX Issue #18: User-friendly error messages
+        const errMsg = error.name === "AbortError" ? "Request timed out. Please try again." : "Unable to connect to AI. Please try again in a moment.";
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: errMsg, prompt_length: prompt.length }).catch(console.error); // FIX #8: fire-and-forget
         return new Response(JSON.stringify({ success: false, error: errMsg }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
       clearTimeout(timeout);
 
       if (!aiResult.response.ok) {
-        await logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: "api_error" });
-        return new Response(JSON.stringify({ success: false, error: "AI API error" }),
+        // FIX Issue #18: User-friendly error messages
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: "api_error" }).catch(console.error); // FIX #8: fire-and-forget
+        return new Response(JSON.stringify({ success: false, error: "Unable to connect to AI. Please try again in a moment." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
       const aiData = await aiResult.response.json();
       const aiContent = aiData.choices?.[0]?.message?.content;
 
+      // FIX #16: Detect AI content policy refusal
+      if (isAIRefusal(aiContent)) {
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "content_policy" }).catch(console.error);
+        return new Response(JSON.stringify({ success: false, error: "AI could not process this request. Please rephrase your prompt." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
       let parsedDesign;
       try {
         parsedDesign = extractJSON(aiContent);
       } catch {
-        await logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "parse_error" });
-        return new Response(JSON.stringify({ success: false, error: "Invalid AI response. No token charged." }),
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "parse_error" }).catch(console.error); // FIX #8
+        return new Response(JSON.stringify({ success: false, error: "AI response was unreadable. No token charged. Please try again." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
       // Validate with Zod
-      const validation = DesignSchema.safeParse(parsedDesign);
+      const validation = LegacyDesignSchema.safeParse(parsedDesign);
       if (!validation.success) {
-        await logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "validation_error" });
-        return new Response(JSON.stringify({ success: false, error: "AI returned incomplete design. No token charged." }),
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "validation_error" }).catch(console.error); // FIX #8
+        return new Response(JSON.stringify({ success: false, error: "AI returned incomplete design. No token charged. Please try again." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
       parsedDesign = validation.data;
@@ -664,45 +963,76 @@ serve(async (req) => {
         if (!sanitization.safe) {
           console.warn("CSS sanitized, blocked:", sanitization.blocked);
         }
-        parsedDesign.css_overrides = sanitization.sanitized;
+        parsedDesign.css_overrides = minifyCSS(sanitization.sanitized);
       }
 
-      // Deduct token
-      await supabase.from("ai_token_purchases").update({
+      // FIX: Response size validation (same as chat action)
+      const sizeCheck = validateResponseSize(parsedDesign, parsedDesign.css_overrides || "");
+      if (!sizeCheck.valid) {
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", model_used: modelUsed, success: false, error_type: "size_exceeded" }).catch(console.error); // FIX #8
+        return new Response(JSON.stringify({ success: false, error: sizeCheck.error }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // FIX #1: Optimistic locking - only deduct if tokens_remaining hasn't changed
+      const { error: deductErr } = await supabase.from("ai_token_purchases").update({
         tokens_remaining: activePurchase.tokens_remaining - 1,
         tokens_used: (activePurchase.tokens_used || 0) + 1,
         updated_at: new Date().toISOString()
-      }).eq("id", activePurchase.id);
+      }).eq("id", activePurchase.id).eq("tokens_remaining", activePurchase.tokens_remaining); // FIX #1: optimistic lock
+      if (deductErr) console.error("FIX #14: Token deduction error:", deductErr.message); // FIX #14
 
-      // Save history
-      const { data: historyRecord } = await supabase.from("ai_designer_history")
-        .insert({ store_id, user_id, prompt, ai_response: parsedDesign, tokens_used: 1, applied: false })
+      // Save history with split storage (FIX #2: handle insert error gracefully)
+      const cssOverrides = parsedDesign.css_overrides || null;
+      const designForStorage = { ...parsedDesign };
+      delete designForStorage.css_overrides;
+
+      const { data: historyRecord, error: historyErr } = await supabase.from("ai_designer_history")
+        .insert({
+          store_id, user_id, prompt,
+          ai_response: designForStorage,
+          ai_css_overrides: cssOverrides,
+          response_size_bytes: JSON.stringify(designForStorage).length + (cssOverrides?.length || 0),
+          tokens_used: 1, applied: false
+        })
         .select("id").single();
+      if (historyErr) console.error("FIX #14: History insert error:", historyErr.message); // FIX #2 + #14
 
       // Get new balance
       const { data: updatedPurchases } = await supabase.from("ai_token_purchases")
         .select("tokens_remaining").eq("store_id", store_id).eq("status", "active");
       const newBalance = (updatedPurchases || []).reduce((s: number, p: any) => s + (p.tokens_remaining || 0), 0);
 
-      // Log metrics
-      await logMetrics(supabase, {
+      // FIX #8: fire-and-forget metrics logging
+      logMetrics(supabase, {
         store_id, user_id, action: "generate_design", model_used: modelUsed,
         tokens_consumed: 1, latency_ms: Date.now() - startTime, success: true,
         prompt_length: prompt.length, css_sanitized: cssSanitized
-      });
+      }).catch(console.error);
 
       return new Response(JSON.stringify({
         success: true, design: parsedDesign, history_id: historyRecord?.id, tokens_remaining: newBalance
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== CHAT ==========
+    // ========== CHAT (with Full Context) ==========
     if (action === "chat") {
       const startTime = Date.now();
 
-      if (!store_id || !user_id || !messages?.length) {
+      // FIX #6: UUID validation
+      if (!store_id || !isValidUUID(store_id) || !user_id || !isValidUUID(user_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Invalid store_id or user_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+      if (!messages?.length) {
         return new Response(JSON.stringify({ success: false, error: "Missing required fields" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // FIX #9: Rate limiting
+      if (!checkRateLimit(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Too many requests. Please wait a moment before trying again." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 429 });
       }
 
       const { data: platformSettings } = await supabase.from("platform_settings")
@@ -716,26 +1046,47 @@ serve(async (req) => {
 
       const { data: store } = await supabase.from("stores").select("name, description").eq("id", store_id).single();
       const storeName = store?.name || "My Store";
+      const storeDescription = store?.description || "";
 
       // Check if design request
       const lastUserMsg = messages.filter((m: any) => m.role === "user").pop();
       const userPrompt = lastUserMsg?.content || "";
-      const needsFullContext = isDesignRequest(userPrompt);
-      const storeDescription = store?.description || "";
 
-      // Fetch last 10-20 design history records for context (Problem 1 fix - Option B)
+      // FIX #11: Prompt length limit
+      if (userPrompt.length > 2000) {
+        return new Response(JSON.stringify({ success: false, error: "Prompt too long. Please keep your request under 2000 characters." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const needsFullContext = isDesignRequest(userPrompt);
+
+      // FIX #3: Fetch history with ai_css_overrides for better context
       const { data: historyRecords } = await supabase.from("ai_designer_history")
-        .select("prompt, ai_response, applied, created_at")
+        .select("prompt, ai_response, ai_css_overrides, applied, created_at")
         .eq("store_id", store_id)
         .order("created_at", { ascending: false })
         .limit(20);
 
+      // FIX #5: Always fetch current design (even for casual chat - AI may return design unexpectedly)
+      const { data: designState } = await supabase.from("store_design_state")
+        .select("current_design").eq("store_id", store_id).single();
+      const currentDesign = designState?.current_design || null;
+
       let systemPrompt: string;
+
       if (needsFullContext) {
-        const { data: designState } = await supabase.from("store_design_state")
-          .select("current_design").eq("store_id", store_id).single();
-        // Use the FULL detailed system prompt with all store structure info
-        systemPrompt = buildFullChatSystemPrompt(storeName, storeDescription, designState?.current_design, historyRecords || []);
+        // FIX #3: Check tokens BEFORE calling AI
+        const { data: tokenCheck } = await supabase.from("ai_token_purchases")
+          .select("tokens_remaining")
+          .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0).limit(1);
+
+        if (!tokenCheck?.length) {
+          return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please buy tokens to continue." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+        }
+
+        // Use FULL detailed system prompt with all store structure info
+        systemPrompt = buildFullChatSystemPrompt(storeName, storeDescription, currentDesign, historyRecords || [], userPrompt);
       } else {
         systemPrompt = buildChatSystemPrompt(storeName);
       }
@@ -760,25 +1111,32 @@ serve(async (req) => {
             messages: [{ role: "system", content: systemPrompt }, ...managedMessages],
             response_format: { type: "json_object" },
             temperature: 0.5,
-            max_tokens: 1500
+            max_tokens: 2000
           },
           controller.signal
         );
         modelUsed = aiResult.modelUsed;
       } catch (error: any) {
         clearTimeout(timeout);
-        return new Response(JSON.stringify({ success: false, error: error.name === "AbortError" ? "Request timed out" : "AI service failed" }),
+        const errMsg = error.name === "AbortError" ? "Request timed out" : "Unable to connect to AI. Please try again in a moment.";
+        return new Response(JSON.stringify({ success: false, error: errMsg }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
       clearTimeout(timeout);
 
       if (!aiResult.response.ok) {
-        return new Response(JSON.stringify({ success: false, error: "AI API error" }),
+        return new Response(JSON.stringify({ success: false, error: "Unable to connect to AI. Please try again in a moment." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
       const aiData = await aiResult.response.json();
       const aiContent = aiData.choices?.[0]?.message?.content;
+
+      // FIX #16: Detect AI content policy refusal before extractJSON
+      if (isAIRefusal(aiContent)) {
+        return new Response(JSON.stringify({ success: false, error: "AI could not process this request. Please rephrase your prompt." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
 
       let parsed;
       try {
@@ -792,53 +1150,98 @@ serve(async (req) => {
       let cssSanitized = false;
 
       if (parsed.type === "design" && parsed.design) {
-        // Validate design
-        const validation = DesignSchema.safeParse(parsed.design);
-        if (!validation.success) {
-          return new Response(JSON.stringify({ success: false, error: "AI returned incomplete design. No token charged." }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
-        }
-        parsed.design = validation.data;
+        // Try Delta format first, fallback to Legacy
+        let validation = DeltaDesignSchema.safeParse(parsed.design);
+        let isDelta = validation.success;
 
-        // Sanitize CSS
-        if (parsed.design.css_overrides) {
-          const sanitization = sanitizeCSS(parsed.design.css_overrides);
+        if (!isDelta) {
+          validation = LegacyDesignSchema.safeParse(parsed.design);
+          if (!validation.success) {
+            return new Response(JSON.stringify({ success: false, error: "AI returned incomplete design. Please try again." }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+          }
+        }
+
+        let finalDesign = validation.data;
+
+        // Convert Delta to Legacy for storage
+        if (isDelta) {
+          finalDesign = deltaToLegacy(finalDesign, currentDesign);
+        }
+
+        // Sanitize and minify CSS
+        if (finalDesign.css_overrides) {
+          const sanitization = sanitizeCSS(finalDesign.css_overrides);
           cssSanitized = !sanitization.safe;
-          parsed.design.css_overrides = sanitization.sanitized;
+          finalDesign.css_overrides = minifyCSS(sanitization.sanitized);
         }
 
-        // Check and deduct tokens
+        // Validate size
+        const sizeCheck = validateResponseSize(finalDesign, finalDesign.css_overrides || "");
+        if (!sizeCheck.valid) {
+          return new Response(JSON.stringify({ success: false, error: sizeCheck.error }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+        }
+
+        // FIX #1: Optimistic locking - re-fetch tokens and use lock on update
         const { data: purchases } = await supabase.from("ai_token_purchases")
           .select("id, tokens_remaining, tokens_used")
           .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0).limit(1);
 
-        if (!purchases?.length) {
-          return new Response(JSON.stringify({ success: false, error: "No tokens remaining" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+        if (purchases?.length) {
+          const { error: deductErr } = await supabase.from("ai_token_purchases").update({
+            tokens_remaining: purchases[0].tokens_remaining - 1,
+            tokens_used: (purchases[0].tokens_used || 0) + 1
+          }).eq("id", purchases[0].id).eq("tokens_remaining", purchases[0].tokens_remaining); // FIX #1: optimistic lock
+          if (deductErr) console.error("FIX #14: Token deduction error in chat:", deductErr.message);
         }
 
-        await supabase.from("ai_token_purchases").update({
-          tokens_remaining: purchases[0].tokens_remaining - 1,
-          tokens_used: (purchases[0].tokens_used || 0) + 1
-        }).eq("id", purchases[0].id);
+        // Save to history with split storage (FIX #2: handle insert error gracefully)
+        const cssOverrides = finalDesign.css_overrides || null;
+        delete finalDesign.css_overrides; // Remove from JSONB
 
-        const { data: hr } = await supabase.from("ai_designer_history")
-          .insert({ store_id, user_id, prompt: userPrompt, ai_response: parsed.design, tokens_used: 1 })
+        const { data: hr, error: hrErr } = await supabase.from("ai_designer_history")
+          .insert({
+            store_id,
+            user_id,
+            prompt: userPrompt,
+            ai_response: finalDesign,
+            ai_css_overrides: cssOverrides,
+            response_size_bytes: JSON.stringify(finalDesign).length + (cssOverrides?.length || 0),
+            tokens_used: 1
+          })
           .select("id").single();
+        if (hrErr) console.error("FIX #14: History insert error in chat:", hrErr.message); // FIX #2 + #14
         historyId = hr?.id;
+
+        // Add css_overrides back for response
+        finalDesign.css_overrides = cssOverrides;
 
         const { data: up } = await supabase.from("ai_token_purchases")
           .select("tokens_remaining").eq("store_id", store_id).eq("status", "active");
         newTokenBalance = (up || []).reduce((s: number, p: any) => s + (p.tokens_remaining || 0), 0);
+
+        parsed.design = finalDesign;
+      } else if (parsed.type === "text" && userPrompt) {
+        // Save text responses to ai_designer_history too (tokens_used: 0, no token charge)
+        supabase.from("ai_designer_history").insert({
+          store_id, user_id,
+          prompt: userPrompt,
+          ai_response: { type: "text", message: parsed.message || "" },
+          tokens_used: 0,
+          applied: false,
+        }).then(({ error }) => {
+          if (error) console.error("Text history insert error:", error.message);
+        });
       }
 
-      // Log metrics
-      await logMetrics(supabase, {
+      // FIX #8: fire-and-forget metrics logging
+      logMetrics(supabase, {
         store_id, user_id, action: "chat", model_used: modelUsed,
         tokens_consumed: parsed.type === "design" ? 1 : 0,
         latency_ms: Date.now() - startTime, success: true,
         prompt_length: userPrompt.length, css_sanitized: cssSanitized
-      });
+      }).catch(console.error);
 
       return new Response(JSON.stringify({
         success: true, type: parsed.type, message: parsed.message,
@@ -873,18 +1276,20 @@ serve(async (req) => {
         ].slice(0, 10);
       }
 
-      await supabase.from("store_design_state").upsert({
+      const { error: upsertErr } = await supabase.from("store_design_state").upsert({
         store_id, current_design: design,
         version: (currentState?.version || 0) + 1,
         version_history: newVersionHistory,
         last_applied_at: now, updated_at: now
       }, { onConflict: "store_id" });
+      if (upsertErr) console.error("FIX #14: Design state upsert error:", upsertErr.message);
 
       if (history_id) {
-        await supabase.from("ai_designer_history").update({ applied: true }).eq("id", history_id);
+        const { error: histApplyErr } = await supabase.from("ai_designer_history").update({ applied: true }).eq("id", history_id);
+        if (histApplyErr) console.error("FIX #14: History apply update error:", histApplyErr.message);
       }
 
-      await logMetrics(supabase, { store_id, action: "apply_design", success: true, design_published: true, css_sanitized: cssSanitized });
+      logMetrics(supabase, { store_id, action: "apply_design", success: true, design_published: true, css_sanitized: cssSanitized }).catch(console.error); // FIX #8
 
       return new Response(JSON.stringify({ success: true, message: "Design applied to your live store" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -960,7 +1365,7 @@ serve(async (req) => {
 
       if (!razorpayResponse.ok) {
         console.error("Razorpay error:", await razorpayResponse.text().catch(() => ""));
-        return new Response(JSON.stringify({ success: false, error: "Failed to create payment order" }),
+        return new Response(JSON.stringify({ success: false, error: "Unable to process payment. Please try again." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
@@ -976,7 +1381,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error("Edge function error:", error);
-    return new Response(JSON.stringify({ success: false, error: error.message }),
+    return new Response(JSON.stringify({ success: false, error: "Something went wrong. Please try again later." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
   }
 });

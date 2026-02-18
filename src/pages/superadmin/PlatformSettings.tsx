@@ -37,6 +37,7 @@ interface PlatformSettings {
   razorpay_test_mode: boolean;
   openrouter_api_key: string;
   openrouter_model: string;
+  openrouter_fallback_model: string;
 }
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
@@ -59,6 +60,7 @@ const PlatformSettingsPage = () => {
     razorpay_test_mode: false,
     openrouter_api_key: '',
     openrouter_model: '',
+    openrouter_fallback_model: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,6 +143,7 @@ const PlatformSettingsPage = () => {
             razorpay_test_mode: data.razorpay_test_mode || false,
             openrouter_api_key: data.openrouter_api_key || '',
             openrouter_model: data.openrouter_model || '',
+            openrouter_fallback_model: data.openrouter_fallback_model || '',
           });
         }
       } catch (error) {
@@ -179,6 +182,7 @@ const PlatformSettingsPage = () => {
           razorpay_test_mode: settings.razorpay_test_mode,
           openrouter_api_key: settings.openrouter_api_key,
           openrouter_model: settings.openrouter_model,
+          openrouter_fallback_model: settings.openrouter_fallback_model,
         })
         .eq('id', SETTINGS_ID);
 
@@ -598,7 +602,7 @@ const PlatformSettingsPage = () => {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="openrouterModel">AI Model ID</Label>
+                <Label htmlFor="openrouterModel">Primary AI Model ID</Label>
                 <Input
                   id="openrouterModel"
                   type="text"
@@ -607,7 +611,20 @@ const PlatformSettingsPage = () => {
                   onChange={(e) => setSettings({ ...settings, openrouter_model: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  OpenRouter model ID to use for AI Designer (e.g. <span className="font-mono">moonshotai/kimi-k2</span>). Find model IDs at openrouter.ai/models. Leave blank to use default.
+                  Primary OpenRouter model ID for AI Designer (e.g. <span className="font-mono">moonshotai/kimi-k2</span>). Find model IDs at openrouter.ai/models.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="openrouterFallbackModel">Secondary Fallback Model ID</Label>
+                <Input
+                  id="openrouterFallbackModel"
+                  type="text"
+                  placeholder="openai/gpt-4o"
+                  value={settings.openrouter_fallback_model}
+                  onChange={(e) => setSettings({ ...settings, openrouter_fallback_model: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Fallback model if primary fails (e.g. <span className="font-mono">openai/gpt-4o</span>). Leave blank for no fallback.
                 </p>
               </div>
             </CardContent>

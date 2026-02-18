@@ -4,38 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Users,
-  Store,
-  CreditCard,
-  DollarSign,
-  Globe,
-  Settings,
-  Home,
   TrendingUp,
   TrendingDown,
   Activity,
   CheckCircle2,
   ChevronRight,
-  LogOut,
-  ExternalLink,
-  UserCircle,
-  Shield,
-  ClipboardList,
-  BarChart3,
-  FileText,
-  Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureManagement } from "@/components/superadmin/FeatureManagement";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface DashboardStats {
   totalUsers: number;
@@ -73,9 +50,7 @@ interface SystemHealth {
 }
 
 export default function SuperAdminDashboard() {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [adminName, setAdminName] = useState("");
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [subscriptions, setSubscriptions] = useState<SubscriptionBreakdown[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -83,57 +58,12 @@ export default function SuperAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      // First check for superadmin session
-      const session = sessionStorage.getItem('superadmin_session');
-      if (session) {
-        const sessionData = JSON.parse(session);
-        setAdminName(sessionData.fullName);
-        loadDashboardData();
-        return;
-      }
-
-      // If no superadmin session, check Supabase auth
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/superadmin/login');
-        return;
-      }
-
-      // Check if user has super_admin role
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'super_admin');
-
-      if (!roles || roles.length === 0) {
-        toast({
-          title: "Access Denied",
-          description: "You need super admin privileges",
-          variant: "destructive"
-        });
-        navigate('/superadmin/login');
-        return;
-      }
-
-      // Get profile name
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('user_id', user.id)
-        .single();
-
-      setAdminName(profile?.full_name || profile?.email || user.email || 'Super Admin');
-      loadDashboardData();
-    };
-
-    initializeAuth();
+    loadDashboardData();
 
     // Auto-refresh every 60 seconds
     const interval = setInterval(loadDashboardData, 60000);
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -435,16 +365,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('superadmin_session');
-    localStorage.removeItem('superadmin_remember');
-    toast({
-      title: "Logged Out",
-      description: "You have been logged out successfully",
-    });
-    navigate('/superadmin/login');
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -468,153 +388,7 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-50">
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">YourPlatform - Super Admin</h1>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
-                <UserCircle className="h-5 w-5" />
-                <span>{adminName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View Platform Site
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Account Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 border-r bg-card min-h-screen p-4">
-          <nav className="space-y-2">
-            <Button variant="default" className="w-full justify-start">
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/users')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Users & Stores
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/helpers')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Helper Management
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/commissions')}
-            >
-              <DollarSign className="mr-2 h-4 w-4" />
-              Commission Management
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/commission-settings')}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Commission Settings
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/reports-analytics')}
-            >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Reports & Analytics
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/subscription-plans')}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Subscription Plans
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/transactions')}
-            >
-              <DollarSign className="mr-2 h-4 w-4" />
-              Transactions
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/billing')}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Billing & Revenue
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/custom-domains')}
-            >
-              <Globe className="mr-2 h-4 w-4" />
-              Custom Domains
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/sitemaps')}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              SEO & Sitemaps
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/marketplace')}
-            >
-              <Package className="mr-2 h-4 w-4" />
-              Marketplace
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/superadmin/settings')}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Platform Settings
-            </Button>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {isLoading ? (
@@ -861,8 +635,6 @@ export default function SuperAdminDashboard() {
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
     </div>
   );
 }

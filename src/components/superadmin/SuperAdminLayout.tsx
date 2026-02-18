@@ -176,6 +176,12 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       current: location.pathname === "/superadmin/ai-token-pricing",
     },
     {
+      name: "AI Designer Analytics",
+      href: "/superadmin/ai-designer-analytics",
+      icon: BarChart3,
+      current: location.pathname === "/superadmin/ai-designer-analytics",
+    },
+    {
       name: "Platform Settings",
       href: "/superadmin/settings",
       icon: Settings,

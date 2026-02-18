@@ -14,7 +14,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import {
-  ArrowLeft, Users, UserCheck, TrendingUp, DollarSign, Network,
+  Users, UserCheck, TrendingUp, DollarSign, Network,
   Download, FileText, Calendar, Filter, BarChart3
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
@@ -493,20 +493,11 @@ const SuperAdminReportsAnalytics = () => {
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/superadmin/dashboard")}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Reports & Analytics</h1>
-                <p className="text-sm text-muted-foreground">
-                  Comprehensive insights into helper program performance
-                </p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold">Reports & Analytics</h1>
+              <p className="text-sm text-muted-foreground">
+                Comprehensive insights into helper program performance
+              </p>
             </div>
             <Badge variant="default" className="text-sm px-3 py-1">
               Super Admin
