@@ -274,13 +274,16 @@ const AIDesigner = () => {
       const lastHistoryDesign = await loadChatHistory(store.id);
 
       // Set preview: published design takes priority, fall back to last generated design
-      const designForPreview = appliedDesign || lastHistoryDesign;
       if (appliedDesign) {
         setCurrentDesign(appliedDesign);
-      }
-      if (designForPreview) {
-        previewDesignRef.current = designForPreview; // sync before iframe renders
-        setPreviewDesign(designForPreview);
+        previewDesignRef.current = appliedDesign;
+        setPreviewDesign(appliedDesign);
+      } else if (lastHistoryDesign) {
+        // No published design yet — load last generated design into preview + pending
+        // so Publish Changes and Reset to Default are enabled immediately
+        previewDesignRef.current = lastHistoryDesign;
+        setPreviewDesign(lastHistoryDesign);
+        setPendingDesign(lastHistoryDesign);
       }
     } catch (error: any) {
       toast.error("Failed to load AI Designer");
