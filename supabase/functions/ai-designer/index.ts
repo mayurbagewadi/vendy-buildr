@@ -1264,27 +1264,38 @@ function buildFullChatSystemPrompt(
     "DESIGN RESPONSE (use for ANY visual change):\n" +
     "{\n" +
     "  \"type\": \"design\",\n" +
-    "  \"message\": \"I created a [style] design with [features]. Want to adjust?\",\n" +
+    "  \"message\": \"Here is what I changed:\",\n" +
     "  \"design\": {\n" +
-    "    \"summary\": \"One compelling sentence describing the design\",\n" +
+    "    \"summary\": \"One sentence describing the overall design\",\n" +
     "    \"css_variables\": { \"primary\": \"265 89% 78%\", \"background\": \"0 0% 100%\", ... },\n" +
     "    \"dark_css_variables\": { \"primary\": \"265 89% 82%\", \"background\": \"222 47% 8%\", ... },\n" +
     "    \"layout\": { \"product_grid_cols\": \"3\", \"section_padding\": \"spacious\" },\n" +
     "    \"css_overrides\": \"[data-ai='section-hero']{...}[data-ai='product-card']:hover{...}\",\n" +
     "    \"changes_list\": [\n" +
-    "      \"Applied purple gradient hero with depth\",\n" +
-    "      \"Added product card hover lift with shadow\",\n" +
-    "      \"Set spacious padding for editorial feel\",\n" +
-    "      \"Created cohesive 8-color professional palette\"\n" +
+    "      \"Product card — border color changed to indigo\",\n" +
+    "      \"Add to cart button — background changed to indigo\",\n" +
+    "      \"Hero section — background updated to light blue\",\n" +
+    "      \"Footer — text color changed to gray\"\n" +
     "    ]\n" +
     "  }\n" +
     "}\n\n" +
     
+    "HONESTY RULES:\n" +
+    "• Every item in changes_list MUST have actual CSS proof in css_variables or css_overrides.\n" +
+    "• If you did not write the CSS for it, do NOT list it in changes_list.\n" +
+    "• Do NOT add gradients, shadows, animations or hover effects unless the user asked for them.\n" +
+    "• Only change what the user requested — do not add unsolicited effects.\n\n" +
+    "CHANGES_LIST FORMAT — plain English, human readable:\n" +
+    "• Format: \"[Section or element] — [what changed] to [new value]\"\n" +
+    "• Good: \"Product card — border color changed to blue\"\n" +
+    "• Good: \"Add to cart button — background changed to indigo\"\n" +
+    "• Good: \"Hero section — background color changed to dark navy\"\n" +
+    "• Bad: \"Updated product card styles\" (too vague)\n" +
+    "• Bad: \"Applied modern design\" (not specific)\n\n" +
     "DESIGN QUALITY NOTES:\n" +
     "• css_overrides should be SUBSTANTIAL — style multiple sections\n" +
     "• Include ALL 8 css_variables for any design change\n" +
-    "• Always provide dark_css_variables for a polished result\n" +
-    "• Use effects freely — enhance, don't hold back\n\n" +
+    "• Always provide dark_css_variables for a polished result\n\n" +
     
     "TEXT RESPONSE (only for pure chat, no design):\n" +
     "{ \"type\": \"text\", \"message\": \"Your helpful response here\" }\n\n" +
@@ -1306,7 +1317,9 @@ function buildFullChatSystemPrompt(
     "□ css_overrides uses [data-ai=\"...\"] selectors                   \n" +
     "□ Variable keys without '--' prefix                                \n" +
     "□ HSL values in correct format                                     \n" +
-    "□ Design is bold, comprehensive and visually impressive            \n" +
+    "□ Every changes_list item has real CSS proof in the response       \n" +
+    "□ changes_list format: \"Element — what changed to new value\"     \n" +
+    "□ No gradients/shadows/animations unless user asked for them       \n" +
     "╚══════════════════════════════════════════════════════════════════╝\n";
 
   // Assemble final prompt
