@@ -1111,9 +1111,9 @@ serve(async (req) => {
       let modelUsed: string;
       try {
         aiResult = await callAIWithFallback(
-          platformSettings.openrouter_model || "moonshotai/kimi-k2",
-          platformSettings.openrouter_fallback_model,
-          platformSettings.openrouter_api_key,
+          (platformSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+          platformSettings.openrouter_fallback_model?.trim() || null,
+          platformSettings.openrouter_api_key.trim(),
           {
             messages: [
               { role: "system", content: systemPrompt },
@@ -1333,9 +1333,9 @@ serve(async (req) => {
       let modelUsed: string;
       try {
         aiResult = await callAIWithFallback(
-          platformSettings.openrouter_model || "moonshotai/kimi-k2",
-          platformSettings.openrouter_fallback_model,
-          platformSettings.openrouter_api_key,
+          (platformSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+          platformSettings.openrouter_fallback_model?.trim() || null,
+          platformSettings.openrouter_api_key.trim(),
           {
             messages: [{ role: "system", content: systemPrompt }, ...managedMessages],
             response_format: { type: "json_object" },
