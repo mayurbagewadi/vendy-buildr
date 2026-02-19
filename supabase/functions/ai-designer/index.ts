@@ -554,8 +554,10 @@ function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "N
   
   const newKeywords = [
     "completely", "entirely", "whole new", "fresh", "redesign", "redo",
-    "start over", "from scratch", "different", "brand new", "total", 
-    "full redesign", "transform", "revamp", "overhaul"
+    "start over", "from scratch", "different", "brand new", "total",
+    "full redesign", "transform", "revamp", "overhaul",
+    "full design", "full", "complete", "everything", "all of it",
+    "whole", "entire", "every section", "all sections", "whole store"
   ];
   
   const preserveScore = preserveKeywords.filter(k => lower.includes(k)).length;
@@ -1115,9 +1117,10 @@ function buildFullChatSystemPrompt(
       "╔══════════════════════════════════════════════════════════════════╗\n" +
       "║  DESIGN GUIDELINES                                               ║\n" +
       "╠══════════════════════════════════════════════════════════════════╣\n" +
-      "║  • Understand the user's intent and enhance the entire design    ║\n" +
-      "║  • Feel free to improve related elements that will look better   ║\n" +
-      "║  • Use gradients, shadows and animations where they add value    ║\n" +
+      "║  • Be BOLD — change the full design, not just one thing          ║\n" +
+      "║  • Change ALL css_variables to create a cohesive look            ║\n" +
+      "║  • Style EVERY section: hero, products, header, footer, CTA      ║\n" +
+      "║  • Use gradients, shadows, animations — the more the better      ║\n" +
       "║  • Ensure high contrast for readability                          ║\n" +
       "╚══════════════════════════════════════════════════════════════════╝\n\n";
   }
@@ -1180,9 +1183,11 @@ function buildFullChatSystemPrompt(
       "║  → Don't ask - create something that will wow them.              ║\n" +
       "╚══════════════════════════════════════════════════════════════════╝\n\n";
   } else if (intent === "PRESERVE_EXISTING") {
-    intentContext = "USER INTENT: MINIMAL CHANGES - preserve existing design\n\n";
+    intentContext = "USER INTENT: TARGETED CHANGE - focus on the requested element, but feel free to improve surrounding elements too.\n\n";
   } else if (intent === "CREATE_NEW") {
-    intentContext = "USER INTENT: FRESH REDESIGN - apply comprehensive changes\n\n";
+    intentContext = "USER INTENT: FULL REDESIGN - change ALL css_variables, ALL sections, be bold and comprehensive.\n\n";
+  } else {
+    intentContext = "USER INTENT: DESIGN CHANGE - be bold, change css_variables and multiple sections freely.\n\n";
   }
 
   let locksContext = "";
@@ -1235,20 +1240,14 @@ function buildFullChatSystemPrompt(
     "╠══════════════════════════════════════════════════════════════════╣\n" +
     "You can generate ANY valid CSS in css_overrides using data-ai selectors:\n\n" +
     
-    (isCreativeDelegation 
-      ? "CREATIVE TECHNIQUES (use when appropriate):\n" +
-        "• Gradients: background: linear-gradient(135deg, hsl(var(--primary)/0.2) 0%, transparent 100%);\n" +
-        "• Glassmorphism: backdrop-filter: blur(12px); background: hsl(var(--background)/0.8);\n" +
-        "• Shadows: box-shadow: 0 20px 40px -10px hsl(var(--foreground)/0.15);\n" +
-        "• Hover lifts: transform: translateY(-8px); transition: all 0.3s ease;\n" +
-        "• Image zoom: transform: scale(1.08); transition: transform 0.5s ease;\n" +
-        "• Animated gradients: background-size: 200% 200%; animation: gradient 15s ease infinite;\n" +
-        "• Text shadows: text-shadow: 0 2px 10px hsl(var(--foreground)/0.1);\n\n"
-      : "AVAILABLE TECHNIQUES (use as requested):\n" +
-        "• Gradients, shadows, animations, transforms\n" +
-        "• Glassmorphism effects, hover states\n" +
-        "• Custom layouts with flex/grid\n\n"
-    ) +
+    "CREATIVE TECHNIQUES (use freely — the more the better):\n" +
+    "• Gradients: background: linear-gradient(135deg, hsl(var(--primary)/0.2) 0%, transparent 100%);\n" +
+    "• Glassmorphism: backdrop-filter: blur(12px); background: hsl(var(--background)/0.8);\n" +
+    "• Shadows: box-shadow: 0 20px 40px -10px hsl(var(--foreground)/0.15);\n" +
+    "• Hover lifts: transform: translateY(-8px); transition: all 0.3s ease;\n" +
+    "• Image zoom: transform: scale(1.08); transition: transform 0.5s ease;\n" +
+    "• Animated gradients: background-size: 200% 200%; animation: gradient 15s ease infinite;\n" +
+    "• Text shadows: text-shadow: 0 2px 10px hsl(var(--foreground)/0.1);\n\n" +
     
     "SELECTOR EXAMPLES:\n" +
     "• [data-ai=\"section-hero\"] { background: linear-gradient(...); }\n" +
@@ -1281,14 +1280,11 @@ function buildFullChatSystemPrompt(
     "  }\n" +
     "}\n\n" +
     
-    (isCreativeDelegation
-      ? "CREATIVE MODE NOTES:\n" +
-        "• css_overrides should be SUBSTANTIAL (300+ chars for full designs)\n" +
-        "• Include multiple sections with coordinated styling\n" +
-        "• Use effects tastefully - enhance, don't overwhelm\n" +
-        "• Always provide dark_css_variables for modern UX\n\n"
-      : ""
-    ) +
+    "DESIGN QUALITY NOTES:\n" +
+    "• css_overrides should be SUBSTANTIAL — style multiple sections\n" +
+    "• Include ALL 8 css_variables for any design change\n" +
+    "• Always provide dark_css_variables for a polished result\n" +
+    "• Use effects freely — enhance, don't hold back\n\n" +
     
     "TEXT RESPONSE (only for pure chat, no design):\n" +
     "{ \"type\": \"text\", \"message\": \"Your helpful response here\" }\n\n" +
@@ -1304,12 +1300,13 @@ function buildFullChatSystemPrompt(
     "║  FINAL CHECKLIST                                                 ║\n" +
     "╠══════════════════════════════════════════════════════════════════╣\n" +
     "□ Valid JSON starting with { and ending with }                     \n" +
-    "□ All 8 css_variables present (for full redesigns)                 \n" +
+    "□ All 8 css_variables present (ALWAYS required)                    \n" +
     "□ dark_css_variables provided                                      \n" +
+    "□ css_overrides is SUBSTANTIAL — styles multiple sections          \n" +
     "□ css_overrides uses [data-ai=\"...\"] selectors                   \n" +
     "□ Variable keys without '--' prefix                                \n" +
     "□ HSL values in correct format                                     \n" +
-    (isCreativeDelegation ? "□ Design is substantial and visually impressive                    \n" : "") +
+    "□ Design is bold, comprehensive and visually impressive            \n" +
     "╚══════════════════════════════════════════════════════════════════╝\n";
 
   // Assemble final prompt
