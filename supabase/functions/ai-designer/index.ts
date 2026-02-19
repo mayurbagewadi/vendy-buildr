@@ -1137,8 +1137,9 @@ serve(async (req) => {
       clearTimeout(timeout);
 
       if (!aiResult.response.ok) {
-        // FIX Issue #18: User-friendly error messages
-        logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: "api_error" }).catch(console.error); // FIX #8: fire-and-forget
+        const errBody = await aiResult.response.text().catch(() => "");
+        console.error("OpenRouter API error:", aiResult.response.status, errBody);
+        logMetrics(supabase, { store_id, user_id, action: "generate_design", success: false, error_type: "api_error" }).catch(console.error);
         return new Response(JSON.stringify({ success: false, error: "Unable to connect to AI. Please try again in a moment." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
@@ -1353,6 +1354,8 @@ serve(async (req) => {
       clearTimeout(timeout);
 
       if (!aiResult.response.ok) {
+        const errBody = await aiResult.response.text().catch(() => "");
+        console.error("OpenRouter API error (chat):", aiResult.response.status, errBody);
         return new Response(JSON.stringify({ success: false, error: "Unable to connect to AI. Please try again in a moment." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
