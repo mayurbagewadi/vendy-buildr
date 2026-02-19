@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -132,35 +132,38 @@ const AIDesigner = () => {
     };
   }, []);
 
-  // Auto-scroll chat to bottom
-  // Uses direct scrollTop on the container (more reliable than scrollIntoView for fixed-height overflow containers)
-  // On initial load we do two passes: 150ms (early) + 400ms (after full layout) to handle long histories
+  // Auto-scroll chat to bottom on initial load
+  // useLayoutEffect runs synchronously after DOM commit (refs are guaranteed set)
+  // requestAnimationFrame ensures browser has finished layout calculations
+  useLayoutEffect(() => {
+    if (isLoading || messages.length === 0) return;
+    if (!isInitialScrollRef.current) return; // Only for initial load
+
+    const rafId = requestAnimationFrame(() => {
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+      isInitialScrollRef.current = false;
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [isLoading, messages]);
+
+  // Auto-scroll chat to bottom for new messages (after initial load)
   useEffect(() => {
     if (isLoading || messages.length === 0) return;
-    const isInitial = isInitialScrollRef.current;
-    const container = messagesContainerRef.current;
-    if (!container) return;
+    if (isInitialScrollRef.current) return; // Skip initial load (handled above)
 
-    const scrollToBottom = () => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    const timer = setTimeout(() => {
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
       }
-    };
+    }, 100);
 
-    // First pass — covers new messages sent during an active session
-    const t1 = setTimeout(scrollToBottom, 100);
-
-    // Second pass — covers initial page load where layout takes longer to settle
-    const t2 = isInitial ? setTimeout(() => {
-      scrollToBottom();
-      isInitialScrollRef.current = false;
-    }, 400) : null;
-
-    return () => {
-      clearTimeout(t1);
-      if (t2) clearTimeout(t2);
-    };
-  }, [isLoading, messages]);
+    return () => clearTimeout(timer);
+  }, [messages]);
 
   // Load chat history from ai_designer_history table
   // Returns the most recent design found in history (for preview fallback)
