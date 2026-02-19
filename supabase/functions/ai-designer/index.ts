@@ -264,13 +264,27 @@ serve(async (req) => {
 
       // Parse AI response
       let parsed: any;
+
+      // If no JSON found, treat as plain text response
+      if (!rawContent.includes("{") || !rawContent.includes("}")) {
+        console.log("DEBUG: No JSON found, treating as text response");
+        return new Response(JSON.stringify({
+          success: true,
+          type: "text",
+          message: rawContent || "I couldn't understand that. Could you rephrase?",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       try {
         parsed = extractJSON(rawContent);
         console.log("DEBUG: JSON parsed, type:", parsed.type);
       } catch (e) {
-        console.error("DEBUG: JSON parse failed:", e);
-        return new Response(JSON.stringify({ success: false, error: "AI returned an invalid response. Please try again." }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+        console.error("DEBUG: JSON parse failed:", e, "Content:", rawContent);
+        return new Response(JSON.stringify({
+          success: true,
+          type: "text",
+          message: rawContent || "I couldn't understand that. Could you rephrase?",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const responseType = parsed.type || "text";
@@ -405,10 +419,21 @@ serve(async (req) => {
 
       const genData = await genAIResponse.json();
       const genContent = genData.choices?.[0]?.message?.content || "";
+
+      // If no JSON found, treat as plain text
+      if (!genContent.includes("{") || !genContent.includes("}")) {
+        return new Response(JSON.stringify({
+          success: true, type: "text",
+          message: genContent || "I couldn't understand that. Could you rephrase?",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       let genParsed: any;
       try { genParsed = extractJSON(genContent); } catch {
-        return new Response(JSON.stringify({ success: false, error: "AI returned an invalid response. Please try again." }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+        return new Response(JSON.stringify({
+          success: true, type: "text",
+          message: genContent || "I couldn't understand that. Could you rephrase?",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (genParsed.type === "design" && genParsed.design) {
