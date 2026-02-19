@@ -134,16 +134,32 @@ const AIDesigner = () => {
 
   // Auto-scroll chat to bottom
   // Uses direct scrollTop on the container (more reliable than scrollIntoView for fixed-height overflow containers)
+  // On initial load we do two passes: 150ms (early) + 400ms (after full layout) to handle long histories
   useEffect(() => {
     if (isLoading || messages.length === 0) return;
     const isInitial = isInitialScrollRef.current;
     const container = messagesContainerRef.current;
     if (!container) return;
-    const timer = setTimeout(() => {
-      container.scrollTop = container.scrollHeight;
-      if (isInitial) isInitialScrollRef.current = false;
-    }, 100);
-    return () => clearTimeout(timer);
+
+    const scrollToBottom = () => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    };
+
+    // First pass — covers new messages sent during an active session
+    const t1 = setTimeout(scrollToBottom, 100);
+
+    // Second pass — covers initial page load where layout takes longer to settle
+    const t2 = isInitial ? setTimeout(() => {
+      scrollToBottom();
+      isInitialScrollRef.current = false;
+    }, 400) : null;
+
+    return () => {
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+    };
   }, [isLoading, messages]);
 
   // Load chat history from ai_designer_history table
