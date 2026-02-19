@@ -117,7 +117,7 @@ FOR PURE CHAT (no design change):
 // ─── Main handler ─────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
   try {
@@ -215,25 +215,31 @@ serve(async (req) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
 
-      const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://yesgive.shop",
-          "X-Title": "Vendy Buildr AI Designer",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-          ],
-          max_tokens: 4000,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeout));
+      let aiResponse: Response;
+      try {
+        aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://yesgive.shop",
+            "X-Title": "Vendy Buildr AI Designer",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "system", content: systemPrompt }, ...messages],
+            max_tokens: 4000,
+            temperature: 0.7,
+          }),
+          signal: controller.signal,
+        });
+      } catch (error: any) {
+        clearTimeout(timeout);
+        const errMsg = error.name === "AbortError" ? "Request timed out. Please try again." : "Unable to connect to AI. Please try again in a moment.";
+        return new Response(JSON.stringify({ success: false, error: errMsg }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+      clearTimeout(timeout);
 
       if (!aiResponse.ok) {
         const errBody = await aiResponse.text().catch(() => "");
@@ -351,22 +357,31 @@ serve(async (req) => {
       const genController = new AbortController();
       const genTimeout = setTimeout(() => genController.abort(), 45000);
 
-      const genAIResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${genSettings.openrouter_api_key.trim()}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://yesgive.shop",
-          "X-Title": "Vendy Buildr AI Designer",
-        },
-        body: JSON.stringify({
-          model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
-          messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
-          max_tokens: 4000,
-          temperature: 0.7,
-        }),
-        signal: genController.signal,
-      }).finally(() => clearTimeout(genTimeout));
+      let genAIResponse: Response;
+      try {
+        genAIResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + genSettings.openrouter_api_key.trim(),
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://yesgive.shop",
+            "X-Title": "Vendy Buildr AI Designer",
+          },
+          body: JSON.stringify({
+            model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+            messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
+            max_tokens: 4000,
+            temperature: 0.7,
+          }),
+          signal: genController.signal,
+        });
+      } catch (error: any) {
+        clearTimeout(genTimeout);
+        const errMsg = error.name === "AbortError" ? "Request timed out. Please try again." : "Unable to connect to AI. Please try again in a moment.";
+        return new Response(JSON.stringify({ success: false, error: errMsg }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+      clearTimeout(genTimeout);
 
       if (!genAIResponse.ok) {
         const errBody = await genAIResponse.text().catch(() => "");
