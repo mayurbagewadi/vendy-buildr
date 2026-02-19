@@ -105,7 +105,7 @@ function getTemperature(userPrompt: string, isRetry = false): number {
 // AI sometimes returns { "type": "text", "message": "{\"type\":\"design\",...}" }
 function unwrapNestedDesign(parsed: any): any {
   if (parsed?.type !== "text" || typeof parsed?.message !== "string") return parsed;
-  const msg = parsed.message;
+  const msg = parsed.message.trim();
   const s = msg.indexOf('{"type"');
   const s2 = msg.indexOf('{ "type"');
   const start = s !== -1 ? s : s2;
@@ -1121,7 +1121,7 @@ serve(async (req) => {
             ],
             response_format: { type: "json_object" },
             temperature: getTemperature(prompt),
-            max_tokens: 1500
+            max_tokens: 3000
           },
           controller.signal
         );
@@ -1339,7 +1339,7 @@ serve(async (req) => {
             messages: [{ role: "system", content: systemPrompt }, ...managedMessages],
             response_format: { type: "json_object" },
             temperature: getTemperature(userPrompt, (historyRecords || []).filter((r: any) => !r.applied && calculatePromptSimilarity(userPrompt, r.prompt) > 0.3).length >= 2),
-            max_tokens: 2000
+            max_tokens: 4000
           },
           controller.signal
         );
