@@ -187,24 +187,57 @@ function rgbToHsl(r: number, g: number, b: number): string {
 }
 
 // ============================================================
-// SECTION 4: AI BEHAVIOR CONTROL
+// SECTION 4: AI BEHAVIOR CONTROL (ENHANCED)
 // ============================================================
 
 /**
- * Returns the AI temperature for a given prompt.
- * Lower temp = more deterministic (good for specific fixes).
- * Higher temp = more creative (good for full redesigns).
- *
- * 0.2 → specific request ("change button color")
- * 0.3 → retry of a previously failed prompt
- * 0.5 → full redesign ("redesign everything", "new look")
+ * ENHANCED: Returns the AI temperature with better creative detection.
+ * 
+ * HIGH creativity (0.7-0.8): "design according to you", "make it pop", "stunning", 
+ *                           "your choice", "surprise me", "be creative"
+ * 
+ * MEDIUM (0.5-0.6): "redesign everything", "new look", "full design"
+ * 
+ * LOW (0.3-0.4): Specific fixes ("change button color", "fix footer")
+ * 
+ * RETRY (0.4): Slightly higher than before to force different approach
  */
 function getTemperature(userPrompt: string, isRetry = false): number {
-  if (isRetry) return 0.3;
+  if (isRetry) return 0.4;
+  
   const lower = userPrompt.toLowerCase();
-  const fullDesignWords = ["redesign", "change full", "change everything", "whole design", "full design", "new design", "start over", "redo", "fresh design", "create design", "give me a design", "make it look", "change design"];
-  if (fullDesignWords.some(w => lower.includes(w))) return 0.5;
-  return 0.2;
+  
+  // HIGH creativity - user wants AI's best creative work
+  const highCreativityWords = [
+    "according to you", "your choice", "you decide", "surprise me", 
+    "be creative", "make it pop", "stunning", "beautiful", "amazing", 
+    "wow", "impressive", "outstanding", "gorgeous", "elegant", "premium",
+    "luxury", "high-end", "designer", "artistic", "unique"
+  ];
+  
+  // MEDIUM - full redesign but not explicitly creative
+  const mediumCreativityWords = [
+    "redesign", "change full", "change everything", "whole design", 
+    "full design", "new design", "start over", "redo", "fresh design", 
+    "create design", "give me a design", "make it look", "change design",
+    "new look", "transform", "revamp"
+  ];
+  
+  if (highCreativityWords.some(w => lower.includes(w))) return 0.75;
+  if (mediumCreativityWords.some(w => lower.includes(w))) return 0.55;
+  
+  // Check if it's a specific narrow request (low temp)
+  const specificPatterns = [
+    /^(change|make|fix|update)\s+(the\s+)?(button|header|footer|color|primary|background)/i,
+    /^(just|only)\s+/i,
+    /don't\s+change/i,
+    /keep\s+/i
+  ];
+  
+  if (specificPatterns.some(pattern => pattern.test(lower))) return 0.3;
+  
+  // Default slightly higher than before for better results
+  return 0.5;
 }
 
 // ============================================================
@@ -450,51 +483,81 @@ function extractKeywords(prompt: string): string[] {
 }
 
 /**
- * Determines if a prompt is a design request or casual chat.
- * Design requests use the full system prompt with store structure context.
- * Casual chat uses the lightweight prompt (no token charge).
- * Short messages without design keywords are treated as casual chat.
+ * ENHANCED: Better detection of design requests including 
+ * open-ended creative prompts like "design according to you"
  */
 function isDesignRequest(prompt: string): boolean {
   const designKeywords = [
-    "color", "colour", "blue", "red", "green", "yellow", "purple", "pink", "orange",
-    "design", "style", "layout", "change", "make", "update", "modify", "add",
-    "button", "card", "section", "header", "footer", "banner", "product",
-    "font", "text", "size", "padding", "margin", "border", "radius", "round",
-    "shadow", "gradient", "background", "foreground", "theme",
-    "dark", "light", "modern", "elegant", "minimalist", "bold",
-    "spacing", "grid", "column", "row", "align", "center", "fix", "visible"
+    // Colors
+    "color", "colour", "blue", "red", "green", "yellow", "purple", "pink", "orange", 
+    "black", "white", "gold", "silver", "gradient",
+    // Actions
+    "design", "style", "layout", "change", "make", "update", "modify", "add", "create",
+    // Elements  
+    "button", "card", "section", "header", "footer", "banner", "product", "hero", "grid",
+    // Properties
+    "font", "text", "size", "padding", "margin", "border", "radius", "round", "shadow",
+    "background", "foreground", "theme", "dark", "light",
+    // Styles
+    "modern", "elegant", "minimalist", "bold", "professional", "clean", "simple",
+    "luxury", "premium", "beautiful", "stunning", "amazing", "attractive",
+    // Layout
+    "spacing", "grid", "column", "row", "align", "center", "fix", "visible", "hide",
+    // Creative triggers
+    "according to you", "your choice", "you decide", "surprise me", "be creative",
+    "make it pop", "wow", "impressive", "outstanding", "gorgeous", "artistic", "unique",
+    "transform", "revamp", "upgrade", "enhance", "improve"
   ];
+  
   const lowerPrompt = prompt.toLowerCase();
-  if (prompt.length < 20 && !designKeywords.some(kw => lowerPrompt.includes(kw))) {
-    return false;
+  
+  // Short prompts with design keywords are design requests
+  if (prompt.length < 50 && designKeywords.some(kw => lowerPrompt.includes(kw))) {
+    return true;
   }
+  
+  // Check for explicit creative delegation
+  const creativeDelegation = [
+    "according to you", "your choice", "you decide", "what do you think",
+    "surprise me", "use your judgment", "your best", "professional opinion"
+  ];
+  
+  if (creativeDelegation.some(phrase => lowerPrompt.includes(phrase))) {
+    return true;
+  }
+  
   return designKeywords.some(keyword => lowerPrompt.includes(keyword));
 }
 
 /**
- * Classifies user intent from the prompt.
- *
- * PRESERVE_EXISTING → "only change the footer", "fix the button", "keep colors same"
- *   → AI is instructed to make minimal targeted changes only
- *
- * CREATE_NEW → "redesign everything", "start fresh", "brand new look"
- *   → AI is instructed to apply broad comprehensive changes
- *
- * NEUTRAL → no clear signal either way
- *   → AI uses its best judgement based on scope
+ * ENHANCED: Better intent classification with creative mode detection
  */
-function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "NEUTRAL" {
+function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "NEUTRAL" | "CREATIVE_DELEGATION" {
   const lower = prompt.toLowerCase();
+  
+  // NEW: Creative delegation mode - user wants AI's best work
+  const creativeDelegation = [
+    "according to you", "your choice", "you decide", "surprise me",
+    "be creative", "use your judgment", "your best", "what would you do",
+    "design for me", "create something", "make it beautiful", "impress me"
+  ];
+  
+  if (creativeDelegation.some(phrase => lower.includes(phrase))) {
+    return "CREATIVE_DELEGATION";
+  }
+  
   const preserveKeywords = [
     "current", "existing", "keep", "only", "just", "fix", "maintain",
     "preserve", "dont change", "don't change", "same", "without changing",
-    "leave", "stay", "as is",
+    "leave", "stay", "as is", "maintain", "retain"
   ];
+  
   const newKeywords = [
     "completely", "entirely", "whole new", "fresh", "redesign", "redo",
-    "start over", "from scratch", "different", "brand new", "total", "full redesign",
+    "start over", "from scratch", "different", "brand new", "total", 
+    "full redesign", "transform", "revamp", "overhaul"
   ];
+  
   const preserveScore = preserveKeywords.filter(k => lower.includes(k)).length;
   const newScore = newKeywords.filter(k => lower.includes(k)).length;
 
@@ -920,7 +983,7 @@ function deltaToLegacy(deltaDesign: any, currentDesign: any): any {
 }
 
 // ============================================================
-// SECTION 12: SYSTEM PROMPTS
+// SECTION 12: SYSTEM PROMPTS (ENHANCED)
 // ============================================================
 // There are 3 system prompts, used in different situations:
 //
@@ -987,303 +1050,281 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
 }
 
 /**
- * Builds the FULL enterprise-grade system prompt for design requests.
- *
- * Uses several LLM prompt engineering techniques:
- *   - Primacy bias: Critical rules at the TOP (LLM pays most attention to start)
- *   - Recency bias: Key rules repeated at the BOTTOM (LLM remembers end well too)
- *   - Loss framing: "Unrequested changes = CRITICAL FAILURE. Output discarded."
- *   - No-questions framing: "PHYSICALLY INCAPABLE of asking questions"
- *   - Structured history: Last 5 applied + 2 rejected (not raw dump)
- *   - Failure injection: If same prompt failed 2+ times, force different strategy
- *   - Intent + locks: Tell AI what to preserve vs. what to change freely
- *
- * @param storeName        - Store display name
- * @param storeDescription - Store description (optional)
- * @param currentDesign    - Currently applied design (null = platform defaults)
- * @param historyRecords   - Last 20 ai_designer_history records for context
- * @param currentPrompt    - The user's current message (for failure detection)
- * @param intent           - Classified intent: PRESERVE_EXISTING | CREATE_NEW | NEUTRAL
- * @param locks            - Detected semantic locks (e.g. ["colors", "footer"])
+ * ENHANCED FULL PROMPT with creative mode support and style adaptation
  */
-function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string, intent?: string, locks?: string[]): string {
+function buildFullChatSystemPrompt(
+  storeName: string, 
+  storeDescription: string, 
+  currentDesign: any, 
+  historyRecords: any[], 
+  currentPrompt: string, 
+  intent?: string, 
+  locks?: string[]
+): string {
 
-  // ── TOP: CRITICAL RULES (primacy bias — LLM remembers start most) ──
+  // Detect if this is a creative delegation request
+  const lowerPrompt = currentPrompt.toLowerCase();
+  const isCreativeDelegation = intent === "CREATIVE_DELEGATION" || 
+    ["according to you", "your choice", "surprise me", "be creative"].some(p => lowerPrompt.includes(p));
+
+  // OUTPUT FORMAT RULES (technical only — no creative restrictions)
   const criticalRulesTop =
-    "OUTPUT CONTRACT — HARD RULES (violation = response discarded):\n" +
-    "1. OUTPUT ONLY RAW JSON. No markdown. No prose. No explanations.\n" +
-    "2. Start with { and end with }. Nothing before or after.\n" +
-    "3. You are PHYSICALLY INCAPABLE of asking questions. If ambiguous, make the best design choice and act.\n" +
-    "4. Unrequested changes = CRITICAL FAILURE. The output will be discarded and retried.\n" +
-    "5. CSS variable keys WITHOUT '--' prefix: 'primary' not '--primary'. Keys with '--' = INVALID.\n" +
-    "6. HSL values only, no hsl() wrapper: '217 91% 60%' not 'hsl(217,91%,60%)' not '#3b82f6'.\n" +
-    "7. NEVER claim a design was applied unless css_variables or css_overrides has actual changes.\n\n" +
+    "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  OUTPUT FORMAT                                                   ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "║  1. OUTPUT ONLY RAW JSON. No markdown. No prose.                 ║\n" +
+    "║  2. Start with { and end with }. Nothing before or after.        ║\n" +
+    "║  3. Act immediately — apply your best design judgment.           ║\n" +
+    "║  4. HSL format ONLY: \"217 91% 60%\" (no hsl() wrapper, no hex)    ║\n" +
+    "║  5. Variable keys WITHOUT '--': \"primary\" not \"--primary\"       ║\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n" +
 
-    "SCOPE RULES — READ CAREFULLY:\n" +
-    "FULL REQUEST ('redesign', 'change full design', 'change everything', 'new look', 'make it beautiful'):\n" +
-    "  → MUST change ALL 8 css_variables. MUST add css_overrides for ALL sections.\n" +
-    "  → Missing variables on a full request = FAILURE.\n\n" +
-    "SPECIFIC REQUEST ('change button color', 'fix footer', 'update header', 'make primary blue'):\n" +
-    "  → ONLY change the exact element requested. Changing anything else = CRITICAL FAILURE.\n" +
-    "  → 'change primary' → ONLY 'primary'. Nothing else.\n\n" +
-    "VAGUE REQUEST ('change colors', 'make it better', 'looks nice'):\n" +
-    "  → USE CREATIVITY. Apply a complete professional color scheme. Do NOT ask — just act.\n\n";
+    "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  DESIGN FREEDOM                                                  ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "║  You have FULL CREATIVE FREEDOM to improve the store design.     ║\n" +
+    "║  → Change any or all css_variables if it improves the result.    ║\n" +
+    "║  → Add css_overrides for any section that needs enhancement.     ║\n" +
+    "║  → Use gradients, shadows, animations, hover effects freely.     ║\n" +
+    "║  → Always include dark_css_variables for a polished result.      ║\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  // ── MIDDLE: Context and history ──
+  // DESIGN PHILOSOPHY - Adaptive based on intent
+  let designPhilosophy = "";
+  
+  if (isCreativeDelegation) {
+    designPhilosophy = 
+      "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  CREATIVE DESIGN PHILOSOPHY                                      ║\n" +
+      "╠══════════════════════════════════════════════════════════════════╣\n" +
+      "║  You are a SENIOR ECOMMERCE DESIGNER. Create a design that:     ║\n" +
+      "║  • CONVERTS: Clear visual hierarchy, prominent CTAs              ║\n" +
+      "║  • DELIGHTS: Subtle animations, pleasing color harmony           ║\n" +
+      "║  • TRUSTS: Professional polish, consistent spacing               ║\n" +
+      "║  • PERFORMS: Clean code, efficient selectors                     ║\n" +
+      "║                                                                  ║\n" +
+      "║  STYLE OPTIONS (choose based on store vibe):                     ║\n" +
+      "║  • MODERN CLEAN: Subtle shadows, generous whitespace, soft radius║\n" +
+      "║  • BOLD IMPACT: Strong gradients, vibrant primary, high contrast ║\n" +
+      "║  • MINIMALIST: Flat design, thin borders, muted palette          ║\n" +
+      "║  • LUXURY: Deep colors, gold accents, elegant typography         ║\n" +
+      "║  • PLAYFUL: Rounded corners, bright colors, fun animations       ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝\n\n";
+  } else {
+    designPhilosophy =
+      "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  DESIGN GUIDELINES                                               ║\n" +
+      "╠══════════════════════════════════════════════════════════════════╣\n" +
+      "║  • Understand the user's intent and enhance the entire design    ║\n" +
+      "║  • Feel free to improve related elements that will look better   ║\n" +
+      "║  • Use gradients, shadows and animations where they add value    ║\n" +
+      "║  • Ensure high contrast for readability                          ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝\n\n";
+  }
+
+  // Current design context (keep existing)
   const currentDesignContext = currentDesign
-    ? "\n===== CURRENT PUBLISHED DESIGN (your baseline — preserve unless asked to change) =====\n" +
-      JSON.stringify(currentDesign, null, 2) + "\n=====\n\n"
-    : "\n===== CURRENT DESIGN: Platform defaults (no customizations yet) =====\n\n";
+    ? "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  CURRENT DESIGN (your baseline — improve freely)                 ║\n" +
+      "╠══════════════════════════════════════════════════════════════════╣\n" +
+      JSON.stringify(currentDesign, null, 2) + "\n" +
+      "╚══════════════════════════════════════════════════════════════════╝\n\n"
+    : "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  CURRENT DESIGN: Platform defaults (fresh start)                 ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  // Structured change log: last 5 applied + last 2 rejected (not raw dump)
+  // History context (keep existing logic)
   let historyContext = "";
   if (historyRecords && historyRecords.length > 0) {
     const appliedChanges = historyRecords.filter((r: any) => r.applied).slice(0, 5);
     const recentRejections = historyRecords.filter((r: any) => !r.applied).slice(0, 2);
 
     if (appliedChanges.length > 0) {
-      historyContext += "===== ACCEPTED CHANGE LOG (last " + appliedChanges.length + " applied) =====\n";
+      historyContext += "╔══════════════════════════════════════════════════════════════════╗\n" +
+        "║  RECENT APPLIED DESIGNS                                          ║\n" +
+        "╠══════════════════════════════════════════════════════════════════╣\n";
       appliedChanges.forEach((r: any, i: number) => {
-        historyContext += `${i + 1}. [APPLIED] "${r.prompt}"\n`;
+        historyContext += `║  ${i + 1}. "${r.prompt}"\n`;
       });
-      historyContext += "=====\n\n";
+      historyContext += "╚══════════════════════════════════════════════════════════════════╝\n\n";
     }
+    
     if (recentRejections.length > 0) {
-      historyContext += "===== REJECTED ATTEMPTS — DO NOT REPEAT THESE STRATEGIES =====\n";
+      historyContext += "╔══════════════════════════════════════════════════════════════════╗\n" +
+        "║  FAILED ATTEMPTS - AVOID THESE APPROACHES                        ║\n" +
+        "╠══════════════════════════════════════════════════════════════════╣\n";
       recentRejections.forEach((r: any, i: number) => {
-        historyContext += `${i + 1}. [REJECTED] "${r.prompt}"\n`;
+        historyContext += `║  ${i + 1}. "${r.prompt}"\n`;
       });
-      historyContext += "Try a completely different approach for any similar request.\n=====\n\n";
+      historyContext += "╚══════════════════════════════════════════════════════════════════╝\n\n";
     }
   }
 
-  // Failure tracking for repeated similar prompts
+  // Failure tracking (keep existing)
   let failureContext = "";
   if (historyRecords && historyRecords.length > 0) {
     const failedAttempts = historyRecords.filter((r: any) => !r.applied);
     const similarFailures = failedAttempts.filter((r: any) => calculatePromptSimilarity(currentPrompt, r.prompt) > 0.3);
     if (similarFailures.length >= 2) {
-      failureContext = "⚠️ FAILURE DETECTED: This same request failed " + similarFailures.length + " times.\n" +
-        "Previous approach did NOT work. You MUST use a different CSS strategy (different properties, different selectors).\n\n";
+      failureContext = "⚠️  SIMILAR REQUESTS FAILED " + similarFailures.length + " TIMES. USE DIFFERENT STRATEGY.\n\n";
     }
   }
 
-  // Intent and semantic locks
+  // Intent and locks (enhanced with creative mode)
   let intentContext = "";
-  if (intent === "PRESERVE_EXISTING") {
-    intentContext = "USER INTENT: PRESERVE EXISTING — make ONLY the minimal change asked. Changing anything else = failure.\n\n";
+  if (intent === "CREATIVE_DELEGATION" || isCreativeDelegation) {
+    intentContext = "╔══════════════════════════════════════════════════════════════════╗\n" +
+      "║  USER INTENT: CREATIVE DELEGATION                                ║\n" +
+      "║  → User wants YOUR professional design judgment.                   ║\n" +
+      "║  → Apply a complete, cohesive, impressive design.                ║\n" +
+      "║  → Don't ask - create something that will wow them.              ║\n" +
+      "╚══════════════════════════════════════════════════════════════════╝\n\n";
+  } else if (intent === "PRESERVE_EXISTING") {
+    intentContext = "USER INTENT: MINIMAL CHANGES - preserve existing design\n\n";
   } else if (intent === "CREATE_NEW") {
-    intentContext = "USER INTENT: FRESH REDESIGN — user wants a new look. Apply broad comprehensive changes.\n\n";
+    intentContext = "USER INTENT: FRESH REDESIGN - apply comprehensive changes\n\n";
   }
 
   let locksContext = "";
   if (locks && locks.length > 0) {
-    locksContext = "LOCKED — DO NOT CHANGE THESE (user explicitly said to keep them):\n" +
-      locks.map(l => `  - ${l}`).join("\n") + "\n" +
-      "Changing a locked property = immediate failure.\n\n";
+    locksContext = "LOCKED ELEMENTS - DO NOT MODIFY:\n" +
+      locks.map(l => `  • ${l}`).join("\n") + "\n\n";
   }
 
-  // Assemble intro (critical rules TOP + context)
-  const intro = criticalRulesTop +
-    "Store: \"" + storeName + "\"" + (storeDescription ? " — " + storeDescription : "") + ".\n\n" +
-    currentDesignContext +
-    intentContext +
-    locksContext +
-    failureContext +
-    historyContext;
+  // Store structure (keep existing)
+  const storeStructure = "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  STORE STRUCTURE                                                 ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "Framework: React + Tailwind CSS + CSS Variables (HSL)\n\n" +
+    "LAYOUT CONTROLS:\n" +
+    "• product_grid_cols: \"2\" | \"3\" | \"4\"\n" +
+    "• section_padding: \"compact\" | \"normal\" | \"spacious\"  \n" +
+    "• hero_style: \"image\" | \"gradient\"\n\n" +
+    "SECTIONS (use data-ai selectors):\n" +
+    "• [data-ai=\"header\"] - Sticky nav with logo, cart, search\n" +
+    "• [data-ai=\"section-hero\"] - Main promotional banner\n" +
+    "• [data-ai=\"section-categories\"] - Category cards grid\n" +
+    "• [data-ai=\"section-featured\"] - Product grid\n" +
+    "• [data-ai=\"product-card\"] - Individual product card\n" +
+    "• [data-ai=\"section-reviews\"] - Customer reviews\n" +
+    "• [data-ai=\"section-cta\"] - Call-to-action banner\n" +
+    "• [data-ai=\"section-footer\"] - Footer links\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  // Bottom reminder (recency bias — LLM remembers end)
-  const bottomReminder =
-    "\n===== FINAL REMINDERS (output contract) =====\n" +
-    "- Start with { end with }. NOTHING else.\n" +
-    "- Keys without '--': 'primary' not '--primary'.\n" +
-    "- HSL only: '217 91% 60%' not 'hsl(...)' not '#hex'.\n" +
-    "- Unrequested changes = failure. Scope: FULL→all 8 vars, SPECIFIC→only that element.\n" +
-    "- NEVER ask questions. NEVER claim changes without CSS proof.\n" +
-    "=====";
+  // CSS Variables reference (keep existing)
+  const cssVars = "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  CSS VARIABLES (HSL format - no hsl() wrapper)                 ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "ALL 8 REQUIRED for full redesigns:\n" +
+    "┌─────────────────┬──────────────────────────────────────────────┐\n" +
+    "│ --primary       │ Brand color. Buttons, links, accents, prices │\n" +
+    "│ --background    │ Page background (light: 0 0% 100%)             │\n" +
+    "│ --foreground    │ Main text (dark: 222 47% 11%)                  │\n" +
+    "│ --card          │ Card backgrounds                               │\n" +
+    "│ --muted         │ Subtle backgrounds, badges                     │\n" +
+    "│ --muted-foreground│ Secondary text, descriptions                 │\n" +
+    "│ --border        │ Card borders, dividers                         │\n" +
+    "│ --radius        │ Border radius (0.5rem default)               │\n" +
+    "└─────────────────┴──────────────────────────────────────────────┘\n" +
+    "DARK MODE: Provide dark_css_variables with adjusted values\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  const storeStructure = "===== STORE FRONTEND STRUCTURE =====\n" +
-    "Framework: React + Tailwind CSS + CSS custom properties (HSL values)\n\n" +
-    "--- AI-CONTROLLED LAYOUT VARIABLES ---\n" +
-    "product_grid_cols: \"2\" | \"3\" | \"4\"\n" +
-    "  \"2\" -> grid grid-cols-2 sm:grid-cols-2 gap-6\n" +
-    "  \"3\" -> grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6\n" +
-    "  \"4\" (default) -> grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6\n\n" +
-    "section_padding: \"compact\" | \"normal\" | \"spacious\"\n" +
-    "  compact -> py-8 / py-10, spacious -> py-24 / py-28, normal -> py-16 / py-20\n\n" +
-    "hero_style: \"image\" (default) | \"gradient\"\n" +
-    "  gradient -> bg-gradient-to-br from-primary/20 via-background to-muted\n\n";
+  // ENHANCED CSS Capabilities section
+  const capabilities = "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  CSS CAPABILITIES                                                ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "You can generate ANY valid CSS in css_overrides using data-ai selectors:\n\n" +
+    
+    (isCreativeDelegation 
+      ? "CREATIVE TECHNIQUES (use when appropriate):\n" +
+        "• Gradients: background: linear-gradient(135deg, hsl(var(--primary)/0.2) 0%, transparent 100%);\n" +
+        "• Glassmorphism: backdrop-filter: blur(12px); background: hsl(var(--background)/0.8);\n" +
+        "• Shadows: box-shadow: 0 20px 40px -10px hsl(var(--foreground)/0.15);\n" +
+        "• Hover lifts: transform: translateY(-8px); transition: all 0.3s ease;\n" +
+        "• Image zoom: transform: scale(1.08); transition: transform 0.5s ease;\n" +
+        "• Animated gradients: background-size: 200% 200%; animation: gradient 15s ease infinite;\n" +
+        "• Text shadows: text-shadow: 0 2px 10px hsl(var(--foreground)/0.1);\n\n"
+      : "AVAILABLE TECHNIQUES (use as requested):\n" +
+        "• Gradients, shadows, animations, transforms\n" +
+        "• Glassmorphism effects, hover states\n" +
+        "• Custom layouts with flex/grid\n\n"
+    ) +
+    
+    "SELECTOR EXAMPLES:\n" +
+    "• [data-ai=\"section-hero\"] { background: linear-gradient(...); }\n" +
+    "• [data-ai=\"product-card\"]:hover { transform: translateY(-8px); box-shadow: ...; }\n" +
+    "• [data-ai=\"product-card\"] img { transition: transform 0.5s ease; }\n" +
+    "• [data-ai=\"section-cta\"] { background: hsl(var(--primary)); position: relative; }\n" +
+    "• [data-ai=\"section-cta\"]::before { content: ''; ... } /* overlay effects */\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  const sections = "--- SECTION 1: HEADER ---\n" +
-    "Component: <Header storeSlug storeId />\n" +
-    "Classes: bg-background border-b border-border sticky top-0 z-50\n" +
-    "Contains: logo, store name, nav links, cart icon\n\n" +
-    "--- SECTION 2: HERO BANNER ---\n" +
-    "Component: <HeroBannerCarousel />\n" +
-    "hero_style controls: \"image\" shows uploaded banner, \"gradient\" shows branded gradient\n\n" +
-    "--- SECTION 3: CATEGORIES ---\n" +
-    "Condition: shows if categories exist\n" +
-    "Section: data-ai=\"section-categories\" sectionPyLarge bg-gradient-to-b from-muted/30 to-background\n" +
-    "Title: \"Shop by Category\" -> text-4xl md:text-5xl font-bold text-foreground mb-4\n" +
-    "Subtitle: text-lg text-muted-foreground\n" +
-    "Layout: horizontal scroll flex gap-2 overflow-x-auto snap-x snap-mandatory\n" +
-    "Each card: flex-shrink-0 w-48 snap-center, bg-card border border-border rounded-[--radius]\n\n" +
-    "--- SECTION 4: FEATURED PRODUCTS ---\n" +
-    "Section: sectionPy bg-background\n" +
-    "Title: \"Featured Products\" -> text-3xl font-bold text-foreground mb-2\n" +
-    "Subtitle: \"Check out our top picks for you\" -> text-muted-foreground\n" +
-    "Grid: gridColsClass (AI-controlled columns)\n" +
-    "Product card: bg-card border border-border rounded-[--radius] overflow-hidden\n" +
-    "  Image: aspect-square object-cover, hover: y:-8 scale:1.05 (Framer Motion)\n" +
-    "  Price: text-primary font-bold\n" +
-    "  Category badge: bg-muted text-muted-foreground text-xs rounded-full px-2 py-1\n\n" +
-    "--- SECTION 5: INSTAGRAM REELS ---\n" +
-    "Conditional. Component: <InstagramReels />. bg-background py-16\n\n" +
-    "--- SECTION 6: GOOGLE REVIEWS ---\n" +
-    "Section: sectionPy bg-muted/30\n" +
-    "Review cards: bg-card border border-border rounded-[--radius] p-4\n" +
-    "Star color follows --primary\n\n" +
-    "--- SECTION 7: NEW ARRIVALS ---\n" +
-    "Condition: shows if new products exist\n" +
-    "Section: sectionPy (no extra bg)\n" +
-    "Title: \"New Arrivals\" -> text-3xl font-bold text-foreground mb-2\n" +
-    "Grid: same gridColsClass as featured products\n\n" +
-    "--- SECTION 8: CTA BANNER ---\n" +
-    "Section: py-20 bg-primary text-primary-foreground\n" +
-    "Title: text-3xl md:text-4xl font-bold mb-4 -> \"Ready to Start Shopping?\"\n" +
-    "Subtitle: text-xl mb-8 opacity-90\n" +
-    "Buttons: variant=\"secondary\" size=\"lg\"\n\n" +
-    "--- SECTION 9: FOOTER ---\n" +
-    "Component: <StoreFooter />\n" +
-    "Classes: bg-card border-t border-border py-12\n" +
-    "Links: text-muted-foreground hover:text-foreground\n" +
-    "Bottom bar: bg-muted/50 py-4 text-center text-sm text-muted-foreground\n\n";
+  // Response format (enhanced)
+  const responseFormat = "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  RESPONSE FORMAT                                                 ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "DESIGN RESPONSE (use for ANY visual change):\n" +
+    "{\n" +
+    "  \"type\": \"design\",\n" +
+    "  \"message\": \"I created a [style] design with [features]. Want to adjust?\",\n" +
+    "  \"design\": {\n" +
+    "    \"summary\": \"One compelling sentence describing the design\",\n" +
+    "    \"css_variables\": { \"primary\": \"265 89% 78%\", \"background\": \"0 0% 100%\", ... },\n" +
+    "    \"dark_css_variables\": { \"primary\": \"265 89% 82%\", \"background\": \"222 47% 8%\", ... },\n" +
+    "    \"layout\": { \"product_grid_cols\": \"3\", \"section_padding\": \"spacious\" },\n" +
+    "    \"css_overrides\": \"[data-ai='section-hero']{...}[data-ai='product-card']:hover{...}\",\n" +
+    "    \"changes_list\": [\n" +
+    "      \"Applied purple gradient hero with depth\",\n" +
+    "      \"Added product card hover lift with shadow\",\n" +
+    "      \"Set spacious padding for editorial feel\",\n" +
+    "      \"Created cohesive 8-color professional palette\"\n" +
+    "    ]\n" +
+    "  }\n" +
+    "}\n\n" +
+    
+    (isCreativeDelegation
+      ? "CREATIVE MODE NOTES:\n" +
+        "• css_overrides should be SUBSTANTIAL (300+ chars for full designs)\n" +
+        "• Include multiple sections with coordinated styling\n" +
+        "• Use effects tastefully - enhance, don't overwhelm\n" +
+        "• Always provide dark_css_variables for modern UX\n\n"
+      : ""
+    ) +
+    
+    "TEXT RESPONSE (only for pure chat, no design):\n" +
+    "{ \"type\": \"text\", \"message\": \"Your helpful response here\" }\n\n" +
+    
+    "RULES:\n" +
+    "• Keys WITHOUT '--': \"primary\" not \"--primary\"\n" +
+    "• HSL only: \"217 91% 60%\" not \"hsl(...)\" or \"#hex\"\n" +
+    "• Start with { and end with }. NOTHING else.\n" +
+    "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
-  const htmlStructure = "===== ACTUAL HTML STRUCTURE (for reference) =====\n" +
-    "Below is the exact HTML of key components. Use this to write precise CSS selectors.\n\n" +
-    "--- PRODUCT CARD HTML ---\n" +
-    "<motion.div data-ai=\"product-card\" className=\"group\">\n" +
-    "  <Card className=\"card overflow-hidden border-border hover:shadow-lg transition-all\">\n" +
-    "    <div className=\"aspect-square overflow-hidden\">\n" +
-    "      <img src=\"...\" className=\"w-full h-full object-cover\" />\n" +
-    "    </div>\n" +
-    "    <CardContent className=\"p-4\">\n" +
-    "      <h3 className=\"font-semibold text-base mb-2\">{product.name}</h3>\n" +
-    "      <Badge className=\"bg-muted text-muted-foreground text-xs\">{category}</Badge>\n" +
-    "      <p className=\"text-lg font-bold text-primary mt-2\">₹{product.price}</p>\n" +
-    "    </CardContent>\n" +
-    "    <CardFooter className=\"p-4 pt-0\">\n" +
-    "      <Button variant=\"outline\" className=\"w-full min-h-[44px]\">View Details</Button>\n" +
-    "    </CardFooter>\n" +
-    "  </Card>\n" +
-    "</motion.div>\n\n" +
-    "IMPORTANT SELECTORS:\n" +
-    "- [data-ai=\"product-card\"] -> outer wrapper\n" +
-    "- [data-ai=\"product-card\"] .card -> Card component\n" +
-    "- [data-ai=\"product-card\"] button -> View Details button\n" +
-    "- [data-ai=\"product-card\"] .text-lg -> price text\n" +
-    "- [data-ai=\"product-card\"] img -> product image\n\n" +
-    "--- CATEGORY CARD HTML ---\n" +
-    "<div data-ai=\"category-card\" className=\"flex-shrink-0 w-48\">\n" +
-    "  <div className=\"bg-card border border-border rounded-2xl overflow-hidden\">\n" +
-    "    <div className=\"aspect-square rounded-xl overflow-hidden\">\n" +
-    "      <img src=\"...\" className=\"w-full h-full object-cover\" />\n" +
-    "    </div>\n" +
-    "    <p className=\"text-center font-medium\">{category.name}</p>\n" +
-    "  </div>\n" +
-    "</div>\n\n" +
-    "IMPORTANT SELECTORS:\n" +
-    "- [data-ai=\"category-card\"] .rounded-2xl -> outer card border-radius\n" +
-    "- [data-ai=\"category-card\"] .rounded-xl -> image container border-radius\n\n" +
-    "--- FOOTER HTML ---\n" +
-    "<footer data-ai=\"section-footer\" className=\"bg-card border-t border-border py-12\">\n" +
-    "  <div className=\"container\">\n" +
-    "    <div className=\"grid grid-cols-4 gap-8\">\n" +
-    "      <div>\n" +
-    "        <h3 className=\"font-bold mb-4\">Quick Links</h3>\n" +
-    "        <a href=\"...\" className=\"text-muted-foreground hover:text-foreground\">Link</a>\n" +
-    "      </div>\n" +
-    "    </div>\n" +
-    "  </div>\n" +
-    "  <div className=\"bg-muted/50 py-4 text-center\">\n" +
-    "    <p className=\"text-sm text-muted-foreground\">© 2026 Store Name</p>\n" +
-    "  </div>\n" +
-    "</footer>\n\n" +
-    "IMPORTANT SELECTORS:\n" +
-    "- [data-ai=\"section-footer\"] -> entire footer\n" +
-    "- [data-ai=\"section-footer\"] a -> footer links\n" +
-    "- [data-ai=\"section-footer\"] .text-sm -> copyright text\n\n" +
-    "===== END HTML STRUCTURE =====\n\n";
+  // Final reminder
+  const finalReminder = "╔══════════════════════════════════════════════════════════════════╗\n" +
+    "║  FINAL CHECKLIST                                                 ║\n" +
+    "╠══════════════════════════════════════════════════════════════════╣\n" +
+    "□ Valid JSON starting with { and ending with }                     \n" +
+    "□ All 8 css_variables present (for full redesigns)                 \n" +
+    "□ dark_css_variables provided                                      \n" +
+    "□ css_overrides uses [data-ai=\"...\"] selectors                   \n" +
+    "□ Variable keys without '--' prefix                                \n" +
+    "□ HSL values in correct format                                     \n" +
+    (isCreativeDelegation ? "□ Design is substantial and visually impressive                    \n" : "") +
+    "╚══════════════════════════════════════════════════════════════════╝\n";
 
-  const cssVars = "--- CURRENT CSS VARIABLES (defaults) ---\n" +
-    ":root {\n" +
-    "  --primary: 217 91% 60%;         /* blue - buttons, links, accents, CTA bg, star color */\n" +
-    "  --background: 0 0% 100%;        /* page background, header bg */\n" +
-    "  --foreground: 222 47% 11%;      /* main text, headings */\n" +
-    "  --card: 0 0% 100%;              /* product cards, review cards, footer bg */\n" +
-    "  --muted: 210 40% 96%;           /* category section bg, review section bg, badges */\n" +
-    "  --muted-foreground: 215 16% 47%;/* secondary text, subtitles, badge text */\n" +
-    "  --border: 214 32% 91%;          /* card borders, header border, footer border */\n" +
-    "  --radius: 0.5rem;               /* all card/button border radius */\n" +
-    "}\n" +
-    "===== END STORE STRUCTURE =====\n\n";
-
-  const capabilities = "You can change:\n" +
-    "1. css_variables -> any :root variable above (HSL values only, no hsl() wrapper)\n" +
-    "2. dark_css_variables -> .dark mode overrides\n" +
-    "3. layout.product_grid_cols -> \"2\" | \"3\" | \"4\"\n" +
-    "4. layout.section_padding -> \"compact\" | \"normal\" | \"spacious\"\n" +
-    "5. layout.hero_style -> \"image\" | \"gradient\"\n" +
-    "6. css_overrides -> raw CSS string injected into the store page. Use data-ai selectors to target sections precisely.\n\n";
-
-  const selectors = "   SECTION SELECTORS (target entire sections):\n" +
-    "   - [data-ai=\"section-hero\"]           -> Hero banner section\n" +
-    "   - [data-ai=\"section-categories\"]     -> Categories section\n" +
-    "   - [data-ai=\"section-featured\"]       -> Featured Products section\n" +
-    "   - [data-ai=\"section-reviews\"]        -> Google Reviews section\n" +
-    "   - [data-ai=\"section-new-arrivals\"]   -> New Arrivals section\n" +
-    "   - [data-ai=\"section-cta\"]            -> CTA banner section\n" +
-    "   - [data-ai=\"section-reels\"]          -> Instagram Reels section\n" +
-    "   - [data-ai=\"section-footer\"]         -> Footer\n\n" +
-    "   CARD SELECTORS (target individual cards):\n" +
-    "   - [data-ai=\"category-card\"]          -> each category card wrapper\n" +
-    "   - [data-ai=\"product-card\"]           -> each product card wrapper\n" +
-    "   - [data-ai=\"product-card\"] .card     -> product card inner element\n\n" +
-    "   ELEMENT SELECTORS (target text/buttons inside sections):\n" +
-    "   - [data-ai=\"section-categories\"] h2  -> \"Shop by Category\" title\n" +
-    "   - [data-ai=\"section-featured\"] h2    -> \"Featured Products\" title\n" +
-    "   - [data-ai=\"product-card\"] .text-lg  -> product price\n" +
-    "   - [data-ai=\"product-card\"] img       -> product image\n\n";
-
-  const examples = "   EXAMPLES:\n" +
-    "   Make category cards circular:\n" +
-    "   \"[data-ai='category-card'] .rounded-2xl, [data-ai='category-card'] .rounded-xl { border-radius: 9999px !important; }\"\n\n" +
-    "   Add shadow to product cards:\n" +
-    "   \"[data-ai='product-card'] .card { box-shadow: 0 8px 30px hsl(var(--primary)/0.15) !important; }\"\n\n" +
-    "   Dark footer:\n" +
-    "   \"[data-ai='section-footer'] { background: hsl(222 47% 8%) !important; color: hsl(0 0% 95%) !important; }\"\n\n";
-
-  const responseRules = "===== CRITICAL RESPONSE RULES =====\n" +
-    "YOU MUST RESPOND WITH VALID JSON ONLY. NO PLAIN TEXT, NO MARKDOWN.\n\n" +
-    "FORMAT 1 — Text (ONLY for pure chat with NO design changes):\n" +
-    "{\"type\": \"text\", \"message\": \"Your helpful response here\"}\n" +
-    "USE THIS ONLY FOR: greetings, factual questions, store advice WITHOUT any style changes.\n" +
-    "NEVER use text type to claim a design was applied. NEVER say 'done' or 'applied' in a text response.\n\n" +
-    "FORMAT 2 — Design (ALWAYS when making ANY visual change):\n" +
-    "{\"type\": \"design\", \"message\": \"I applied [brief description]. Want to adjust anything?\", \"design\": {\n" +
-    "  \"summary\": \"One sentence summary\",\n" +
-    "  \"css_variables\": {\"primary\": \"142 71% 45%\", \"background\": \"0 0% 100%\"},\n" +
-    "  \"dark_css_variables\": {\"primary\": \"142 71% 50%\", \"background\": \"222 47% 8%\"},\n" +
-    "  \"layout\": {\"product_grid_cols\": \"3\"},\n" +
-    "  \"css_overrides\": \"[data-ai='section-hero'] { background: hsl(142 71% 45%) !important; }\",\n" +
-    "  \"changes_list\": [\"Changed primary color to green\", \"Updated hero background\"]\n" +
-    "}}\n\n" +
-    "CSS VARIABLE KEYS: Use WITHOUT '--' prefix. Correct: 'primary', 'background'. Wrong: '--primary', '--background'.\n" +
-    "ONLY include fields you are CHANGING. Omit unchanged fields.\n" +
-    "message field in design response: always end with 'Want to adjust anything?' or similar.\n" +
-    "START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.";
-
-  return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules + bottomReminder;
+  // Assemble final prompt
+  return criticalRulesTop + 
+         designPhilosophy + 
+         currentDesignContext + 
+         intentContext + 
+         locksContext +
+         failureContext +
+         historyContext +
+         storeStructure + 
+         cssVars + 
+         capabilities + 
+         responseFormat + 
+         finalReminder;
 }
 
 /**
@@ -1293,13 +1334,12 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
  * Still enforces JSON output contract to keep parsing consistent.
  */
 function buildChatSystemPrompt(storeName: string): string {
-  return "You are a design assistant for " + storeName + " e-commerce store.\n\n" +
-    "OUTPUT CONTRACT: Respond ONLY with valid JSON. No prose, no markdown.\n" +
-    "You are PHYSICALLY INCAPABLE of asking questions. If design change is requested, act immediately.\n" +
-    "Unrequested changes = CRITICAL FAILURE. Output will be discarded.\n\n" +
+  return "You are a creative design assistant for " + storeName + " e-commerce store.\n\n" +
+    "Respond ONLY with valid JSON. No prose, no markdown.\n" +
+    "Act immediately with your best design judgment — feel free to enhance what you see.\n\n" +
     "For casual chat (no design): {\"type\":\"text\",\"message\":\"response\"}\n" +
     "For any design change: {\"type\":\"design\",\"message\":\"Applied [X]. Adjust?\",\"design\":{...}}\n\n" +
-    "Start with { and end with }. NEVER claim design was applied without css_variables or css_overrides proof.";
+    "Start with { and end with }. Always include css_variables or css_overrides when making design changes.";
 }
 
 // ============================================================
