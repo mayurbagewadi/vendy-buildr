@@ -1,23 +1,98 @@
+/**
+ * ============================================================
+ * AI DESIGNER — SUPABASE EDGE FUNCTION
+ * ============================================================
+ * This is the backend brain of the AI Designer feature.
+ * It runs as a serverless Deno function on Supabase Edge.
+ *
+ * WHAT IT DOES:
+ *   Store owners describe design changes in plain English.
+ *   This function calls an AI model via OpenRouter, parses
+ *   the response, validates it, and saves it to the database.
+ *
+ * SUPPORTED ACTIONS (sent in request body as `action`):
+ *   - get_token_balance  → Check how many AI tokens the store has
+ *   - generate_design    → One-shot prompt → design (legacy flow)
+ *   - chat               → Main action: full conversation with history
+ *   - apply_design       → Publish a generated design to the live store
+ *   - reset_design       → Revert store to platform defaults
+ *   - rollback_design    → Revert to a previous design version
+ *   - create_payment_order → Start a Razorpay token purchase
+ *   - confirm_payment    → Confirm token purchase after payment
+ *
+ * REQUEST FLOW (chat action):
+ *   1. Validate store_id + user_id (UUID)
+ *   2. Rate limit check (10 requests / 60s per store)
+ *   3. Fetch platform settings (OpenRouter key, model)
+ *   4. Fetch store info (name, description)
+ *   5. Classify prompt: design request vs casual chat
+ *   6. Detect intent (preserve / create new) + semantic locks
+ *   7. Fetch history (last 20 records) for failure tracking
+ *   8. Build system prompt (full context or lightweight)
+ *   9. Call OpenRouter API with 45s timeout + fallback model
+ *  10. Parse + validate AI response (Delta or Legacy format)
+ *  11. Sanitize + minify CSS overrides
+ *  12. Deduct 1 token (optimistic lock on DB row)
+ *  13. Save to ai_designer_history (JSONB + TEXT separately)
+ *  14. Return design + token balance to frontend
+ *
+ * DATABASE TABLES USED:
+ *   - platform_settings     → OpenRouter key, model, Razorpay keys
+ *   - stores                → Store name, description
+ *   - ai_token_purchases    → Token balance per store
+ *   - ai_designer_history   → Prompt + AI response log
+ *   - store_design_state    → Currently applied design (CSS vars)
+ *   - ai_designer_metrics   → Performance monitoring logs
+ *
+ * DEPLOYMENT:
+ *   supabase functions deploy ai-designer
+ * ============================================================
+ */
+
+// ============================================================
+// IMPORTS
+// ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+// ============================================================
+// CONSTANTS
+// ============================================================
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
+/** Singleton row ID for platform_settings table */
 const SETTINGS_ID = "00000000-0000-0000-0000-000000000000";
-const MAX_CSS_SIZE = 15000; // 15KB limit
-const MAX_RESPONSE_SIZE = 10000; // 10KB limit
+/** Max allowed CSS override string size before rejection */
+const MAX_CSS_SIZE = 15000; // 15KB
+/** Max allowed total design JSON size before rejection */
+const MAX_RESPONSE_SIZE = 10000; // 10KB
 
-// FIX #6: UUID validation helper
+// ============================================================
+// SECTION 1: INPUT VALIDATION
+// ============================================================
+
+/** Validates that a string is a proper UUID (prevents SQL injection / bad queries) */
 function isValidUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-// FIX #9: In-memory rate limiting (resets on function restart, good enough for edge functions)
+// ============================================================
+// SECTION 2: RATE LIMITING
+// In-memory map — resets when the function cold-starts.
+// Sufficient for edge functions (each instance is isolated).
+// Prevents a single store from spamming the AI API.
+// ============================================================
+
+/**
+ * Checks if a store has exceeded the request rate limit.
+ * Default: 10 requests per 60 seconds per store.
+ * Returns true = allowed, false = blocked (429 response).
+ */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(storeId: string, maxRequests = 10, windowMs = 60000): boolean {
   const now = Date.now();
@@ -31,7 +106,20 @@ function checkRateLimit(storeId: string, maxRequests = 10, windowMs = 60000): bo
   return true; // allowed
 }
 
-// FIX Issue-3: Strip "--" prefix from css_variable keys (AI sometimes includes them, breaks CSS)
+// ============================================================
+// SECTION 3: COLOR NORMALIZATION
+// The AI returns colors in many formats: #hex, rgb(), hsl().
+// The Tailwind CSS system requires raw HSL: "217 91% 60%"
+// (no hsl() wrapper, no hex, no rgb).
+// These functions convert any color format to that standard.
+// ============================================================
+
+/**
+ * Strips "--" prefix from CSS variable keys (AI sometimes includes it).
+ * Also normalizes all values to raw HSL format via normalizeColorValue.
+ * Input:  { "--primary": "#3b82f6" }
+ * Output: { "primary": "217 91% 60%" }
+ */
 function normalizeVarKeys(vars: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(vars || {})) {
@@ -40,7 +128,11 @@ function normalizeVarKeys(vars: Record<string, string>): Record<string, string> 
   return out;
 }
 
-// Normalize any color format the AI might return → raw HSL "H S% L%"
+/**
+ * Converts any color format to raw HSL string "H S% L%".
+ * Handles: hsl() wrapper, #hex6, #hex3, rgb(), already-correct HSL.
+ * Non-color values (rem, px, em) are returned unchanged.
+ */
 function normalizeColorValue(value: string): string {
   if (!value || typeof value !== "string") return value;
   const v = value.trim();
@@ -68,6 +160,7 @@ function normalizeColorValue(value: string): string {
   return v; // Return as-is if unrecognized
 }
 
+/** Converts 6-char hex (without #) to raw HSL string "H S% L%" */
 function hexToHsl(hex: string): string {
   const r = parseInt(hex.substr(0, 2), 16) / 255;
   const g = parseInt(hex.substr(2, 2), 16) / 255;
@@ -75,6 +168,7 @@ function hexToHsl(hex: string): string {
   return rgbToHsl(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
 }
 
+/** Converts RGB (0–255 each) to raw HSL string "H S% L%" */
 function rgbToHsl(r: number, g: number, b: number): string {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -92,7 +186,19 @@ function rgbToHsl(r: number, g: number, b: number): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-// Dynamic temperature: specific edit = 0.2, full redesign = 0.5, retry = 0.3
+// ============================================================
+// SECTION 4: AI BEHAVIOR CONTROL
+// ============================================================
+
+/**
+ * Returns the AI temperature for a given prompt.
+ * Lower temp = more deterministic (good for specific fixes).
+ * Higher temp = more creative (good for full redesigns).
+ *
+ * 0.2 → specific request ("change button color")
+ * 0.3 → retry of a previously failed prompt
+ * 0.5 → full redesign ("redesign everything", "new look")
+ */
 function getTemperature(userPrompt: string, isRetry = false): number {
   if (isRetry) return 0.3;
   const lower = userPrompt.toLowerCase();
@@ -101,8 +207,21 @@ function getTemperature(userPrompt: string, isRetry = false): number {
   return 0.2;
 }
 
-// FIX Issue-2: Unwrap design JSON double-wrapped inside a text message
-// AI sometimes returns { "type": "text", "message": "{\"type\":\"design\",...}" }
+// ============================================================
+// SECTION 5: AI RESPONSE PARSING & SAFETY
+// ============================================================
+
+/**
+ * Fixes a known AI bug: sometimes the AI wraps its design JSON
+ * inside a text message instead of returning it directly.
+ *
+ * Bug example:
+ *   { "type": "text", "message": " {\"type\":\"design\", ...}" }
+ *                                  ^ leading space causes miss
+ *
+ * This function detects and unwraps the inner JSON so the
+ * design is properly processed rather than shown as plain text.
+ */
 function unwrapNestedDesign(parsed: any): any {
   if (parsed?.type !== "text" || typeof parsed?.message !== "string") return parsed;
   const msg = parsed.message.trim();
@@ -123,7 +242,12 @@ function unwrapNestedDesign(parsed: any): any {
   return parsed;
 }
 
-// FIX #16: Detect AI content policy refusal
+/**
+ * Detects if the AI refused to answer due to content policy.
+ * Returns true if the response contains refusal phrases AND
+ * does not start with '{' (meaning it's not valid JSON).
+ * Used to return a friendly error instead of a parse error.
+ */
 function isAIRefusal(content: string): boolean {
   if (!content) return false;
   const refusalPhrases = [
@@ -135,9 +259,19 @@ function isAIRefusal(content: string): boolean {
   return refusalPhrases.some(phrase => lower.includes(phrase)) && !lower.startsWith("{");
 }
 
-// ============================================
-// DELTA/ACTIONS ARCHITECTURE - NEW SCHEMA
-// ============================================
+// ============================================================
+// SECTION 6: ZOD VALIDATION SCHEMAS
+// The AI response is validated against one of two schemas:
+//
+// DELTA FORMAT (preferred):
+//   AI returns only the CHANGES (e.g. "set primary to blue").
+//   Backend merges changes onto the existing design.
+//   Prevents AI from accidentally resetting unrelated styles.
+//
+// LEGACY FORMAT (fallback):
+//   AI returns the full design object (all CSS variables, layout).
+//   Used for backward compatibility and full redesigns.
+// ============================================================
 
 const DesignChangeSchema = z.object({
   action_type: z.enum(["css_variable", "css_variable_dark", "css_override", "layout"]),
@@ -177,11 +311,16 @@ const LegacyDesignSchema = z.object({
   changes_list: z.array(z.string()),
 });
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
+// ============================================================
+// SECTION 7: CSS UTILITIES
+// ============================================================
 
-// FIX #6: CSS Minification - preserves strings in content properties
+/**
+ * Minifies a CSS string to reduce DB storage size (~50% reduction).
+ * Removes comments and collapses whitespace.
+ * Special care: preserves content:"..." strings (e.g. pseudo-elements)
+ * by temporarily replacing them during minification.
+ */
 function minifyCSS(css: string): string {
   if (!css || typeof css !== "string") return "";
 
@@ -208,7 +347,11 @@ function minifyCSS(css: string): string {
   return tempCss;
 }
 
-// Response size validation
+/**
+ * Validates that the AI response does not exceed size limits.
+ * CSS > 15KB or JSON > 10KB gets rejected before DB save.
+ * Prevents database corruption from oversized AI responses.
+ */
 function validateResponseSize(design: any, cssOverrides: string): { valid: boolean; error?: string } {
   const designSize = JSON.stringify(design).length;
   const cssSize = cssOverrides.length;
@@ -224,7 +367,14 @@ function validateResponseSize(design: any, cssOverrides: string): { valid: boole
   return { valid: true };
 }
 
-// Extract JSON from AI response (handles markdown wrappers)
+/**
+ * Extracts and parses JSON from AI response content.
+ * Handles three cases:
+ *   1. Raw JSON string → parse directly
+ *   2. Markdown code block → strip ```json ... ``` then parse
+ *   3. JSON embedded in text → find first { and last } then parse
+ * Throws if no valid JSON is found.
+ */
 function extractJSON(content: string): any {
   try { return JSON.parse(content); } catch { /* continue */ }
   const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -239,7 +389,21 @@ function extractJSON(content: string): any {
   throw new Error("Could not parse AI response as JSON");
 }
 
-// FIX #1: Prompt similarity detection for failure tracking
+// ============================================================
+// SECTION 8: PROMPT ANALYSIS & FAILURE TRACKING
+// These functions analyze the user's prompt to:
+//   - Detect if the same issue was attempted before (failure tracking)
+//   - Classify intent (preserve existing vs fresh redesign)
+//   - Detect semantic locks ("keep colors same")
+//   - Detect if it's a design request vs casual chat
+// ============================================================
+
+/**
+ * Calculates similarity between two prompts using Jaccard similarity
+ * on their extracted keywords (with synonym expansion).
+ * Returns 0.0 (completely different) to 1.0 (identical).
+ * Used to detect when a user is repeating a failed request.
+ */
 function calculatePromptSimilarity(prompt1: string, prompt2: string): number {
   const keywords1 = extractKeywords(prompt1);
   const keywords2 = extractKeywords(prompt2);
@@ -252,7 +416,11 @@ function calculatePromptSimilarity(prompt1: string, prompt2: string): number {
   return intersection / union; // Jaccard similarity
 }
 
-// FIX #10: Synonym expansion for better semantic similarity detection
+/**
+ * Maps common design slang and abbreviations to standard terms.
+ * Ensures "btn" and "buttons" and "button" all match the same keyword.
+ * Applied during keyword extraction for similarity comparison.
+ */
 const DESIGN_SYNONYMS: Record<string, string> = {
   "colour": "color", "colours": "color", "colors": "color",
   "btn": "button", "buttons": "button",
@@ -269,6 +437,7 @@ const DESIGN_SYNONYMS: Record<string, string> = {
   "dark": "theme", "light": "theme", "mode": "theme",
 };
 
+/** Extracts meaningful keywords from a prompt (removes stop words, expands synonyms) */
 function extractKeywords(prompt: string): string[] {
   const stopWords = ["the", "a", "an", "is", "are", "not", "to", "in", "on", "it", "make", "change", "please", "can", "you"];
   const words = prompt
@@ -280,7 +449,12 @@ function extractKeywords(prompt: string): string[] {
   return words.map(word => DESIGN_SYNONYMS[word] || word);
 }
 
-// Classify if prompt needs full design context or is casual chat
+/**
+ * Determines if a prompt is a design request or casual chat.
+ * Design requests use the full system prompt with store structure context.
+ * Casual chat uses the lightweight prompt (no token charge).
+ * Short messages without design keywords are treated as casual chat.
+ */
 function isDesignRequest(prompt: string): boolean {
   const designKeywords = [
     "color", "colour", "blue", "red", "green", "yellow", "purple", "pink", "orange",
@@ -298,9 +472,18 @@ function isDesignRequest(prompt: string): boolean {
   return designKeywords.some(keyword => lowerPrompt.includes(keyword));
 }
 
-// ============================================
-// STRATEGY #3: Intent Classification
-// ============================================
+/**
+ * Classifies user intent from the prompt.
+ *
+ * PRESERVE_EXISTING → "only change the footer", "fix the button", "keep colors same"
+ *   → AI is instructed to make minimal targeted changes only
+ *
+ * CREATE_NEW → "redesign everything", "start fresh", "brand new look"
+ *   → AI is instructed to apply broad comprehensive changes
+ *
+ * NEUTRAL → no clear signal either way
+ *   → AI uses its best judgement based on scope
+ */
 function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "NEUTRAL" {
   const lower = prompt.toLowerCase();
   const preserveKeywords = [
@@ -320,9 +503,16 @@ function classifyIntent(prompt: string): "PRESERVE_EXISTING" | "CREATE_NEW" | "N
   return "NEUTRAL";
 }
 
-// ============================================
-// STRATEGY #7: Semantic Lock Detection
-// ============================================
+/**
+ * Detects phrases that indicate the user wants to LOCK a specific
+ * design element (i.e. "keep colors same", "don't change the footer").
+ *
+ * Detected locks are passed to the system prompt as explicit rules:
+ *   "LOCKED — DO NOT CHANGE: colors (css_variables)"
+ *
+ * This prevents the AI from modifying those elements even when
+ * making other changes to the design.
+ */
 function detectSemanticLocks(prompt: string): string[] {
   const lower = prompt.toLowerCase();
   const locks: string[] = [];
@@ -340,9 +530,17 @@ function detectSemanticLocks(prompt: string): string[] {
   return locks;
 }
 
-// ============================================
-// STRATEGY #6: Destructive Change Detection
-// ============================================
+/**
+ * Detects if the AI's proposed design is "destructive" —
+ * i.e. it changes more than 50% of existing CSS variables
+ * or more than 5 design fields.
+ *
+ * When destructive is true, the frontend shows a warning:
+ *   "This will change 70% of your color variables. Review before publishing."
+ *
+ * The design is still returned — the user can still apply it.
+ * This is informational only, not a block.
+ */
 function detectDestructiveChange(currentDesign: any, proposedDesign: any): {
   destructive: boolean;
   changePercent: number;
@@ -380,7 +578,17 @@ function detectDestructiveChange(currentDesign: any, proposedDesign: any): {
   return { destructive, changePercent, changedFields };
 }
 
-// Retry with exponential backoff
+// ============================================================
+// SECTION 9: HTTP, MONITORING & SECURITY
+// ============================================================
+
+/**
+ * Wraps fetch() with exponential backoff retry logic.
+ * - 4xx errors are returned immediately (client error, no retry)
+ * - 5xx server errors are retried up to maxRetries times
+ * - AbortError (timeout) is re-thrown immediately (no retry)
+ * Retry delays: 1s, 2s, 4s (doubles each attempt)
+ */
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -405,7 +613,12 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
   throw lastError || new Error("Max retries exceeded");
 }
 
-// Log metrics for monitoring
+/**
+ * Saves performance and usage metrics to ai_designer_metrics table.
+ * Called fire-and-forget (non-blocking) — errors are only console-logged.
+ * Tracks: model used, token consumption, latency, errors, CSS sanitization.
+ * Used by super admin analytics dashboard.
+ */
 async function logMetrics(supabase: any, data: {
   store_id: string;
   user_id?: string;
@@ -438,7 +651,20 @@ async function logMetrics(supabase: any, data: {
   }
 }
 
-// CSS Sanitization - blocks dangerous patterns
+/**
+ * Sanitizes AI-generated CSS to block dangerous patterns.
+ * Replaces dangerous code with "/* BLOCKED *\/".
+ *
+ * Blocked patterns:
+ *   - javascript: URLs (XSS via CSS)
+ *   - expression() — IE-era JS in CSS
+ *   - @import — external resource loading
+ *   - <script> tags embedded in CSS
+ *   - behavior: / binding: / -moz-binding — legacy attack vectors
+ *   - data:text/html — data URL injection
+ *
+ * Returns: { safe: bool, sanitized: string, blocked: string[] }
+ */
 function sanitizeCSS(css: string): { safe: boolean; sanitized: string; blocked: string[] } {
   if (!css || typeof css !== "string") {
     return { safe: true, sanitized: "", blocked: [] };
@@ -465,7 +691,22 @@ function sanitizeCSS(css: string): { safe: boolean; sanitized: string; blocked: 
   return { safe: blocked.length === 0, sanitized, blocked };
 }
 
-// Call AI with fallback model support
+// ============================================================
+// SECTION 10: AI API CLIENT
+// ============================================================
+
+/**
+ * Calls the OpenRouter API with automatic fallback model support.
+ *
+ * Flow:
+ *   1. Try primary model (e.g. moonshotai/kimi-k2)
+ *   2. If primary returns 5xx, try fallback model
+ *   3. 4xx from either model = returned to caller (don't retry)
+ *   4. If both fail → throw last error
+ *
+ * The API key and model IDs are trimmed to prevent whitespace 401 errors.
+ * Uses fetchWithRetry internally (3 attempts per model).
+ */
 async function callAIWithFallback(
   primaryModel: string,
   fallbackModel: string | null,
@@ -511,11 +752,30 @@ async function callAIWithFallback(
   throw lastError || new Error("All AI models failed");
 }
 
-// ============================================
-// DELTA/ACTIONS: APPLY CHANGES TO CURRENT DESIGN
-// ============================================
+// ============================================================
+// SECTION 11: DELTA/ACTIONS ARCHITECTURE
+// ============================================================
+// Instead of the AI returning a full new design every time,
+// it returns only the CHANGES (called a "delta").
+//
+// Example delta:
+//   { action_type: "css_variable", key: "primary", value: "142 71% 45%" }
+//
+// The backend then MERGES these changes onto the existing design.
+// This prevents the AI from accidentally overwriting parts of
+// the design that the user didn't ask to change.
+//
+// CSS deduplication: If the same selector appears in both the
+// existing css_overrides and the new delta, the new one wins
+// (replaces instead of appending). This prevents duplicate rules.
+// ============================================================
 
-// FIX #2 + #4: Parse CSS and extract selectors for deduplication, handles @media/@keyframes
+/**
+ * Parses a CSS string into a Map<selector, rules>.
+ * Handles regular selectors AND at-rules (@media, @keyframes, @supports).
+ * At-rules get a unique key (_index suffix) to preserve multiple @media blocks.
+ * Used for CSS deduplication before applying delta changes.
+ */
 function parseCSSSelectors(css: string): Map<string, string> {
   const selectorMap = new Map<string, string>();
   if (!css) return selectorMap;
@@ -563,7 +823,11 @@ function parseCSSSelectors(css: string): Map<string, string> {
   return selectorMap;
 }
 
-// FIX #2 + #4: Rebuild CSS from selector map, handles at-rules
+/**
+ * Rebuilds a CSS string from a selector→rules Map.
+ * At-rule keys (with _index suffix) are cleaned before output.
+ * Called after applyDeltaChanges to produce the final css_overrides string.
+ */
 function rebuildCSS(selectorMap: Map<string, string>): string {
   const blocks: string[] = [];
   selectorMap.forEach((rules, selector) => {
@@ -578,6 +842,18 @@ function rebuildCSS(selectorMap: Map<string, string>): string {
   return blocks.join("\n");
 }
 
+/**
+ * Merges delta changes from AI onto the current design.
+ *
+ * For each change in the changes array:
+ *   css_variable      → update css_variables[key] = value
+ *   css_variable_dark → update dark_css_variables[key] = value
+ *   layout            → update layout[key] = value
+ *   css_override      → add/replace selector in CSS map
+ *
+ * CSS overrides are deduplicated: same selector = overwrite, new selector = append.
+ * Returns a merged design object (does NOT mutate currentDesign).
+ */
 function applyDeltaChanges(currentDesign: any, changes: any[]): any {
   const result = {
     css_variables: { ...(currentDesign?.css_variables || {}) },
@@ -624,7 +900,12 @@ function applyDeltaChanges(currentDesign: any, changes: any[]): any {
   return result;
 }
 
-// Convert Delta format to Legacy format (for database storage)
+/**
+ * Converts Delta format response to Legacy format for DB storage.
+ * Applies the delta changes onto the current design first,
+ * then wraps the result in the Legacy schema shape.
+ * This allows Delta and Legacy responses to be stored identically.
+ */
 function deltaToLegacy(deltaDesign: any, currentDesign: any): any {
   const merged = applyDeltaChanges(currentDesign, deltaDesign.changes);
 
@@ -638,11 +919,27 @@ function deltaToLegacy(deltaDesign: any, currentDesign: any): any {
   };
 }
 
-// ============================================
-// SYSTEM PROMPTS (Updated for Delta/Actions with FULL context)
-// ============================================
+// ============================================================
+// SECTION 12: SYSTEM PROMPTS
+// ============================================================
+// There are 3 system prompts, used in different situations:
+//
+// buildDesignSystemPrompt   → Simple prompt for generate_design (legacy)
+// buildChatSystemPrompt     → Lightweight prompt for casual chat only
+// buildFullChatSystemPrompt → Full enterprise prompt for design requests
+//
+// The FULL prompt includes (in order, for LLM primacy+recency bias):
+//   TOP:    Critical rules (output contract, scope rules)
+//   MIDDLE: Store info, current design, intent, locks, failure tracking, history
+//   BODY:   Full store HTML structure, CSS variables, section selectors, examples
+//   BOTTOM: Final reminder repeating the key rules (recency boost)
+// ============================================================
 
-// Build simple design system prompt (for generate_design action - backward compatibility)
+/**
+ * Simple one-shot system prompt for the generate_design action.
+ * Used for backward compatibility. Includes store structure and CSS
+ * variables, but lacks failure tracking and full context.
+ */
 function buildDesignSystemPrompt(storeName: string, currentDesign: any): string {
   const designContext = currentDesign
     ? "Current store design: " + JSON.stringify(currentDesign) + "\nPreserve existing settings unless user asks to change them."
@@ -689,7 +986,26 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
     responseFormat;
 }
 
-// Build FULL detailed system prompt for design requests in chat (comprehensive version)
+/**
+ * Builds the FULL enterprise-grade system prompt for design requests.
+ *
+ * Uses several LLM prompt engineering techniques:
+ *   - Primacy bias: Critical rules at the TOP (LLM pays most attention to start)
+ *   - Recency bias: Key rules repeated at the BOTTOM (LLM remembers end well too)
+ *   - Loss framing: "Unrequested changes = CRITICAL FAILURE. Output discarded."
+ *   - No-questions framing: "PHYSICALLY INCAPABLE of asking questions"
+ *   - Structured history: Last 5 applied + 2 rejected (not raw dump)
+ *   - Failure injection: If same prompt failed 2+ times, force different strategy
+ *   - Intent + locks: Tell AI what to preserve vs. what to change freely
+ *
+ * @param storeName        - Store display name
+ * @param storeDescription - Store description (optional)
+ * @param currentDesign    - Currently applied design (null = platform defaults)
+ * @param historyRecords   - Last 20 ai_designer_history records for context
+ * @param currentPrompt    - The user's current message (for failure detection)
+ * @param intent           - Classified intent: PRESERVE_EXISTING | CREATE_NEW | NEUTRAL
+ * @param locks            - Detected semantic locks (e.g. ["colors", "footer"])
+ */
 function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string, intent?: string, locks?: string[]): string {
 
   // ── TOP: CRITICAL RULES (primacy bias — LLM remembers start most) ──
@@ -970,7 +1286,12 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
   return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules + bottomReminder;
 }
 
-// Lightweight prompt for casual chat (non-design messages only)
+/**
+ * Lightweight system prompt for casual chat (non-design requests).
+ * Used when isDesignRequest() returns false.
+ * No token charge for casual chat responses.
+ * Still enforces JSON output contract to keep parsing consistent.
+ */
 function buildChatSystemPrompt(storeName: string): string {
   return "You are a design assistant for " + storeName + " e-commerce store.\n\n" +
     "OUTPUT CONTRACT: Respond ONLY with valid JSON. No prose, no markdown.\n" +
@@ -981,16 +1302,26 @@ function buildChatSystemPrompt(storeName: string): string {
     "Start with { and end with }. NEVER claim design was applied without css_variables or css_overrides proof.";
 }
 
-// ============================================
-// MAIN SERVE FUNCTION
-// ============================================
+// ============================================================
+// SECTION 13: MAIN REQUEST HANDLER
+// ============================================================
+// Entry point for all requests to this edge function.
+// Routes to the correct action handler based on body.action.
+//
+// All requests must be POST with JSON body.
+// OPTIONS is handled for CORS preflight.
+// The Supabase client uses SERVICE_ROLE_KEY (bypasses RLS)
+// so the function can read platform_settings and all stores.
+// ============================================================
 
 serve(async (req) => {
+  // Handle CORS preflight (browser sends OPTIONS before POST)
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
   try {
+    // Use service role key — needed to read platform_settings (no RLS bypass otherwise)
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -999,9 +1330,13 @@ serve(async (req) => {
     const body = await req.json();
     const { action, store_id, user_id, prompt, design, history_id, package_id, amount, currency, version_number, messages } = body;
 
-    // ========== GET TOKEN BALANCE ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: get_token_balance
+    // Returns total tokens remaining across all active purchases.
+    // Also auto-expires overdue tokens and cleans up pending rows.
+    // Called on: AI Designer page load, after each chat response.
+    // ──────────────────────────────────────────────────────────
     if (action === "get_token_balance") {
-      // FIX #6: UUID validation
       if (!store_id || !isValidUUID(store_id)) {
         return new Response(JSON.stringify({ success: false, error: "Invalid store_id" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
@@ -1038,7 +1373,12 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== GENERATE DESIGN (Backward Compatibility) ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: generate_design (Legacy / Backward Compatibility)
+    // One-shot: prompt → AI → design. No chat history.
+    // Steps: validate → rate limit → check tokens → call AI →
+    //        parse → validate → normalize → sanitize → save → return
+    // ──────────────────────────────────────────────────────────
     if (action === "generate_design") {
       const startTime = Date.now();
 
@@ -1240,7 +1580,32 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== CHAT (with Full Context) ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: chat (Primary Action — used by the AI Designer UI)
+    // Full conversational flow with history, failure tracking,
+    // intent classification, semantic locks, and delta parsing.
+    //
+    // Steps:
+    //   1. Validate UUIDs + rate limit
+    //   2. Fetch platform settings (OpenRouter key + model)
+    //   3. Classify prompt: design vs casual chat
+    //   4. Detect intent (PRESERVE/CREATE_NEW) + semantic locks
+    //   5. Fetch history (last 20 records for failure tracking)
+    //   6. Always fetch current design (for delta merge context)
+    //   7. Check tokens BEFORE calling AI (if design request)
+    //   8. Build full or lightweight system prompt
+    //   9. Trim conversation window to last 6 messages
+    //  10. Call AI with 45s timeout + fallback model
+    //  11. Parse (extractJSON) → unwrap if double-wrapped
+    //  12. Validate against Delta or Legacy Zod schema
+    //  13. If Delta: merge onto currentDesign via applyDeltaChanges
+    //  14. Normalize CSS var keys + sanitize CSS + minify
+    //  15. Check size limits (15KB CSS / 10KB JSON)
+    //  16. Deduct 1 token (optimistic lock prevents double-deduct)
+    //  17. Save to ai_designer_history (JSONB + TEXT separated)
+    //  18. Detect if change is destructive (>50% vars changed)
+    //  19. Log metrics + return result
+    // ──────────────────────────────────────────────────────────
     if (action === "chat") {
       const startTime = Date.now();
 
@@ -1504,7 +1869,14 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== APPLY DESIGN ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: apply_design (Publish button)
+    // Saves the AI-generated design to store_design_state table.
+    // Also keeps a version_history (last 10 versions) for rollback.
+    // Marks the history record as applied=true.
+    // The store's frontend reads store_design_state on load and
+    // injects the CSS variables into the page.
+    // ──────────────────────────────────────────────────────────
     if (action === "apply_design") {
       if (!store_id || !design) {
         return new Response(JSON.stringify({ success: false, error: "Missing store_id or design" }),
@@ -1550,7 +1922,13 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== RESET DESIGN ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: reset_design (Reset button)
+    // Deletes the store's row from store_design_state.
+    // When no row exists, the frontend falls back to hardcoded
+    // Tailwind defaults (platform default design).
+    // This is a hard reset — version history is also lost.
+    // ──────────────────────────────────────────────────────────
     if (action === "reset_design") {
       if (!store_id) {
         return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
@@ -1561,7 +1939,12 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== ROLLBACK DESIGN ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: rollback_design
+    // Restores a specific previous version from version_history.
+    // version_history is stored in store_design_state and holds
+    // the last 10 published designs with timestamps.
+    // ──────────────────────────────────────────────────────────
     if (action === "rollback_design") {
       if (!store_id || version_number === undefined) {
         return new Response(JSON.stringify({ success: false, error: "Missing store_id or version_number" }),
@@ -1591,7 +1974,13 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ========== CREATE PAYMENT ORDER ==========
+    // ──────────────────────────────────────────────────────────
+    // ACTION: create_payment_order
+    // Creates a Razorpay order for purchasing AI tokens.
+    // Returns: { razorpay_order_id, razorpay_key_id, amount }
+    // Frontend uses these to open the Razorpay payment popup.
+    // After payment success, frontend calls confirm_payment.
+    // ──────────────────────────────────────────────────────────
     if (action === "create_payment_order") {
       if (!amount || !currency || !package_id) {
         return new Response(JSON.stringify({ success: false, error: "Missing amount, currency, or package_id" }),
