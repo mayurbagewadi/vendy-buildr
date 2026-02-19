@@ -91,7 +91,9 @@ RULES:
 4. Only add gradients, shadows, or animations if the user explicitly asked for them.
 5. Every item in changes_list MUST have real CSS written for it in the response.
 6. changes_list format: "Element — what changed to new value" (plain English, no CSS jargon)
-7. If user asks "apply", "publish", "did you apply?", or "confirm applied" — respond with TEXT type (not design) telling them to click the "Publish" button to apply the design to their live store.
+7. If user says "apply", "publish", "did you apply?", "yes apply", "confirm applied" — respond with TEXT type saying: "To apply this design to your live store, click the Publish button above."
+8. NEVER say "design is now applied" or "I applied" — you cannot apply designs, only the user can by clicking Publish.
+9. If user says "no" followed by a design request like "no design beautifully" or "no redesign it" — treat it as a NEW design request and generate a new design. "no" here means "no I don't want the previous one, give me a new one".
 
 FOR DESIGN CHANGES:
 {
@@ -114,8 +116,11 @@ FOR DESIGN CHANGES:
 FOR PURE CHAT (no design change):
 { "type": "text", "message": "Your helpful response here" }
 
-WHEN USER ASKS TO APPLY/PUBLISH:
-{ "type": "text", "message": "I've already generated the design above. To apply it to your live store, click the 'Publish' button." }`;
+WHEN USER SAYS "yes" AFTER A DESIGN (confirming they like it):
+{ "type": "text", "message": "Great! To apply this design to your live store, click the 'Publish' button above. Would you like to adjust anything else?" }
+
+WHEN USER ASKS TO APPLY/PUBLISH/CONFIRM:
+{ "type": "text", "message": "To apply this design to your live store, click the 'Publish' button above." }`;
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -332,20 +337,21 @@ serve(async (req) => {
         }).eq("id", activePurchase.id);
 
         // Save to history
-        const { data: historyRow } = await supabase.from("ai_designer_history").insert({
+        const { data: historyRow, error: historyErr } = await supabase.from("ai_designer_history").insert({
           store_id,
           user_id,
           prompt: userPrompt,
           ai_response: {
-            summary: d.summary,
-            changes_list: d.changes_list,
-            layout: d.layout,
-            css_variables: d.css_variables,
+            summary: d.summary || "",
+            changes_list: d.changes_list || [],
+            layout: d.layout || {},
+            css_variables: d.css_variables || {},
           },
           ai_css_overrides: d.css_overrides || null,
           tokens_used: 1,
           applied: false,
         }).select("id").single();
+        if (historyErr) console.error("DEBUG: History insert failed:", historyErr.message);
 
         // Get updated token balance
         const { data: updatedPurchases } = await supabase.from("ai_token_purchases")
