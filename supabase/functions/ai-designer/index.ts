@@ -279,9 +279,10 @@ serve(async (req) => {
         console.log("DEBUG: No JSON found, treating as text response");
 
         // Save text conversation to history
+        const plainMsg = rawContent || "";
         const { data: plainTextHistoryRow } = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt: userPrompt,
-          ai_response: { summary: "Text conversation", changes_list: [], layout: {}, css_variables: {} },
+          ai_response: { type: "text", message: plainMsg, summary: plainMsg, changes_list: [], layout: {}, css_variables: {} },
           ai_css_overrides: null, tokens_used: 0, applied: false,
         }).select("id").single();
 
@@ -299,9 +300,10 @@ serve(async (req) => {
         console.error("DEBUG: JSON parse failed:", e, "Content:", rawContent);
 
         // Save malformed response to history
+        const fallbackMsg = rawContent || "I couldn't understand that. Could you rephrase?";
         const { data: errorHistoryRow } = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt: userPrompt,
-          ai_response: { summary: "Malformed AI response", changes_list: [], layout: {}, css_variables: {} },
+          ai_response: { type: "text", message: fallbackMsg, summary: fallbackMsg, changes_list: [], layout: {}, css_variables: {} },
           ai_css_overrides: null, tokens_used: 0, applied: false,
         }).select("id").single();
 
@@ -371,11 +373,12 @@ serve(async (req) => {
       }
 
       // Text response — no token charge, but still save to history
+      const textMessage = parsed.message || rawContent || "";
       const { data: textHistoryRow } = await supabase.from("ai_designer_history").insert({
         store_id,
         user_id,
         prompt: userPrompt,
-        ai_response: { summary: "Text conversation", changes_list: [], layout: {}, css_variables: {} },
+        ai_response: { type: "text", message: textMessage, summary: textMessage, changes_list: [], layout: {}, css_variables: {} },
         ai_css_overrides: null,
         tokens_used: 0,
         applied: false,
