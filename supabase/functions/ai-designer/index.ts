@@ -121,12 +121,17 @@ serve(async (req) => {
   }
 
   try {
+    console.log("DEBUG: Starting request handler");
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+    console.log("DEBUG: Supabase client created");
 
     const body = await req.json();
+    console.log("DEBUG: Body parsed, action:", body.action);
+
     const { action, store_id, user_id, prompt, design, history_id, messages, package_id, amount, currency } = body;
 
     // ── get_token_balance ──────────────────────────────────────
@@ -167,6 +172,7 @@ serve(async (req) => {
 
     // ── chat ───────────────────────────────────────────────────
     if (action === "chat") {
+      console.log("DEBUG: Entered chat action");
       if (!store_id || !isValidUUID(store_id) || !user_id || !isValidUUID(user_id)) {
         return new Response(JSON.stringify({ success: false, error: "Invalid store_id or user_id" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
@@ -185,6 +191,7 @@ serve(async (req) => {
         .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
 
       const activePurchase = activePurchases?.[0];
+      console.log("DEBUG: Token check done, has tokens:", !!activePurchase);
       if (!activePurchase) {
         return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please purchase more tokens to continue." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
@@ -212,6 +219,7 @@ serve(async (req) => {
       const apiKey = platformSettings.openrouter_api_key.trim();
 
       // Call OpenRouter
+      console.log("DEBUG: Calling OpenRouter, model:", model);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
 
@@ -240,6 +248,7 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
       clearTimeout(timeout);
+      console.log("DEBUG: Fetch completed, status:", aiResponse.status);
 
       if (!aiResponse.ok) {
         const errBody = await aiResponse.text().catch(() => "");
@@ -249,13 +258,17 @@ serve(async (req) => {
       }
 
       const aiData = await aiResponse.json();
+      console.log("DEBUG: AI data received");
       const rawContent = aiData.choices?.[0]?.message?.content || "";
+      console.log("DEBUG: Raw content length:", rawContent.length);
 
       // Parse AI response
       let parsed: any;
       try {
         parsed = extractJSON(rawContent);
-      } catch {
+        console.log("DEBUG: JSON parsed, type:", parsed.type);
+      } catch (e) {
+        console.error("DEBUG: JSON parse failed:", e);
         return new Response(JSON.stringify({ success: false, error: "AI returned an invalid response. Please try again." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
