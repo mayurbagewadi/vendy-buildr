@@ -91,6 +91,7 @@ RULES:
 4. Only add gradients, shadows, or animations if the user explicitly asked for them.
 5. Every item in changes_list MUST have real CSS written for it in the response.
 6. changes_list format: "Element — what changed to new value" (plain English, no CSS jargon)
+7. If user asks "apply", "publish", "did you apply?", or "confirm applied" — respond with TEXT type (not design) telling them to click the "Publish" button to apply the design to their live store.
 
 FOR DESIGN CHANGES:
 {
@@ -111,7 +112,10 @@ FOR DESIGN CHANGES:
 }
 
 FOR PURE CHAT (no design change):
-{ "type": "text", "message": "Your helpful response here" }`;
+{ "type": "text", "message": "Your helpful response here" }
+
+WHEN USER ASKS TO APPLY/PUBLISH:
+{ "type": "text", "message": "I've already generated the design above. To apply it to your live store, click the 'Publish' button." }`;
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -268,10 +272,18 @@ serve(async (req) => {
       // If no JSON found, treat as plain text response
       if (!rawContent.includes("{") || !rawContent.includes("}")) {
         console.log("DEBUG: No JSON found, treating as text response");
+
+        // Save text conversation to history
+        const { data: plainTextHistoryRow } = await supabase.from("ai_designer_history").insert({
+          store_id, user_id, prompt: userPrompt,
+          ai_response: { summary: "Text conversation", changes_list: [], layout: {}, css_variables: {} },
+          ai_css_overrides: null, tokens_used: 0, applied: false,
+        }).select("id").single();
+
         return new Response(JSON.stringify({
-          success: true,
-          type: "text",
+          success: true, type: "text",
           message: rawContent || "I couldn't understand that. Could you rephrase?",
+          history_id: plainTextHistoryRow?.id || null,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -280,10 +292,18 @@ serve(async (req) => {
         console.log("DEBUG: JSON parsed, type:", parsed.type);
       } catch (e) {
         console.error("DEBUG: JSON parse failed:", e, "Content:", rawContent);
+
+        // Save malformed response to history
+        const { data: errorHistoryRow } = await supabase.from("ai_designer_history").insert({
+          store_id, user_id, prompt: userPrompt,
+          ai_response: { summary: "Malformed AI response", changes_list: [], layout: {}, css_variables: {} },
+          ai_css_overrides: null, tokens_used: 0, applied: false,
+        }).select("id").single();
+
         return new Response(JSON.stringify({
-          success: true,
-          type: "text",
+          success: true, type: "text",
           message: rawContent || "I couldn't understand that. Could you rephrase?",
+          history_id: errorHistoryRow?.id || null,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -344,11 +364,22 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Text response — no token charge
+      // Text response — no token charge, but still save to history
+      const { data: textHistoryRow } = await supabase.from("ai_designer_history").insert({
+        store_id,
+        user_id,
+        prompt: userPrompt,
+        ai_response: { summary: "Text conversation", changes_list: [], layout: {}, css_variables: {} },
+        ai_css_overrides: null,
+        tokens_used: 0,
+        applied: false,
+      }).select("id").single();
+
       return new Response(JSON.stringify({
         success: true,
         type: "text",
         message: parsed.message || rawContent,
+        history_id: textHistoryRow?.id || null,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
