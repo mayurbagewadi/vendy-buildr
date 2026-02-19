@@ -134,16 +134,32 @@ const AIDesigner = () => {
 
   // Auto-scroll chat to bottom
   // Uses direct scrollTop on the container (more reliable than scrollIntoView for fixed-height overflow containers)
+  // On initial load we do two passes: 150ms (early) + 400ms (after full layout) to handle long histories
   useEffect(() => {
     if (isLoading || messages.length === 0) return;
     const isInitial = isInitialScrollRef.current;
     const container = messagesContainerRef.current;
     if (!container) return;
-    const timer = setTimeout(() => {
-      container.scrollTop = container.scrollHeight;
-      if (isInitial) isInitialScrollRef.current = false;
-    }, 100);
-    return () => clearTimeout(timer);
+
+    const scrollToBottom = () => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    };
+
+    // First pass — covers new messages sent during an active session
+    const t1 = setTimeout(scrollToBottom, 100);
+
+    // Second pass — covers initial page load where layout takes longer to settle
+    const t2 = isInitial ? setTimeout(() => {
+      scrollToBottom();
+      isInitialScrollRef.current = false;
+    }, 400) : null;
+
+    return () => {
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+    };
   }, [isLoading, messages]);
 
   // Load chat history from ai_designer_history table
@@ -417,20 +433,84 @@ const AIDesigner = () => {
     toast.success("Design loaded into preview. Click Publish to go live.");
   };
 
+  const buildPublishConfirmationMessage = (prevDesign: AIDesignResult | null, newDesign: AIDesignResult): string => {
+    const changes: string[] = [];
+
+    // Compare css_variables
+    const prevVars = prevDesign?.css_variables || {};
+    const newVars = newDesign.css_variables || {};
+    const varLabels: Record<string, string> = {
+      primary: "Primary color",
+      background: "Background color",
+      foreground: "Text color",
+      card: "Card background",
+      muted: "Muted background",
+      "muted-foreground": "Secondary text color",
+      border: "Border color",
+      radius: "Border radius",
+    };
+    for (const [key, label] of Object.entries(varLabels)) {
+      if (newVars[key] !== undefined && newVars[key] !== prevVars[key]) {
+        changes.push(`${label}: \`${newVars[key]}\``);
+      }
+    }
+    // Any extra vars not in the standard set
+    for (const key of Object.keys(newVars)) {
+      if (!varLabels[key] && newVars[key] !== prevVars[key]) {
+        changes.push(`CSS variable \`${key}\`: updated`);
+      }
+    }
+
+    // Compare layout
+    const prevLayout = prevDesign?.layout || {};
+    const newLayout = newDesign.layout || {};
+    if (newLayout.product_grid_cols && newLayout.product_grid_cols !== prevLayout.product_grid_cols) {
+      changes.push(`Product grid: ${newLayout.product_grid_cols} columns`);
+    }
+    if (newLayout.section_padding && newLayout.section_padding !== prevLayout.section_padding) {
+      changes.push(`Section spacing: ${newLayout.section_padding}`);
+    }
+    if (newLayout.hero_style && newLayout.hero_style !== prevLayout.hero_style) {
+      changes.push(`Hero banner style: ${newLayout.hero_style}`);
+    }
+
+    // CSS overrides changed?
+    if (newDesign.css_overrides && newDesign.css_overrides !== prevDesign?.css_overrides) {
+      changes.push("Custom CSS overrides: applied");
+    }
+
+    if (changes.length === 0) {
+      return "✅ Design is live on your store! No visible differences from the previous design were detected.";
+    }
+
+    const list = changes.map(c => `• ${c}`).join("\n");
+    return `✅ Design confirmed live on your store!\n\n**Changes now active:**\n${list}\n\nAll ${changes.length} change${changes.length === 1 ? "" : "s"} verified. Want to adjust anything?`;
+  };
+
   const handlePublish = async () => {
     if (!storeId || !pendingDesign) {
       toast.error("No design to publish. Ask AI to generate a design first.");
       return;
     }
     setIsPublishing(true);
+    const previousDesign = currentDesign; // snapshot before state update
     try {
       await applyDesign(storeId, pendingDesign, pendingHistoryId);
-      setCurrentDesign(pendingDesign);
+      const publishedDesign = pendingDesign;
+      setCurrentDesign(publishedDesign);
       setPendingDesign(null);
       setPendingHistoryId(undefined);
       // Clear reset flag — user has published a new design
       localStorage.removeItem(`ai_designer_reset_${storeId}`);
       toast.success("Design published to your live store!");
+      // Add confirmation message to chat
+      const confirmMsg = buildPublishConfirmationMessage(previousDesign, publishedDesign);
+      setMessages(prev => [...prev, {
+        id: `publish-confirm-${Date.now()}`,
+        role: "ai",
+        content: confirmMsg,
+        timestamp: new Date(),
+      }]);
     } catch (error: any) {
       toast.error(error.message || "Failed to publish design");
     } finally {
