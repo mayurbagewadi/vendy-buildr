@@ -215,30 +215,25 @@ serve(async (req) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
 
-      let aiResponse: Response;
-      try {
-        aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://yesgive.shop",
-            "X-Title": "Vendy Buildr AI Designer",
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages,
-            ],
-            max_tokens: 4000,
-            temperature: 0.7,
-          }),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
+      const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://yesgive.shop",
+          "X-Title": "Vendy Buildr AI Designer",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages,
+          ],
+          max_tokens: 4000,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
       if (!aiResponse.ok) {
         const errBody = await aiResponse.text().catch(() => "");
@@ -330,11 +325,6 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: false, error: "Missing required fields" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
       }
-      // Reuse body with chat action and single message
-      body.action = "chat";
-      body.messages = [{ role: "user", content: prompt }];
-      // Fall through to chat handler by re-invoking logic below is not possible —
-      // so we duplicate the minimal token check + AI call inline here.
       const genMessages = [{ role: "user", content: prompt }];
 
       const { data: genPurchases } = await supabase.from("ai_token_purchases")
@@ -360,27 +350,23 @@ serve(async (req) => {
 
       const genController = new AbortController();
       const genTimeout = setTimeout(() => genController.abort(), 45000);
-      let genAIResponse: Response;
-      try {
-        genAIResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${genSettings.openrouter_api_key.trim()}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://yesgive.shop",
-            "X-Title": "Vendy Buildr AI Designer",
-          },
-          body: JSON.stringify({
-            model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
-            messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
-            max_tokens: 4000,
-            temperature: 0.7,
-          }),
-          signal: genController.signal,
-        });
-      } finally {
-        clearTimeout(genTimeout);
-      }
+
+      const genAIResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${genSettings.openrouter_api_key.trim()}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://yesgive.shop",
+          "X-Title": "Vendy Buildr AI Designer",
+        },
+        body: JSON.stringify({
+          model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+          messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
+          max_tokens: 4000,
+          temperature: 0.7,
+        }),
+        signal: genController.signal,
+      }).finally(() => clearTimeout(genTimeout));
 
       if (!genAIResponse.ok) {
         const errBody = await genAIResponse.text().catch(() => "");
