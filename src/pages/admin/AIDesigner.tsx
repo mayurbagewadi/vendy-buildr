@@ -217,16 +217,23 @@ const AIDesigner = () => {
             ? JSON.parse(record.ai_response)
             : record.ai_response;
 
-          if (aiResponse.type === "text") {
+          // Detect old text records saved without type field (no css_variables = not a real design)
+          const hasDesignData = aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0;
+          const isTextMessage = aiResponse.type === "text" || (!aiResponse.type && !hasDesignData);
+
+          if (isTextMessage) {
             // Casual text message — show as plain AI message, no design
-            loadedMessages.push({
-              id: `ai-${record.id}`,
-              role: "ai",
-              content: aiResponse.message || "",
-              timestamp,
-            });
+            const textContent = aiResponse.message || aiResponse.summary || "";
+            if (textContent) {
+              loadedMessages.push({
+                id: `ai-${record.id}`,
+                role: "ai",
+                content: textContent,
+                timestamp,
+              });
+            }
           } else {
-            // FIX #4: Merge ai_css_overrides back into design object for split storage
+            // Merge ai_css_overrides back into design object for split storage
             if (record.ai_css_overrides) {
               aiResponse.css_overrides = record.ai_css_overrides;
             }
@@ -241,7 +248,7 @@ const AIDesigner = () => {
             });
 
             // Track last design for preview fallback (history is ASC so last = most recent)
-            if (aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0) {
+            if (hasDesignData) {
               lastDesign = aiResponse;
             }
           }
@@ -332,12 +339,16 @@ const AIDesigner = () => {
   const buildAPIHistory = (uiMessages: UIMessage[]): APIChatMessage[] => {
     return uiMessages
       .filter((m) => m.id !== "welcome" && !m.isLoading)
-      .map((m) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.role === "ai"
-          ? (m.design ? `${m.content}\n\n[Design was generated]` : m.content)
-          : m.content,
-      }));
+      .map((m): APIChatMessage | null => {
+        if (m.role === "user") return { role: "user", content: m.content };
+        // AI message — use clean design context, skip corrupted/empty messages
+        const content = m.design
+          ? `[Design proposed: ${(m.design.changes_list || []).slice(0, 5).join("; ") || m.design.summary || "visual updates"}]`
+          : m.content;
+        if (!content || content === "Text conversation") return null;
+        return { role: "assistant", content };
+      })
+      .filter((m): m is APIChatMessage => m !== null);
   };
 
   const handleSend = async () => {
