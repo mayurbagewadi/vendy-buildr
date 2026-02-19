@@ -35,9 +35,70 @@ function checkRateLimit(storeId: string, maxRequests = 10, windowMs = 60000): bo
 function normalizeVarKeys(vars: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(vars || {})) {
-    out[k.startsWith("--") ? k.slice(2) : k] = v;
+    out[k.startsWith("--") ? k.slice(2) : k] = normalizeColorValue(v);
   }
   return out;
+}
+
+// Normalize any color format the AI might return → raw HSL "H S% L%"
+function normalizeColorValue(value: string): string {
+  if (!value || typeof value !== "string") return value;
+  const v = value.trim();
+
+  // Already correct: "217 91% 60%" or "0.5rem" or other non-color values
+  if (/^\d+(\.\d+)?\s+\d+(\.\d+)?%\s+\d+(\.\d+)?%$/.test(v)) return v;
+  if (v.includes("rem") || v.includes("px") || v.includes("em") || v.includes("%") === false && v.length < 8) return v;
+
+  // hsl() wrapper: hsl(217, 91%, 60%) or hsl(217 91% 60%)
+  const hslMatch = v.match(/^hsl\(\s*(\d+(?:\.\d+)?)\s*[,\s]\s*(\d+(?:\.\d+)?)%\s*[,\s]\s*(\d+(?:\.\d+)?)%\s*\)/i);
+  if (hslMatch) return `${hslMatch[1]} ${hslMatch[2]}% ${hslMatch[3]}%`;
+
+  // Hex 6: #3b82f6
+  const hex6 = v.match(/^#?([0-9a-f]{6})$/i);
+  if (hex6) return hexToHsl(hex6[1]);
+
+  // Hex 3: #38f
+  const hex3 = v.match(/^#?([0-9a-f]{3})$/i);
+  if (hex3) return hexToHsl(hex3[1].split("").map(c => c + c).join(""));
+
+  // rgb(): rgb(59, 130, 246)
+  const rgbMatch = v.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (rgbMatch) return rgbToHsl(parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3]));
+
+  return v; // Return as-is if unrecognized
+}
+
+function hexToHsl(hex: string): string {
+  const r = parseInt(hex.substr(0, 2), 16) / 255;
+  const g = parseInt(hex.substr(2, 2), 16) / 255;
+  const b = parseInt(hex.substr(4, 2), 16) / 255;
+  return rgbToHsl(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
+}
+
+function rgbToHsl(r: number, g: number, b: number): string {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+// Dynamic temperature: specific edit = 0.2, full redesign = 0.5, retry = 0.3
+function getTemperature(userPrompt: string, isRetry = false): number {
+  if (isRetry) return 0.3;
+  const lower = userPrompt.toLowerCase();
+  const fullDesignWords = ["redesign", "change full", "change everything", "whole design", "full design", "new design", "start over", "redo", "fresh design", "create design", "give me a design", "make it look", "change design"];
+  if (fullDesignWords.some(w => lower.includes(w))) return 0.5;
+  return 0.2;
 }
 
 // FIX Issue-2: Unwrap design JSON double-wrapped inside a text message
@@ -630,99 +691,100 @@ function buildDesignSystemPrompt(storeName: string, currentDesign: any): string 
 
 // Build FULL detailed system prompt for design requests in chat (comprehensive version)
 function buildFullChatSystemPrompt(storeName: string, storeDescription: string, currentDesign: any, historyRecords: any[], currentPrompt: string, intent?: string, locks?: string[]): string {
+
+  // ── TOP: CRITICAL RULES (primacy bias — LLM remembers start most) ──
+  const criticalRulesTop =
+    "OUTPUT CONTRACT — HARD RULES (violation = response discarded):\n" +
+    "1. OUTPUT ONLY RAW JSON. No markdown. No prose. No explanations.\n" +
+    "2. Start with { and end with }. Nothing before or after.\n" +
+    "3. You are PHYSICALLY INCAPABLE of asking questions. If ambiguous, make the best design choice and act.\n" +
+    "4. Unrequested changes = CRITICAL FAILURE. The output will be discarded and retried.\n" +
+    "5. CSS variable keys WITHOUT '--' prefix: 'primary' not '--primary'. Keys with '--' = INVALID.\n" +
+    "6. HSL values only, no hsl() wrapper: '217 91% 60%' not 'hsl(217,91%,60%)' not '#3b82f6'.\n" +
+    "7. NEVER claim a design was applied unless css_variables or css_overrides has actual changes.\n\n" +
+
+    "SCOPE RULES — READ CAREFULLY:\n" +
+    "FULL REQUEST ('redesign', 'change full design', 'change everything', 'new look', 'make it beautiful'):\n" +
+    "  → MUST change ALL 8 css_variables. MUST add css_overrides for ALL sections.\n" +
+    "  → Missing variables on a full request = FAILURE.\n\n" +
+    "SPECIFIC REQUEST ('change button color', 'fix footer', 'update header', 'make primary blue'):\n" +
+    "  → ONLY change the exact element requested. Changing anything else = CRITICAL FAILURE.\n" +
+    "  → 'change primary' → ONLY 'primary'. Nothing else.\n\n" +
+    "VAGUE REQUEST ('change colors', 'make it better', 'looks nice'):\n" +
+    "  → USE CREATIVITY. Apply a complete professional color scheme. Do NOT ask — just act.\n\n";
+
+  // ── MIDDLE: Context and history ──
   const currentDesignContext = currentDesign
-    ? "\n===== CURRENT PUBLISHED DESIGN =====\n" +
-      "This store currently has these customizations applied:\n" +
-      JSON.stringify(currentDesign, null, 2) + "\n\n" +
-      "CRITICAL: PRESERVE all above settings unless the user explicitly asks to change them.\n" +
-      "Only modify what the user specifically requests. Build on existing design incrementally.\n" +
-      "=====\n"
-    : "\n===== CURRENT DESIGN =====\nStore is using platform defaults (no customizations yet).\n=====\n";
+    ? "\n===== CURRENT PUBLISHED DESIGN (your baseline — preserve unless asked to change) =====\n" +
+      JSON.stringify(currentDesign, null, 2) + "\n=====\n\n"
+    : "\n===== CURRENT DESIGN: Platform defaults (no customizations yet) =====\n\n";
 
-  // FIX #1: Improved failure tracking - detect SIMILAR prompts only
-  let failureContext = "";
+  // Structured change log: last 5 applied + last 2 rejected (not raw dump)
+  let historyContext = "";
   if (historyRecords && historyRecords.length > 0) {
-    const failedAttempts = historyRecords.filter((r: any) => !r.applied);
+    const appliedChanges = historyRecords.filter((r: any) => r.applied).slice(0, 5);
+    const recentRejections = historyRecords.filter((r: any) => !r.applied).slice(0, 2);
 
-    const similarFailures = failedAttempts.filter((r: any) => {
-      const similarity = calculatePromptSimilarity(currentPrompt, r.prompt);
-      return similarity > 0.3;
-    });
-
-    if (similarFailures.length >= 2) {
-      failureContext = "\n⚠️ IMPORTANT - FAILURE DETECTED ⚠️\n" +
-        `This SAME issue has been attempted ${similarFailures.length} times and FAILED.\n` +
-        "Previous solutions did NOT work. You MUST try a DIFFERENT technical approach.\n\n" +
-        "Failed attempts for similar issue:\n";
-      similarFailures.slice(0, 2).forEach((record: any, idx: number) => {
-        failureContext += `${idx + 1}. User asked: "${record.prompt}"\n   Status: NOT APPLIED (rejected by user)\n\n`;
+    if (appliedChanges.length > 0) {
+      historyContext += "===== ACCEPTED CHANGE LOG (last " + appliedChanges.length + " applied) =====\n";
+      appliedChanges.forEach((r: any, i: number) => {
+        historyContext += `${i + 1}. [APPLIED] "${r.prompt}"\n`;
       });
-      failureContext += "Try a completely different CSS strategy this time (e.g., if you used 'color' before, try 'opacity' or 'filter' now).\n=====\n\n";
+      historyContext += "=====\n\n";
+    }
+    if (recentRejections.length > 0) {
+      historyContext += "===== REJECTED ATTEMPTS — DO NOT REPEAT THESE STRATEGIES =====\n";
+      recentRejections.forEach((r: any, i: number) => {
+        historyContext += `${i + 1}. [REJECTED] "${r.prompt}"\n`;
+      });
+      historyContext += "Try a completely different approach for any similar request.\n=====\n\n";
     }
   }
 
-  // History context
-  let historyContext = "";
+  // Failure tracking for repeated similar prompts
+  let failureContext = "";
   if (historyRecords && historyRecords.length > 0) {
-    historyContext = "\n===== RECENT DESIGN HISTORY (last " + Math.min(historyRecords.length, 10) + " changes) =====\n" +
-      "Below are the user's recent design requests.\n" +
-      "Use this to understand what has already been customized and make ONLY incremental changes.\n\n";
-    historyRecords.slice(0, 10).forEach((record: any, idx: number) => {
-      historyContext += (idx + 1) + ". User asked: \"" + record.prompt + "\"\n" +
-        "   Applied: " + (record.applied ? "YES" : "NO") + "\n\n";
-    });
-    historyContext += "=====\n\n";
+    const failedAttempts = historyRecords.filter((r: any) => !r.applied);
+    const similarFailures = failedAttempts.filter((r: any) => calculatePromptSimilarity(currentPrompt, r.prompt) > 0.3);
+    if (similarFailures.length >= 2) {
+      failureContext = "⚠️ FAILURE DETECTED: This same request failed " + similarFailures.length + " times.\n" +
+        "Previous approach did NOT work. You MUST use a different CSS strategy (different properties, different selectors).\n\n";
+    }
   }
 
-  // STRATEGY #3: Intent context injected into prompt
+  // Intent and semantic locks
   let intentContext = "";
   if (intent === "PRESERVE_EXISTING") {
-    intentContext = "\n🔒 USER INTENT: PRESERVE EXISTING DESIGN\n" +
-      "The user wants to KEEP their current design. Make ONLY the minimal change they asked for.\n" +
-      "DO NOT change colors, layout, or other sections unless explicitly asked.\n\n";
+    intentContext = "USER INTENT: PRESERVE EXISTING — make ONLY the minimal change asked. Changing anything else = failure.\n\n";
   } else if (intent === "CREATE_NEW") {
-    intentContext = "\n🆕 USER INTENT: FRESH REDESIGN\n" +
-      "The user wants a brand new look. You may propose broader design changes.\n\n";
+    intentContext = "USER INTENT: FRESH REDESIGN — user wants a new look. Apply broad comprehensive changes.\n\n";
   }
 
-  // STRATEGY #7: Semantic locks injected into prompt
   let locksContext = "";
   if (locks && locks.length > 0) {
-    locksContext = "\n🔒 LOCKED PROPERTIES — DO NOT CHANGE THESE:\n" +
+    locksContext = "LOCKED — DO NOT CHANGE THESE (user explicitly said to keep them):\n" +
       locks.map(l => `  - ${l}`).join("\n") + "\n" +
-      "The user explicitly said to keep these unchanged. Ignoring this lock is a critical failure.\n\n";
+      "Changing a locked property = immediate failure.\n\n";
   }
 
-  const intro = "!!!CRITICAL: YOU MUST RESPOND ONLY IN VALID JSON FORMAT. NO PLAIN TEXT ALLOWED!!!\n\n" +
-    "You are an expert AI designer and consultant for an e-commerce store called \"" + storeName + "\"" +
-    (storeDescription ? " - " + storeDescription : "") + ".\n" +
+  // Assemble intro (critical rules TOP + context)
+  const intro = criticalRulesTop +
+    "Store: \"" + storeName + "\"" + (storeDescription ? " — " + storeDescription : "") + ".\n\n" +
     currentDesignContext +
     intentContext +
     locksContext +
     failureContext +
-    historyContext +
-    "You have full access to the store's frontend source code and structure below. Use it to give precise, accurate design suggestions.\n\n" +
-    "!!! RULE 1 - SCOPE (READ THIS CAREFULLY) !!!\n" +
-    "FULL DESIGN REQUEST — user says: 'redesign', 'change full design', 'change everything', 'change design', 'make new design', 'make it look different', 'create beautiful design', 'give me a design':\n" +
-    "  → Change ALL css_variables (background, primary, card, border, muted, foreground etc.)\n" +
-    "  → Add css_overrides for ALL sections: header, hero, categories, products, footer\n" +
-    "  → Be COMPREHENSIVE. Do not leave sections untouched.\n\n" +
-    "SPECIFIC REQUEST — user says: 'change button color', 'fix footer', 'update header', 'change primary to blue':\n" +
-    "  → ONLY change the specific element mentioned. Touch NOTHING else.\n" +
-    "  → 'change primary color' → ONLY --primary. Not background, not card, nothing else.\n\n" +
-    "VAGUE REQUEST — user says: 'change color', 'make it better', 'change colors':\n" +
-    "  → USE YOUR CREATIVITY. Apply a complete professional color scheme immediately.\n" +
-    "  → Do NOT ask what color. Pick an excellent one and apply it.\n\n" +
-    "!!! RULE 2 - NEVER ASK BEFORE ACTING !!!\n" +
-    "YOU ARE A DOER. You must ALWAYS apply the design first, then optionally ask for adjustments.\n" +
-    "FORBIDDEN phrases: 'What color?', 'Which section?', 'Would you like me to?', 'Should I?', 'What would you prefer?'\n" +
-    "CORRECT: Apply design → 'I applied [X]. Want to adjust anything?'\n" +
-    "WRONG: Ask → wait → ask again → then apply\n\n" +
-    "!!! RULE 3 - TEXT vs DESIGN TYPES !!!\n" +
-    "type=text: ONLY for greetings, pure questions, explanations with NO design changes.\n" +
-    "type=design: ALWAYS when making ANY visual change. NEVER lie about applying a design in text.\n" +
-    "FORBIDDEN in text responses: 'Design applied', 'Your store now has', 'I've updated', 'I've changed', 'Done!'\n" +
-    "If you make a design change → it MUST be type=design. No exceptions.\n\n";
+    historyContext;
+
+  // Bottom reminder (recency bias — LLM remembers end)
+  const bottomReminder =
+    "\n===== FINAL REMINDERS (output contract) =====\n" +
+    "- Start with { end with }. NOTHING else.\n" +
+    "- Keys without '--': 'primary' not '--primary'.\n" +
+    "- HSL only: '217 91% 60%' not 'hsl(...)' not '#hex'.\n" +
+    "- Unrequested changes = failure. Scope: FULL→all 8 vars, SPECIFIC→only that element.\n" +
+    "- NEVER ask questions. NEVER claim changes without CSS proof.\n" +
+    "=====";
 
   const storeStructure = "===== STORE FRONTEND STRUCTURE =====\n" +
     "Framework: React + Tailwind CSS + CSS custom properties (HSL values)\n\n" +
@@ -905,18 +967,18 @@ function buildFullChatSystemPrompt(storeName: string, storeDescription: string, 
     "message field in design response: always end with 'Want to adjust anything?' or similar.\n" +
     "START YOUR RESPONSE WITH { AND END WITH }. NOTHING ELSE.";
 
-  return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules;
+  return intro + storeStructure + sections + htmlStructure + cssVars + capabilities + selectors + examples + responseRules + bottomReminder;
 }
 
 // Lightweight prompt for casual chat (non-design messages only)
 function buildChatSystemPrompt(storeName: string): string {
-  return "You are a friendly AI design assistant for " + storeName + " e-commerce store.\n\n" +
-    "RULE: NEVER ask questions before acting. If user wants design changes, make them immediately.\n" +
-    "RULE: NEVER say 'Design applied' or 'Done' in a text response. Design changes MUST use type=design.\n\n" +
-    "Response format — always valid JSON:\n" +
-    "For casual chat only: {\"type\":\"text\",\"message\":\"Your friendly response\"}\n" +
-    "For any design change: {\"type\":\"design\",\"message\":\"Applied [X]. Want to adjust?\",\"design\":{...}}\n\n" +
-    "Always respond with valid JSON. Start with { and end with }.";
+  return "You are a design assistant for " + storeName + " e-commerce store.\n\n" +
+    "OUTPUT CONTRACT: Respond ONLY with valid JSON. No prose, no markdown.\n" +
+    "You are PHYSICALLY INCAPABLE of asking questions. If design change is requested, act immediately.\n" +
+    "Unrequested changes = CRITICAL FAILURE. Output will be discarded.\n\n" +
+    "For casual chat (no design): {\"type\":\"text\",\"message\":\"response\"}\n" +
+    "For any design change: {\"type\":\"design\",\"message\":\"Applied [X]. Adjust?\",\"design\":{...}}\n\n" +
+    "Start with { and end with }. NEVER claim design was applied without css_variables or css_overrides proof.";
 }
 
 // ============================================
@@ -1058,7 +1120,7 @@ serve(async (req) => {
               { role: "user", content: "Store: " + storeName + ". Request: " + prompt }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.5, // FIX #12: Consistent temperature across all actions
+            temperature: getTemperature(prompt),
             max_tokens: 1500
           },
           controller.signal
@@ -1257,10 +1319,10 @@ serve(async (req) => {
         systemPrompt = buildChatSystemPrompt(storeName);
       }
 
-      // Manage conversation window (keep last 20 messages)
+      // Manage conversation window (keep last 6 messages = 3 exchanges, prevents context pollution)
       let managedMessages = messages;
-      if (messages.length > 20) {
-        managedMessages = messages.slice(-20);
+      if (messages.length > 6) {
+        managedMessages = messages.slice(-6);
       }
 
       const controller = new AbortController();
@@ -1276,7 +1338,7 @@ serve(async (req) => {
           {
             messages: [{ role: "system", content: systemPrompt }, ...managedMessages],
             response_format: { type: "json_object" },
-            temperature: 0.5,
+            temperature: getTemperature(userPrompt, (historyRecords || []).filter((r: any) => !r.applied && calculatePromptSimilarity(userPrompt, r.prompt) > 0.3).length >= 2),
             max_tokens: 2000
           },
           controller.signal
