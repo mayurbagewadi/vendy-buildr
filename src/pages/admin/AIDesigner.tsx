@@ -702,22 +702,23 @@ const AIDesigner = () => {
                     </div>
                   )}
 
-                  {/* Color swatches */}
+                  {/* Color palette preview (no technical names) */}
                   {msg.design.css_variables && Object.keys(msg.design.css_variables).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(msg.design.css_variables)
-                        .filter(([k]) => k !== "--radius")
-                        .map(([key, value]) => (
-                          <div key={key} className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground mr-1">Colors:</span>
+                      <div className="flex -space-x-1">
+                        {Object.entries(msg.design.css_variables)
+                          .filter(([k, v]) => k !== "radius" && !k.includes("foreground") && typeof v === "string" && v.includes("%"))
+                          .slice(0, 6)
+                          .map(([key, value]) => (
                             <div
-                              className="w-3.5 h-3.5 rounded-full border border-border flex-shrink-0"
+                              key={key}
+                              className="w-4 h-4 rounded-full border-2 border-background shadow-sm"
                               style={{ background: `hsl(${value})` }}
+                              title={key.replace("--", "").replace("-", " ")}
                             />
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                              {key.replace("--", "")}
-                            </span>
-                          </div>
-                        ))}
+                          ))}
+                      </div>
                     </div>
                   )}
 
