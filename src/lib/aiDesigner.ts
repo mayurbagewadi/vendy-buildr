@@ -89,10 +89,11 @@ export interface ChatResponse {
 export async function chatWithAI(
   storeId: string,
   userId: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  theme: "light" | "dark" = "light"
 ): Promise<ChatResponse> {
   const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION, {
-    body: { action: "chat", store_id: storeId, user_id: userId, messages },
+    body: { action: "chat", store_id: storeId, user_id: userId, messages, theme },
   });
   if (error) throw error;
   if (!data.success) throw new Error(data.error);
