@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,6 +97,7 @@ const shouldShowDateSeparator = (currentMsg: UIMessage, previousMsg?: UIMessage)
 // ------- Main AIDesigner Page -------
 const AIDesigner = () => {
   const navigate = useNavigate();
+  const { resolvedTheme } = useTheme();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null); // ref to the scrollable container
@@ -381,7 +383,7 @@ const AIDesigner = () => {
       // Build conversation history including the new user message
       const history = buildAPIHistory([...messages, userMsg]);
 
-      const result = await chatWithAI(storeId, userId, history);
+      const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
       console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
 
       const aiMsg: UIMessage = {

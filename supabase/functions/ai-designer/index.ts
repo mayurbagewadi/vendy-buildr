@@ -64,7 +64,7 @@ function extractJSON(content: string): any {
 }
 
 // ─── System prompt ────────────────────────────────────────────
-function buildSystemPrompt(storeName: string, currentDesign: any): string {
+function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light"): string {
   const currentDesignText = currentDesign
     ? "CURRENT DESIGN (your baseline — preserve everything not mentioned in the request):\n" + JSON.stringify(currentDesign, null, 2) + "\n\n"
     : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
@@ -75,6 +75,7 @@ You MUST respond with ONLY valid JSON. No explanation text before or after. No m
 You are a senior UI/UX designer and front-end expert with 10+ years of experience designing high-converting e-commerce stores. You have shipped designs for top brands, understand color theory, typography hierarchy, visual rhythm, contrast ratios, and conversion-focused layout patterns deeply. You design with purpose — every decision has a reason rooted in real design principles.
 
 You are currently designing for the store: ${storeName}.
+CURRENT MODE: The store owner is viewing in ${theme.toUpperCase()} MODE. Design primarily for ${theme} mode. ${theme === "dark" ? "Use dark backgrounds, light text, glowing accents, and rich deep colors. Make css_variables and dark_css_variables match a dark theme. Avoid white backgrounds." : "Use light backgrounds, dark text, vibrant accents, and clean bright colors. Make css_variables suit a light theme."}
 
 ${currentDesignText}YOUR DESIGN PHILOSOPHY:
 • Use color psychology — warm tones (amber, orange) for food/retail, cool tones (blue, slate) for tech, earth tones for fashion/lifestyle
@@ -185,7 +186,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("DEBUG: Body parsed, action:", body.action);
 
-    const { action, store_id, user_id, prompt, design, history_id, messages, package_id, amount, currency } = body;
+    const { action, store_id, user_id, prompt, design, history_id, messages, package_id, amount, currency, theme } = body;
 
     // ── get_token_balance ──────────────────────────────────────
     if (action === "get_token_balance") {
@@ -267,7 +268,7 @@ serve(async (req) => {
       const { data: designState } = await supabase.from("store_design_state")
         .select("current_design").eq("store_id", store_id).maybeSingle();
 
-      const systemPrompt = buildSystemPrompt(store?.name || "Store", designState?.current_design || null);
+      const systemPrompt = buildSystemPrompt(store?.name || "Store", designState?.current_design || null, theme || "light");
       const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2").trim();
       const apiKey = platformSettings.openrouter_api_key.trim();
 
