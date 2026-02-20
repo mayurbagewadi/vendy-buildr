@@ -50,17 +50,60 @@ function normalizeVarKeys(vars: Record<string, string>): Record<string, string> 
 
 // ─── Extract JSON from AI response ───────────────────────────
 function extractJSON(content: string): any {
-  const start = content.indexOf("{");
-  const end = content.lastIndexOf("}");
+  // Clean up common model mistakes BEFORE parsing
+  let cleaned = content
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) throw new Error("No JSON found");
-  const raw = content.slice(start, end + 1);
+  const raw = cleaned.slice(start, end + 1);
   try {
     return JSON.parse(raw);
   } catch {
     // Strip control characters and retry
-    const cleaned = raw.replace(/[\u0000-\u001F\u007F]/g, " ");
-    return JSON.parse(cleaned);
+    const sanitized = raw.replace(/[\u0000-\u001F\u007F]/g, " ");
+    return JSON.parse(sanitized);
   }
+}
+
+// ─── Validate and fix AI response ────────────────────────────
+function validateAndFixResponse(parsed: any, userPrompt: string): any {
+  // Detect model failure: type="text" but message contains design indicators
+  const designIndicators = [
+    "[Design proposed:",
+    "```css",
+    "css_variables",
+    "Here is the design",
+    "I'll implement",
+    "Implementing"
+  ];
+
+  const isDesignLikeText = parsed.type === "text" &&
+    designIndicators.some(indicator =>
+      (parsed.message || "").toLowerCase().includes(indicator.toLowerCase())
+    );
+
+  if (isDesignLikeText) {
+    // Model returned design description as text — this is a failure
+    // Return a clarification request instead of broken design description
+    return {
+      type: "text",
+      message: "I couldn't generate the design properly. Could you please describe what specific changes you'd like? For example: 'Make the header blue' or 'Change button colors to green'."
+    };
+  }
+
+  // If it's a valid design response, ensure required fields exist
+  if (parsed.type === "design" && parsed.design) {
+    if (!parsed.design.css_variables) parsed.design.css_variables = {};
+    if (!parsed.design.changes_list) parsed.design.changes_list = [];
+    if (!parsed.design.summary) parsed.design.summary = "Design update";
+  }
+
+  return parsed;
 }
 
 // ─── System prompt ────────────────────────────────────────────
@@ -381,7 +424,8 @@ serve(async (req) => {
 
       try {
         parsed = extractJSON(rawContent);
-        console.log("DEBUG: JSON parsed, type:", parsed.type);
+        parsed = validateAndFixResponse(parsed, userPrompt);
+        console.log("DEBUG: JSON parsed and validated, type:", parsed.type);
       } catch (e) {
         console.error("DEBUG: JSON parse failed:", e, "Content:", rawContent);
 
