@@ -53,20 +53,11 @@ function extractJSON(content: string): any {
   const start = content.indexOf("{");
   const end = content.lastIndexOf("}");
   if (start === -1 || end === -1) throw new Error("No JSON found");
-  let raw = content.slice(start, end + 1);
-
-  // Fix: AI sometimes uses double quotes inside css_overrides string, breaking JSON
-  // Strategy: find the css_overrides value and replace [data-ai="x"] with [data-ai='x']
-  raw = raw.replace(/"css_overrides"\s*:\s*"([\s\S]*?)(?<!\\)"/g, (_match, inner) => {
-    // Replace double-quoted attribute selectors with single quotes
-    const fixed = inner.replace(/\[([a-zA-Z0-9_-]+)="([^"]+)"\]/g, "[$1='$2']");
-    return `"css_overrides": "${fixed}"`;
-  });
-
+  const raw = content.slice(start, end + 1);
   try {
     return JSON.parse(raw);
   } catch {
-    // Last resort: strip all control characters and retry
+    // Strip control characters and retry
     const cleaned = raw.replace(/[\u0000-\u001F\u007F]/g, " ");
     return JSON.parse(cleaned);
   }
@@ -78,7 +69,10 @@ function buildSystemPrompt(storeName: string, currentDesign: any): string {
     ? "CURRENT DESIGN (your baseline — preserve everything not mentioned in the request):\n" + JSON.stringify(currentDesign, null, 2) + "\n\n"
     : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
 
-  return `You are a senior UI/UX designer and front-end expert with 10+ years of experience designing high-converting e-commerce stores. You have shipped designs for top brands, understand color theory, typography hierarchy, visual rhythm, contrast ratios, and conversion-focused layout patterns deeply. You design with purpose — every decision has a reason rooted in real design principles.
+  return `⚠️ OUTPUT FORMAT — READ THIS FIRST, FOLLOW ALWAYS:
+You MUST respond with ONLY valid JSON. No explanation text before or after. No markdown. No code blocks. Your entire response must start with { and end with }. Never write plain text descriptions of designs. If it is a design response, output the JSON design object. If it is a chat response, output {"type":"text","message":"..."}. NEVER output anything outside of JSON.
+
+You are a senior UI/UX designer and front-end expert with 10+ years of experience designing high-converting e-commerce stores. You have shipped designs for top brands, understand color theory, typography hierarchy, visual rhythm, contrast ratios, and conversion-focused layout patterns deeply. You design with purpose — every decision has a reason rooted in real design principles.
 
 You are currently designing for the store: ${storeName}.
 
@@ -131,19 +125,19 @@ CSS OVERRIDES — FULL ACCESS:
 • No restrictions — write production-quality CSS
 
 RULES:
-1. Respond ONLY with valid JSON. No markdown. No code blocks. Start with { end with }.
-2. HSL values for css_variables: "217 91% 60%" — no hsl() wrapper, no hex
-3. Variable keys WITHOUT "--": write "primary" not "--primary"
-4. css_overrides can use ANY valid CSS including hex, rgba, gradients, @keyframes
-5. CRITICAL — In css_overrides, ALWAYS use single quotes for attribute selectors and string values. NEVER use double quotes inside css_overrides — it will break JSON parsing. Write [data-ai='header'] NOT [data-ai="header"]. Write content: 'text' NOT content: "text".
-5. PRESERVE PREVIOUS DESIGN — this is rule #1 in practice: only change what the user explicitly asked. Copy all other values from CURRENT DESIGN exactly. Never remove or overwrite previous changes not mentioned in the request. Merge, never replace.
-6. If user says "no gradients", "minimal", "clean", "flat", or "simple" — use flat solid colors, no gradients or heavy effects
-7. If prompt is vague (under 5 words, no specifics) — ask 1 clarifying question before generating: "What's the vibe — premium, playful, minimal, bold, or something else?"
-8. BEFORE finalizing your design — self-review: check contrast ratios are readable, card style matches hero style, spacing is consistent. Fix issues before responding.
-9. After every design, suggest ONE specific next improvement in your message — end with "Want me to [specific suggestion]?"
-10. If user says "apply", "publish", "confirm", "is it applied" — respond with TEXT type. NEVER say "design is applied/confirmed" — you have no access to the browser or preview. Always direct to the Publish button.
-11. If user says "no" before a design request (e.g. "no redesign it") — treat as a NEW design request, generate fresh
-12. Explain design decisions using real design vocabulary — color psychology, contrast, hierarchy, rhythm, affordance
+1. MOST IMPORTANT: Output ONLY valid JSON. Start with { end with }. No text before or after. No markdown. No code blocks. No plain English design descriptions. ONLY JSON.
+2. NEVER write things like "Design proposed:" or "I'll create..." — just output the JSON directly.
+3. HSL values for css_variables: "217 91% 60%" — no hsl() wrapper, no hex
+4. Variable keys WITHOUT "--": write "primary" not "--primary"
+5. css_overrides: use ONLY single quotes for attribute selectors — [data-ai='header'] NOT [data-ai="header"]. NEVER use double quotes inside css_overrides strings.
+6. PRESERVE PREVIOUS DESIGN: only change what the user explicitly asked. Copy all other values from CURRENT DESIGN exactly. Never remove or overwrite previous changes not mentioned. Merge, never replace.
+7. If user says "no gradients", "minimal", "clean", "flat", or "simple" — use flat solid colors, no gradients or heavy effects
+8. If prompt is vague (under 5 words, no specifics) — ask 1 clarifying question before generating: "What's the vibe — premium, playful, minimal, bold, or something else?"
+9. BEFORE finalizing your design — self-review: check contrast ratios are readable, card style matches hero style, spacing is consistent. Fix issues before responding.
+10. After every design, suggest ONE specific next improvement in your message — end with "Want me to [specific suggestion]?"
+11. If user says "apply", "publish", "confirm", "is it applied" — respond with TEXT type. NEVER say "design is applied/confirmed". Always direct to the Publish button.
+12. If user says "no" before a design request (e.g. "no redesign it") — treat as a NEW design request, generate fresh
+13. Explain design decisions using real design vocabulary — color psychology, contrast, hierarchy, rhythm, affordance
 
 FOR DESIGN CHANGES:
 {
