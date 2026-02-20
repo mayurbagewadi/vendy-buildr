@@ -217,16 +217,23 @@ const AIDesigner = () => {
             ? JSON.parse(record.ai_response)
             : record.ai_response;
 
-          if (aiResponse.type === "text") {
+          // Detect old text records saved without type field (no css_variables = not a real design)
+          const hasDesignData = aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0;
+          const isTextMessage = aiResponse.type === "text" || (!aiResponse.type && !hasDesignData);
+
+          if (isTextMessage) {
             // Casual text message — show as plain AI message, no design
-            loadedMessages.push({
-              id: `ai-${record.id}`,
-              role: "ai",
-              content: aiResponse.message || "",
-              timestamp,
-            });
+            const textContent = aiResponse.message || aiResponse.summary || "";
+            if (textContent) {
+              loadedMessages.push({
+                id: `ai-${record.id}`,
+                role: "ai",
+                content: textContent,
+                timestamp,
+              });
+            }
           } else {
-            // FIX #4: Merge ai_css_overrides back into design object for split storage
+            // Merge ai_css_overrides back into design object for split storage
             if (record.ai_css_overrides) {
               aiResponse.css_overrides = record.ai_css_overrides;
             }
@@ -241,7 +248,7 @@ const AIDesigner = () => {
             });
 
             // Track last design for preview fallback (history is ASC so last = most recent)
-            if (aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0) {
+            if (hasDesignData) {
               lastDesign = aiResponse;
             }
           }
@@ -332,12 +339,16 @@ const AIDesigner = () => {
   const buildAPIHistory = (uiMessages: UIMessage[]): APIChatMessage[] => {
     return uiMessages
       .filter((m) => m.id !== "welcome" && !m.isLoading)
-      .map((m) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.role === "ai"
-          ? (m.design ? `${m.content}\n\n[Design was generated]` : m.content)
-          : m.content,
-      }));
+      .map((m): APIChatMessage | null => {
+        if (m.role === "user") return { role: "user", content: m.content };
+        // AI message — use clean design context, skip corrupted/empty messages
+        const content = m.design
+          ? `[Design proposed: ${(m.design.changes_list || []).slice(0, 5).join("; ") || m.design.summary || "visual updates"}]`
+          : m.content;
+        if (!content || content === "Text conversation") return null;
+        return { role: "assistant", content };
+      })
+      .filter((m): m is APIChatMessage => m !== null);
   };
 
   const handleSend = async () => {
@@ -371,6 +382,7 @@ const AIDesigner = () => {
       const history = buildAPIHistory([...messages, userMsg]);
 
       const result = await chatWithAI(storeId, userId, history);
+      console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
 
       const aiMsg: UIMessage = {
         id: `ai-${Date.now()}`,
@@ -559,27 +571,36 @@ const AIDesigner = () => {
   const injectCSSIntoIframe = (design: AIDesignResult | null) => {
     try {
       const iframe = iframeRef.current;
-      if (!iframe?.contentDocument?.head) return;
-      let styleEl = iframe.contentDocument.getElementById('ai-preview-styles') as HTMLStyleElement | null;
-      if (!styleEl) {
-        styleEl = iframe.contentDocument.createElement('style');
-        styleEl.id = 'ai-preview-styles';
-        iframe.contentDocument.head.appendChild(styleEl);
+      console.log('[AI-DEBUG] injectCSSIntoIframe called, design:', !!design, 'iframe:', !!iframe, 'contentDocument:', !!iframe?.contentDocument, 'head:', !!iframe?.contentDocument?.head);
+      if (!iframe?.contentDocument?.head) {
+        console.warn('[AI-DEBUG] Cannot inject — iframe head not accessible');
+        return;
       }
-      styleEl.textContent = design ? buildDesignCSS(design) : '';
-    } catch {
-      // Cross-origin or contentDocument not accessible — silently skip
+      const existing = iframe.contentDocument.getElementById('ai-preview-styles');
+      if (existing) existing.remove();
+      if (!design) return;
+      const css = buildDesignCSS(design);
+      console.log('[AI-DEBUG] Generated CSS length:', css.length, '\n', css.slice(0, 300));
+      const styleEl = iframe.contentDocument.createElement('style');
+      styleEl.id = 'ai-preview-styles';
+      styleEl.textContent = css;
+      iframe.contentDocument.head.appendChild(styleEl);
+      console.log('[AI-DEBUG] CSS injected successfully into iframe head');
+    } catch (err) {
+      console.error('[AI-DEBUG] CSS injection failed (likely cross-origin):', err);
     }
   };
 
   const handleIframeLoad = () => {
+    console.log('[AI-DEBUG] iframe onLoad fired, previewDesign in ref:', !!previewDesignRef.current);
     // Inject immediately on load
     injectCSSIntoIframe(previewDesignRef.current);
-    // Retry after React hydration completes in the iframe (store SPA may re-apply its own CSS variables)
+    // Retry multiple times to survive React hydration and lazy CSS loading in the iframe
     if (cssRetryTimerRef.current) clearTimeout(cssRetryTimerRef.current);
-    cssRetryTimerRef.current = setTimeout(() => {
-      injectCSSIntoIframe(previewDesignRef.current);
-    }, 1500);
+    const retries = [500, 1500, 3000];
+    retries.forEach((delay) => {
+      setTimeout(() => injectCSSIntoIframe(previewDesignRef.current), delay);
+    });
   };
 
   if (isLoading) {
