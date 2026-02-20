@@ -118,12 +118,13 @@ export async function getAppliedDesign(storeId: string): Promise<AIDesignResult 
 
 // Build a CSS string from design variables to inject into a style tag
 export function buildDesignCSS(design: AIDesignResult): string {
+  console.log('[AI-DEBUG] buildDesignCSS input — css_variables:', design.css_variables, 'dark_vars:', design.dark_css_variables, 'overrides length:', design.css_overrides?.length);
   const lightVars = Object.entries(design.css_variables || {})
-    .map(([k, v]) => `  ${k}: ${v};`)
+    .map(([k, v]) => `  --${k}: ${v};`)
     .join("\n");
 
   const darkVars = Object.entries(design.dark_css_variables || {})
-    .map(([k, v]) => `  ${k}: ${v};`)
+    .map(([k, v]) => `  --${k}: ${v};`)
     .join("\n");
 
   let css = `:root {\n${lightVars}\n}`;
