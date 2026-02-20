@@ -72,24 +72,42 @@ function extractJSON(content: string): any {
 
 // ─── Validate and fix AI response ────────────────────────────
 function validateAndFixResponse(parsed: any, userPrompt: string): any {
-  // Detect model failure: type="text" but message contains design indicators
+  const msg = (parsed.message || "").trim();
+
+  // Case 1: AI double-encoded JSON inside message field
+  // e.g., {"type":"text","message":"{\"type\":\"design\",...}"}
+  if (parsed.type === "text" && msg.startsWith("{") && msg.includes('"type"')) {
+    try {
+      const innerParsed = JSON.parse(msg);
+      if (innerParsed.type === "design" && innerParsed.design) {
+        console.log("DEBUG: Extracted double-encoded design from message");
+        return innerParsed;
+      }
+    } catch {
+      // Not valid JSON, continue to other checks
+    }
+  }
+
+  // Case 2: AI returned design description as text with [Design proposed:] pattern
   const designIndicators = [
-    "[Design proposed:",
+    "[design proposed:",
+    "[design:",
     "```css",
     "css_variables",
-    "Here is the design",
-    "I'll implement",
-    "Implementing"
+    "here is the design",
+    "i'll implement",
+    "implementing",
+    "here's what i",
+    "i've created",
+    "i have created"
   ];
 
+  const msgLower = msg.toLowerCase();
   const isDesignLikeText = parsed.type === "text" &&
-    designIndicators.some(indicator =>
-      (parsed.message || "").toLowerCase().includes(indicator.toLowerCase())
-    );
+    designIndicators.some(indicator => msgLower.includes(indicator));
 
   if (isDesignLikeText) {
-    // Model returned design description as text — this is a failure
-    // Return a clarification request instead of broken design description
+    console.log("DEBUG: Detected design-like text, returning clarification");
     return {
       type: "text",
       message: "I couldn't generate the design properly. Could you please describe what specific changes you'd like? For example: 'Make the header blue' or 'Change button colors to green'."
@@ -375,7 +393,7 @@ serve(async (req) => {
             model,
             messages: [{ role: "system", content: systemPrompt }, ...messages],
             max_tokens: 4000,
-            temperature: 0.7,
+            temperature: 0.1,
           }),
           signal: controller.signal,
         });
@@ -568,7 +586,7 @@ serve(async (req) => {
             model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
             messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
             max_tokens: 4000,
-            temperature: 0.7,
+            temperature: 0.1,
           }),
           signal: genController.signal,
         });
