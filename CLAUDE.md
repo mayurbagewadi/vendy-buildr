@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Vendy-Buildr is a multi-tenant e-commerce platform built with React, TypeScript, and Vite. It supports multiple store types: admin dashboards (store owners), customer-facing storefronts, helper/referral system, and super-admin management. The platform uses Supabase for backend services and supports both subdomain-based (store.yesgive.shop) and path-based (yesgive.shop/store) routing.
+Vendy-Buildr is a multi-tenant e-commerce platform built with React, TypeScript, and Vite. It supports multiple store types: admin dashboards (store owners), customer-facing storefronts, helper/referral system, and super-admin management. The platform uses Supabase for backend services and supports both subdomain-based (store.digitaldukandar.in) and path-based (digitaldukandar.in/store) routing.
 
 ## Development Commands
 
