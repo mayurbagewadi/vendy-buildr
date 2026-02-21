@@ -74,7 +74,7 @@ const AdminGoogleReviews = () => {
         setEnabled(store.google_reviews_enabled || false);
         setPlaceId(store.google_place_id || "");
         setGoogleMapsUrl(store.google_maps_url || "");
-        setDisplayType(store.google_reviews_display_type || "carousel");
+        setDisplayType((store.google_reviews_display_type || "carousel") as "carousel" | "column" | "google-widget");
 
         // Check if user has purchased Google Reviews from marketplace
         const { data: purchase } = await supabase
@@ -124,7 +124,7 @@ const AdminGoogleReviews = () => {
         .single();
 
       if (data && !error) {
-        setReviewsCache(data);
+        setReviewsCache(data as any);
       }
     } catch (error) {
       console.error('Error loading cached reviews:', error);

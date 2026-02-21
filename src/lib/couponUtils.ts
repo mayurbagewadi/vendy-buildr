@@ -254,7 +254,7 @@ export const validateCoupon = async (
       }
     }
 
-    return { valid: true, coupon };
+    return { valid: true, coupon: coupon as Coupon };
   } catch (error: any) {
     return { valid: false, error: error.message || 'Error validating coupon' };
   }

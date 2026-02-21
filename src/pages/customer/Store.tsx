@@ -141,10 +141,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           .maybeSingle();
 
         if (data?.current_design) {
-          setAiDesign(data.current_design as AIDesignResult);
+          setAiDesign(data.current_design as unknown as AIDesignResult);
 
           // Build CSS string from design JSON and inject into document
-          const cssString = buildDesignCSS(data.current_design);
+          const cssString = buildDesignCSS(data.current_design as unknown as AIDesignResult);
           let styleEl = document.getElementById('ai-designer-styles');
           if (!styleEl) {
             styleEl = document.createElement('style');

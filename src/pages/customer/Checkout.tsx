@@ -500,11 +500,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
       // Convert cart items for Edge Function
       const cartItems: CartItem[] = cart.map(item => ({
-        id: item.id,
-        name: item.name,
+        id: item.productId,
+        name: item.productName,
         price: item.price,
         quantity: item.quantity,
-        categoryId: item.categoryId,
         storeId: item.storeId,
       }));
 

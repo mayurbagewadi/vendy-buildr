@@ -63,7 +63,7 @@ export const getActiveAutoDiscounts = async (storeId: string): Promise<AutoDisco
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data as AutoDiscount[]) || [];
   } catch (error) {
     console.error('Error fetching automatic discounts:', error);
     return [];
@@ -80,7 +80,7 @@ export const getDiscountTiers = async (discountId: string): Promise<DiscountTier
       .order('tier_order', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data as DiscountTier[]) || [];
   } catch (error) {
     console.error('Error fetching discount tiers:', error);
     return [];
@@ -96,7 +96,7 @@ export const getDiscountRules = async (discountId: string): Promise<DiscountRule
       .eq('discount_id', discountId);
 
     if (error) throw error;
-    return data || [];
+    return (data as DiscountRule[]) || [];
   } catch (error) {
     console.error('Error fetching discount rules:', error);
     return [];

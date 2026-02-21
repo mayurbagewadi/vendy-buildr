@@ -42,7 +42,7 @@ const ReviewWidget = ({ storeId, googleMapsUrl }: ReviewWidgetProps) => {
       }
 
       if (data) {
-        setReviews(data.reviews as Review[] || []);
+        setReviews((data.reviews as unknown as Review[]) || []);
         setAverageRating(data.average_rating || 0);
         setTotalReviews(data.total_reviews || 0);
       }
