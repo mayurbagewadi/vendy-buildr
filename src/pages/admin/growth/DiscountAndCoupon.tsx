@@ -168,7 +168,7 @@ const DiscountAndCoupon = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCoups(data || []);
+      setCoups((data as Coupon[]) || []);
 
       // Load usage counts for all coupons
       if (data && data.length > 0) {
@@ -382,7 +382,7 @@ const DiscountAndCoupon = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setAutoDiscounts(data || []);
+      setAutoDiscounts((data as AutoDiscount[]) || []);
     } catch (error: any) {
       toast({
         variant: "destructive",

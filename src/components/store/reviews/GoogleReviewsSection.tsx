@@ -62,7 +62,7 @@ const GoogleReviewsSection = ({
       }
 
       setIsEnabled(true);
-      setDisplayType(store.google_reviews_display_type || "carousel");
+      setDisplayType((store.google_reviews_display_type || "carousel") as "carousel" | "column" | "google-widget");
       setGoogleMapsUrl(store.google_maps_url || null);
 
       // Load cached reviews - but don't fail if error occurs
@@ -77,7 +77,7 @@ const GoogleReviewsSection = ({
           setReviewsData({
             average_rating: data.average_rating || 0,
             total_reviews: data.total_reviews || 0,
-            reviews: data.reviews as Review[] || [],
+            reviews: (data.reviews as unknown as Review[]) || [],
           });
         }
 

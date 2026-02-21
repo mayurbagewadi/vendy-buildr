@@ -113,7 +113,7 @@ const AutomaticDiscount = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setDiscounts(data || []);
+      setDiscounts((data as AutoDiscount[]) || []);
     } catch (error: any) {
       toast({
         variant: "destructive",

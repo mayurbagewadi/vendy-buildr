@@ -114,7 +114,7 @@ export async function getAppliedDesign(storeId: string): Promise<AIDesignResult 
     .select("current_design")
     .eq("store_id", storeId)
     .maybeSingle();
-  return (data?.current_design as AIDesignResult) || null;
+  return (data?.current_design as unknown as AIDesignResult) || null;
 }
 
 // Build a CSS string from design variables to inject into a style tag
