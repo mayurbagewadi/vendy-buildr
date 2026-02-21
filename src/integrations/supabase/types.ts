@@ -14,6 +14,277 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_designer_history: {
+        Row: {
+          ai_css_overrides: string | null
+          ai_response: Json
+          applied: boolean | null
+          created_at: string | null
+          id: string
+          prompt: string
+          response_size_bytes: number | null
+          store_id: string
+          tokens_used: number
+          user_id: string
+        }
+        Insert: {
+          ai_css_overrides?: string | null
+          ai_response: Json
+          applied?: boolean | null
+          created_at?: string | null
+          id?: string
+          prompt: string
+          response_size_bytes?: number | null
+          store_id: string
+          tokens_used?: number
+          user_id: string
+        }
+        Update: {
+          ai_css_overrides?: string | null
+          ai_response?: Json
+          applied?: boolean | null
+          created_at?: string | null
+          id?: string
+          prompt?: string
+          response_size_bytes?: number | null
+          store_id?: string
+          tokens_used?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_designer_history_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_designer_metrics: {
+        Row: {
+          action: string
+          created_at: string | null
+          css_sanitized: boolean | null
+          design_published: boolean | null
+          error_type: string | null
+          id: string
+          latency_ms: number | null
+          model_used: string | null
+          prompt_length: number | null
+          store_id: string
+          success: boolean
+          tokens_consumed: number | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          css_sanitized?: boolean | null
+          design_published?: boolean | null
+          error_type?: string | null
+          id?: string
+          latency_ms?: number | null
+          model_used?: string | null
+          prompt_length?: number | null
+          store_id: string
+          success?: boolean
+          tokens_consumed?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          css_sanitized?: boolean | null
+          design_published?: boolean | null
+          error_type?: string | null
+          id?: string
+          latency_ms?: number | null
+          model_used?: string | null
+          prompt_length?: number | null
+          store_id?: string
+          success?: boolean
+          tokens_consumed?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_designer_metrics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_history_archives: {
+        Row: {
+          archive_date: string
+          archived_at: string | null
+          created_at: string | null
+          file_size_bytes: number | null
+          google_drive_file_id: string
+          google_drive_file_url: string | null
+          id: string
+          newest_record_date: string | null
+          oldest_record_date: string | null
+          record_count: number
+        }
+        Insert: {
+          archive_date: string
+          archived_at?: string | null
+          created_at?: string | null
+          file_size_bytes?: number | null
+          google_drive_file_id: string
+          google_drive_file_url?: string | null
+          id?: string
+          newest_record_date?: string | null
+          oldest_record_date?: string | null
+          record_count?: number
+        }
+        Update: {
+          archive_date?: string
+          archived_at?: string | null
+          created_at?: string | null
+          file_size_bytes?: number | null
+          google_drive_file_id?: string
+          google_drive_file_url?: string | null
+          id?: string
+          newest_record_date?: string | null
+          oldest_record_date?: string | null
+          record_count?: number
+        }
+        Relationships: []
+      }
+      ai_token_packages: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          tokens_included: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          tokens_included: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          tokens_included?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_token_purchases: {
+        Row: {
+          amount_paid: number
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          package_id: string | null
+          payment_id: string | null
+          purchased_at: string | null
+          status: string | null
+          store_id: string
+          tokens_purchased: number
+          tokens_remaining: number
+          tokens_used: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          package_id?: string | null
+          payment_id?: string | null
+          purchased_at?: string | null
+          status?: string | null
+          store_id: string
+          tokens_purchased: number
+          tokens_remaining: number
+          tokens_used?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          package_id?: string | null
+          payment_id?: string | null
+          purchased_at?: string | null
+          status?: string | null
+          store_id?: string
+          tokens_purchased?: number
+          tokens_remaining?: number
+          tokens_used?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_purchases_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "ai_token_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_token_purchases_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_token_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          token_expiry_duration: number | null
+          token_expiry_enabled: boolean | null
+          token_expiry_unit: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          token_expiry_duration?: number | null
+          token_expiry_enabled?: boolean | null
+          token_expiry_unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          token_expiry_duration?: number | null
+          token_expiry_enabled?: boolean | null
+          token_expiry_unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       automatic_discounts: {
         Row: {
           created_at: string
@@ -1241,8 +1512,13 @@ export type Database = {
           auto_cleanup_inactive_logs: boolean | null
           auto_cleanup_orders: boolean | null
           created_at: string
+          google_drive_archive_folder_id: string | null
+          google_drive_service_account_json: string | null
           id: string
           inactive_logs_cleanup_months: number | null
+          openrouter_api_key: string | null
+          openrouter_fallback_model: string | null
+          openrouter_model: string | null
           orders_cleanup_months: number | null
           platform_name: string | null
           razorpay_key_id: string | null
@@ -1258,8 +1534,13 @@ export type Database = {
           auto_cleanup_inactive_logs?: boolean | null
           auto_cleanup_orders?: boolean | null
           created_at?: string
+          google_drive_archive_folder_id?: string | null
+          google_drive_service_account_json?: string | null
           id?: string
           inactive_logs_cleanup_months?: number | null
+          openrouter_api_key?: string | null
+          openrouter_fallback_model?: string | null
+          openrouter_model?: string | null
           orders_cleanup_months?: number | null
           platform_name?: string | null
           razorpay_key_id?: string | null
@@ -1275,8 +1556,13 @@ export type Database = {
           auto_cleanup_inactive_logs?: boolean | null
           auto_cleanup_orders?: boolean | null
           created_at?: string
+          google_drive_archive_folder_id?: string | null
+          google_drive_service_account_json?: string | null
           id?: string
           inactive_logs_cleanup_months?: number | null
+          openrouter_api_key?: string | null
+          openrouter_fallback_model?: string | null
+          openrouter_model?: string | null
           orders_cleanup_months?: number | null
           platform_name?: string | null
           razorpay_key_id?: string | null
@@ -1478,6 +1764,44 @@ export type Database = {
             foreignKeyName: "store_activity_logs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_design_state: {
+        Row: {
+          created_at: string | null
+          current_design: Json | null
+          last_applied_at: string | null
+          store_id: string
+          updated_at: string | null
+          version: number | null
+          version_history: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_design?: Json | null
+          last_applied_at?: string | null
+          store_id: string
+          updated_at?: string | null
+          version?: number | null
+          version_history?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          current_design?: Json | null
+          last_applied_at?: string | null
+          store_id?: string
+          updated_at?: string | null
+          version?: number | null
+          version_history?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_design_state_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
             referencedRelation: "stores"
             referencedColumns: ["id"]
           },
@@ -2066,60 +2390,6 @@ export type Database = {
         }
         Relationships: []
       }
-      video_generations: {
-        Row: {
-          audio_url: string | null
-          completed_at: string | null
-          created_at: string
-          created_by: string
-          duration_seconds: number | null
-          error_message: string | null
-          file_size_mb: number | null
-          id: string
-          progress: number
-          script: string
-          status: string
-          template: string
-          title: string
-          video_url: string | null
-          voice_id: string | null
-        }
-        Insert: {
-          audio_url?: string | null
-          completed_at?: string | null
-          created_at?: string
-          created_by: string
-          duration_seconds?: number | null
-          error_message?: string | null
-          file_size_mb?: number | null
-          id?: string
-          progress?: number
-          script: string
-          status?: string
-          template: string
-          title: string
-          video_url?: string | null
-          voice_id?: string | null
-        }
-        Update: {
-          audio_url?: string | null
-          completed_at?: string | null
-          created_at?: string
-          created_by?: string
-          duration_seconds?: number | null
-          error_message?: string | null
-          file_size_mb?: number | null
-          id?: string
-          progress?: number
-          script?: string
-          status?: string
-          template?: string
-          title?: string
-          video_url?: string | null
-          voice_id?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -2129,11 +2399,13 @@ export type Database = {
         Args: { p_application_id: string }
         Returns: Json
       }
+      archive_old_ai_history: { Args: never; Returns: Json }
       check_and_process_expired_subscriptions: {
         Args: never
         Returns: undefined
       }
       cleanup_old_pending_subscriptions: { Args: never; Returns: undefined }
+      delete_old_ai_history: { Args: never; Returns: Json }
       generate_referral_code: { Args: never; Returns: string }
       get_active_commission_settings: { Args: never; Returns: Json }
       has_role: {
