@@ -121,38 +121,115 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
   const changesList: string[] = [];
   const cssOverrides: string[] = [];
 
-  // Map sections to design
-  const sectionMap: Record<string, string> = {
-    'header': '[data-ai="header"]',
-    'hero': '[data-ai="section-hero"]',
-    'products': '[data-ai="product-card"]',
-    'categories': '[data-ai="section-categories"]',
-    'cta': '[data-ai="section-cta"]',
-    'footer': '[data-ai="section-footer"]',
+  // Real CSS variables used by the store
+  const realVarDefaults: Record<string, string> = {
+    'primary': '217 91% 60%',      // Buttons, links, accents
+    'background': '210 40% 98%',   // Page background
+    'foreground': '222 47% 11%',   // Text color
+    'card': '0 0% 100%',           // Card backgrounds
+    'card-foreground': '222 47% 11%',
+    'muted': '210 40% 96%',        // Subtle backgrounds
+    'muted-foreground': '215 16% 47%',
+    'border': '214 32% 91%',       // Borders
+    'radius': '0.75rem',           // Border radius
+    'accent': '210 40% 96%',       // Hover accents
+    'secondary': '210 40% 96%',
+  };
+
+  // Start with defaults
+  Object.assign(cssVariables, realVarDefaults);
+
+  // Map sections to real CSS variables
+  const sectionToVarMap: Record<string, string[]> = {
+    'header': ['primary', 'radius'],
+    'hero': ['background', 'primary'],
+    'products': ['card', 'primary', 'radius'],
+    'categories': ['card', 'radius'],
+    'cta': ['primary', 'secondary'],
+    'footer': ['background', 'foreground'],
   };
 
   sections.forEach(section => {
-    const sectionName = Object.keys(sectionMap).find(key =>
+    const sectionName = Object.keys(sectionToVarMap).find(key =>
       section.name.toLowerCase().includes(key)
-    ) || section.name;
+    ) || 'primary';
 
     // Add to changes list
     changesList.push(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} → ${section.change}`);
 
-    // Extract color if provided
+    // If color provided, apply it to the main variable for this section
     if (section.color) {
-      cssVariables[`accent-${sectionName}`] = section.color;
+      const vars = sectionToVarMap[sectionName] || ['primary'];
+      const mainVar = vars[0]; // Apply to first variable in the section
+      cssVariables[mainVar] = section.color;
+      console.log(`[MAP] Section "${sectionName}" → variable "--${mainVar}" = ${section.color}`);
+
+      // Parse change description for creative effects
+      const changeLower = section.change.toLowerCase();
+
+      // Rounded corners
+      if (changeLower.includes('rounded') || changeLower.includes('pill')) {
+        cssVariables['radius'] = '1.5rem';
+      }
+
+      // Shadow effects
+      if (changeLower.includes('shadow')) {
+        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2); }`);
+      }
+
+      // Glassmorphism
+      if (changeLower.includes('glass') || changeLower.includes('blur')) {
+        cssOverrides.push(`[data-ai="${sectionName}"] { backdrop-filter: blur(12px); background: hsla(${section.color}, 0.75); border: 1px solid hsla(255, 255%, 255%, 0.2); }`);
+      }
+
+      // Gradients
+      if (changeLower.includes('gradient') || changeLower.includes('smooth fade')) {
+        const hslValues = section.color.split(' ');
+        const baseHue = parseInt(hslValues[0]) || 220;
+        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(135deg, hsl(${baseHue} 90% 50%), hsl(${baseHue + 40} 85% 60%)); }`);
+      }
+
+      // Glow/Neon effects
+      if (changeLower.includes('glow') || changeLower.includes('neon') || changeLower.includes('glowing')) {
+        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 0 20px hsl(${section.color}), 0 0 40px hsla(${section.color}, 0.5); }`);
+      }
+
+      // Holographic/Shimmer
+      if (changeLower.includes('holographic') || changeLower.includes('shimmer') || changeLower.includes('iridescent')) {
+        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(45deg, hsl(${section.color}), hsl(${parseInt(section.color.split(' ')[0]) + 60} 90% 55%)); animation: shimmer 3s infinite; }`);
+      }
+
+      // Hover effects
+      if (changeLower.includes('hover') || changeLower.includes('lift') || changeLower.includes('animation')) {
+        cssOverrides.push(`[data-ai="${sectionName}"]:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 32px hsla(0, 0%, 0%, 0.25); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }`);
+      }
+
+      // Bold/Vibrant
+      if (changeLower.includes('bold') || changeLower.includes('vibrant') || changeLower.includes('striking')) {
+        cssVariables['primary'] = section.color;
+        cssVariables['accent'] = section.color;
+      }
     }
   });
 
-  // Default CSS variables if none extracted
-  if (Object.keys(cssVariables).length === 0) {
-    cssVariables['primary'] = '217 91% 60%';
-  }
+  // Dark mode variables (adjusted for dark backgrounds)
+  const darkCssVariables: Record<string, string> = {
+    'primary': cssVariables['primary'], // Keep primary bright
+    'background': '222 47% 8%',         // Dark background
+    'foreground': '210 40% 98%',        // Light text
+    'card': '222 47% 12%',              // Dark cards
+    'muted': '217 33% 17%',
+    'border': '217 33% 17%',
+  };
+
+  console.log('[DESIGN] Final CSS variables:', cssVariables);
+  console.log('[DESIGN] Dark mode variables:', darkCssVariables);
+  console.log('[DESIGN] CSS overrides:', cssOverrides.length, 'rules');
 
   return {
-    summary: `Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with custom styling`,
+    summary: `Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with warm colors and smooth effects`,
     css_variables: cssVariables,
+    dark_css_variables: darkCssVariables,
     css_overrides: cssOverrides.join('\n'),
     changes_list: changesList,
   };
@@ -241,11 +318,18 @@ function buildSystemPrompt(storeName: string, currentDesign: any, theme: string 
     : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
 
   return `### ROLE
-You are a friendly store design AI. Output design changes in plain, structured format.
-NOT JSON. NOT code. Just simple text format that's easy to parse.
+You are a CREATIVE store design AI. Your job: Make designs that are BOLD, UNIQUE, and VISUALLY STRIKING.
+Output design changes in plain, structured format. NOT JSON. NOT code. Just simple text.
+
+YOU MUST:
+✅ Be CREATIVE and take RISKS with colors
+✅ Suggest BOLD gradients, unusual color combos, innovative effects
+✅ Think BEYOND defaults - make stores stand out
+✅ Use design psychology - color meaning matters
+✅ Suggest ANIMATIONS, EFFECTS, SHADOWS when appropriate
 
 ### CURRENT MODE: ${theme.toUpperCase()}
-${theme === "dark" ? "Design for dark mode: deep backgrounds, light text, glowing accents" : "Design for light mode: bright backgrounds, vibrant accents, high contrast"}
+${theme === "dark" ? "Dark mode: Use BOLD neon accents, deep purples, electric blues, luxe metals - make it GLOW" : "Light mode: Use VIBRANT, CONTRASTING colors - make it POP. Think bold gradients, unusual combos"}
 
 ${currentDesignText}
 ### OUTPUT FORMAT (MANDATORY - NO JSON, JUST TEXT)
@@ -273,14 +357,23 @@ SECTION: hero
 CHANGE: Bold gradient from purple to gold
 ---
 
-RULES FOR OUTPUT:
+DESIGN CREATIVITY RULES:
+• Don't play it safe - use BOLD colors and effects
+• Mix warm + cool if it looks good
+• Use gradients, glows, shadows, blur effects
+• Think about movement (hover animations, parallax)
+• Consider contrast and readability ALWAYS
+• Be specific: not just "blue" → "electric blue with neon glow"
+
+OUTPUT FORMAT RULES:
 1. Format: SECTION: [name] / CHANGE: [description] / COLOR: [optional HSL]
 2. Separate sections with exactly: ---
 3. Each section MUST have SECTION and CHANGE lines
-4. Colors MUST be HSL format ONLY: "number number% number%" (example: "220 85% 45%")
-5. Keep descriptions SHORT (30-80 characters) and FRIENDLY
-6. NO JSON. NO markdown. NO code blocks. NO explanations.
-7. NO "[Design proposed: ...]" - just the format above
+4. Colors MUST be HSL format: "number number% number%" (example: "280 95% 55%")
+5. Descriptions should be CREATIVE: "Holographic purple with shimmer" not "purple"
+6. Include effect details: "glass blur", "neon glow", "smooth hover", "gradient", etc.
+7. NO JSON. NO markdown. NO code blocks. NO explanations.
+8. NO "[Design proposed: ...]" - just the format above
 
 ### CSS RULES
 - Colors: HSL ONLY "217 91% 60%" (no hsl(), no hex, no rgb)
