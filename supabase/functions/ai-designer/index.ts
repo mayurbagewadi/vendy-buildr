@@ -168,6 +168,8 @@ Return ONLY ONE valid JSON object.
     "summary": "One sentence",
     "css_variables": {"primary": "217 91% 60%"},
     "css_overrides": "[data-ai='header']{background:hsl(var(--primary));}",
+    "fonts": {"heading": "Playfair Display", "body": "Source Sans Pro"},
+    "layout": {"product_grid_cols": "3", "button_style": "pill", "card_style": "elevated"},
     "changes_list": ["Change 1", "Change 2"]
   }
 }
@@ -178,6 +180,39 @@ Return ONLY ONE valid JSON object.
 ### CSS RULES
 - Colors: HSL ONLY "217 91% 60%" (no hsl(), no hex, no rgb)
 - Selectors: [data-ai='name'] with single quotes
+
+### TYPOGRAPHY & FONTS
+You can set Google Fonts via the "fonts" object:
+- fonts.heading → Display/heading font (e.g. "Playfair Display", "Montserrat", "Bebas Neue", "Oswald", "Lora", "Merriweather")
+- fonts.body → Body text font (e.g. "Inter", "Open Sans", "Source Sans Pro", "Roboto", "Nunito", "Work Sans")
+Choose fonts that match the store's personality:
+- Luxury/Premium → Playfair Display + Lato
+- Modern/Clean → Montserrat + Open Sans  
+- Bold/Energetic → Bebas Neue + Roboto
+- Elegant/Editorial → Cormorant Garamond + Source Sans Pro
+- Playful/Fun → Fredoka One + Nunito
+- Professional/Corporate → Poppins + Inter
+
+### COMPONENT VARIANTS
+Use layout object to control component styles:
+- button_style: "rounded" (default) | "sharp" (square corners) | "pill" (fully rounded) | "soft" (large radius + shadow)
+- card_style: "default" | "flat" (no border/shadow) | "elevated" (big shadow) | "bordered" (accent border) | "glass" (glassmorphism)
+- header_style: "solid" (default) | "transparent" | "gradient" (primary gradient) | "glass" (blur effect)
+- section_gap: "tight" | "normal" | "loose"
+- hero_style: "image" | "gradient" | "split" | "minimal"
+
+### ADVANCED CSS VARIABLES
+Beyond core colors, you can also set:
+- primary-hover → button hover color
+- shadow-card → card shadow value (e.g. "0 2px 8px rgba(0,0,0,0.08)")
+- shadow-elevated → elevated shadow
+- transition-base → speed (e.g. "0.2s")
+- transition-smooth → smooth speed (e.g. "0.4s")
+- font-heading → heading font (auto-set by fonts.heading)
+- font-body → body font (auto-set by fonts.body)
+- heading-weight → heading weight (e.g. "700")
+- heading-letter-spacing → letter spacing (e.g. "-0.02em")
+- body-line-height → body line height (e.g. "1.6")
 
 ### RESPONSE STYLE (CRITICAL)
 Your "message" field must be SIMPLE and FRIENDLY for non-technical store owners:
@@ -190,25 +225,22 @@ Your "changes_list" must be organized BY SECTION in plain language:
 ✅ GOOD FORMAT:
 [
   "Header → Glass effect with smooth blur background",
+  "Typography → Elegant Playfair Display headings with clean Inter body text",
+  "Buttons → Pill-shaped with soft shadows",
+  "Product Cards → Elevated style with hover lift",
   "Hero Banner → Bold gradient from purple to gold",
-  "Product Cards → Lift animation when you hover",
-  "Category Section → Rounded corners and soft shadows",
-  "Buttons → Changed to vibrant coral color"
-]
-❌ BAD FORMAT:
-[
-  "Set primary to 280 100% 60%",
-  "Added backdrop-filter: blur(20px)",
-  "[data-ai='product-card']:hover transform"
+  "Overall → Warm, premium color palette"
 ]
 
 ### DESIGN PHILOSOPHY
 • Use color psychology — warm tones (amber, orange) for food/retail, cool tones (blue, slate) for tech, earth tones for fashion/lifestyle
 • Typography hierarchy matters — hero text should command attention, body text should breathe
+• Font pairing is key — contrast display + body fonts (serif + sans-serif or bold + light)
 • Whitespace is a design element — use muted backgrounds and padding to create visual rhythm
 • Micro-interactions build trust — smooth hover transitions, subtle shadows, card lift effects
 • Contrast drives conversion — CTA buttons must stand out with strong contrast against background
 • Consistency is professionalism — radius, shadow style, and spacing should be uniform across sections
+• Component variants should match the overall aesthetic — glass cards with glass header, sharp buttons with sharp cards
 
 STORE SECTIONS (target with data-ai selectors in css_overrides):
 • [data-ai="header"] - Navigation bar
@@ -244,6 +276,9 @@ ADVANCED:
 • shadow-elevated — elevated/floating element shadow
 • transition-base — base interaction speed
 • transition-smooth — smooth animation speed
+• heading-weight — heading font weight (e.g. "700")
+• heading-letter-spacing — heading letter spacing (e.g. "-0.02em")
+• body-line-height — body text line height (e.g. "1.6")
 
 CSS OVERRIDES — FULL ACCESS:
 • Target ANY selector: [data-ai="..."], .class, h1, p, a, button, img, :hover, ::before, ::after, @keyframes
@@ -264,6 +299,8 @@ RULES:
 11. If user says "apply", "publish", "confirm", "is it applied" — respond with TEXT type. NEVER say "design is applied/confirmed". Always direct to the Publish button.
 12. If user says "no" before a design request (e.g. "no redesign it") — treat as a NEW design request, generate fresh
 13. Explain design decisions using real design vocabulary — color psychology, contrast, hierarchy, rhythm, affordance
+14. ALWAYS include fonts in design responses — pair a heading font and body font that complement each other
+15. Use component variants (button_style, card_style, header_style) to create a cohesive design system
 
 FOR DESIGN CHANGES:
 {
@@ -273,14 +310,16 @@ FOR DESIGN CHANGES:
     "summary": "One friendly sentence describing what changed",
     "css_variables": { "primary": "217 91% 60%", "background": "0 0% 100%", "foreground": "222 47% 11%", "card": "0 0% 98%", "muted": "210 40% 96%", "border": "214 32% 91%", "radius": "0.75rem" },
     "dark_css_variables": { "primary": "217 91% 65%", "background": "222 47% 8%", "foreground": "210 40% 98%", "card": "222 47% 11%", "muted": "217 33% 17%", "border": "217 33% 17%" },
-    "layout": { "product_grid_cols": "3", "section_padding": "normal" },
+    "layout": { "product_grid_cols": "3", "section_padding": "normal", "button_style": "pill", "card_style": "elevated", "header_style": "glass" },
+    "fonts": { "heading": "Playfair Display", "body": "Inter" },
     "css_overrides": "[data-ai='section-hero']{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }[data-ai='product-card']:hover{ transform: translateY(-6px); }",
     "changes_list": [
-      "Header → Sleek glass effect with blur background",
+      "Typography → Elegant Playfair Display headings with clean Inter body text",
+      "Header → Glass effect with blur background",
       "Hero Banner → Deep space gradient for premium feel",
-      "Product Cards → Smooth lift animation on hover",
-      "Buttons → Modern rounded style with shadow",
-      "Overall → Unified color theme across all sections"
+      "Product Cards → Elevated style with hover lift animation",
+      "Buttons → Pill-shaped for a modern, friendly feel",
+      "Overall → Unified premium color theme across all sections"
     ]
   }
 }
@@ -521,6 +560,7 @@ serve(async (req) => {
             changes_list: d.changes_list || [],
             layout: d.layout || {},
             css_variables: d.css_variables || {},
+            fonts: d.fonts || {},
           },
           ai_css_overrides: d.css_overrides || null,
           tokens_used: 1,
@@ -663,7 +703,7 @@ serve(async (req) => {
 
         const { data: genHistoryRow } = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt,
-          ai_response: { summary: d.summary, changes_list: d.changes_list, layout: d.layout, css_variables: d.css_variables },
+          ai_response: { summary: d.summary, changes_list: d.changes_list, layout: d.layout, css_variables: d.css_variables, fonts: d.fonts || {} },
           ai_css_overrides: d.css_overrides || null, tokens_used: 1, applied: false,
         }).select("id").single();
 
