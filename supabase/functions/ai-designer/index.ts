@@ -39,6 +39,79 @@ function sanitizeCSS(css: string): { safe: boolean; sanitized: string; blocked: 
   return { safe: blocked.length === 0, sanitized, blocked };
 }
 
+// ─── Design System Context (for AI Intelligence) ─────────────
+interface DesignSystemContext {
+  availableColors: Record<string, string>;
+  componentCapabilities: string[];
+  currentState: Record<string, string>;
+  storeType: string;
+  constraints: {
+    minContrast: number;
+    maxSaturation: number;
+    allowedEffects: string[];
+  };
+}
+
+function buildDesignSystemContext(currentDesign: any, storeType: string = "general"): DesignSystemContext {
+  // All colors AI can use
+  const availableColors = {
+    "primary-blue": "217 91% 60%",
+    "primary-green": "142 71% 45%",
+    "primary-orange": "38 92% 50%",
+    "primary-red": "0 84% 60%",
+    "accent-gold": "45 93% 47%",
+    "accent-purple": "280 100% 60%",
+    "accent-cyan": "190 100% 50%",
+    "neutral-dark": "222 47% 8%",
+    "neutral-light": "0 0% 100%",
+    "neutral-gray": "210 40% 96%",
+  };
+
+  // What AI can modify on store
+  const componentCapabilities = [
+    "header-background",
+    "hero-section",
+    "product-cards",
+    "category-cards",
+    "cta-buttons",
+    "footer",
+    "text-colors",
+    "border-colors",
+    "hover-effects",
+    "animations",
+    "shadows",
+    "radius",
+  ];
+
+  // Current live state
+  const currentState = currentDesign?.css_variables || {
+    primary: "217 91% 60%",
+    background: "210 40% 98%",
+    card: "0 0% 100%",
+  };
+
+  // Store type constraints
+  const storeConstraints: Record<string, string[]> = {
+    food: ["warm-colors", "appetizing-palette", "rounded-corners"],
+    fashion: ["elegant-colors", "minimal-effects", "bold-typography"],
+    tech: ["cool-colors", "modern-effects", "glassmorphism"],
+    luxury: ["gold-accents", "dark-backgrounds", "premium-shadows"],
+    casual: ["bright-colors", "playful-animations", "rounded-shapes"],
+  };
+
+  return {
+    availableColors,
+    componentCapabilities,
+    currentState,
+    storeType,
+    constraints: {
+      minContrast: 4.5,
+      maxSaturation: 100,
+      allowedEffects: ["gradient", "shadow", "blur", "glow", "animation"],
+    },
+  };
+}
+
 // ─── Normalize CSS variable keys (strip leading --) ──────────
 function normalizeVarKeys(vars: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
@@ -83,13 +156,38 @@ function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: 
   return { sections, rawText: aiText };
 }
 
+// ─── Color Harmony Validation ─────────────────────────────────
+function validateColorHarmony(hslColor: string, baseHSL: string): { harmonic: boolean; reason: string } {
+  try {
+    const hueNew = parseInt(hslColor.split(' ')[0]);
+    const hueBase = parseInt(baseHSL.split(' ')[0]);
+    const hueDiff = Math.abs(hueNew - hueBase);
+    const minDiff = Math.min(hueDiff, 360 - hueDiff);
+
+    // Check if colors are complementary, analogous, or triadic
+    if (minDiff === 0) return { harmonic: false, reason: "Same hue (no contrast)" };
+    if (minDiff < 30) return { harmonic: true, reason: "Analogous (harmonious)" };
+    if (Math.abs(minDiff - 180) < 15) return { harmonic: true, reason: "Complementary (striking)" };
+    if (Math.abs(minDiff - 120) < 15) return { harmonic: true, reason: "Triadic (balanced)" };
+    return { harmonic: true, reason: "Novel combination (bold)" };
+  } catch {
+    return { harmonic: false, reason: "Invalid HSL format" };
+  }
+}
+
 // ─── Semantic validation ──────────────────────────────────────
-function validateDesignSections(sections: ParsedSection[]): { valid: boolean; errors: string[] } {
+function validateDesignSections(sections: ParsedSection[], currentDesign?: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   const validSections = ['header', 'hero', 'products', 'categories', 'cta', 'footer'];
 
   if (!sections || sections.length === 0) {
     errors.push("No design sections found in response");
+    return { valid: false, errors };
+  }
+
+  // Require at least 2 sections for design changes (not just 1)
+  if (sections.length < 2) {
+    errors.push(`Only ${sections.length} section found. Please update at least 2-3 sections for a complete design`);
     return { valid: false, errors };
   }
 
@@ -108,10 +206,14 @@ function validateDesignSections(sections: ParsedSection[]): { valid: boolean; er
     // Validate color format if provided
     if (section.color && !section.color.match(/^\d+\s+\d+%\s+\d+%$/)) {
       errors.push(`Section ${idx + 1}: Color format invalid. Use HSL like "220 85% 45%"`);
+    } else if (section.color && currentDesign?.css_variables?.primary) {
+      // Check color harmony with existing primary color
+      const harmony = validateColorHarmony(section.color, currentDesign.css_variables.primary);
+      console.log(`[HARMONY] Section "${section.name}": ${harmony.reason}`);
     }
   });
 
-  console.log(`[VALIDATION] ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length + ' errors'}`);
+  console.log(`[VALIDATION] Sections: ${sections.length}, Errors: ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length}`);
   return { valid: errors.length === 0, errors };
 }
 
@@ -312,13 +414,56 @@ function validateAndFixResponse(parsed: any, userPrompt: string): any {
 }
 
 // ─── System prompt ────────────────────────────────────────────
-function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light"): string {
+function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light", storeType: string = "general"): string {
+  // Get full design system context for AI
+  const designContext = buildDesignSystemContext(currentDesign, storeType);
+
   const currentDesignText = currentDesign
     ? "CURRENT DESIGN (your baseline — preserve everything not mentioned in the request):\n" + JSON.stringify(currentDesign, null, 2) + "\n\n"
     : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
 
+  // Build available colors reference
+  const colorsReference = Object.entries(designContext.availableColors)
+    .map(([name, hsl]) => `• ${name}: "${hsl}"`)
+    .join("\n");
+
+  // Build capabilities reference
+  const capabilitiesReference = designContext.componentCapabilities
+    .map(cap => `• ${cap}`)
+    .join("\n");
+
+  const contextInfo = `
+### DESIGN SYSTEM KNOWLEDGE (Use This!)
+You have FULL ACCESS to the store's design system:
+
+AVAILABLE COLORS (use exact HSL values):
+${colorsReference}
+
+WHAT YOU CAN STYLE:
+${capabilitiesReference}
+
+DESIGN CONSTRAINTS:
+• Minimum contrast ratio: 4.5:1 (WCAG AA)
+• Maximum saturation: 100%
+• Allowed effects: gradient, shadow, blur, glow, animation
+
+CURRENT STATE (Don't ignore this):
+${JSON.stringify(designContext.currentState, null, 2)}
+
+STORE TYPE: ${storeType}
+Use design principles for: ${storeType} stores (see best practices below)
+
+STORE TYPE BEST PRACTICES:
+${storeType === "food" ? "• Warm orange/yellow tones • Rounded, friendly shapes • Appetizing visuals" :
+ storeType === "fashion" ? "• Elegant, minimal colors • Bold typography • White space" :
+ storeType === "tech" ? "• Cool blues/purples • Modern effects • Glassmorphism" :
+ storeType === "luxury" ? "• Gold accents • Dark backgrounds • Premium shadows" :
+ "• Depends on store - be creative within constraints"}
+`;
+
   return `### ROLE
-You are a CREATIVE store design AI. Your job: Make designs that are BOLD, UNIQUE, and VISUALLY STRIKING.
+You are a CREATIVE store design AI with FULL FRONTEND ACCESS. Your job: Make designs that are BOLD, UNIQUE, and VISUALLY STRIKING.
+You KNOW the design system. You UNDERSTAND constraints. You IMPROVE decisions based on context.
 Output design changes in plain, structured format. NOT JSON. NOT code. Just simple text.
 
 YOU MUST:
@@ -327,11 +472,15 @@ YOU MUST:
 ✅ Think BEYOND defaults - make stores stand out
 ✅ Use design psychology - color meaning matters
 ✅ Suggest ANIMATIONS, EFFECTS, SHADOWS when appropriate
+✅ Reference AVAILABLE COLORS (don't invent random ones)
+✅ Respect CONSTRAINTS (contrast, saturation, effects)
+✅ Build on CURRENT STATE (don't clash with existing design)
 
 ### CURRENT MODE: ${theme.toUpperCase()}
 ${theme === "dark" ? "Dark mode: Use BOLD neon accents, deep purples, electric blues, luxe metals - make it GLOW" : "Light mode: Use VIBRANT, CONTRASTING colors - make it POP. Think bold gradients, unusual combos"}
 
 ${currentDesignText}
+${contextInfo}
 ### OUTPUT FORMAT (MANDATORY - NO JSON, JUST TEXT)
 Output changes using this format EXACTLY. Separate each section with ---
 
@@ -345,16 +494,26 @@ CHANGE: [what changed]
 
 VALID SECTION NAMES: header, hero, products, categories, cta, footer
 
-EXAMPLE OUTPUT:
+EXAMPLE OUTPUT (Multiple Sections Required):
 SECTION: header
 CHANGE: Added glass effect with smooth blur background
 COLOR: 280 100% 60%
 ---
+SECTION: hero
+CHANGE: Bold gradient from purple to gold with immersive feel
+COLOR: 35 85% 50%
+---
 SECTION: products
 CHANGE: Smooth lift animation when you hover over cards
+COLOR: 30 90% 55%
 ---
-SECTION: hero
-CHANGE: Bold gradient from purple to gold
+SECTION: categories
+CHANGE: Rounded cards with soft shadows and warm orange tones
+COLOR: 38 92% 58%
+---
+SECTION: cta
+CHANGE: Pill-shaped buttons with glowing effect
+COLOR: 280 95% 60%
 ---
 
 DESIGN CREATIVITY RULES:
@@ -364,6 +523,9 @@ DESIGN CREATIVITY RULES:
 • Think about movement (hover animations, parallax)
 • Consider contrast and readability ALWAYS
 • Be specific: not just "blue" → "electric blue with neon glow"
+• IMPORTANT: Output AT LEAST 3-4 SECTIONS for comprehensive designs
+• Cover: header, hero, products, footer (or categories, cta)
+• Each section should get distinct changes, not just one
 
 OUTPUT FORMAT RULES:
 1. Format: SECTION: [name] / CHANGE: [description] / COLOR: [optional HSL]
@@ -588,14 +750,22 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Helper: Enhanced prompt for retries ────────────────────
-    const enhancePromptForRetry = (basePrompt: string, attempt: number, lastError: string): string => {
-      const hints = [
-        "Make sure to follow the SECTION/CHANGE/COLOR format exactly.",
-        "Use valid section names: header, hero, products, categories, cta, footer.",
-        "Each section must have both SECTION and CHANGE lines, separated by ---.",
+    // ── Helper: Enhanced prompt for retries (with design context) ──
+    const enhancePromptForRetry = (basePrompt: string, attempt: number, lastError: string, designContext?: DesignSystemContext): string => {
+      const contextReminders = [
+        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Use EXACTLY the SECTION/CHANGE/COLOR format. Colors MUST be valid HSL like "280 95% 60%".`,
+        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Each section needs both SECTION: [name] and CHANGE: [description]. Separate with ---. Use valid section names: header, hero, products, categories, cta, footer.`,
+        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Output AT LEAST 3-4 complete sections. Don't skip sections. Make each one detailed.`,
       ];
-      return `${basePrompt}\n\nAttempt ${attempt + 1}: ${lastError}\n\nReminder: ${hints[attempt % hints.length]}`;
+
+      let enhancedPrompt = `${basePrompt}\n\n${contextReminders[attempt % contextReminders.length]}`;
+
+      // Add design context guidance on later retries
+      if (attempt > 0 && designContext) {
+        enhancedPrompt += `\n\nDESIGN SYSTEM REMINDER:\nAvailable colors: ${Object.entries(designContext.availableColors).map(([name, hsl]) => `${name} (${hsl})`).slice(0, 3).join(", ")}...\nCan style: ${designContext.componentCapabilities.slice(0, 5).join(", ")}...`;
+      }
+
+      return enhancedPrompt;
     };
 
     // ── chat ───────────────────────────────────────────────────
@@ -696,18 +866,24 @@ serve(async (req) => {
       let parsed: any = null;
       const maxRetries = 2;
 
+      // Build design context once for all retry attempts
+      const designContext = buildDesignSystemContext(designState?.current_design, "general");
+      console.log(`[CONTEXT] Design system context built. Available: ${designContext.availableColors ? Object.keys(designContext.availableColors).length : 0} colors, ${designContext.componentCapabilities?.length || 0} capabilities`);
+
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          console.log(`[RETRY] Attempt ${attempt + 1}/${maxRetries + 1}`);
+          console.log(`[ATTEMPT] ${attempt + 1}/${maxRetries + 1} - Parsing AI output (${rawContent.length} chars)`);
 
           // Try to parse as text format (new approach)
           const { sections, rawText } = parseDesignText(rawContent);
+          console.log(`[PARSE] Found ${sections.length} sections: ${sections.map(s => s.name).join(", ")}`);
 
-          // Validate sections
-          const validation = validateDesignSections(sections);
+          // Validate sections with design context (for color harmony checking)
+          const validation = validateDesignSections(sections, designState?.current_design);
 
           if (!validation.valid) {
             lastError = validation.errors.join("; ");
+            console.warn(`[VALIDATION] Failed: ${lastError}`);
             throw new Error(lastError);
           }
 
@@ -720,7 +896,7 @@ serve(async (req) => {
             design: designFromText,
           };
 
-          console.log(`[SUCCESS] Parsed design with ${sections.length} sections`);
+          console.log(`[SUCCESS] ✅ Parsed design with ${sections.length} sections on attempt ${attempt + 1}`);
           break; // Success, exit retry loop
 
         } catch (parseError: any) {
@@ -728,11 +904,11 @@ serve(async (req) => {
           console.warn(`[PARSE_ERROR] Attempt ${attempt + 1}: ${lastError}`);
 
           if (attempt < maxRetries) {
-            // Retry with modified prompt
-            console.log(`[RETRY] Modifying prompt for attempt ${attempt + 2}...`);
-            currentPrompt = enhancePromptForRetry(userPrompt, attempt, lastError);
+            // Retry with enhanced prompt that includes design context
+            console.log(`[RETRY] Enhancing prompt for attempt ${attempt + 2} with design context...`);
+            currentPrompt = enhancePromptForRetry(userPrompt, attempt, lastError, designContext);
 
-            // Call AI again with modified prompt
+            // Call AI again with modified prompt and lower temperature
             try {
               const retryResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
@@ -746,37 +922,48 @@ serve(async (req) => {
                   model,
                   messages: [{ role: "system", content: systemPrompt }, ...messages, { role: "user", content: currentPrompt }],
                   max_tokens: 4000,
-                  temperature: 0.05, // Lower temp for retries
+                  temperature: 0.05, // Lower temp for retries (more deterministic)
                 }),
               });
 
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 rawContent = retryData.choices?.[0]?.message?.content || "";
-                console.log(`[RETRY] New AI response received (${rawContent.length} chars)`);
+                console.log(`[RETRY] ✓ New AI response received (${rawContent.length} chars) on attempt ${attempt + 2}`);
+              } else {
+                console.error(`[RETRY] ✗ Retry fetch failed: ${retryResponse.status}`);
               }
             } catch (retryErr) {
-              console.error(`[RETRY] Failed to get retry response:`, retryErr);
+              console.error(`[RETRY] ✗ Retry error:`, retryErr);
             }
+          } else {
+            console.log(`[RETRY] Max retries (${maxRetries}) exhausted. Will use fallback.`);
           }
         }
       }
 
       // ─── FALLBACK HANDLER ───────────────────────────────────────
       if (!parsed) {
-        console.error(`[FALLBACK] All retries exhausted. Returning safe response.`);
+        console.error(`[FALLBACK] ✗ All ${maxRetries + 1} retry attempts exhausted. Error: ${lastError}`);
+        console.error(`[FALLBACK] Last AI output (first 500 chars): ${rawContent.substring(0, 500)}`);
 
-        // Log failure for monitoring
-        await supabase.from("ai_generation_failures").insert({
+        // Log failure for monitoring (critical for debugging)
+        const failureRecord = {
           store_id,
           user_id,
           user_prompt: userPrompt,
           error_message: lastError,
           model,
-          raw_ai_output: rawContent.substring(0, 1000),
+          raw_ai_output: rawContent.substring(0, 2000),
           attempt_count: maxRetries + 1,
           created_at: new Date().toISOString(),
-        }).catch(e => console.error("[LOG_ERROR]", e.message));
+          status: "pending_review" as const,
+        };
+
+        await supabase.from("ai_generation_failures").insert(failureRecord)
+          .catch(e => console.error("[FAILURE_LOG_ERROR]", e.message));
+
+        console.log(`[FALLBACK] Logged failure to ai_generation_failures for manual review`);
 
         // Save to history as text
         const { data: fallbackHistoryRow } = await supabase.from("ai_designer_history").insert({
@@ -784,6 +971,8 @@ serve(async (req) => {
           ai_response: { type: "text", message: "Design generation encountered an issue. Please try again with a simpler request." },
           ai_css_overrides: null, tokens_used: 0, applied: false,
         }).select("id").single().catch(() => ({ data: null }));
+
+        console.log(`[FALLBACK] Saved fallback response to history`);
 
         return new Response(JSON.stringify({
           success: true, type: "text",
@@ -794,9 +983,21 @@ serve(async (req) => {
 
       const responseType = parsed.type || "text";
 
-      // If design response — sanitize CSS, normalize keys
+      // If design response — sanitize CSS, normalize keys, log quality metrics
       if (responseType === "design" && parsed.design) {
         const d = parsed.design;
+
+        // Log design quality metrics for monitoring
+        const designQuality = {
+          sections_count: d.changes_list?.length || 0,
+          css_variables_count: Object.keys(d.css_variables || {}).length,
+          has_dark_vars: !!d.dark_css_variables && Object.keys(d.dark_css_variables).length > 0,
+          has_css_overrides: !!d.css_overrides && d.css_overrides.length > 0,
+          has_layout_config: !!d.layout && Object.keys(d.layout).length > 0,
+          has_fonts: !!d.fonts && (!!d.fonts.heading || !!d.fonts.body),
+          summary_length: d.summary?.length || 0,
+        };
+        console.log("[QUALITY] Design metrics:", JSON.stringify(designQuality));
 
         if (d.css_variables) d.css_variables = normalizeVarKeys(d.css_variables);
         if (d.dark_css_variables) d.dark_css_variables = normalizeVarKeys(d.dark_css_variables);
@@ -937,21 +1138,89 @@ serve(async (req) => {
       }
 
       const genData = await genAIResponse.json();
-      const genContent = genData.choices?.[0]?.message?.content || "";
+      let genContent = genData.choices?.[0]?.message?.content || "";
+      console.log(`[GENERATE] Initial AI response (${genContent.length} chars): ${genContent.slice(0, 80)}...`);
 
-      // If no JSON found, treat as plain text
-      if (!genContent.includes("{") || !genContent.includes("}")) {
-        return new Response(JSON.stringify({
-          success: true, type: "text",
-          message: genContent || "I couldn't understand that. Could you rephrase?",
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Try parsing as text format first (enterprise approach)
+      const genContext = buildDesignSystemContext(genDesignState?.current_design, "general");
+      let genParsed: any = null;
+      let genLastError = "";
+
+      for (let genAttempt = 0; genAttempt <= 2; genAttempt++) {
+        try {
+          console.log(`[GENERATE] Parse attempt ${genAttempt + 1}/3`);
+
+          // Try text format parsing
+          const { sections, rawText } = parseDesignText(genContent);
+          console.log(`[GENERATE] Found ${sections.length} sections`);
+
+          const genValidation = validateDesignSections(sections, genDesignState?.current_design);
+          if (!genValidation.valid) {
+            genLastError = genValidation.errors.join("; ");
+            throw new Error(genLastError);
+          }
+
+          const designFromText = buildDesignFromSections(sections, "Design generated successfully");
+          genParsed = {
+            type: "design",
+            message: `✅ Generated ${sections.length} section${sections.length > 1 ? 's' : ''} with design changes`,
+            design: designFromText,
+          };
+          console.log(`[GENERATE] ✅ Successfully parsed on attempt ${genAttempt + 1}`);
+          break;
+
+        } catch (parseErr: any) {
+          genLastError = parseErr.message;
+          console.warn(`[GENERATE] Parse failed attempt ${genAttempt + 1}: ${genLastError}`);
+
+          if (genAttempt < 2) {
+            // Retry with enhanced prompt
+            try {
+              const retryGenResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": "Bearer " + genSettings.openrouter_api_key.trim(),
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": "https://yesgive.shop",
+                  "X-Title": "Vendy Buildr AI Designer",
+                },
+                body: JSON.stringify({
+                  model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+                  messages: [
+                    { role: "system", content: genSystemPrompt },
+                    { role: "user", content: enhancePromptForRetry(prompt, genAttempt, genLastError, genContext) }
+                  ],
+                  max_tokens: 4000,
+                  temperature: 0.05,
+                }),
+              });
+
+              if (retryGenResponse.ok) {
+                const retryGenData = await retryGenResponse.json();
+                genContent = retryGenData.choices?.[0]?.message?.content || "";
+                console.log(`[GENERATE] Retry ${genAttempt + 2} received (${genContent.length} chars)`);
+              }
+            } catch (retryErr) {
+              console.error(`[GENERATE] Retry failed:`, retryErr);
+            }
+          }
+        }
       }
 
-      let genParsed: any;
-      try { genParsed = extractJSON(genContent); } catch {
+      // Fallback if parsing failed
+      if (!genParsed) {
+        console.warn(`[GENERATE] All parse attempts exhausted. Logging failure.`);
+        await supabase.from("ai_generation_failures").insert({
+          store_id, user_id, user_prompt: prompt,
+          error_message: genLastError,
+          model: genSettings.openrouter_model || "moonshotai/kimi-k2",
+          raw_ai_output: genContent.substring(0, 2000),
+          attempt_count: 3,
+        }).catch(e => console.error("[LOG_ERROR]", e.message));
+
         return new Response(JSON.stringify({
           success: true, type: "text",
-          message: genContent || "I couldn't understand that. Could you rephrase?",
+          message: "I couldn't generate that design. Try describing it differently, like 'Make the header purple' or 'Add rounded cards'.",
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -984,8 +1253,10 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      return new Response(JSON.stringify({ success: true, type: "text", message: genParsed.message || genContent }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Fallback text response
+      return new Response(JSON.stringify({
+        success: true, type: "text", message: genParsed.message || genContent || "Design generation complete."
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── apply_design ───────────────────────────────────────────
