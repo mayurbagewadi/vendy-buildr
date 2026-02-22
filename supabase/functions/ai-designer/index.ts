@@ -48,6 +48,116 @@ function normalizeVarKeys(vars: Record<string, string>): Record<string, string> 
   return result;
 }
 
+// ─── Parse structured text format ────────────────────────────
+interface ParsedSection {
+  name: string;
+  change: string;
+  color?: string;
+}
+
+function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: string } {
+  console.log("[PARSER] Parsing AI text response");
+  const sections: ParsedSection[] = [];
+  const blocks = aiText.split('---').map(b => b.trim()).filter(Boolean);
+
+  blocks.forEach((block, blockIdx) => {
+    const lines = block.split('\n').filter(l => l.trim());
+
+    let section: ParsedSection | null = null;
+    lines.forEach(line => {
+      if (line.startsWith('SECTION:')) {
+        section = { name: line.replace('SECTION:', '').trim(), change: '', color: undefined };
+      } else if (line.startsWith('CHANGE:') && section) {
+        section.change = line.replace('CHANGE:', '').trim();
+      } else if (line.startsWith('COLOR:') && section) {
+        section.color = line.replace('COLOR:', '').trim();
+      }
+    });
+
+    if (section?.name && section?.change) {
+      sections.push(section);
+      console.log(`[PARSER] Block ${blockIdx}: ${section.name} → ${section.change.slice(0, 50)}...`);
+    }
+  });
+
+  return { sections, rawText: aiText };
+}
+
+// ─── Semantic validation ──────────────────────────────────────
+function validateDesignSections(sections: ParsedSection[]): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const validSections = ['header', 'hero', 'products', 'categories', 'cta', 'footer'];
+
+  if (!sections || sections.length === 0) {
+    errors.push("No design sections found in response");
+    return { valid: false, errors };
+  }
+
+  sections.forEach((section, idx) => {
+    // Validate section name
+    const sectionName = section.name.toLowerCase().trim();
+    if (!validSections.some(vs => sectionName.includes(vs))) {
+      errors.push(`Section ${idx + 1}: "${section.name}" not recognized. Use: ${validSections.join(", ")}`);
+    }
+
+    // Validate change description
+    if (!section.change || section.change.length < 3) {
+      errors.push(`Section ${idx + 1}: Change description too short`);
+    }
+
+    // Validate color format if provided
+    if (section.color && !section.color.match(/^\d+\s+\d+%\s+\d+%$/)) {
+      errors.push(`Section ${idx + 1}: Color format invalid. Use HSL like "220 85% 45%"`);
+    }
+  });
+
+  console.log(`[VALIDATION] ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length + ' errors'}`);
+  return { valid: errors.length === 0, errors };
+}
+
+// ─── Convert parsed sections to design JSON ───────────────────
+function buildDesignFromSections(sections: ParsedSection[], message: string): any {
+  const cssVariables: Record<string, string> = {};
+  const changesList: string[] = [];
+  const cssOverrides: string[] = [];
+
+  // Map sections to design
+  const sectionMap: Record<string, string> = {
+    'header': '[data-ai="header"]',
+    'hero': '[data-ai="section-hero"]',
+    'products': '[data-ai="product-card"]',
+    'categories': '[data-ai="section-categories"]',
+    'cta': '[data-ai="section-cta"]',
+    'footer': '[data-ai="section-footer"]',
+  };
+
+  sections.forEach(section => {
+    const sectionName = Object.keys(sectionMap).find(key =>
+      section.name.toLowerCase().includes(key)
+    ) || section.name;
+
+    // Add to changes list
+    changesList.push(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} → ${section.change}`);
+
+    // Extract color if provided
+    if (section.color) {
+      cssVariables[`accent-${sectionName}`] = section.color;
+    }
+  });
+
+  // Default CSS variables if none extracted
+  if (Object.keys(cssVariables).length === 0) {
+    cssVariables['primary'] = '217 91% 60%';
+  }
+
+  return {
+    summary: `Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with custom styling`,
+    css_variables: cssVariables,
+    css_overrides: cssOverrides.join('\n'),
+    changes_list: changesList,
+  };
+}
+
 // ─── Extract JSON from AI response ───────────────────────────
 function extractJSON(content: string): any {
   // Clean up common model mistakes BEFORE parsing
@@ -131,51 +241,46 @@ function buildSystemPrompt(storeName: string, currentDesign: any, theme: string 
     : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
 
   return `### ROLE
-You are a Headless Design System Engine for: ${storeName}
-You output ONLY raw JSON data. NEVER output conversational text, markdown, or preamble.
-If output is invalid JSON, you have FAILED.
+You are a friendly store design AI. Output design changes in plain, structured format.
+NOT JSON. NOT code. Just simple text format that's easy to parse.
 
 ### CURRENT MODE: ${theme.toUpperCase()}
 ${theme === "dark" ? "Design for dark mode: deep backgrounds, light text, glowing accents" : "Design for light mode: bright backgrounds, vibrant accents, high contrast"}
 
 ${currentDesignText}
-### INTENT DETECTION (DO FIRST)
-IF input is vague: "yes", "ok", "5", "sure", "hmm", "" or single word
-  RETURN ONLY: {"type":"text","message":"What specific design change do you want?"}
+### OUTPUT FORMAT (MANDATORY - NO JSON, JUST TEXT)
+Output changes using this format EXACTLY. Separate each section with ---
 
-IF input requests design: contains color, layout, style, design, component, theme words
-  RETURN ONLY: type "design" with JSON schema
+SECTION: [section name]
+CHANGE: [describe what changed in simple words]
+COLOR: [HSL color like "220 85% 45%" - OPTIONAL]
+---
+SECTION: [next section]
+CHANGE: [what changed]
+---
 
-### OUTPUT FORMAT (MANDATORY)
-Return ONLY ONE valid JSON object.
-- Zero text before {
-- Zero text after }
-- Zero markdown
-- Zero code blocks
-- Zero "[Design proposed: ...]"
+VALID SECTION NAMES: header, hero, products, categories, cta, footer
 
-### FORBIDDEN (NEVER USE)
-❌ [Design proposed: ...]
-❌ "Here is the design"
-❌ Markdown code blocks
-❌ Text outside JSON
+EXAMPLE OUTPUT:
+SECTION: header
+CHANGE: Added glass effect with smooth blur background
+COLOR: 280 100% 60%
+---
+SECTION: products
+CHANGE: Smooth lift animation when you hover over cards
+---
+SECTION: hero
+CHANGE: Bold gradient from purple to gold
+---
 
-### DESIGN JSON SCHEMA
-{
-  "type": "design",
-  "message": "Short expert explanation",
-  "design": {
-    "summary": "One sentence",
-    "css_variables": {"primary": "217 91% 60%"},
-    "css_overrides": "[data-ai='header']{background:hsl(var(--primary));}",
-    "fonts": {"heading": "Playfair Display", "body": "Source Sans Pro"},
-    "layout": {"product_grid_cols": "3", "button_style": "pill", "card_style": "elevated"},
-    "changes_list": ["Change 1", "Change 2"]
-  }
-}
-
-### TEXT JSON SCHEMA
-{"type":"text","message":"Clarification"}
+RULES FOR OUTPUT:
+1. Format: SECTION: [name] / CHANGE: [description] / COLOR: [optional HSL]
+2. Separate sections with exactly: ---
+3. Each section MUST have SECTION and CHANGE lines
+4. Colors MUST be HSL format ONLY: "number number% number%" (example: "220 85% 45%")
+5. Keep descriptions SHORT (30-80 characters) and FRIENDLY
+6. NO JSON. NO markdown. NO code blocks. NO explanations.
+7. NO "[Design proposed: ...]" - just the format above
 
 ### CSS RULES
 - Colors: HSL ONLY "217 91% 60%" (no hsl(), no hex, no rgb)
@@ -390,6 +495,16 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Helper: Enhanced prompt for retries ────────────────────
+    const enhancePromptForRetry = (basePrompt: string, attempt: number, lastError: string): string => {
+      const hints = [
+        "Make sure to follow the SECTION/CHANGE/COLOR format exactly.",
+        "Use valid section names: header, hero, products, categories, cta, footer.",
+        "Each section must have both SECTION and CHANGE lines, separated by ---.",
+      ];
+      return `${basePrompt}\n\nAttempt ${attempt + 1}: ${lastError}\n\nReminder: ${hints[attempt % hints.length]}`;
+    };
+
     // ── chat ───────────────────────────────────────────────────
     if (action === "chat") {
       console.log("DEBUG: Entered chat action");
@@ -478,51 +593,109 @@ serve(async (req) => {
       }
 
       const aiData = await aiResponse.json();
-      console.log("DEBUG: AI data received");
-      const rawContent = aiData.choices?.[0]?.message?.content || "";
-      console.log("DEBUG: Raw content length:", rawContent.length);
+      console.log("[CHAT] AI response received");
+      let rawContent = aiData.choices?.[0]?.message?.content || "";
+      console.log(`[CHAT] Raw content (${rawContent.length} chars): ${rawContent.slice(0, 100)}...`);
 
-      // Parse AI response
-      let parsed: any;
+      // ─── SMART RETRY LOGIC ───────────────────────────────────────
+      let currentPrompt = userPrompt;
+      let lastError = "";
+      let parsed: any = null;
+      const maxRetries = 2;
 
-      // If no JSON found, treat as plain text response
-      if (!rawContent.includes("{") || !rawContent.includes("}")) {
-        console.log("DEBUG: No JSON found, treating as text response");
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[RETRY] Attempt ${attempt + 1}/${maxRetries + 1}`);
 
-        // Save text conversation to history
-        const plainMsg = rawContent || "";
-        const { data: plainTextHistoryRow } = await supabase.from("ai_designer_history").insert({
-          store_id, user_id, prompt: userPrompt,
-          ai_response: { type: "text", message: plainMsg },
-          ai_css_overrides: null, tokens_used: 0, applied: false,
-        }).select("id").single();
+          // Try to parse as text format (new approach)
+          const { sections, rawText } = parseDesignText(rawContent);
 
-        return new Response(JSON.stringify({
-          success: true, type: "text",
-          message: rawContent || "I couldn't understand that. Could you rephrase?",
-          history_id: plainTextHistoryRow?.id || null,
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          // Validate sections
+          const validation = validateDesignSections(sections);
+
+          if (!validation.valid) {
+            lastError = validation.errors.join("; ");
+            throw new Error(lastError);
+          }
+
+          // Convert to design JSON
+          const designFromText = buildDesignFromSections(sections, "Design generated successfully");
+
+          parsed = {
+            type: "design",
+            message: `✅ Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with your design changes`,
+            design: designFromText,
+          };
+
+          console.log(`[SUCCESS] Parsed design with ${sections.length} sections`);
+          break; // Success, exit retry loop
+
+        } catch (parseError: any) {
+          lastError = parseError.message;
+          console.warn(`[PARSE_ERROR] Attempt ${attempt + 1}: ${lastError}`);
+
+          if (attempt < maxRetries) {
+            // Retry with modified prompt
+            console.log(`[RETRY] Modifying prompt for attempt ${attempt + 2}...`);
+            currentPrompt = enhancePromptForRetry(userPrompt, attempt, lastError);
+
+            // Call AI again with modified prompt
+            try {
+              const retryResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": "Bearer " + apiKey,
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": "https://yesgive.shop",
+                  "X-Title": "Vendy Buildr AI Designer",
+                },
+                body: JSON.stringify({
+                  model,
+                  messages: [{ role: "system", content: systemPrompt }, ...messages, { role: "user", content: currentPrompt }],
+                  max_tokens: 4000,
+                  temperature: 0.05, // Lower temp for retries
+                }),
+              });
+
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                rawContent = retryData.choices?.[0]?.message?.content || "";
+                console.log(`[RETRY] New AI response received (${rawContent.length} chars)`);
+              }
+            } catch (retryErr) {
+              console.error(`[RETRY] Failed to get retry response:`, retryErr);
+            }
+          }
+        }
       }
 
-      try {
-        parsed = extractJSON(rawContent);
-        parsed = validateAndFixResponse(parsed, userPrompt);
-        console.log("DEBUG: JSON parsed and validated, type:", parsed.type);
-      } catch (e) {
-        console.error("DEBUG: JSON parse failed:", e, "Content:", rawContent);
+      // ─── FALLBACK HANDLER ───────────────────────────────────────
+      if (!parsed) {
+        console.error(`[FALLBACK] All retries exhausted. Returning safe response.`);
 
-        // Save malformed response to history
-        const fallbackMsg = rawContent || "I couldn't understand that. Could you rephrase?";
-        const { data: errorHistoryRow } = await supabase.from("ai_designer_history").insert({
+        // Log failure for monitoring
+        await supabase.from("ai_generation_failures").insert({
+          store_id,
+          user_id,
+          user_prompt: userPrompt,
+          error_message: lastError,
+          model,
+          raw_ai_output: rawContent.substring(0, 1000),
+          attempt_count: maxRetries + 1,
+          created_at: new Date().toISOString(),
+        }).catch(e => console.error("[LOG_ERROR]", e.message));
+
+        // Save to history as text
+        const { data: fallbackHistoryRow } = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt: userPrompt,
-          ai_response: { type: "text", message: fallbackMsg },
+          ai_response: { type: "text", message: "Design generation encountered an issue. Please try again with a simpler request." },
           ai_css_overrides: null, tokens_used: 0, applied: false,
-        }).select("id").single();
+        }).select("id").single().catch(() => ({ data: null }));
 
         return new Response(JSON.stringify({
           success: true, type: "text",
-          message: rawContent || "I couldn't understand that. Could you rephrase?",
-          history_id: errorHistoryRow?.id || null,
+          message: "I had trouble understanding that request. Could you describe the design more clearly? For example: 'Make the header blue' or 'Add glass effects'",
+          history_id: fallbackHistoryRow?.id || null,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
