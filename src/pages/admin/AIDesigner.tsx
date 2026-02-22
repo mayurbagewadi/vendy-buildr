@@ -39,6 +39,7 @@ import {
   getAppliedDesign,
   getTokenBalance,
   buildDesignCSS,
+  injectGoogleFonts,
   type AIDesignResult,
   type TokenBalance,
   type ChatMessage as APIChatMessage,
@@ -580,14 +581,20 @@ const AIDesigner = () => {
       }
       const existing = iframe.contentDocument.getElementById('ai-preview-styles');
       if (existing) existing.remove();
-      if (!design) return;
+      if (!design) {
+        // Also remove Google Fonts when clearing design
+        injectGoogleFonts(iframe.contentDocument);
+        return;
+      }
       const css = buildDesignCSS(design);
       console.log('[AI-DEBUG] Generated CSS length:', css.length, '\n', css.slice(0, 300));
       const styleEl = iframe.contentDocument.createElement('style');
       styleEl.id = 'ai-preview-styles';
       styleEl.textContent = css;
       iframe.contentDocument.head.appendChild(styleEl);
-      console.log('[AI-DEBUG] CSS injected successfully into iframe head');
+      // Inject Google Fonts
+      injectGoogleFonts(iframe.contentDocument, design.fonts);
+      console.log('[AI-DEBUG] CSS + fonts injected successfully into iframe head');
     } catch (err) {
       console.error('[AI-DEBUG] CSS injection failed (likely cross-origin):', err);
     }
