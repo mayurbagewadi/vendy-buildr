@@ -257,7 +257,7 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
     ) || 'primary';
 
     // Add to changes list
-    changesList.push(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} → ${section.change}");
+    changesList.push((sectionName.charAt(0).toUpperCase() + sectionName.slice(1)) + " → " + section.change);
 
     // If color provided, apply it to the main variable for this section
     if (section.color) {
@@ -276,34 +276,34 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
 
       // Shadow effects
       if (changeLower.includes('shadow')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2); }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"] { box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2); }");
       }
 
       // Glassmorphism
       if (changeLower.includes('glass') || changeLower.includes('blur')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { backdrop-filter: blur(12px); background: hsla(${section.color}, 0.75); border: 1px solid hsla(255, 255%, 255%, 0.2); }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"] { backdrop-filter: blur(12px); background: hsla(" + section.color + ", 0.75); border: 1px solid hsla(255, 255%, 255%, 0.2); }");
       }
 
       // Gradients
       if (changeLower.includes('gradient') || changeLower.includes('smooth fade')) {
         const hslValues = section.color.split(' ');
         const baseHue = parseInt(hslValues[0]) || 220;
-        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(135deg, hsl(${baseHue} 90% 50%), hsl(${baseHue + 40} 85% 60%)); }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"] { background: linear-gradient(135deg, hsl(" + baseHue + " 90% 50%), hsl(" + (baseHue + 40) + " 85% 60%)); }");
       }
 
       // Glow/Neon effects
       if (changeLower.includes('glow') || changeLower.includes('neon') || changeLower.includes('glowing')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 0 20px hsl(${section.color}), 0 0 40px hsla(${section.color}, 0.5); }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"] { box-shadow: 0 0 20px hsl(" + section.color + "), 0 0 40px hsla(" + section.color + ", 0.5); }");
       }
 
       // Holographic/Shimmer
       if (changeLower.includes('holographic') || changeLower.includes('shimmer') || changeLower.includes('iridescent')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(45deg, hsl(${section.color}), hsl(${parseInt(section.color.split(' ')[0]) + 60} 90% 55%)); animation: shimmer 3s infinite; }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"] { background: linear-gradient(45deg, hsl(" + section.color + "), hsl(" + (parseInt(section.color.split(" ")[0]) + 60) + " 90% 55%)); animation: shimmer 3s infinite; }");
       }
 
       // Hover effects
       if (changeLower.includes('hover') || changeLower.includes('lift') || changeLower.includes('animation')) {
-        cssOverrides.push(`[data-ai="${sectionName}"]:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 32px hsla(0, 0%, 0%, 0.25); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }");
+        cssOverrides.push("[data-ai=\"" + sectionName + "\"]:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 32px hsla(0, 0%, 0%, 0.25); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }");
       }
 
       // Bold/Vibrant
@@ -424,42 +424,30 @@ function buildSystemPrompt(storeName: string, currentDesign: any, theme: string 
 
   // Build available colors reference
   const colorsReference = Object.entries(designContext.availableColors)
-    .map(([name, hsl]) => `• ${name}: "${hsl}"`)
+    .map(([name, hsl]) => "• " + name + ": \"" + hsl + "\"")
     .join("\n");
 
   // Build capabilities reference
   const capabilitiesReference = designContext.componentCapabilities
-    .map(cap => `• ${cap}`)
+    .map(cap => "• " + cap)
     .join("\n");
 
-  const contextInfo = `
-### DESIGN SYSTEM KNOWLEDGE (Use This!)
-You have FULL ACCESS to the store's design system:
+  const storeBestPractices = storeType === "food" ? "• Warm orange/yellow tones • Rounded, friendly shapes • Appetizing visuals" :
+   storeType === "fashion" ? "• Elegant, minimal colors • Bold typography • White space" :
+   storeType === "tech" ? "• Cool blues/purples • Modern effects • Glassmorphism" :
+   storeType === "luxury" ? "• Gold accents • Dark backgrounds • Premium shadows" :
+   "• Depends on store - be creative within constraints";
 
-AVAILABLE COLORS (use exact HSL values):
-${colorsReference}
-
-WHAT YOU CAN STYLE:
-${capabilitiesReference}
-
-DESIGN CONSTRAINTS:
-• Minimum contrast ratio: 4.5:1 (WCAG AA)
-• Maximum saturation: 100%
-• Allowed effects: gradient, shadow, blur, glow, animation
-
-CURRENT STATE (Don't ignore this):
-${JSON.stringify(designContext.currentState, null, 2)}
-
-STORE TYPE: ${storeType}
-Use design principles for: ${storeType} stores (see best practices below)
-
-STORE TYPE BEST PRACTICES:
-${storeType === "food" ? "• Warm orange/yellow tones • Rounded, friendly shapes • Appetizing visuals" :
- storeType === "fashion" ? "• Elegant, minimal colors • Bold typography • White space" :
- storeType === "tech" ? "• Cool blues/purples • Modern effects • Glassmorphism" :
- storeType === "luxury" ? "• Gold accents • Dark backgrounds • Premium shadows" :
- "• Depends on store - be creative within constraints"}
-`;
+  const contextInfo = "\n### DESIGN SYSTEM KNOWLEDGE (Use This!)\nYou have FULL ACCESS to the store's design system:\n\nAVAILABLE COLORS (use exact HSL values):\n" +
+    colorsReference +
+    "\n\nWHAT YOU CAN STYLE:\n" +
+    capabilitiesReference +
+    "\n\nDESIGN CONSTRAINTS:\n• Minimum contrast ratio: 4.5:1 (WCAG AA)\n• Maximum saturation: 100%\n• Allowed effects: gradient, shadow, blur, glow, animation\n\nCURRENT STATE (Don't ignore this):\n" +
+    JSON.stringify(designContext.currentState, null, 2) +
+    "\n\nSTORE TYPE: " + storeType +
+    "\nUse design principles for: " + storeType + " stores (see best practices below)\n\nSTORE TYPE BEST PRACTICES:\n" +
+    storeBestPractices +
+    "\n";
 
   return `You are a store design AI that outputs PLAIN TEXT ONLY.
 Your entire output must be in SECTION/CHANGE/COLOR format.
@@ -700,7 +688,7 @@ serve(async (req) => {
 
           if (!validation.valid) {
             lastError = validation.errors.join("; ");
-            console.warn(`[VALIDATION] Failed: ${lastError}");
+            console.warn("[VALIDATION] Failed: " + lastError);
             throw new Error(lastError);
           }
 
@@ -718,7 +706,7 @@ serve(async (req) => {
 
         } catch (parseError: any) {
           lastError = parseError.message;
-          console.warn(`[PARSE_ERROR] Attempt ${attempt + 1}: ${lastError}");
+          console.warn("[PARSE_ERROR] Attempt " + (attempt + 1) + ": " + lastError);
 
           if (attempt < maxRetries) {
             // Retry with enhanced prompt that includes design context
@@ -748,10 +736,10 @@ serve(async (req) => {
                 rawContent = retryData.choices?.[0]?.message?.content || "";
                 console.log("[RETRY] ✓ New AI response received (${rawContent.length} chars) on attempt ${attempt + 2}");
               } else {
-                console.error(`[RETRY] ✗ Retry fetch failed: ${retryResponse.status}");
+                console.error("[RETRY] Retry fetch failed: " + retryResponse.status);
               }
             } catch (retryErr) {
-              console.error(`[RETRY] ✗ Retry error:`, retryErr);
+              console.error("[RETRY] Retry error:", retryErr);
             }
           } else {
             console.log("[RETRY] Max retries (${maxRetries}) exhausted. Will use fallback.");
@@ -761,8 +749,8 @@ serve(async (req) => {
 
       // ─── FALLBACK HANDLER ───────────────────────────────────────
       if (!parsed) {
-        console.error(`[FALLBACK] ✗ All ${maxRetries + 1} retry attempts exhausted. Error: ${lastError}");
-        console.error(`[FALLBACK] Last AI output (first 500 chars): ${rawContent.substring(0, 500)}");
+        console.error("[FALLBACK] All " + (maxRetries + 1) + " retry attempts exhausted. Error: " + lastError);
+        console.error("[FALLBACK] Last AI output (first 500 chars): " + rawContent.substring(0, 500));
 
         // Log failure for monitoring (critical for debugging)
         const failureRecord = {
@@ -980,7 +968,7 @@ serve(async (req) => {
           const designFromText = buildDesignFromSections(sections, "Design generated successfully");
           genParsed = {
             type: "design",
-            message: `✅ Generated ${sections.length} section${sections.length > 1 ? 's' : ''} with design changes`,
+            message: "Generated " + sections.length + " section" + (sections.length > 1 ? "s" : "") + " with design changes",
             design: designFromText,
           };
           console.log("[GENERATE] ✅ Successfully parsed on attempt ${genAttempt + 1}");
@@ -988,7 +976,7 @@ serve(async (req) => {
 
         } catch (parseErr: any) {
           genLastError = parseErr.message;
-          console.warn(`[GENERATE] Parse failed attempt ${genAttempt + 1}: ${genLastError}");
+          console.warn("[GENERATE] Parse failed attempt " + (genAttempt + 1) + ": " + genLastError);
 
           if (genAttempt < 2) {
             // Retry with enhanced prompt
@@ -1018,7 +1006,7 @@ serve(async (req) => {
                 console.log("[GENERATE] Retry ${genAttempt + 2} received (${genContent.length} chars)");
               }
             } catch (retryErr) {
-              console.error(`[GENERATE] Retry failed:`, retryErr);
+              console.error("[GENERATE] Retry failed:", retryErr);
             }
           }
         }
@@ -1026,7 +1014,7 @@ serve(async (req) => {
 
       // Fallback if parsing failed
       if (!genParsed) {
-        console.warn(`[GENERATE] All parse attempts exhausted. Logging failure.");
+        console.warn("[GENERATE] All parse attempts exhausted. Logging failure.");
         await supabase.from("ai_generation_failures").insert({
           store_id, user_id, user_prompt: prompt,
           error_message: genLastError,
