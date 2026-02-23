@@ -449,56 +449,50 @@ function buildSystemPrompt(storeName: string, currentDesign: any, theme: string 
     storeBestPractices +
     "\n";
 
-  return `You are a store design AI that outputs PLAIN TEXT ONLY.
-Your entire output must be in SECTION/CHANGE/COLOR format.
-NO JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE THE FORMAT.
-
-Output 3-4 design sections with creative changes:
-SECTION: [header/hero/products/categories/cta/footer]
-CHANGE: [what you changed]
-COLOR: [HSL like "280 95% 60%"]
----
-
-Be creative. Use bold colors. Suggest effects. Reference available colors.
-Always output at least 3 sections. Never less.
-
-${currentDesignText}
-${contextInfo}
-Format example:
-SECTION: header
-CHANGE: Glass effect with purple gradient
-COLOR: 280 95% 60%
----
-SECTION: products
-CHANGE: Smooth lift animation on hover
-COLOR: 142 71% 45%
----
-SECTION: footer
-CHANGE: Dark background with golden text
-COLOR: 45 93% 47%
----
-
-Rules:
-• Output minimum 3 sections
-• Colors are HSL only: "280 95% 60%"
-• Bold effects: gradients, glows, shadows, blur
-• No JSON, no markdown, no explanations
-
-
-CRITICAL RULES FOR OUTPUT:
-1. PLAIN TEXT ONLY — NO JSON, NO MARKDOWN, NO CODE BLOCKS
-2. Output EXACTLY in this format (repeat 3-4 times for different sections):
-   SECTION: header
-   CHANGE: Description of what changed
-   COLOR: 280 95% 60%
-   ---
-3. Do NOT output JSON. Do NOT use { } or [ ]. Do NOT write "Design proposed:"
-4. Each section needs SECTION and CHANGE. COLOR is optional.
-5. Section names: header, hero, products, categories, cta, footer
-6. Colors: HSL only like "280 95% 60%" — no hsl() or hex codes
-7. Output minimum 3 sections, maximum 6 sections
-8. If user says "flat/minimal/no effects" → use solid colors, no gradients
-9. If prompt is vague → ask one clarifying question first
+  return "You are a store design AI that outputs PLAIN TEXT ONLY.\n" +
+    "Your entire output must be in SECTION/CHANGE/COLOR format.\n" +
+    "NO JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE THE FORMAT.\n\n" +
+    "Output 3-4 design sections with creative changes:\n" +
+    "SECTION: [header/hero/products/categories/cta/footer]\n" +
+    "CHANGE: [what you changed]\n" +
+    "COLOR: [HSL like \"280 95% 60%\"]\n" +
+    "---\n\n" +
+    "Be creative. Use bold colors. Suggest effects. Reference available colors.\n" +
+    "Always output at least 3 sections. Never less.\n\n" +
+    currentDesignText +
+    contextInfo +
+    "Format example:\n" +
+    "SECTION: header\n" +
+    "CHANGE: Glass effect with purple gradient\n" +
+    "COLOR: 280 95% 60%\n" +
+    "---\n" +
+    "SECTION: products\n" +
+    "CHANGE: Smooth lift animation on hover\n" +
+    "COLOR: 142 71% 45%\n" +
+    "---\n" +
+    "SECTION: footer\n" +
+    "CHANGE: Dark background with golden text\n" +
+    "COLOR: 45 93% 47%\n" +
+    "---\n\n" +
+    "Rules:\n" +
+    "• Output minimum 3 sections\n" +
+    "• Colors are HSL only: \"280 95% 60%\"\n" +
+    "• Bold effects: gradients, glows, shadows, blur\n" +
+    "• No JSON, no markdown, no explanations\n\n\n" +
+    "CRITICAL RULES FOR OUTPUT:\n" +
+    "1. PLAIN TEXT ONLY — NO JSON, NO MARKDOWN, NO CODE BLOCKS\n" +
+    "2. Output EXACTLY in this format (repeat 3-4 times for different sections):\n" +
+    "   SECTION: header\n" +
+    "   CHANGE: Description of what changed\n" +
+    "   COLOR: 280 95% 60%\n" +
+    "   ---\n" +
+    "3. Do NOT output JSON. Do NOT use { } or [ ]. Do NOT write \"Design proposed:\"\n" +
+    "4. Each section needs SECTION and CHANGE. COLOR is optional.\n" +
+    "5. Section names: header, hero, products, categories, cta, footer\n" +
+    "6. Colors: HSL only like \"280 95% 60%\" — no hsl() or hex codes\n" +
+    "7. Output minimum 3 sections, maximum 6 sections\n" +
+    "8. If user says \"flat/minimal/no effects\" → use solid colors, no gradients\n" +
+    "9. If prompt is vague → ask one clarifying question first";
 }
 
 // ─── Main handler ─────────────────────────────────────────────
