@@ -581,7 +581,9 @@ serve(async (req) => {
 
       // Add design context guidance on later retries
       if (attempt > 0 && designContext) {
-        enhancedPrompt += `\n\nDESIGN SYSTEM REMINDER:\nAvailable colors: ${Object.entries(designContext.availableColors).map(([name, hsl]) => `${name} (${hsl})`).slice(0, 3).join(", ")}...\nCan style: ${designContext.componentCapabilities.slice(0, 5).join(", ")}...`;
+        const colorsList = Object.entries(designContext.availableColors).map(([name, hsl]) => name + " (" + hsl + ")").slice(0, 3).join(", ");
+        const capList = designContext.componentCapabilities.slice(0, 5).join(", ");
+        enhancedPrompt += `\n\nDESIGN SYSTEM REMINDER:\nAvailable colors: ${colorsList}...\nCan style: ${capList}...`;
       }
 
       return enhancedPrompt;
