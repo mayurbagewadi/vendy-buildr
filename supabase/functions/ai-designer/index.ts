@@ -569,24 +569,20 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Helper: Enhanced prompt for retries (with design context) ──
+    // Helper: Enhanced prompt for retries
     const enhancePromptForRetry = (basePrompt: string, attempt: number, lastError: string, designContext?: DesignSystemContext): string => {
-      const contextReminders = [
-        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Use EXACTLY the SECTION/CHANGE/COLOR format. Colors MUST be valid HSL like "280 95% 60%".`,
-        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Each section needs both SECTION: [name] and CHANGE: [description]. Separate with ---. Use valid section names: header, hero, products, categories, cta, footer.`,
-        `RETRY #${attempt + 1} — Issue: ${lastError}\nFocus: Output AT LEAST 3-4 complete sections. Don't skip sections. Make each one detailed.`,
+      const hints = [
+        "Use EXACTLY the SECTION/CHANGE/COLOR format. Colors MUST be valid HSL.",
+        "Each section needs SECTION: and CHANGE: lines. Separate with ---.",
+        "Output AT LEAST 3 complete sections.",
       ];
-
-      let enhancedPrompt = `${basePrompt}\n\n${contextReminders[attempt % contextReminders.length]}`;
-
-      // Add design context guidance on later retries
+      const hint = hints[attempt % hints.length];
+      let result = basePrompt + "\n\nRETRY " + (attempt + 1) + ": " + lastError + "\n" + hint;
       if (attempt > 0 && designContext) {
-        const colorsList = Object.entries(designContext.availableColors).map(([name, hsl]) => name + " (" + hsl + ")").slice(0, 3).join(", ");
-        const capList = designContext.componentCapabilities.slice(0, 5).join(", ");
-        enhancedPrompt += `\n\nDESIGN SYSTEM REMINDER:\nAvailable colors: ${colorsList}...\nCan style: ${capList}...`;
+        const colors = Object.keys(designContext.availableColors).slice(0, 3).join(", ");
+        result += "\nColors: " + colors;
       }
-
-      return enhancedPrompt;
+      return result;
     };
 
     // ── chat ───────────────────────────────────────────────────
