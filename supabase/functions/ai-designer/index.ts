@@ -149,7 +149,7 @@ function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: 
 
     if (section?.name && section?.change) {
       sections.push(section);
-      console.log(`[PARSER] Block ${blockIdx}: ${section.name} → ${section.change.slice(0, 50)}...`);
+      console.log("[PARSER] Block ${blockIdx}: ${section.name} → ${section.change.slice(0, 50)}...");
     }
   });
 
@@ -187,7 +187,7 @@ function validateDesignSections(sections: ParsedSection[], currentDesign?: any):
 
   // Require at least 2 sections for design changes (not just 1)
   if (sections.length < 2) {
-    errors.push(`Only ${sections.length} section found. Please update at least 2-3 sections for a complete design`);
+    errors.push(`Only ${sections.length} section found. Please update at least 2-3 sections for a complete design");
     return { valid: false, errors };
   }
 
@@ -195,25 +195,25 @@ function validateDesignSections(sections: ParsedSection[], currentDesign?: any):
     // Validate section name
     const sectionName = section.name.toLowerCase().trim();
     if (!validSections.some(vs => sectionName.includes(vs))) {
-      errors.push(`Section ${idx + 1}: "${section.name}" not recognized. Use: ${validSections.join(", ")}`);
+      errors.push(`Section ${idx + 1}: "${section.name}" not recognized. Use: ${validSections.join(", ")}");
     }
 
     // Validate change description
     if (!section.change || section.change.length < 3) {
-      errors.push(`Section ${idx + 1}: Change description too short`);
+      errors.push(`Section ${idx + 1}: Change description too short");
     }
 
     // Validate color format if provided
     if (section.color && !section.color.match(/^\d+\s+\d+%\s+\d+%$/)) {
-      errors.push(`Section ${idx + 1}: Color format invalid. Use HSL like "220 85% 45%"`);
+      errors.push(`Section ${idx + 1}: Color format invalid. Use HSL like "220 85% 45%"");
     } else if (section.color && currentDesign?.css_variables?.primary) {
       // Check color harmony with existing primary color
       const harmony = validateColorHarmony(section.color, currentDesign.css_variables.primary);
-      console.log(`[HARMONY] Section "${section.name}": ${harmony.reason}`);
+      console.log("[HARMONY] Section "${section.name}": ${harmony.reason}");
     }
   });
 
-  console.log(`[VALIDATION] Sections: ${sections.length}, Errors: ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length}`);
+  console.log("[VALIDATION] Sections: ${sections.length}, Errors: ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length}");
   return { valid: errors.length === 0, errors };
 }
 
@@ -257,14 +257,14 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
     ) || 'primary';
 
     // Add to changes list
-    changesList.push(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} → ${section.change}`);
+    changesList.push(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} → ${section.change}");
 
     // If color provided, apply it to the main variable for this section
     if (section.color) {
       const vars = sectionToVarMap[sectionName] || ['primary'];
       const mainVar = vars[0]; // Apply to first variable in the section
       cssVariables[mainVar] = section.color;
-      console.log(`[MAP] Section "${sectionName}" → variable "--${mainVar}" = ${section.color}`);
+      console.log("[MAP] Section "${sectionName}" → variable "--${mainVar}" = ${section.color}");
 
       // Parse change description for creative effects
       const changeLower = section.change.toLowerCase();
@@ -276,34 +276,34 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
 
       // Shadow effects
       if (changeLower.includes('shadow')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2); }`);
+        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2); }");
       }
 
       // Glassmorphism
       if (changeLower.includes('glass') || changeLower.includes('blur')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { backdrop-filter: blur(12px); background: hsla(${section.color}, 0.75); border: 1px solid hsla(255, 255%, 255%, 0.2); }`);
+        cssOverrides.push(`[data-ai="${sectionName}"] { backdrop-filter: blur(12px); background: hsla(${section.color}, 0.75); border: 1px solid hsla(255, 255%, 255%, 0.2); }");
       }
 
       // Gradients
       if (changeLower.includes('gradient') || changeLower.includes('smooth fade')) {
         const hslValues = section.color.split(' ');
         const baseHue = parseInt(hslValues[0]) || 220;
-        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(135deg, hsl(${baseHue} 90% 50%), hsl(${baseHue + 40} 85% 60%)); }`);
+        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(135deg, hsl(${baseHue} 90% 50%), hsl(${baseHue + 40} 85% 60%)); }");
       }
 
       // Glow/Neon effects
       if (changeLower.includes('glow') || changeLower.includes('neon') || changeLower.includes('glowing')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 0 20px hsl(${section.color}), 0 0 40px hsla(${section.color}, 0.5); }`);
+        cssOverrides.push(`[data-ai="${sectionName}"] { box-shadow: 0 0 20px hsl(${section.color}), 0 0 40px hsla(${section.color}, 0.5); }");
       }
 
       // Holographic/Shimmer
       if (changeLower.includes('holographic') || changeLower.includes('shimmer') || changeLower.includes('iridescent')) {
-        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(45deg, hsl(${section.color}), hsl(${parseInt(section.color.split(' ')[0]) + 60} 90% 55%)); animation: shimmer 3s infinite; }`);
+        cssOverrides.push(`[data-ai="${sectionName}"] { background: linear-gradient(45deg, hsl(${section.color}), hsl(${parseInt(section.color.split(' ')[0]) + 60} 90% 55%)); animation: shimmer 3s infinite; }");
       }
 
       // Hover effects
       if (changeLower.includes('hover') || changeLower.includes('lift') || changeLower.includes('animation')) {
-        cssOverrides.push(`[data-ai="${sectionName}"]:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 32px hsla(0, 0%, 0%, 0.25); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }`);
+        cssOverrides.push(`[data-ai="${sectionName}"]:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 32px hsla(0, 0%, 0%, 0.25); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }");
       }
 
       // Bold/Vibrant
@@ -675,7 +675,7 @@ serve(async (req) => {
       const aiData = await aiResponse.json();
       console.log("[CHAT] AI response received");
       let rawContent = aiData.choices?.[0]?.message?.content || "";
-      console.log(`[CHAT] Raw content (${rawContent.length} chars): ${rawContent.slice(0, 100)}...`);
+      console.log("[CHAT] Raw content (${rawContent.length} chars): ${rawContent.slice(0, 100)}...");
 
       // ─── SMART RETRY LOGIC ───────────────────────────────────────
       let currentPrompt = userPrompt;
@@ -685,22 +685,22 @@ serve(async (req) => {
 
       // Build design context once for all retry attempts
       const designContext = buildDesignSystemContext(designState?.current_design, "general");
-      console.log(`[CONTEXT] Design system context built. Available: ${designContext.availableColors ? Object.keys(designContext.availableColors).length : 0} colors, ${designContext.componentCapabilities?.length || 0} capabilities`);
+      console.log("[CONTEXT] Design system context built. Available: ${designContext.availableColors ? Object.keys(designContext.availableColors).length : 0} colors, ${designContext.componentCapabilities?.length || 0} capabilities");
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          console.log(`[ATTEMPT] ${attempt + 1}/${maxRetries + 1} - Parsing AI output (${rawContent.length} chars)`);
+          console.log("[ATTEMPT] ${attempt + 1}/${maxRetries + 1} - Parsing AI output (${rawContent.length} chars)");
 
           // Try to parse as text format (new approach)
           const { sections, rawText } = parseDesignText(rawContent);
-          console.log(`[PARSE] Found ${sections.length} sections: ${sections.map(s => s.name).join(", ")}`);
+          console.log("[PARSE] Found ${sections.length} sections: ${sections.map(s => s.name).join(", ")}");
 
           // Validate sections with design context (for color harmony checking)
           const validation = validateDesignSections(sections, designState?.current_design);
 
           if (!validation.valid) {
             lastError = validation.errors.join("; ");
-            console.warn(`[VALIDATION] Failed: ${lastError}`);
+            console.warn(`[VALIDATION] Failed: ${lastError}");
             throw new Error(lastError);
           }
 
@@ -713,16 +713,16 @@ serve(async (req) => {
             design: designFromText,
           };
 
-          console.log(`[SUCCESS] ✅ Parsed design with ${sections.length} sections on attempt ${attempt + 1}`);
+          console.log("[SUCCESS] ✅ Parsed design with ${sections.length} sections on attempt ${attempt + 1}");
           break; // Success, exit retry loop
 
         } catch (parseError: any) {
           lastError = parseError.message;
-          console.warn(`[PARSE_ERROR] Attempt ${attempt + 1}: ${lastError}`);
+          console.warn(`[PARSE_ERROR] Attempt ${attempt + 1}: ${lastError}");
 
           if (attempt < maxRetries) {
             // Retry with enhanced prompt that includes design context
-            console.log(`[RETRY] Enhancing prompt for attempt ${attempt + 2} with design context...`);
+            console.log("[RETRY] Enhancing prompt for attempt ${attempt + 2} with design context...");
             currentPrompt = enhancePromptForRetry(userPrompt, attempt, lastError, designContext);
 
             // Call AI again with modified prompt and lower temperature
@@ -746,23 +746,23 @@ serve(async (req) => {
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 rawContent = retryData.choices?.[0]?.message?.content || "";
-                console.log(`[RETRY] ✓ New AI response received (${rawContent.length} chars) on attempt ${attempt + 2}`);
+                console.log("[RETRY] ✓ New AI response received (${rawContent.length} chars) on attempt ${attempt + 2}");
               } else {
-                console.error(`[RETRY] ✗ Retry fetch failed: ${retryResponse.status}`);
+                console.error(`[RETRY] ✗ Retry fetch failed: ${retryResponse.status}");
               }
             } catch (retryErr) {
               console.error(`[RETRY] ✗ Retry error:`, retryErr);
             }
           } else {
-            console.log(`[RETRY] Max retries (${maxRetries}) exhausted. Will use fallback.`);
+            console.log("[RETRY] Max retries (${maxRetries}) exhausted. Will use fallback.");
           }
         }
       }
 
       // ─── FALLBACK HANDLER ───────────────────────────────────────
       if (!parsed) {
-        console.error(`[FALLBACK] ✗ All ${maxRetries + 1} retry attempts exhausted. Error: ${lastError}`);
-        console.error(`[FALLBACK] Last AI output (first 500 chars): ${rawContent.substring(0, 500)}`);
+        console.error(`[FALLBACK] ✗ All ${maxRetries + 1} retry attempts exhausted. Error: ${lastError}");
+        console.error(`[FALLBACK] Last AI output (first 500 chars): ${rawContent.substring(0, 500)}");
 
         // Log failure for monitoring (critical for debugging)
         const failureRecord = {
@@ -780,7 +780,7 @@ serve(async (req) => {
         await supabase.from("ai_generation_failures").insert(failureRecord)
           .catch(e => console.error("[FAILURE_LOG_ERROR]", e.message));
 
-        console.log(`[FALLBACK] Logged failure to ai_generation_failures for manual review`);
+        console.log("[FALLBACK] Logged failure to ai_generation_failures for manual review");
 
         // Save to history as text
         const { data: fallbackHistoryRow } = await supabase.from("ai_designer_history").insert({
@@ -789,7 +789,7 @@ serve(async (req) => {
           ai_css_overrides: null, tokens_used: 0, applied: false,
         }).select("id").single().catch(() => ({ data: null }));
 
-        console.log(`[FALLBACK] Saved fallback response to history`);
+        console.log("[FALLBACK] Saved fallback response to history");
 
         return new Response(JSON.stringify({
           success: true, type: "text",
@@ -956,7 +956,7 @@ serve(async (req) => {
 
       const genData = await genAIResponse.json();
       let genContent = genData.choices?.[0]?.message?.content || "";
-      console.log(`[GENERATE] Initial AI response (${genContent.length} chars): ${genContent.slice(0, 80)}...`);
+      console.log("[GENERATE] Initial AI response (${genContent.length} chars): ${genContent.slice(0, 80)}...");
 
       // Try parsing as text format first (enterprise approach)
       const genContext = buildDesignSystemContext(genDesignState?.current_design, "general");
@@ -965,11 +965,11 @@ serve(async (req) => {
 
       for (let genAttempt = 0; genAttempt <= 2; genAttempt++) {
         try {
-          console.log(`[GENERATE] Parse attempt ${genAttempt + 1}/3`);
+          console.log("[GENERATE] Parse attempt ${genAttempt + 1}/3");
 
           // Try text format parsing
           const { sections, rawText } = parseDesignText(genContent);
-          console.log(`[GENERATE] Found ${sections.length} sections`);
+          console.log("[GENERATE] Found ${sections.length} sections");
 
           const genValidation = validateDesignSections(sections, genDesignState?.current_design);
           if (!genValidation.valid) {
@@ -983,12 +983,12 @@ serve(async (req) => {
             message: `✅ Generated ${sections.length} section${sections.length > 1 ? 's' : ''} with design changes`,
             design: designFromText,
           };
-          console.log(`[GENERATE] ✅ Successfully parsed on attempt ${genAttempt + 1}`);
+          console.log("[GENERATE] ✅ Successfully parsed on attempt ${genAttempt + 1}");
           break;
 
         } catch (parseErr: any) {
           genLastError = parseErr.message;
-          console.warn(`[GENERATE] Parse failed attempt ${genAttempt + 1}: ${genLastError}`);
+          console.warn(`[GENERATE] Parse failed attempt ${genAttempt + 1}: ${genLastError}");
 
           if (genAttempt < 2) {
             // Retry with enhanced prompt
@@ -1015,7 +1015,7 @@ serve(async (req) => {
               if (retryGenResponse.ok) {
                 const retryGenData = await retryGenResponse.json();
                 genContent = retryGenData.choices?.[0]?.message?.content || "";
-                console.log(`[GENERATE] Retry ${genAttempt + 2} received (${genContent.length} chars)`);
+                console.log("[GENERATE] Retry ${genAttempt + 2} received (${genContent.length} chars)");
               }
             } catch (retryErr) {
               console.error(`[GENERATE] Retry failed:`, retryErr);
@@ -1026,7 +1026,7 @@ serve(async (req) => {
 
       // Fallback if parsing failed
       if (!genParsed) {
-        console.warn(`[GENERATE] All parse attempts exhausted. Logging failure.`);
+        console.warn(`[GENERATE] All parse attempts exhausted. Logging failure.");
         await supabase.from("ai_generation_failures").insert({
           store_id, user_id, user_prompt: prompt,
           error_message: genLastError,
