@@ -187,7 +187,7 @@ function validateDesignSections(sections: ParsedSection[], currentDesign?: any):
 
   // Require at least 2 sections for design changes (not just 1)
   if (sections.length < 2) {
-    errors.push(`Only ${sections.length} section found. Please update at least 2-3 sections for a complete design");
+    errors.push("Only " + sections.length + " section found. Please update at least 2-3 sections for a complete design");
     return { valid: false, errors };
   }
 
@@ -195,25 +195,25 @@ function validateDesignSections(sections: ParsedSection[], currentDesign?: any):
     // Validate section name
     const sectionName = section.name.toLowerCase().trim();
     if (!validSections.some(vs => sectionName.includes(vs))) {
-      errors.push(`Section ${idx + 1}: "${section.name}" not recognized. Use: ${validSections.join(", ")}");
+      errors.push("Section " + (idx + 1) + ": \"" + section.name + "\" not recognized. Use: " + validSections.join(", "));
     }
 
     // Validate change description
     if (!section.change || section.change.length < 3) {
-      errors.push(`Section ${idx + 1}: Change description too short");
+      errors.push("Section " + (idx + 1) + ": Change description too short");
     }
 
     // Validate color format if provided
     if (section.color && !section.color.match(/^\d+\s+\d+%\s+\d+%$/)) {
-      errors.push(`Section ${idx + 1}: Color format invalid. Use HSL like "220 85% 45%"");
+      errors.push("Section " + (idx + 1) + ": Color format invalid. Use HSL like \"220 85% 45%\"");
     } else if (section.color && currentDesign?.css_variables?.primary) {
       // Check color harmony with existing primary color
       const harmony = validateColorHarmony(section.color, currentDesign.css_variables.primary);
-      console.log("[HARMONY] Section "${section.name}": ${harmony.reason}");
+      console.log("[HARMONY] Section \"" + section.name + "\": " + harmony.reason);
     }
   });
 
-  console.log("[VALIDATION] Sections: ${sections.length}, Errors: ${errors.length === 0 ? '✅ Valid' : '❌ ' + errors.length}");
+  console.log("[VALIDATION] Sections: " + sections.length + ", Errors: " + (errors.length === 0 ? "Valid" : errors.length));
   return { valid: errors.length === 0, errors };
 }
 
@@ -329,7 +329,7 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
   console.log('[DESIGN] CSS overrides:', cssOverrides.length, 'rules');
 
   return {
-    summary: `Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with warm colors and smooth effects`,
+    summary: "Updated " + sections.length + " section" + (sections.length > 1 ? "s" : "") + " with warm colors and smooth effects",
     css_variables: cssVariables,
     dark_css_variables: darkCssVariables,
     css_overrides: cssOverrides.join('\n'),
@@ -709,7 +709,7 @@ serve(async (req) => {
 
           parsed = {
             type: "design",
-            message: `✅ Updated ${sections.length} section${sections.length > 1 ? 's' : ''} with your design changes`,
+            message: "Updated " + sections.length + " section" + (sections.length > 1 ? "s" : "") + " with your design changes",
             design: designFromText,
           };
 
