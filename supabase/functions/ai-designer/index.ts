@@ -149,7 +149,7 @@ function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: 
 
     if (section?.name && section?.change) {
       sections.push(section);
-      console.log("[PARSER] Block ${blockIdx}: ${section.name} → ${section.change.slice(0, 50)}...");
+      console.log("[PARSER] Block " + blockIdx + ": " + section.name + " → " + section.change.slice(0, 50) + "...");
     }
   });
 
@@ -264,7 +264,7 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
       const vars = sectionToVarMap[sectionName] || ['primary'];
       const mainVar = vars[0]; // Apply to first variable in the section
       cssVariables[mainVar] = section.color;
-      console.log("[MAP] Section "${sectionName}" → variable "--${mainVar}" = ${section.color}");
+      console.log("[MAP] Section \"" + sectionName + "\" → variable \"--" + mainVar + "\" = " + section.color);
 
       // Parse change description for creative effects
       const changeLower = section.change.toLowerCase();
@@ -663,7 +663,7 @@ serve(async (req) => {
       const aiData = await aiResponse.json();
       console.log("[CHAT] AI response received");
       let rawContent = aiData.choices?.[0]?.message?.content || "";
-      console.log("[CHAT] Raw content (${rawContent.length} chars): ${rawContent.slice(0, 100)}...");
+      console.log("[CHAT] Raw content (" + rawContent.length + " chars): " + rawContent.slice(0, 100) + "...");
 
       // ─── SMART RETRY LOGIC ───────────────────────────────────────
       let currentPrompt = userPrompt;
@@ -673,15 +673,15 @@ serve(async (req) => {
 
       // Build design context once for all retry attempts
       const designContext = buildDesignSystemContext(designState?.current_design, "general");
-      console.log("[CONTEXT] Design system context built. Available: ${designContext.availableColors ? Object.keys(designContext.availableColors).length : 0} colors, ${designContext.componentCapabilities?.length || 0} capabilities");
+      console.log("[CONTEXT] Design system context built. Available: " + (designContext.availableColors ? Object.keys(designContext.availableColors).length : 0) + " colors, " + (designContext.componentCapabilities?.length || 0) + " capabilities");
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          console.log("[ATTEMPT] ${attempt + 1}/${maxRetries + 1} - Parsing AI output (${rawContent.length} chars)");
+          console.log("[ATTEMPT] " + (attempt + 1) + "/" + (maxRetries + 1) + " - Parsing AI output (" + rawContent.length + " chars)");
 
           // Try to parse as text format (new approach)
           const { sections, rawText } = parseDesignText(rawContent);
-          console.log("[PARSE] Found ${sections.length} sections: ${sections.map(s => s.name).join(", ")}");
+          console.log("[PARSE] Found " + sections.length + " sections: " + sections.map(s => s.name).join(", "));
 
           // Validate sections with design context (for color harmony checking)
           const validation = validateDesignSections(sections, designState?.current_design);
@@ -701,7 +701,7 @@ serve(async (req) => {
             design: designFromText,
           };
 
-          console.log("[SUCCESS] ✅ Parsed design with ${sections.length} sections on attempt ${attempt + 1}");
+          console.log("[SUCCESS] Parsed design with " + sections.length + " sections on attempt " + (attempt + 1));
           break; // Success, exit retry loop
 
         } catch (parseError: any) {
@@ -710,7 +710,7 @@ serve(async (req) => {
 
           if (attempt < maxRetries) {
             // Retry with enhanced prompt that includes design context
-            console.log("[RETRY] Enhancing prompt for attempt ${attempt + 2} with design context...");
+            console.log("[RETRY] Enhancing prompt for attempt " + (attempt + 2) + " with design context...");
             currentPrompt = enhancePromptForRetry(userPrompt, attempt, lastError, designContext);
 
             // Call AI again with modified prompt and lower temperature
@@ -734,7 +734,7 @@ serve(async (req) => {
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 rawContent = retryData.choices?.[0]?.message?.content || "";
-                console.log("[RETRY] ✓ New AI response received (${rawContent.length} chars) on attempt ${attempt + 2}");
+                console.log("[RETRY] New AI response received (" + rawContent.length + " chars) on attempt " + (attempt + 2));
               } else {
                 console.error("[RETRY] Retry fetch failed: " + retryResponse.status);
               }
@@ -742,7 +742,7 @@ serve(async (req) => {
               console.error("[RETRY] Retry error:", retryErr);
             }
           } else {
-            console.log("[RETRY] Max retries (${maxRetries}) exhausted. Will use fallback.");
+            console.log("[RETRY] Max retries (" + maxRetries + ") exhausted. Will use fallback.");
           }
         }
       }
@@ -944,7 +944,7 @@ serve(async (req) => {
 
       const genData = await genAIResponse.json();
       let genContent = genData.choices?.[0]?.message?.content || "";
-      console.log("[GENERATE] Initial AI response (${genContent.length} chars): ${genContent.slice(0, 80)}...");
+      console.log("[GENERATE] Initial AI response (" + genContent.length + " chars): " + genContent.slice(0, 80) + "...");
 
       // Try parsing as text format first (enterprise approach)
       const genContext = buildDesignSystemContext(genDesignState?.current_design, "general");
@@ -953,11 +953,11 @@ serve(async (req) => {
 
       for (let genAttempt = 0; genAttempt <= 2; genAttempt++) {
         try {
-          console.log("[GENERATE] Parse attempt ${genAttempt + 1}/3");
+          console.log("[GENERATE] Parse attempt " + (genAttempt + 1) + "/3");
 
           // Try text format parsing
           const { sections, rawText } = parseDesignText(genContent);
-          console.log("[GENERATE] Found ${sections.length} sections");
+          console.log("[GENERATE] Found " + sections.length + " sections");
 
           const genValidation = validateDesignSections(sections, genDesignState?.current_design);
           if (!genValidation.valid) {
@@ -971,7 +971,7 @@ serve(async (req) => {
             message: "Generated " + sections.length + " section" + (sections.length > 1 ? "s" : "") + " with design changes",
             design: designFromText,
           };
-          console.log("[GENERATE] ✅ Successfully parsed on attempt ${genAttempt + 1}");
+          console.log("[GENERATE] Successfully parsed on attempt " + (genAttempt + 1));
           break;
 
         } catch (parseErr: any) {
@@ -1003,7 +1003,7 @@ serve(async (req) => {
               if (retryGenResponse.ok) {
                 const retryGenData = await retryGenResponse.json();
                 genContent = retryGenData.choices?.[0]?.message?.content || "";
-                console.log("[GENERATE] Retry ${genAttempt + 2} received (${genContent.length} chars)");
+                console.log("[GENERATE] Retry " + (genAttempt + 2) + " received (" + genContent.length + " chars)");
               }
             } catch (retryErr) {
               console.error("[GENERATE] Retry failed:", retryErr);
