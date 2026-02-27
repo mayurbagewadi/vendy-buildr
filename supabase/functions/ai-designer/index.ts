@@ -738,10 +738,10 @@ serve(async (req) => {
       const estimatedTokens = Math.ceil((systemPrompt.length + (recentMessages.length * 100)) / 3.5);
       console.log("[TOKEN-DEBUG] Estimated input tokens:", estimatedTokens);
 
-      // Call OpenRouter
+      // Call OpenRouter (with 30s timeout for initial request)
       console.log("DEBUG: Calling OpenRouter, model:", model);
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000);
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
       let aiResponse: Response;
       try {
@@ -842,6 +842,9 @@ serve(async (req) => {
 
             // Call AI again with modified prompt and lower temperature
             try {
+              const retryController = new AbortController();
+              const retryTimeout = setTimeout(() => retryController.abort(), 10000); // 10s timeout for retries
+
               const retryResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -852,11 +855,13 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                   model,
-                  messages: [{ role: "system", content: systemPrompt }, ...messages, { role: "user", content: currentPrompt }],
-                  max_tokens: 4000,
+                  messages: [{ role: "system", content: systemPrompt }, { role: "user", content: currentPrompt }],
+                  max_tokens: 2000, // Reduce tokens for retries
                   temperature: 0.05, // Lower temp for retries (more deterministic)
                 }),
+                signal: retryController.signal,
               });
+              clearTimeout(retryTimeout);
 
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
@@ -865,8 +870,9 @@ serve(async (req) => {
               } else {
                 console.error("[RETRY] Retry fetch failed: " + retryResponse.status);
               }
-            } catch (retryErr) {
-              console.error("[RETRY] Retry error:", retryErr);
+            } catch (retryErr: any) {
+              clearTimeout(timeout);
+              console.error("[RETRY] Retry error:", retryErr.message);
             }
           } else {
             console.log("[RETRY] Max retries (" + maxRetries + ") exhausted. Will use fallback.");
@@ -893,16 +899,18 @@ serve(async (req) => {
         };
 
         await supabase.from("ai_generation_failures").insert(failureRecord)
-          .catch(e => console.error("[FAILURE_LOG_ERROR]", e.message));
+          .then(() => console.log("[FAILURE_LOG_OK]"))
+          .catch(() => console.error("[FAILURE_LOG_ERROR] Failed to log failure"));
 
         console.log("[FALLBACK] Logged failure to ai_generation_failures for manual review");
 
         // Save to history as text
-        const { data: fallbackHistoryRow } = await supabase.from("ai_designer_history").insert({
+        const fallbackHistoryResult = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt: userPrompt,
           ai_response: { type: "text", message: "Design generation encountered an issue. Please try again with a simpler request." },
           ai_css_overrides: null, tokens_used: 0, applied: false,
         }).select("id").single();
+        const fallbackHistoryRow = fallbackHistoryResult?.data;
 
         console.log("[FALLBACK] Saved fallback response to history");
 
