@@ -505,14 +505,14 @@ function classifyUserIntent(userPrompt: string): "targeted" | "complete" {
 
 // ─── Layer 2 System Prompt (Full CSS Generation) ─────────────
 function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, userPrompt: string, mode: "targeted" | "complete"): string {
-  // Extract key info from Layer 1
-  const cssVars = layer1Baseline.cssVariables || {};
+  // Extract key info from Layer 1 (handle null baseline)
+  const cssVars = layer1Baseline?.cssVariables || {};
   const varsText = Object.entries(cssVars)
     .slice(0, 10)
     .map(([k, v]) => "--" + k + ": " + v)
     .join("; ");
 
-  const computedStyles = layer1Baseline.computedStyles || {};
+  const computedStyles = layer1Baseline?.computedStyles || {};
   const stylesText = Object.entries(computedStyles)
     .slice(0, 5)
     .map(([name, style]: [string, any]) => {
@@ -1344,10 +1344,10 @@ serve(async (req) => {
       console.log("  ├─ Layer1 baseline:", JSON.stringify(layer1_baseline || {}).length, "chars");
       console.log("  └─ Messages:", messages?.length || 0);
 
-      if (!store_id || !user_id || !html_structure || !layer1_baseline || !messages || messages.length === 0) {
+      if (!store_id || !user_id || !html_structure || !messages || messages.length === 0) {
         return new Response(JSON.stringify({
           success: false,
-          error: "Missing required fields: store_id, user_id, html_structure, layer1_baseline, or messages"
+          error: "Missing required fields: store_id, user_id, html_structure, or messages"
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
       }
 
@@ -1387,7 +1387,7 @@ serve(async (req) => {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
       console.log("📝 User Prompt:", userPrompt);
       console.log("📊 HTML Structure Length:", html_structure.length, "chars");
-      console.log("🎨 Layer 1 Variables:", Object.keys(layer1_baseline.cssVariables || {}).length);
+      console.log("🎨 Layer 1 Variables:", layer1_baseline ? Object.keys(layer1_baseline.cssVariables || {}).length : 0);
 
       // Step 1: AI-based intent classification (TARGETED vs COMPLETE)
       const intentMode = classifyUserIntent(userPrompt);
