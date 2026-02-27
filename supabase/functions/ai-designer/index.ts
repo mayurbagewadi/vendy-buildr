@@ -584,6 +584,21 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, use
 
   if (isTargeted) {
     // TARGETED MODE - Surgical changes
+    // For vague TARGETED requests, upgrade to COMPLETE
+    const isVague = userPrompt.length < 15;
+    if (isVague) {
+      console.log("[LAYER2] TARGETED mode but vague prompt - upgrading to COMPLETE");
+      const clarifiedPrompt = "Create a modern, professional design with: vibrant gradient backgrounds, enhanced shadows, smooth rounded corners, improved spacing, cohesive color scheme across all sections (hero, cards, buttons, footer). Make it visually striking and contemporary.";
+      return baseInstructions +
+        "MODE: COMPLETE REDESIGN (upgraded from vague TARGETED request)\n" +
+        "Generate COMPLETE CSS redesigning the entire store with cohesive, beautiful design.\n" +
+        "Transform colors, gradients, spacing, shadows, and layout across all major elements.\n\n" +
+        capabilities +
+        outputFormat +
+        "CRITICAL: ALWAYS output CHANGES section with 4-6 detailed descriptions.\n\n" +
+        "Now generate COMPLETE CSS for: " + clarifiedPrompt;
+    }
+
     return baseInstructions +
       "MODE: TARGETED CHANGE\n" +
       "Generate MINIMAL CSS that changes ONLY the specific elements mentioned in the user's request.\n" +
@@ -595,6 +610,11 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, use
       "Now generate MINIMAL CSS for: " + userPrompt;
   } else {
     // COMPLETE MODE - Full redesign
+    const isVague = userPrompt.length < 15 || /^(build|create|design|make|redesign)$/i.test(userPrompt);
+    const clarifiedPrompt = isVague
+      ? "Create a modern, professional design with: vibrant gradient backgrounds, enhanced shadows, smooth rounded corners, improved spacing, cohesive color scheme across all sections (hero, cards, buttons, footer). Make it visually striking and contemporary."
+      : userPrompt;
+
     return baseInstructions +
       "MODE: COMPLETE REDESIGN\n" +
       "Generate COMPLETE CSS redesigning the entire store with cohesive, beautiful design.\n" +
@@ -603,7 +623,8 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, use
       outputFormat +
       "CRITICAL: ALWAYS output CHANGES section with 4-6 detailed descriptions.\n" +
       "List what you changed in each section: hero, cards, buttons, footer, etc.\n\n" +
-      "Now generate COMPLETE CSS for: " + userPrompt;
+      (isVague ? "User request was vague, so here's a beautiful design direction:\n\n" : "") +
+      "Now generate COMPLETE CSS for: " + clarifiedPrompt;
   }
 }
 
