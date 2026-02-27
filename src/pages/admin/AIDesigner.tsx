@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import "@/lib/consoleDebugHelper"; // Load console debug helper
 import {
   chatWithAI,
   applyDesign,
@@ -47,8 +46,6 @@ import {
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
-import { extractHTMLFromIframe } from "@/lib/htmlExtractor";
-import { extractLayer1Baseline } from "@/lib/layer1Extractor";
 
 // Capture clean HTML snapshot from iframe (called once on first load)
 // This snapshot is used for ALL subsequent AI requests to avoid stale/cached data
@@ -476,15 +473,14 @@ const AIDesigner = () => {
     setIsSending(true);
 
     try {
-      // ═══ LAYER 2: Use clean HTML snapshot + Layer 1 for AI context ═══
+      // ═══ LAYER 2: Use clean HTML snapshot for AI context ═══
       const iframe = iframeRef.current;
 
       // Use the clean HTML snapshot (captured once on first load) instead of extracting from live iframe
       // This avoids stale/cached HTML that causes the "second request fails" issue
       const cleanHTML = cleanHTMLSnapshotRef.current;
-      const layer1Data = iframe ? extractLayer1Baseline(iframe) : null;
 
-      if (cleanHTML && layer1Data) {
+      if (cleanHTML) {
         // Use Layer 2 (Full CSS Generation with HTML access)
         console.log('[LAYER2] Using Layer 2 with clean HTML snapshot');
         console.log('[LAYER2] HTML Snapshot size:', cleanHTML.length, 'chars');
@@ -493,7 +489,7 @@ const AIDesigner = () => {
           storeId,
           userId,
           cleanHTML.slice(0, 3000), // Use clean snapshot, slice to reasonable size
-          layer1Data,
+          null, // Layer 1 data not available - AI will work with HTML context alone
           text
         );
 
