@@ -394,7 +394,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       <Header storeSlug={store.slug} storeId={store.id} />
       
       <main className="flex-1">
-        {/* Hero Banner Carousel Section */}
+        {/* ═══ HERO BANNER SECTION ═══
+            Purpose: Large banner at top of page with store name and logo
+            Content: Carousel of banner images, store description, CTA buttons
+            AI Can Change: Background colors, text colors, spacing, gradients, shadows, button styles
+            Selectors: [data-ai="section-hero"] - affects entire hero section
+        */}
         <section data-ai="section-hero">
         <HeroBannerCarousel
           bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0 
@@ -408,7 +413,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         />
         </section>
 
-        {/* Categories Section - Right after banner */}
+        {/* ═══ CATEGORIES SECTION ═══
+            Purpose: Horizontal scrollable list of product categories
+            Content: Category name, image, product count for each category
+            AI Can Change: Background colors, gradients, section padding, card spacing, border radius, shadows, text colors, heading styles
+            Selectors: [data-ai="section-categories"] - entire section | [data-ai="category-card"] - individual cards
+        */}
         {categories.length > 0 && (
           <section data-ai="section-categories" className={`${sectionPyLarge} bg-gradient-to-b from-muted/30 to-background relative overflow-hidden`}>
             <div className="container mx-auto px-4 relative z-10">
@@ -448,7 +458,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </section>
         )}
 
-        {/* Featured Products */}
+        {/* ═══ FEATURED PRODUCTS SECTION ═══
+            Purpose: Grid display of top/featured products
+            Content: Product cards with image, name, price range, "See All" button
+            AI Can Change: Grid layout (columns), card backgrounds, shadows, border radius, product spacing, heading styles, button colors
+            Selectors: [data-ai="section-featured"] - entire section | [data-ai="product-card"] - individual product cards
+        */}
         <section data-ai="section-featured" className={`${sectionPy} bg-background`}>
           <div className="container mx-auto px-4">
             <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
@@ -487,7 +502,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </div>
         </section>
 
-        {/* Instagram Reels Section */}
+        {/* ═══ INSTAGRAM REELS SECTION ═══
+            Purpose: Display Instagram reels/videos in a grid or carousel
+            Content: Video thumbnails, play buttons, captions
+            AI Can Change: Section background, grid spacing, thumbnail borders, shadows, spacing, heading colors
+            Selectors: [data-ai="section-reels"] - entire reels section
+        */}
         {store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage && (
           <section data-ai="section-reels">
           <InstagramReels
@@ -498,7 +518,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </section>
         )}
 
-        {/* Google Reviews Section */}
+        {/* ═══ GOOGLE REVIEWS SECTION ═══
+            Purpose: Display customer reviews from Google with ratings
+            Content: Review text, star ratings, reviewer names, profile pictures
+            AI Can Change: Background colors, review card styles, spacing, border radius, text colors, heading styles, shadows
+            Selectors: [data-ai="section-reviews"] - entire reviews section
+        */}
         <section data-ai="section-reviews" className={`${sectionPy} bg-muted/30`}>
           <div className="container mx-auto px-4">
             <GoogleReviewsSection
@@ -508,7 +533,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </div>
         </section>
 
-        {/* New Arrivals */}
+        {/* ═══ NEW ARRIVALS SECTION ═══
+            Purpose: Showcase recently added/new products
+            Content: Product grid with new products, images, names, prices, "See All" button
+            AI Can Change: Grid columns, card backgrounds, shadows, spacing, border radius, heading styles, button colors
+            Selectors: [data-ai="section-new-arrivals"] - entire section | [data-ai="product-card"] - individual product cards
+        */}
         {newArrivals.length > 0 && (
           <section data-ai="section-new-arrivals" className={`${sectionPy}`}>
             <div className="container mx-auto px-4">
@@ -545,7 +575,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </section>
         )}
 
-        {/* CTA Section */}
+        {/* ═══ CALL-TO-ACTION (CTA) SECTION ═══
+            Purpose: Promotional section encouraging users to browse products or contact
+            Content: Large heading, description text, action buttons (Browse All, WhatsApp)
+            AI Can Change: Background colors, text colors, button styles, spacing, border radius, gradients, shadows
+            Selectors: [data-ai="section-cta"] - entire CTA section | button - action buttons
+        */}
         <section data-ai="section-cta" className="py-20 bg-primary text-primary-foreground mb-0">
           <div className="container mx-auto px-4 text-center">
             <AnimateOnScroll animation="scaleUp" duration={0.8}>

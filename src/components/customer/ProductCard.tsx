@@ -58,6 +58,12 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
       data-ai="product-card"
     >
       <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+        {/* ═══ PRODUCT CARD ═══
+            Purpose: Individual product display card in grid/list
+            Content: Product image, category tag, name, price, "View Details" button
+            AI Can Change: Card background, border radius, shadow effects, spacing, image size, text colors, button styles
+            Selectors: [data-ai="product-card"] - affects all product cards
+        */}
         <CardContent className="p-0">
           <div className="relative aspect-square overflow-hidden bg-muted">
             <LazyImage

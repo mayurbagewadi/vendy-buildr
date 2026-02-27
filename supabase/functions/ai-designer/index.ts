@@ -217,6 +217,18 @@ function validateDesignSections(sections: ParsedSection[], currentDesign?: any):
   return { valid: errors.length === 0, errors };
 }
 
+// ─── Validate CSS variable values ───────────────────
+function isValidCSSValue(varName: string, value: string): boolean {
+  // For radius, check if it's a valid length unit
+  if (varName === 'radius') {
+    return /^[\d.]+\s*(rem|px|em|%)$/.test(value.trim());
+  }
+
+  // For color variables (HSL), ensure 3 space-separated values (Hue Saturation% Lightness%)
+  const parts = value.trim().split(/\s+/);
+  return parts.length === 3;
+}
+
 // ─── Convert parsed sections to design JSON ───────────────────
 function buildDesignFromSections(sections: ParsedSection[], message: string): any {
   const cssVariables: Record<string, string> = {};
@@ -241,20 +253,33 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
   // Start with defaults
   Object.assign(cssVariables, realVarDefaults);
 
-  // Map sections to real CSS variables
+  // Map sections to real CSS variables and correct selectors
   const sectionToVarMap: Record<string, string[]> = {
-    'header': ['primary', 'radius'],
+    'section-hero': ['background', 'primary'],
+    'section-categories': ['card', 'radius'],
+    'section-featured': ['card', 'primary', 'radius'],
+    'product-card': ['card', 'primary', 'radius'],
+    'category-card': ['card', 'radius'],
+    'section-reviews': ['card', 'foreground'],
+    'section-new-arrivals': ['card', 'primary'],
+    'section-cta': ['primary', 'secondary'],
+    'section-footer': ['background', 'foreground'],
+    // Legacy fallbacks (for backward compatibility)
     'hero': ['background', 'primary'],
-    'products': ['card', 'primary', 'radius'],
     'categories': ['card', 'radius'],
+    'products': ['card', 'primary', 'radius'],
     'cta': ['primary', 'secondary'],
     'footer': ['background', 'foreground'],
   };
 
   sections.forEach(section => {
-    const sectionName = Object.keys(sectionToVarMap).find(key =>
-      section.name.toLowerCase().includes(key)
-    ) || 'primary';
+    // First try exact match, then fallback to includes
+    let sectionName = sectionToVarMap[section.name.toLowerCase()] ? section.name.toLowerCase() : null;
+    if (!sectionName) {
+      sectionName = Object.keys(sectionToVarMap).find(key =>
+        section.name.toLowerCase().includes(key)
+      ) || 'section-hero';
+    }
 
     // Add to changes list
     changesList.push((sectionName.charAt(0).toUpperCase() + sectionName.slice(1)) + " → " + section.change);
@@ -263,8 +288,14 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
     if (section.color) {
       const vars = sectionToVarMap[sectionName] || ['primary'];
       const mainVar = vars[0]; // Apply to first variable in the section
-      cssVariables[mainVar] = section.color;
-      console.log("[MAP] Section \"" + sectionName + "\" → variable \"--" + mainVar + "\" = " + section.color);
+
+      // Validate CSS value before assigning
+      if (isValidCSSValue(mainVar, section.color)) {
+        cssVariables[mainVar] = section.color;
+        console.log("[MAP] Section \"" + sectionName + "\" → variable \"--" + mainVar + "\" = " + section.color);
+      } else {
+        console.log("[VALIDATION] Rejected incomplete value for \"--" + mainVar + "\": \"" + section.color + "\" (keeping default: \"" + realVarDefaults[mainVar] + "\")");
+      }
 
       // Parse change description for creative effects
       const changeLower = section.change.toLowerCase();
@@ -308,8 +339,10 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
 
       // Bold/Vibrant
       if (changeLower.includes('bold') || changeLower.includes('vibrant') || changeLower.includes('striking')) {
-        cssVariables['primary'] = section.color;
-        cssVariables['accent'] = section.color;
+        if (isValidCSSValue('primary', section.color)) {
+          cssVariables['primary'] = section.color;
+          cssVariables['accent'] = section.color;
+        }
       }
     }
   });
@@ -415,84 +448,163 @@ function validateAndFixResponse(parsed: any, userPrompt: string): any {
 
 // ─── System prompt ────────────────────────────────────────────
 function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light", storeType: string = "general"): string {
-  // Get full design system context for AI
-  const designContext = buildDesignSystemContext(currentDesign, storeType);
+  // Current CSS variables (compact)
+  const currentVars = currentDesign?.css_variables || { primary: "217 91% 60%", background: "210 40% 98%", card: "0 0% 100%" };
+  const varsText = Object.entries(currentVars).map(([k, v]) => k + "=" + v).join(", ");
 
-  const currentDesignText = currentDesign
-    ? "CURRENT DESIGN (your baseline — preserve everything not mentioned in the request):\n" + JSON.stringify(currentDesign, null, 2) + "\n\n"
-    : "CURRENT DESIGN: Platform defaults (fresh start — full creative freedom)\n\n";
-
-  // Build available colors reference
-  const colorsReference = Object.entries(designContext.availableColors)
-    .map(([name, hsl]) => "• " + name + ": \"" + hsl + "\"")
-    .join("\n");
-
-  // Build capabilities reference
-  const capabilitiesReference = designContext.componentCapabilities
-    .map(cap => "• " + cap)
-    .join("\n");
-
-  const storeBestPractices = storeType === "food" ? "• Warm orange/yellow tones • Rounded, friendly shapes • Appetizing visuals" :
-   storeType === "fashion" ? "• Elegant, minimal colors • Bold typography • White space" :
-   storeType === "tech" ? "• Cool blues/purples • Modern effects • Glassmorphism" :
-   storeType === "luxury" ? "• Gold accents • Dark backgrounds • Premium shadows" :
-   "• Depends on store - be creative within constraints";
-
-  const contextInfo = "\n### DESIGN SYSTEM KNOWLEDGE (Use This!)\nYou have FULL ACCESS to the store's design system:\n\nAVAILABLE COLORS (use exact HSL values):\n" +
-    colorsReference +
-    "\n\nWHAT YOU CAN STYLE:\n" +
-    capabilitiesReference +
-    "\n\nDESIGN CONSTRAINTS:\n• Minimum contrast ratio: 4.5:1 (WCAG AA)\n• Maximum saturation: 100%\n• Allowed effects: gradient, shadow, blur, glow, animation\n\nCURRENT STATE (Don't ignore this):\n" +
-    JSON.stringify(designContext.currentState, null, 2) +
-    "\n\nSTORE TYPE: " + storeType +
-    "\nUse design principles for: " + storeType + " stores (see best practices below)\n\nSTORE TYPE BEST PRACTICES:\n" +
-    storeBestPractices +
-    "\n";
-
-  return "You are a store design AI that outputs PLAIN TEXT ONLY.\n" +
-    "Your entire output must be in SECTION/CHANGE/COLOR format.\n" +
-    "NO JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE THE FORMAT.\n\n" +
-    "Output 3-4 design sections with creative changes:\n" +
-    "SECTION: [header/hero/products/categories/cta/footer]\n" +
-    "CHANGE: [what you changed]\n" +
-    "COLOR: [HSL like \"280 95% 60%\"]\n" +
-    "---\n\n" +
-    "Be creative. Use bold colors. Suggest effects. Reference available colors.\n" +
-    "Always output at least 3 sections. Never less.\n\n" +
-    currentDesignText +
-    contextInfo +
-    "Format example:\n" +
-    "SECTION: header\n" +
-    "CHANGE: Glass effect with purple gradient\n" +
+  return "CSS-only design AI. Output PLAIN TEXT in SECTION/CHANGE/COLOR format.\n\n" +
+    "FORMAT (output 3-5 sections):\n" +
+    "SECTION: section-hero\n" +
+    "CHANGE: Purple gradient hero section\n" +
     "COLOR: 280 95% 60%\n" +
-    "---\n" +
-    "SECTION: products\n" +
-    "CHANGE: Smooth lift animation on hover\n" +
-    "COLOR: 142 71% 45%\n" +
-    "---\n" +
-    "SECTION: footer\n" +
-    "CHANGE: Dark background with golden text\n" +
-    "COLOR: 45 93% 47%\n" +
     "---\n\n" +
-    "Rules:\n" +
-    "• Output minimum 3 sections\n" +
-    "• Colors are HSL only: \"280 95% 60%\"\n" +
-    "• Bold effects: gradients, glows, shadows, blur\n" +
-    "• No JSON, no markdown, no explanations\n\n\n" +
-    "CRITICAL RULES FOR OUTPUT:\n" +
-    "1. PLAIN TEXT ONLY — NO JSON, NO MARKDOWN, NO CODE BLOCKS\n" +
-    "2. Output EXACTLY in this format (repeat 3-4 times for different sections):\n" +
-    "   SECTION: header\n" +
-    "   CHANGE: Description of what changed\n" +
-    "   COLOR: 280 95% 60%\n" +
-    "   ---\n" +
-    "3. Do NOT output JSON. Do NOT use { } or [ ]. Do NOT write \"Design proposed:\"\n" +
-    "4. Each section needs SECTION and CHANGE. COLOR is optional.\n" +
-    "5. Section names: header, hero, products, categories, cta, footer\n" +
-    "6. Colors: HSL only like \"280 95% 60%\" — no hsl() or hex codes\n" +
-    "7. Output minimum 3 sections, maximum 6 sections\n" +
-    "8. If user says \"flat/minimal/no effects\" → use solid colors, no gradients\n" +
-    "9. If prompt is vague → ask one clarifying question first";
+    "AVAILABLE SECTIONS (use EXACT names):\n" +
+    "- section-hero (hero banner)\n" +
+    "- section-categories (category grid)\n" +
+    "- section-featured (featured products)\n" +
+    "- product-card (individual product cards)\n" +
+    "- category-card (individual category cards)\n" +
+    "- section-reviews (customer reviews)\n" +
+    "- section-new-arrivals (new products)\n" +
+    "- section-cta (call-to-action)\n" +
+    "- section-footer (footer)\n\n" +
+    "IMPORTANT: Use these EXACT section names (e.g., 'section-hero' not 'hero', 'product-card' not 'products')\n\n" +
+    "AVAILABLE COLORS: 217 91% 60% (blue), 142 71% 45% (green), 38 92% 50% (orange), 0 84% 60% (red), 45 93% 47% (gold), 280 100% 60% (purple), 190 100% 50% (cyan)\n\n" +
+    "CURRENT STATE: " + varsText + "\n\n" +
+    "CAPABILITIES (CSS only, NO JavaScript):\n" +
+    "✅ Colors, gradients, shadows, border-radius, glass effects\n" +
+    "❌ NO scroll animations, NO parallax, NO particles, NO morphing\n\n" +
+    "RULES:\n" +
+    "1. Output 3-5 sections using EXACT section names from the list above\n" +
+    "2. HSL format: \"280 95% 60%\" (3 values required)\n" +
+    "3. Describe ONLY what CSS can do (colors, shadows, gradients, glass, rounded corners)\n" +
+    "4. NO mentions of: scroll effects, parallax, animations, particles, morphing, floating, transitions\n" +
+    "5. Be realistic - you're changing CSS variables, not adding interactive features\n" +
+    "6. Plain text only - no JSON, no markdown, no code blocks";
+}
+
+// ─── AI-Based Intent Classification ──────────────────────────
+function classifyUserIntent(userPrompt: string): "targeted" | "complete" {
+  const lower = userPrompt.toLowerCase();
+  const completeKeywords = [
+    "everything", "entire store", "complete redesign", "redesign everything",
+    "from scratch", "full makeover", "overhaul", "transform everything",
+    "all sections", "whole store", "full redesign", "completely change",
+    "redo everything", "start over",
+    "colour full", "color full", "full design", "new design", "full style",
+    "style the store", "design the store", "make it", "all of it",
+    "colour scheme", "color scheme", "aesthetic", "rebrand", "restyle",
+    "beautiful", "nice", "modern", "professional", "elegant", "fancy",
+    "i want ", "make the", "change the", "update the", "improve the",
+    "website design", "store design", "shop design", "look good", "look nice"
+  ];
+  const result = completeKeywords.some(kw => lower.includes(kw)) ? "complete" : "targeted";
+  console.log("[CLASSIFY] Keyword-based result:", result, "for:", userPrompt.slice(0, 50));
+  return result;
+}
+
+// ─── Layer 2 System Prompt (Full CSS Generation) ─────────────
+function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, userPrompt: string, mode: "targeted" | "complete"): string {
+  // Extract key info from Layer 1
+  const cssVars = layer1Baseline.cssVariables || {};
+  const varsText = Object.entries(cssVars)
+    .slice(0, 10)
+    .map(([k, v]) => "--" + k + ": " + v)
+    .join("; ");
+
+  const computedStyles = layer1Baseline.computedStyles || {};
+  const stylesText = Object.entries(computedStyles)
+    .slice(0, 5)
+    .map(([name, style]: [string, any]) => {
+      const radius = style.styles?.["border-radius"] || "none";
+      const bg = style.styles?.["background-color"] || "transparent";
+      return name + " (radius: " + radius + ", bg: " + bg + ")";
+    })
+    .join(", ");
+
+  const isTargeted = mode === "targeted";
+
+  console.log("[LAYER2] Mode detected:", mode, "for prompt:", userPrompt.slice(0, 50));
+
+  const baseInstructions = "You are a CSS expert that generates CSS to modify websites.\n\n" +
+    "HTML STRUCTURE:\n" + htmlStructure.slice(0, 2000) + "\n\n" +
+    "CURRENT STYLES (Layer 1 - Baseline):\n" +
+    "CSS Variables: " + varsText + "\n" +
+    "Elements: " + stylesText + "\n\n" +
+    "USER REQUEST: " + userPrompt + "\n\n";
+
+  const capabilities = "WHAT YOU CAN DO (CSS ONLY):\n" +
+    "✅ Colors, gradients, borders, shadows\n" +
+    "✅ Border radius, spacing, sizing\n" +
+    "✅ Typography, backgrounds, layout\n" +
+    "✅ Effects, transforms, animations\n" +
+    "✅ Hover states, pseudo-elements\n\n" +
+    "WHAT YOU CANNOT DO:\n" +
+    "❌ Add/remove HTML elements\n" +
+    "❌ Change text content\n" +
+    "❌ Add JavaScript\n\n" +
+    "EXACT SELECTORS (use these precisely, they exist in the HTML):\n" +
+    "[data-ai=\"header\"]           → sticky navigation header\n" +
+    "[data-ai=\"section-hero\"]     → hero banner section\n" +
+    "[data-ai=\"section-categories\"] → categories section container\n" +
+    "[data-ai=\"category-card\"]    → individual category cards\n" +
+    "[data-ai=\"product-card\"]     → individual product cards\n" +
+    "[data-ai=\"section-featured\"] → featured products section\n" +
+    "[data-ai=\"section-footer\"]   → footer section\n" +
+    "button                       → all buttons\n\n";
+
+  const outputFormat = "OUTPUT FORMAT (REQUIRED - ALWAYS INCLUDE BOTH):\n\n" +
+    "1. Your CSS code first\n" +
+    "2. Then ALWAYS add CHANGES section (MANDATORY - DO NOT SKIP)\n\n" +
+    "EXACT FORMAT:\n" +
+    "```css\nyour css code here\n```\n\n" +
+    "CHANGES:\n" +
+    "SECTION: section-name\n" +
+    "CHANGE: detailed description of what changed\n" +
+    "---\n" +
+    "SECTION: another-section\n" +
+    "CHANGE: another change description\n" +
+    "---\n\n" +
+    "REQUIRED:\n" +
+    "• ALWAYS output CHANGES section (even if just one change)\n" +
+    "• Each CHANGE must describe WHAT you changed and WHY\n" +
+    "• Use human-readable descriptions, not CSS code\n" +
+    "• Minimum 2-3 changes per request\n" +
+    "• Do NOT skip the CHANGES section\n\n" +
+    "Example:\n" +
+    "[data-ai=\"product-card\"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }\n" +
+    "[data-ai=\"section-header\"] { background: #2d3748; color: #f7fafc; }\n\n" +
+    "CHANGES:\n" +
+    "SECTION: product-card\n" +
+    "CHANGE: Added vibrant purple gradient background and shadow effects\n" +
+    "---\n" +
+    "SECTION: section-header\n" +
+    "CHANGE: Changed header to dark theme with light text for contrast\n" +
+    "---\n\n";
+
+  if (isTargeted) {
+    // TARGETED MODE - Surgical changes
+    return baseInstructions +
+      "MODE: TARGETED CHANGE\n" +
+      "Generate MINIMAL CSS that changes ONLY the specific elements mentioned in the user's request.\n" +
+      "Leave everything else completely untouched.\n" +
+      "Only output CSS for the elements explicitly requested.\n\n" +
+      capabilities +
+      outputFormat +
+      "CRITICAL: Always output the CHANGES section with detailed descriptions of what you changed.\n\n" +
+      "Now generate MINIMAL CSS for: " + userPrompt;
+  } else {
+    // COMPLETE MODE - Full redesign
+    return baseInstructions +
+      "MODE: COMPLETE REDESIGN\n" +
+      "Generate COMPLETE CSS redesigning the entire store with cohesive, beautiful design.\n" +
+      "Transform colors, gradients, spacing, shadows, and layout across all major elements.\n\n" +
+      capabilities +
+      outputFormat +
+      "CRITICAL: ALWAYS output CHANGES section with 4-6 detailed descriptions.\n" +
+      "List what you changed in each section: hero, cards, buttons, footer, etc.\n\n" +
+      "Now generate COMPLETE CSS for: " + userPrompt;
+  }
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -612,8 +724,19 @@ serve(async (req) => {
         .select("current_design").eq("store_id", store_id).maybeSingle();
 
       const systemPrompt = buildSystemPrompt(store?.name || "Store", designState?.current_design || null, theme || "light");
-      const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2").trim();
+      const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
       const apiKey = platformSettings.openrouter_api_key.trim();
+
+      // ═══ LIMIT CHAT HISTORY TO PREVENT TOKEN BLOAT ═══
+      // Only keep last 10 messages for context (saves massive tokens)
+      const MAX_HISTORY = 10;
+      const recentMessages = messages.slice(-MAX_HISTORY);
+
+      console.log("[TOKEN-DEBUG] Total messages:", messages.length, "| Using last:", recentMessages.length);
+      console.log("[TOKEN-DEBUG] System prompt length:", systemPrompt.length, "chars");
+      console.log("[TOKEN-DEBUG] System prompt preview:", systemPrompt.slice(0, 200) + "...");
+      const estimatedTokens = Math.ceil((systemPrompt.length + (recentMessages.length * 100)) / 3.5);
+      console.log("[TOKEN-DEBUG] Estimated input tokens:", estimatedTokens);
 
       // Call OpenRouter
       console.log("DEBUG: Calling OpenRouter, model:", model);
@@ -632,7 +755,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             model,
-            messages: [{ role: "system", content: systemPrompt }, ...messages],
+            messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
             max_tokens: 4000,
             temperature: 0.1,
           }),
@@ -656,8 +779,18 @@ serve(async (req) => {
 
       const aiData = await aiResponse.json();
       console.log("[CHAT] AI response received");
+
+      // ═══ TOKEN USAGE DEBUG ═══
+      const usage = aiData.usage || {};
+      console.log("[TOKEN-DEBUG] ═══ ACTUAL TOKEN USAGE ═══");
+      console.log("[TOKEN-DEBUG] Prompt tokens:", usage.prompt_tokens || "N/A");
+      console.log("[TOKEN-DEBUG] Completion tokens:", usage.completion_tokens || "N/A");
+      console.log("[TOKEN-DEBUG] Total tokens:", usage.total_tokens || "N/A");
+      console.log("[TOKEN-DEBUG] ═══════════════════════════");
+
       let rawContent = aiData.choices?.[0]?.message?.content || "";
       console.log("[CHAT] Raw content (" + rawContent.length + " chars): " + rawContent.slice(0, 100) + "...");
+      console.log("[AI-OUTPUT-FULL]", rawContent);
 
       // ─── SMART RETRY LOGIC ───────────────────────────────────────
       let currentPrompt = userPrompt;
@@ -785,6 +918,89 @@ serve(async (req) => {
       // If design response — sanitize CSS, normalize keys, log quality metrics
       if (responseType === "design" && parsed.design) {
         const d = parsed.design;
+
+        // ═══ DETAILED DEBUG LOGGING - SHOW WHAT AI CHANGED ═══
+        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("🎨 [AI CHANGES DEBUG] Design Generation Complete");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        // Get current design state for before/after comparison
+        const { data: currentState } = await supabase
+          .from("store_design_state")
+          .select("current_design")
+          .eq("store_id", store_id)
+          .maybeSingle();
+
+        const beforeDesign = currentState?.current_design as any || {};
+
+        console.log("📋 Summary:", d.summary || "No summary provided");
+        console.log("\n📝 Changes List:");
+        (d.changes_list || []).forEach((change: string, idx: number) => {
+          console.log("  " + (idx + 1) + ". " + change);
+        });
+
+        console.log("\n🎨 CSS Variables Changes:");
+        if (d.css_variables && Object.keys(d.css_variables).length > 0) {
+          Object.entries(d.css_variables).forEach(([key, newValue]) => {
+            const oldValue = beforeDesign.css_variables?.[key];
+            if (oldValue && oldValue !== newValue) {
+              console.log("  --" + key + ": " + oldValue + " → " + newValue + " ✓ CHANGED");
+            } else if (!oldValue) {
+              console.log("  --" + key + ": " + newValue + " ✓ NEW");
+            } else {
+              console.log("  --" + key + ": " + newValue + " (unchanged)");
+            }
+          });
+        } else {
+          console.log("  No CSS variable changes");
+        }
+
+        if (d.dark_css_variables && Object.keys(d.dark_css_variables).length > 0) {
+          console.log("\n🌙 Dark Mode Variables:");
+          Object.entries(d.dark_css_variables).forEach(([key, value]) => {
+            console.log("  --" + key + ": " + value);
+          });
+        }
+
+        if (d.layout && Object.keys(d.layout).length > 0) {
+          console.log("\n📐 Layout Changes:");
+          Object.entries(d.layout).forEach(([key, value]) => {
+            const oldValue = beforeDesign.layout?.[key];
+            if (oldValue && oldValue !== value) {
+              console.log("  " + key + ": " + oldValue + " → " + value + " ✓ CHANGED");
+            } else if (!oldValue) {
+              console.log("  " + key + ": " + value + " ✓ NEW");
+            }
+          });
+        }
+
+        if (d.fonts) {
+          console.log("\n🔤 Font Changes:");
+          if (d.fonts.heading) {
+            const oldFont = beforeDesign.fonts?.heading;
+            if (oldFont && oldFont !== d.fonts.heading) {
+              console.log("  Heading: " + oldFont + " → " + d.fonts.heading + " ✓ CHANGED");
+            } else if (!oldFont) {
+              console.log("  Heading: " + d.fonts.heading + " ✓ NEW");
+            }
+          }
+          if (d.fonts.body) {
+            const oldFont = beforeDesign.fonts?.body;
+            if (oldFont && oldFont !== d.fonts.body) {
+              console.log("  Body: " + oldFont + " → " + d.fonts.body + " ✓ CHANGED");
+            } else if (!oldFont) {
+              console.log("  Body: " + d.fonts.body + " ✓ NEW");
+            }
+          }
+        }
+
+        if (d.css_overrides && d.css_overrides.length > 0) {
+          console.log("\n✨ Custom CSS Overrides:");
+          console.log("  Length: " + d.css_overrides.length + " characters");
+          console.log("  Preview: " + d.css_overrides.substring(0, 150) + "...");
+        }
+
+        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
         // Log design quality metrics for monitoring
         const designQuality = {
@@ -914,7 +1130,7 @@ serve(async (req) => {
             "X-Title": "Vendy Buildr AI Designer",
           },
           body: JSON.stringify({
-            model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+            model: (genSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim(),
             messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
             max_tokens: 4000,
             temperature: 0.1,
@@ -984,7 +1200,7 @@ serve(async (req) => {
                   "X-Title": "Vendy Buildr AI Designer",
                 },
                 body: JSON.stringify({
-                  model: (genSettings.openrouter_model || "moonshotai/kimi-k2").trim(),
+                  model: (genSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim(),
                   messages: [
                     { role: "system", content: genSystemPrompt },
                     { role: "user", content: enhancePromptForRetry(prompt, genAttempt, genLastError, genContext) }
@@ -1012,7 +1228,7 @@ serve(async (req) => {
         await supabase.from("ai_generation_failures").insert({
           store_id, user_id, user_prompt: prompt,
           error_message: genLastError,
-          model: genSettings.openrouter_model || "moonshotai/kimi-k2",
+          model: genSettings.openrouter_model || "moonshotai/kimi-k2-thinking",
           raw_ai_output: genContent.substring(0, 2000),
           attempt_count: 3,
         }).catch(e => console.error("[LOG_ERROR]", e.message));
@@ -1065,6 +1281,30 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
       }
 
+      // ═══ DEBUG LOGGING - APPLY DESIGN ═══
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("✅ [APPLY DEBUG] Applying Design to Live Store");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+      console.log("🏪 Store ID:", store_id);
+      console.log("📦 History ID:", history_id || "None (direct apply)");
+      console.log("\n📋 Design Being Applied:");
+      console.log("  Summary:", design.summary || "No summary");
+      console.log("  CSS Variables:", Object.keys(design.css_variables || {}).length);
+      console.log("  Dark Variables:", Object.keys(design.dark_css_variables || {}).length);
+      console.log("  Layout Config:", Object.keys(design.layout || {}).length);
+      console.log("  Fonts:", design.fonts ? (design.fonts.heading || design.fonts.body ? "Yes" : "No") : "No");
+      console.log("  CSS Overrides:", design.css_overrides ? design.css_overrides.length + " chars" : "None");
+
+      if (design.css_variables && Object.keys(design.css_variables).length > 0) {
+        console.log("\n🎨 CSS Variables to Apply:");
+        Object.entries(design.css_variables).forEach(([key, value]) => {
+          console.log("  --" + key + ": " + value);
+        });
+      }
+
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
       // Sanitize CSS before applying
       if (design.css_overrides) {
         const sanitization = sanitizeCSS(design.css_overrides);
@@ -1084,8 +1324,300 @@ serve(async (req) => {
         await supabase.from("ai_designer_history").update({ applied: true }).eq("id", history_id);
       }
 
+      console.log("✅ [APPLY] Design successfully saved to database");
+
       return new Response(JSON.stringify({ success: true, message: "Design applied to your live store" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── generate_full_css (Layer 2) ───────────────────────────
+    if (action === "generate_full_css") {
+      try {
+      console.log("\n╔══════════════════════════════════════════════════╗");
+      console.log("║  [LAYER2] generate_full_css ACTION TRIGGERED     ║");
+      console.log("╚══════════════════════════════════════════════════╝\n");
+      console.log("📥 Request received at:", new Date().toISOString());
+
+      const { html_structure, layer1_baseline } = body;
+      console.log("📊 Payload sizes:");
+      console.log("  ├─ HTML structure:", html_structure?.length || 0, "chars");
+      console.log("  ├─ Layer1 baseline:", JSON.stringify(layer1_baseline || {}).length, "chars");
+      console.log("  └─ Messages:", messages?.length || 0);
+
+      if (!store_id || !user_id || !html_structure || !layer1_baseline || !messages || messages.length === 0) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Missing required fields: store_id, user_id, html_structure, layer1_baseline, or messages"
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const userPrompt = messages[messages.length - 1]?.content || "";
+
+      // Check tokens
+      const { data: activePurchases } = await supabase.from("ai_token_purchases")
+        .select("id, tokens_remaining, tokens_used")
+        .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0)
+        .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
+
+      const activePurchase = activePurchases?.[0];
+      if (!activePurchase) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "No tokens remaining. Please purchase more tokens to continue."
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+      }
+
+      // Fetch platform settings
+      const { data: platformSettings } = await supabase.from("platform_settings")
+        .select("openrouter_api_key, openrouter_model").eq("id", SETTINGS_ID).single();
+
+      if (!platformSettings?.openrouter_api_key) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "AI not configured. Please contact platform support."
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
+      const apiKey = platformSettings.openrouter_api_key.trim();
+
+      // ═══ DEBUG LOGGING - LAYER 2 INTENT CLASSIFICATION ═══
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🎯 [LAYER2 DEBUG] Intent Classification");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+      console.log("📝 User Prompt:", userPrompt);
+      console.log("📊 HTML Structure Length:", html_structure.length, "chars");
+      console.log("🎨 Layer 1 Variables:", Object.keys(layer1_baseline.cssVariables || {}).length);
+
+      // Step 1: AI-based intent classification (TARGETED vs COMPLETE)
+      const intentMode = classifyUserIntent(userPrompt);
+
+      console.log("\n🤖 AI Classification Result:", intentMode.toUpperCase());
+      console.log("   ├─ Meaning:", intentMode === "targeted" ? "Surgical changes to specific elements" : "Complete store redesign");
+      console.log("   └─ CSS Output:", intentMode === "targeted" ? "Minimal (5-20 lines)" : "Comprehensive (100-300 lines)");
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+      // Step 2: Build Layer 2 system prompt based on intent
+      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, userPrompt, intentMode);
+
+      console.log("[LAYER2] System prompt length:", systemPrompt.length, "chars");
+      console.log("[LAYER2] ⏱️ TIMEOUT SAFETY: 45s abort (Supabase limit 60s)");
+
+      // Call OpenRouter with strict timeout to fit within Supabase 60s limit
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout (leaves 15s buffer)
+
+      let aiResponse: Response;
+      try {
+        aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://yesgive.shop",
+            "X-Title": "Vendy Buildr AI Designer Layer 2",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: 2000, // CSS generation needs ~600-800 tokens; 2000 is safe max
+            temperature: 0.2,
+          }),
+          signal: controller.signal,
+        });
+      } catch (error: any) {
+        clearTimeout(timeout);
+        const isTimeout = error.name === "AbortError";
+        const errMsg = isTimeout
+          ? "Design request took too long (>45s). Try simplifying your request or use fewer selectors."
+          : "Unable to connect to AI. Please try again in a moment.";
+        console.error("[LAYER2]", isTimeout ? "TIMEOUT" : "CONNECTION ERROR", ":", errMsg);
+        return new Response(JSON.stringify({ success: false, error: errMsg }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: isTimeout ? 504 : 500 });
+      }
+      clearTimeout(timeout);
+
+      if (!aiResponse.ok) {
+        const errBody = await aiResponse.text().catch(() => "");
+        console.error("[LAYER2] OpenRouter error:", aiResponse.status, errBody);
+        return new Response(JSON.stringify({
+          success: false,
+          error: "AI service responded with error. Please try again."
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: aiResponse.status || 500 });
+      }
+
+      const aiData = await aiResponse.json();
+      const usage = aiData.usage || {};
+      console.log("[LAYER2] Token usage:", usage.prompt_tokens, "prompt +", usage.completion_tokens, "completion =", usage.total_tokens, "total");
+
+      let rawOutput = aiData.choices?.[0]?.message?.content || "";
+      console.log("[LAYER2] AI returned output length:", rawOutput.length, "chars");
+
+      // ═══ PARSE DUAL OUTPUT: CSS + CHANGES (with error handling) ═══
+      let rawCSS = "";
+      let changesList: string[] = [];
+
+      try {
+        // First, extract CSS from markdown code blocks if present
+        let cssContent = rawOutput;
+        const codeBlockMatch = rawOutput.match(/```css\n([\s\S]*?)\n```/) || rawOutput.match(/```\n([\s\S]*?)\n```/);
+        if (codeBlockMatch) {
+          cssContent = codeBlockMatch[1];
+          console.log("[LAYER2] Extracted CSS from code block");
+        }
+
+        // Split by CHANGES: marker
+        const parts = rawOutput.split(/CHANGES:/i);
+
+        if (parts.length >= 2) {
+          // Has CHANGES section
+          rawCSS = cssContent.trim();
+          const changesText = "SECTION:" + parts.slice(1).join("CHANGES:");
+
+          console.log("[LAYER2] Found CHANGES section, parsing changes");
+
+          // Parse CHANGES manually - more robust
+          const changeLines = changesText.split(/---/).filter(s => s.trim());
+          changesList = [];
+
+          for (const block of changeLines) {
+            const sectionMatch = block.match(/SECTION:\s*([^\n]+)/i);
+            const changeMatch = block.match(/CHANGE:\s*([^\n]+(?:\n(?!SECTION|CHANGE)[^\n]*)*)/i);
+
+            if (sectionMatch && changeMatch) {
+              const sectionName = sectionMatch[1].trim();
+              const changDesc = changeMatch[1].trim().split('\n')[0]; // First line only
+              const displayName = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
+              changesList.push(displayName + " → " + changDesc);
+            }
+          }
+
+          if (changesList.length === 0) {
+            console.warn("[LAYER2] No CHANGES parsed, using fallback");
+            changesList = ["Applied custom CSS to your store"];
+          } else {
+            console.log("[LAYER2] Successfully parsed", changesList.length, "changes");
+          }
+        } else {
+          // No CHANGES section - all CSS
+          rawCSS = cssContent.trim();
+          console.warn("[LAYER2] No CHANGES section found in output");
+          changesList = ["Applied beautiful custom CSS design to your store"];
+        }
+
+      } catch (splitErr) {
+        console.error("[LAYER2] Error splitting output:", splitErr);
+        // Complete fallback - use entire output as CSS
+        rawCSS = rawOutput;
+        changesList = ["Applied custom CSS (split error)"];
+      }
+
+      // Sanitize CSS with error handling
+      let finalCSS = "";
+      let blockedCount = 0;
+      try {
+        const sanitization = sanitizeCSS(rawCSS);
+        if (sanitization.blocked.length > 0) {
+          console.warn("[LAYER2] Blocked dangerous CSS:", sanitization.blocked);
+          blockedCount = sanitization.blocked.length;
+        }
+        finalCSS = sanitization.sanitized;
+      } catch (sanitizeErr) {
+        console.error("[LAYER2] CSS sanitization failed:", sanitizeErr);
+        finalCSS = ""; // Empty CSS on sanitization failure
+      }
+
+      // ═══ DEBUG LOGGING - LAYER 2 CSS GENERATION COMPLETE ═══
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("✨ [LAYER2 DEBUG] CSS Generation Complete");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+      console.log("📊 Generation Stats:");
+      console.log("  ├─ Mode:", intentMode.toUpperCase());
+      console.log("  ├─ Raw AI Output:", rawCSS.length, "chars");
+      console.log("  ├─ Final CSS:", finalCSS.length, "chars");
+      console.log("  ├─ Blocked Elements:", blockedCount);
+      console.log("  └─ Token Usage:", usage.total_tokens, "(prompt:", usage.prompt_tokens + ", completion:", usage.completion_tokens + ")");
+
+      // Count CSS rules for insights
+      const cssRuleCount = (finalCSS.match(/\{/g) || []).length;
+      const importantCount = (finalCSS.match(/!important/g) || []).length;
+      const selectorTypes = {
+        elements: (finalCSS.match(/^[a-z]+[\s{,]/gm) || []).length,
+        classes: (finalCSS.match(/\.[a-zA-Z]/g) || []).length,
+        ids: (finalCSS.match(/#[a-zA-Z]/g) || []).length,
+        attributes: (finalCSS.match(/\[data-/g) || []).length,
+      };
+
+      console.log("\n📐 CSS Analysis:");
+      console.log("  ├─ Total Rules:", cssRuleCount);
+      console.log("  ├─ !important Usage:", importantCount);
+      console.log("  ├─ Element Selectors:", selectorTypes.elements);
+      console.log("  ├─ Class Selectors:", selectorTypes.classes);
+      console.log("  ├─ ID Selectors:", selectorTypes.ids);
+      console.log("  └─ Data Attributes:", selectorTypes.attributes);
+
+      console.log("\n🎨 CSS Preview (first 300 chars):");
+      console.log("  " + finalCSS.substring(0, 300).replace(/\n/g, "\n  "));
+      if (finalCSS.length > 300) {
+        console.log("  ...(+" + (finalCSS.length - 300) + " more chars)");
+      }
+
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+      // Deduct token
+      const newRemaining = activePurchase.tokens_remaining - 1;
+      const newUsed = activePurchase.tokens_used + 1;
+      await supabase.from("ai_token_purchases")
+        .update({ tokens_remaining: newRemaining, tokens_used: newUsed })
+        .eq("id", activePurchase.id);
+
+      // Store in database (Layer 2)
+      const now = new Date().toISOString();
+      await supabase.from("store_design_state").upsert({
+        store_id,
+        ai_full_css: finalCSS,
+        layer1_snapshot: layer1_baseline,
+        mode: "advanced",
+        ai_full_css_applied_at: now,
+        updated_at: now,
+      }, { onConflict: "store_id" });
+
+      // Log to history
+      await supabase.from("ai_designer_history").insert({
+        store_id,
+        user_id,
+        prompt: userPrompt,
+        ai_response: {
+          layer2_css: finalCSS,
+          mode: intentMode,
+          stats: { cssRuleCount, importantCount, selectorTypes },
+          changes_list: changesList
+        },
+        tokens_used: 1,
+        applied: false,
+      });
+
+      console.log("✅ [LAYER2] Success! CSS stored, changes:", changesList.length, "tokens remaining:", newRemaining);
+
+      return new Response(JSON.stringify({
+        success: true,
+        css: finalCSS,
+        changes_list: changesList,
+        tokens_remaining: newRemaining,
+        message: changesList.length > 0 ? "Updated " + changesList.length + " section" + (changesList.length > 1 ? "s" : "") : "Layer 2 CSS generated successfully"
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (error: any) {
+        console.error("[LAYER2] CRITICAL ERROR:", error.message || error);
+        console.error("[LAYER2] ERROR STACK:", error.stack);
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Internal error: " + (error.message || "Unknown error in generate_full_css")
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
     }
 
     // ── reset_design ───────────────────────────────────────────
