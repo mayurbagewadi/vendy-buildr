@@ -485,6 +485,7 @@ const AIDesigner = () => {
         console.log('[LAYER2] Using Layer 2 with clean HTML snapshot');
         console.log('[LAYER2] HTML Snapshot size:', cleanHTML.length, 'chars');
 
+        try {
         const layer2Result = await generateFullCSS(
           storeId,
           userId,
@@ -580,6 +581,15 @@ const AIDesigner = () => {
         }));
 
         toast.success("Design applied using Layer 2!");
+        } catch (layer2Error: any) {
+          // Suppress AbortError from iframe autoplay conflicts
+          if (layer2Error.name === 'AbortError') {
+            console.warn('[LAYER2] AbortError (iframe autoplay):', layer2Error.message);
+          } else {
+            console.error('[LAYER2] Error:', layer2Error);
+            toast.error("Design generation failed: " + (layer2Error.message || 'Unknown error'));
+          }
+        }
       } else {
         // Fallback to Layer 1 if extraction failed
         console.warn('[LAYER2] HTML extraction failed, falling back to Layer 1');
