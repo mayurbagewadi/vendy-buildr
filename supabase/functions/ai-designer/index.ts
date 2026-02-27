@@ -902,7 +902,7 @@ serve(async (req) => {
           store_id, user_id, prompt: userPrompt,
           ai_response: { type: "text", message: "Design generation encountered an issue. Please try again with a simpler request." },
           ai_css_overrides: null, tokens_used: 0, applied: false,
-        }).select("id").single().catch(() => ({ data: null }));
+        }).select("id").single();
 
         console.log("[FALLBACK] Saved fallback response to history");
 
