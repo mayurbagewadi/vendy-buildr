@@ -707,40 +707,21 @@ serve(async (req) => {
       }
 
       // Fetch platform settings
-      console.log("DEBUG: Fetching platform settings with ID:", SETTINGS_ID);
-      const { data: platformSettings, error: settingsError } = await supabase.from("platform_settings")
+      const { data: platformSettings } = await supabase.from("platform_settings")
         .select("openrouter_api_key, openrouter_model").eq("id", SETTINGS_ID).single();
 
-      if (settingsError) {
-        console.error("DEBUG: Settings fetch error:", settingsError);
-      }
-      console.log("DEBUG: Platform settings retrieved:", !!platformSettings?.openrouter_api_key);
-
       if (!platformSettings?.openrouter_api_key) {
-        console.error("DEBUG: Missing OpenRouter API key");
         return new Response(JSON.stringify({ success: false, error: "AI not configured. Please contact platform support." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
       // Fetch store info
-      console.log("DEBUG: Fetching store info for:", store_id);
-      const { data: store, error: storeError } = await supabase.from("stores")
+      const { data: store } = await supabase.from("stores")
         .select("name, description").eq("id", store_id).single();
 
-      if (storeError) {
-        console.error("DEBUG: Store fetch error:", storeError);
-      }
-      console.log("DEBUG: Store retrieved:", !!store?.name);
-
       // Fetch current design
-      console.log("DEBUG: Fetching design state");
-      const { data: designState, error: designError } = await supabase.from("store_design_state")
+      const { data: designState } = await supabase.from("store_design_state")
         .select("current_design").eq("store_id", store_id).maybeSingle();
-
-      if (designError) {
-        console.error("DEBUG: Design state error:", designError);
-      }
-      console.log("DEBUG: Design state retrieved");
 
       const systemPrompt = buildSystemPrompt(store?.name || "Store", designState?.current_design || null, theme || "light");
       const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
@@ -764,18 +745,6 @@ serve(async (req) => {
 
       let aiResponse: Response;
       try {
-        console.log("DEBUG: Preparing OpenRouter request");
-        console.log("DEBUG: Recent messages count:", recentMessages.length);
-        console.log("DEBUG: System prompt length:", systemPrompt.length);
-
-        const requestBody = {
-          model,
-          messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-          max_tokens: 4000,
-          temperature: 0.1,
-        };
-        console.log("DEBUG: Request body prepared, messages:", requestBody.messages.length);
-
         aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -784,12 +753,16 @@ serve(async (req) => {
             "HTTP-Referer": "https://yesgive.shop",
             "X-Title": "Vendy Buildr AI Designer",
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
+            max_tokens: 4000,
+            temperature: 0.1,
+          }),
           signal: controller.signal,
         });
       } catch (error: any) {
         clearTimeout(timeout);
-        console.error("DEBUG: OpenRouter fetch error:", error.message, error.name);
         const errMsg = error.name === "AbortError" ? "Request timed out. Please try again." : "Unable to connect to AI. Please try again in a moment.";
         return new Response(JSON.stringify({ success: false, error: errMsg }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
