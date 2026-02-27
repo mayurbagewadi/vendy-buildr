@@ -451,6 +451,11 @@ const AIDesigner = () => {
     const text = inputValue.trim();
     if (!text) return;
 
+    // ═══ BASIC VALIDATION ONLY ═══
+    if (!text || text.trim().length === 0) {
+      return;
+    }
+
     const userMsgId = `user-${Date.now()}`;
     const loadingMsgId = `loading-${Date.now()}`;
     const now = new Date();
