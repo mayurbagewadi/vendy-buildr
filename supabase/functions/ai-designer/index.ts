@@ -1576,6 +1576,16 @@ serve(async (req) => {
 
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
+      // ═══ CRITICAL VALIDATION: Do NOT return success if AI output is empty ═══
+      if (!finalCSS || finalCSS.trim().length === 0) {
+        console.error("[LAYER2] VALIDATION FAILED: AI generated empty CSS");
+        console.error("[LAYER2] Raw output was:", rawOutput.length, "chars");
+        return new Response(JSON.stringify({
+          success: false,
+          error: "AI failed to generate CSS. Try: 'Add blue gradient to header' or 'Make buttons rounded'"
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
       // Deduct token
       const newRemaining = activePurchase.tokens_remaining - 1;
       const newUsed = activePurchase.tokens_used + 1;
