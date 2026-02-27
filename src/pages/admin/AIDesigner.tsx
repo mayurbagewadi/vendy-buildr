@@ -584,7 +584,10 @@ const AIDesigner = () => {
         // Fallback to Layer 1 if extraction failed
         console.warn('[LAYER2] HTML extraction failed, falling back to Layer 1');
 
-        const history = buildAPIHistory([...messages, userMsg]);
+        // Limit to last 20 messages to avoid request size issues
+        const recentMessages = [...messages, userMsg].slice(-20);
+        console.log('[API-DEBUG] Sending', recentMessages.length, 'messages (limited from', messages.length + 1, 'total)');
+        const history = buildAPIHistory(recentMessages);
         const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
         console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
 
