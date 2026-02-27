@@ -52,6 +52,12 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
 
   return (
     <div className="block p-2 cursor-pointer" data-ai="category-card" onClick={handleClick}>
+      {/* ═══ CATEGORY CARD ═══
+          Purpose: Individual category display in horizontal scrollable list
+          Content: Category image, category name, product count badge
+          AI Can Change: Card border radius, shadow effects, spacing, image size, text colors, badge styles, hover effects
+          Selectors: [data-ai="category-card"] - affects all category cards
+      */}
       <motion.div
         whileHover={{ y: -8, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import "@/lib/consoleDebugHelper"; // Load console debug helper
 import {
   chatWithAI,
   applyDesign,
@@ -39,10 +40,77 @@ import {
   getAppliedDesign,
   getTokenBalance,
   buildDesignCSS,
+  injectGoogleFonts,
+  generateFullCSS,
+  injectLayer2CSS,
   type AIDesignResult,
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
+import { extractHTMLFromIframe } from "@/lib/htmlExtractor";
+import { extractLayer1Baseline } from "@/lib/layer1Extractor";
+
+// Capture clean HTML snapshot from iframe (called once on first load)
+// This snapshot is used for ALL subsequent AI requests to avoid stale/cached data
+// Uses targeted extraction (only key sections) to minimize token usage
+function captureCleanHTMLSnapshot(iframe: HTMLIFrameElement): string {
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc || !doc.body) return "";
+
+  // Use targeted extraction - only capture key sections, not full body
+  const targets = [
+    { name: "header",             selector: '[data-ai="header"]' },
+    { name: "hero",               selector: '[data-ai="section-hero"]' },
+    { name: "categories-section", selector: '[data-ai="section-categories"]' },
+    { name: "category-card",      selector: '[data-ai="category-card"]' },
+    { name: "product-card",       selector: '[data-ai="product-card"]' },
+    { name: "featured-section",   selector: '[data-ai="section-featured"]' },
+    { name: "footer",             selector: '[data-ai="section-footer"]' },
+    { name: "button",             selector: "button" },
+  ];
+
+  const parts: string[] = [];
+  for (const { name, selector } of targets) {
+    const el = doc.querySelector(selector);
+    if (el) {
+      // Capture full element for context, but limit to 500 chars per element
+      const snippet = el.outerHTML.slice(0, 500);
+      parts.push("<!-- " + name + " -->\n" + snippet + (snippet.length === 500 ? "..." : ""));
+    }
+  }
+
+  const html = parts.join("\n\n");
+  console.log('[HTML-SNAPSHOT] Captured clean HTML snapshot (targeted):', { length: html.length, elementCount: parts.length });
+  return html;
+}
+
+// Extract HTML per-section so AI sees all sections regardless of DOM order
+function buildTargetedHTML(iframe: HTMLIFrameElement): string {
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) return "";
+
+  const targets = [
+    { name: "header",             selector: '[data-ai="header"]' },
+    { name: "hero",               selector: '[data-ai="section-hero"]' },
+    { name: "categories-section", selector: '[data-ai="section-categories"]' },
+    { name: "category-card",      selector: '[data-ai="category-card"]' },
+    { name: "product-card",       selector: '[data-ai="product-card"]' },
+    { name: "featured-section",   selector: '[data-ai="section-featured"]' },
+    { name: "footer",             selector: '[data-ai="section-footer"]' },
+    { name: "button",             selector: "button" },
+  ];
+
+  const parts: string[] = [];
+  for (const { name, selector } of targets) {
+    const el = doc.querySelector(selector);
+    if (el) {
+      // First 300 chars of the element's opening tag is enough to show classes/attributes
+      const snippet = el.outerHTML.slice(0, 300);
+      parts.push("<!-- " + name + " -->\n" + snippet + (snippet.length === 300 ? "..." : ""));
+    }
+  }
+  return parts.join("\n\n");
+}
 
 // UI message type (shown in the chat UI)
 interface UIMessage {
@@ -105,6 +173,7 @@ const AIDesigner = () => {
   const isInitialScrollRef = useRef(true); // true = first load, use instant scroll
   const previewDesignRef = useRef<AIDesignResult | null>(null); // always-current ref for iframe onLoad
   const cssRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // retry CSS injection after React hydration
+  const cleanHTMLSnapshotRef = useRef<string | null>(null); // Clean HTML snapshot for all AI requests (captured once on first iframe load)
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -126,6 +195,8 @@ const AIDesigner = () => {
   const [currentDesign, setCurrentDesign] = useState<AIDesignResult | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "preview">("chat");
   const [isLoading, setIsLoading] = useState(true);
+  const [cleanHTMLSnapshot, setCleanHTMLSnapshot] = useState<string | null>(null); // Clean HTML captured on first load, used for all AI requests
+  const [designVersions, setDesignVersions] = useState<Array<{ id: string; design: AIDesignResult; timestamp: Date }>>([]);
 
   useEffect(() => {
     loadInitialData();
@@ -219,8 +290,10 @@ const AIDesigner = () => {
             ? JSON.parse(record.ai_response)
             : record.ai_response;
 
-          // Detect old text records saved without type field (no css_variables = not a real design)
-          const hasDesignData = aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0;
+          // Detect Layer 1 format (css_variables) or Layer 2 format (layer2_css)
+          const hasLayer1Data = aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0;
+          const hasLayer2Data = aiResponse.layer2_css && aiResponse.layer2_css.length > 0;
+          const hasDesignData = hasLayer1Data || hasLayer2Data;
           const isTextMessage = aiResponse.type === "text" || (!aiResponse.type && !hasDesignData);
 
           if (isTextMessage) {
@@ -234,8 +307,31 @@ const AIDesigner = () => {
                 timestamp,
               });
             }
+          } else if (hasLayer2Data) {
+            // Layer 2 format: Convert to UIMessage with design object
+            const layer2Design: AIDesignResult = {
+              summary: `Layer 2 design (${aiResponse.mode || 'custom'})`,
+              changes_list: aiResponse.changes_list || [],
+              css_variables: {}, // Layer 2 doesn't use variables
+              css_overrides: aiResponse.layer2_css, // Store Layer 2 CSS
+            };
+
+            const messageContent = aiResponse.changes_list && aiResponse.changes_list.length > 0
+              ? `Design applied with ${aiResponse.changes_list.length} changes`
+              : "AI-generated design applied";
+
+            loadedMessages.push({
+              id: `ai-${record.id}`,
+              role: "ai",
+              content: messageContent,
+              design: layer2Design,
+              historyId: record.id,
+              timestamp,
+            });
+
+            lastDesign = layer2Design;
           } else {
-            // Merge ai_css_overrides back into design object for split storage
+            // Layer 1 format: Merge ai_css_overrides back into design object for split storage
             if (record.ai_css_overrides) {
               aiResponse.css_overrides = record.ai_css_overrides;
             }
@@ -250,7 +346,7 @@ const AIDesigner = () => {
             });
 
             // Track last design for preview fallback (history is ASC so last = most recent)
-            if (hasDesignData) {
+            if (hasLayer1Data) {
               lastDesign = aiResponse;
             }
           }
@@ -380,38 +476,157 @@ const AIDesigner = () => {
     setIsSending(true);
 
     try {
-      // Build conversation history including the new user message
-      const history = buildAPIHistory([...messages, userMsg]);
+      // ═══ LAYER 2: Use clean HTML snapshot + Layer 1 for AI context ═══
+      const iframe = iframeRef.current;
 
-      const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
-      console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
+      // Use the clean HTML snapshot (captured once on first load) instead of extracting from live iframe
+      // This avoids stale/cached HTML that causes the "second request fails" issue
+      const cleanHTML = cleanHTMLSnapshotRef.current;
+      const layer1Data = iframe ? extractLayer1Baseline(iframe) : null;
 
-      const aiMsg: UIMessage = {
-        id: `ai-${Date.now()}`,
-        role: "ai",
-        content: result.message,
-        design: result.design,
-        historyId: result.history_id,
-        timestamp: new Date(),
-        isDestructive: result.is_destructive || false,
-        destructiveInfo: result.destructive_info || undefined,
-      };
+      if (cleanHTML && layer1Data) {
+        // Use Layer 2 (Full CSS Generation with HTML access)
+        console.log('[LAYER2] Using Layer 2 with clean HTML snapshot');
+        console.log('[LAYER2] HTML Snapshot size:', cleanHTML.length, 'chars');
 
-      // Replace loading message with actual response
-      setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
+        const layer2Result = await generateFullCSS(
+          storeId,
+          userId,
+          cleanHTML.slice(0, 3000), // Use clean snapshot, slice to reasonable size
+          layer1Data,
+          text
+        );
 
-      if (result.type === "design" && result.design) {
-        setPendingDesign(result.design);
-        setPendingHistoryId(result.history_id);
-        previewDesignRef.current = result.design; // sync before any iframe reload
-        setPreviewDesign(result.design);
-        injectCSSIntoIframe(result.design);
-        if (result.tokens_remaining !== undefined) {
-          setTokenBalance((prev) => ({
-            ...prev,
-            tokens_remaining: result.tokens_remaining!,
-            has_tokens: result.tokens_remaining! > 0,
-          }));
+        // ═══ DEEP DEBUG LOGGING - LAYER 2 CHANGES ═══
+        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("🎨 [LAYER2 CHANGES] AI Design Generation Complete");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        console.log("📊 LAYER 2 RESULT:");
+        console.log("  ├─ CSS Length:", layer2Result.css.length, "chars");
+        console.log("  ├─ Changes Count:", layer2Result.changes_list?.length || 0);
+        console.log("  ├─ Message:", layer2Result.message);
+        console.log("  └─ Tokens Remaining:", layer2Result.tokens_remaining);
+
+        if (layer2Result.changes_list && layer2Result.changes_list.length > 0) {
+          console.log("\n📝 DETAILED CHANGES BREAKDOWN:");
+          layer2Result.changes_list.forEach((change, idx) => {
+            console.log(`  ${idx + 1}. ${change}`);
+          });
+        }
+
+        console.log("\n💅 CSS PREVIEW (first 500 chars):");
+        console.log(layer2Result.css.substring(0, 500));
+        if (layer2Result.css.length > 500) {
+          console.log(`  ...(+${layer2Result.css.length - 500} more chars)`);
+        }
+
+        // Count what was changed
+        const cssAnalysis = {
+          selectors: (layer2Result.css.match(/[^}]+\{/g) || []).length,
+          classSelectors: (layer2Result.css.match(/\.[a-zA-Z-_]+/g) || []).length,
+          dataAttributes: (layer2Result.css.match(/\[data-[a-zA-Z-]+/g) || []).length,
+          importantRules: (layer2Result.css.match(/!important/g) || []).length,
+          gradients: (layer2Result.css.match(/linear-gradient|radial-gradient/g) || []).length,
+          blurEffects: (layer2Result.css.match(/backdrop-filter:|blur\(/g) || []).length,
+          shadows: (layer2Result.css.match(/box-shadow:|text-shadow:/g) || []).length,
+          transforms: (layer2Result.css.match(/transform:/g) || []).length,
+        };
+
+        console.log("\n🔍 CSS ANALYSIS:");
+        console.log("  ├─ Total Selectors:", cssAnalysis.selectors);
+        console.log("  ├─ Class Selectors:", cssAnalysis.classSelectors);
+        console.log("  ├─ Data Attributes:", cssAnalysis.dataAttributes);
+        console.log("  ├─ !important Rules:", cssAnalysis.importantRules);
+        console.log("  ├─ Gradients:", cssAnalysis.gradients);
+        console.log("  ├─ Blur Effects:", cssAnalysis.blurEffects);
+        console.log("  ├─ Shadows:", cssAnalysis.shadows);
+        console.log("  └─ Transforms:", cssAnalysis.transforms);
+
+        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        // Inject Layer 2 CSS into preview
+        if (iframe) {
+          injectLayer2CSS(iframe, layer2Result.css);
+        }
+
+        // Format AI message with Layer 2 design data for rich UI display
+        const layer2Design: AIDesignResult = {
+          summary: layer2Result.message || "AI-generated design applied",
+          changes_list: layer2Result.changes_list || [],
+          css_variables: {}, // Layer 2 uses full CSS, not just variables
+          css_overrides: layer2Result.css, // Store Layer 2 CSS in overrides
+        };
+
+        const aiMsg: UIMessage = {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: layer2Result.message || "AI-generated design applied",
+          design: layer2Design, // Add design object for rich UI
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
+
+        // Store design version for history/comparison
+        const versionId = `v-${Date.now()}`;
+        setDesignVersions((prev) => [...prev, {
+          id: versionId,
+          design: layer2Design,
+          timestamp: new Date(),
+        }]);
+
+        // Update tokens
+        setTokenBalance((prev) => ({
+          ...prev,
+          tokens_remaining: layer2Result.tokens_remaining,
+          has_tokens: layer2Result.tokens_remaining > 0,
+        }));
+
+        toast.success("Design applied using Layer 2!");
+      } else {
+        // Fallback to Layer 1 if extraction failed
+        console.warn('[LAYER2] HTML extraction failed, falling back to Layer 1');
+
+        const history = buildAPIHistory([...messages, userMsg]);
+        const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
+        console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
+
+        const aiMsg: UIMessage = {
+          id: `ai-${Date.now()}`,
+          role: "ai",
+          content: result.message,
+          design: result.design,
+          historyId: result.history_id,
+          timestamp: new Date(),
+          isDestructive: result.is_destructive || false,
+          destructiveInfo: result.destructive_info || undefined,
+        };
+
+        setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
+
+        if (result.type === "design" && result.design) {
+          setPendingDesign(result.design);
+          setPendingHistoryId(result.history_id);
+          previewDesignRef.current = result.design;
+          setPreviewDesign(result.design);
+          injectCSSIntoIframe(result.design);
+
+          // Store design version for history/comparison
+          const versionId = `v-${Date.now()}`;
+          setDesignVersions((prev) => [...prev, {
+            id: versionId,
+            design: result.design,
+            timestamp: new Date(),
+          }]);
+
+          if (result.tokens_remaining !== undefined) {
+            setTokenBalance((prev) => ({
+              ...prev,
+              tokens_remaining: result.tokens_remaining!,
+              has_tokens: result.tokens_remaining! > 0,
+            }));
+          }
         }
       }
     } catch (error: any) {
@@ -447,6 +662,18 @@ const AIDesigner = () => {
     previewDesignRef.current = design; // sync
     setPreviewDesign(design);
     injectCSSIntoIframe(design);
+
+    // Track this as a version if it's not already tracked
+    const versionId = `v-${historyId || Date.now()}`;
+    const exists = designVersions.some(v => v.id === versionId);
+    if (!exists) {
+      setDesignVersions((prev) => [...prev, {
+        id: versionId,
+        design: design,
+        timestamp: new Date(),
+      }]);
+    }
+
     toast.success("Design loaded into preview. Click Publish to go live.");
   };
 
@@ -545,6 +772,10 @@ const AIDesigner = () => {
       setPendingHistoryId(undefined);
       previewDesignRef.current = null; // sync — handleIframeLoad will inject nothing
       setPreviewDesign(null);
+      // Clear HTML snapshot and versions when user resets (starts fresh)
+      cleanHTMLSnapshotRef.current = null;
+      setCleanHTMLSnapshot(null);
+      setDesignVersions([]);
       // Remember that user explicitly reset — prevents history design from being restored on refresh
       localStorage.setItem(`ai_designer_reset_${storeId}`, '1');
       // Force iframe reload so preview shows the actual platform default immediately
@@ -580,14 +811,20 @@ const AIDesigner = () => {
       }
       const existing = iframe.contentDocument.getElementById('ai-preview-styles');
       if (existing) existing.remove();
-      if (!design) return;
+      if (!design) {
+        // Also remove Google Fonts when clearing design
+        injectGoogleFonts(iframe.contentDocument);
+        return;
+      }
       const css = buildDesignCSS(design);
       console.log('[AI-DEBUG] Generated CSS length:', css.length, '\n', css.slice(0, 300));
       const styleEl = iframe.contentDocument.createElement('style');
       styleEl.id = 'ai-preview-styles';
       styleEl.textContent = css;
       iframe.contentDocument.head.appendChild(styleEl);
-      console.log('[AI-DEBUG] CSS injected successfully into iframe head');
+      // Inject Google Fonts
+      injectGoogleFonts(iframe.contentDocument, design.fonts);
+      console.log('[AI-DEBUG] CSS + fonts injected successfully into iframe head');
     } catch (err) {
       console.error('[AI-DEBUG] CSS injection failed (likely cross-origin):', err);
     }
@@ -595,6 +832,15 @@ const AIDesigner = () => {
 
   const handleIframeLoad = () => {
     console.log('[AI-DEBUG] iframe onLoad fired, previewDesign in ref:', !!previewDesignRef.current);
+
+    // CAPTURE CLEAN HTML SNAPSHOT on first load (only if not already captured)
+    if (!cleanHTMLSnapshotRef.current && iframeRef.current) {
+      const snapshot = captureCleanHTMLSnapshot(iframeRef.current);
+      cleanHTMLSnapshotRef.current = snapshot;
+      setCleanHTMLSnapshot(snapshot);
+      console.log('[HTML-SNAPSHOT] First load - snapshot captured and stored');
+    }
+
     // Inject immediately on load
     injectCSSIntoIframe(previewDesignRef.current);
     // Retry multiple times to survive React hydration and lazy CSS loading in the iframe
@@ -702,22 +948,23 @@ const AIDesigner = () => {
                     </div>
                   )}
 
-                  {/* Color swatches */}
+                  {/* Color palette preview (no technical names) */}
                   {msg.design.css_variables && Object.keys(msg.design.css_variables).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(msg.design.css_variables)
-                        .filter(([k]) => k !== "--radius")
-                        .map(([key, value]) => (
-                          <div key={key} className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground mr-1">Colors:</span>
+                      <div className="flex -space-x-1">
+                        {Object.entries(msg.design.css_variables)
+                          .filter(([k, v]) => k !== "radius" && !k.includes("foreground") && typeof v === "string" && v.includes("%"))
+                          .slice(0, 6)
+                          .map(([key, value]) => (
                             <div
-                              className="w-3.5 h-3.5 rounded-full border border-border flex-shrink-0"
+                              key={key}
+                              className="w-4 h-4 rounded-full border-2 border-background shadow-sm"
                               style={{ background: `hsl(${value})` }}
+                              title={key.replace("--", "").replace("-", " ")}
                             />
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                              {key.replace("--", "")}
-                            </span>
-                          </div>
-                        ))}
+                          ))}
+                      </div>
                     </div>
                   )}
 
@@ -727,7 +974,7 @@ const AIDesigner = () => {
                       {msg.design.changes_list.map((c, i) => (
                         <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
                           <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0 mt-0.5" />
-                          {c}
+                          {c.replace(/\[data-ai="([^"]+)"\]/g, '$1')}
                         </li>
                       ))}
                     </ul>
@@ -764,6 +1011,26 @@ const AIDesigner = () => {
             </button>{" "}
             to generate designs.
           </p>
+        </div>
+      )}
+
+      {/* Design Version History */}
+      {designVersions.length > 0 && (
+        <div className="border-t border-border px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Design Versions ({designVersions.length})</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {designVersions.map((version, idx) => (
+              <Button
+                key={version.id}
+                variant={previewDesign === version.design ? "default" : "outline"}
+                size="sm"
+                className="text-xs whitespace-nowrap flex-shrink-0"
+                onClick={() => handleApplyFromMessage(version.design, version.id)}
+              >
+                v{idx + 1}
+              </Button>
+            ))}
+          </div>
         </div>
       )}
 

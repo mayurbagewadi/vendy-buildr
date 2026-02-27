@@ -53,7 +53,13 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+    <header data-ai="header" className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      {/* ═══ STORE HEADER ═══
+          Purpose: Navigation bar at top of page with logo, menu, search, and actions
+          Content: Store logo/name, navigation links (Home/Products/Categories/About), search bar, WhatsApp button, theme toggle, shopping cart
+          AI Can Change: Background colors, text colors, border colors/styles, spacing, logo size, link hover effects, button styles, shadows
+          Selectors: [data-ai="header"] - affects entire header
+      */}
       {/* Main Header */}
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">

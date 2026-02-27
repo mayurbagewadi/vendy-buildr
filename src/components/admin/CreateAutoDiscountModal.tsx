@@ -116,7 +116,7 @@ export function CreateAutoDiscountModal({
           .select("*")
           .eq("discount_id", discountToEdit.id)
           .order("tier_order");
-        if (tierData) setTiers(tierData);
+        if (tierData) setTiers(tierData as Tier[]);
       }
 
       // Load rules for other discount types
@@ -125,7 +125,7 @@ export function CreateAutoDiscountModal({
           .from("discount_rules")
           .select("*")
           .eq("discount_id", discountToEdit.id);
-        if (ruleData) setRules(ruleData);
+        if (ruleData) setRules(ruleData as Rule[]);
       }
     } catch (error) {
       console.error("Error loading tiers/rules:", error);
