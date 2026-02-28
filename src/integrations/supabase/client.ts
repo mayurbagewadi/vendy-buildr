@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://vexeuxsvckpfvuxqchqu.supabase.co";
+const SUPABASE_URL = "https://api.digitaldukandar.in";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c";
 
 // Import the supabase client like this:
