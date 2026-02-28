@@ -357,6 +357,26 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
     'border': '217 33% 17%',
   };
 
+  // ─── Contrast check: ensure button (primary) is visible on background ───
+  const parseLightness = (hsl: string): number => {
+    const parts = hsl.trim().split(/\s+/);
+    return parts.length === 3 ? parseFloat(parts[2].replace('%', '')) : -1;
+  };
+  const primaryL = parseLightness(cssVariables['primary'] || '');
+  const backgroundL = parseLightness(cssVariables['background'] || '');
+  if (primaryL >= 0 && backgroundL >= 0) {
+    const diff = Math.abs(primaryL - backgroundL);
+    if (diff < 25) {
+      // Button too close to background — auto-fix primary lightness
+      const fixedL = backgroundL > 50 ? 25 : 75; // dark bg → light button, light bg → dark button
+      const parts = cssVariables['primary'].trim().split(/\s+/);
+      cssVariables['primary'] = parts[0] + ' ' + parts[1] + ' ' + fixedL + '%';
+      console.log('[CONTRAST] Primary too close to background (diff=' + diff + '%). Fixed primary lightness to ' + fixedL + '%: ' + cssVariables['primary']);
+    } else {
+      console.log('[CONTRAST] OK — primary vs background diff=' + diff + '%');
+    }
+  }
+
   console.log('[DESIGN] Final CSS variables:', cssVariables);
   console.log('[DESIGN] Dark mode variables:', darkCssVariables);
   console.log('[DESIGN] CSS overrides:', cssOverrides.length, 'rules');
