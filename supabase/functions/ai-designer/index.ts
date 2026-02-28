@@ -761,12 +761,12 @@ serve(async (req) => {
         }
       }
 
-      // ─── FALLBACK HANDLER ───────────────────────────────────────
+      // ─── ERROR: NO VALID RESPONSE ───────────────────────────────
       if (!parsed) {
-        console.error("[FALLBACK] All " + (maxRetries + 1) + " retry attempts exhausted. Error: " + lastError);
-        console.error("[FALLBACK] Last AI output (first 500 chars): " + rawContent.substring(0, 500));
+        console.error("[ERROR] All " + (maxRetries + 1) + " retry attempts exhausted. Error: " + lastError);
+        console.error("[ERROR] Last AI output (first 500 chars): " + rawContent.substring(0, 500));
 
-        // Log failure for monitoring (critical for debugging)
+        // Log failure for monitoring
         const failureRecord = {
           store_id,
           user_id,
@@ -783,74 +783,10 @@ serve(async (req) => {
           .then(() => console.log("[FAILURE_LOG_OK]"))
           .catch(() => console.error("[FAILURE_LOG_ERROR] Failed to log failure"));
 
-        console.log("[FALLBACK] Logged failure to ai_generation_failures for manual review");
-
-        // Save to history as text
-        const fallbackHistoryResult = await supabase.from("ai_designer_history").insert({
-          store_id, user_id, prompt: userPrompt,
-          ai_response: { type: "text", message: "Design generation encountered an issue. Please try again with a simpler request." },
-          ai_css_overrides: null, tokens_used: 0, applied: false,
-        }).select("id").single();
-        const fallbackHistoryRow = fallbackHistoryResult?.data;
-
-        console.log("[FALLBACK] Parsing failed, auto-generating beautiful design instead of refusing");
-
-        // Instead of saying "I don't understand", generate a beautiful default design
-        const fallbackDesign = {
-          summary: "Applied a beautiful modern design based on your request",
-          css_variables: {
-            "primary": "262 83% 58%",
-            "background": "0 0% 100%",
-            "foreground": "240 10% 4%",
-            "card": "0 0% 100%",
-            "card-foreground": "240 10% 4%",
-            "muted": "240 5% 96%",
-            "muted-foreground": "240 4% 46%",
-            "border": "240 6% 90%",
-            "accent": "240 5% 96%",
-            "secondary": "240 5% 96%",
-            "radius": "0.75rem"
-          },
-          dark_css_variables: {
-            "primary": "262 83% 58%",
-            "background": "240 10% 4%",
-            "foreground": "0 0% 98%",
-            "card": "240 10% 8%",
-            "muted": "240 4% 16%",
-            "border": "240 4% 16%"
-          },
-          changes_list: [
-            "Primary → Rich purple theme (262 83% 58%)",
-            "Background → Clean white with dark mode support",
-            "Cards → Pure white cards with subtle borders",
-            "Typography → Deep dark text for readability",
-            "Radius → Modern rounded corners (0.75rem)"
-          ]
-        };
-
-        // Deduct token for the attempt
-        const fbNewRemaining = activePurchase.tokens_remaining - 1;
-        const fbNewUsed = activePurchase.tokens_used + 1;
-        await supabase.from("ai_token_purchases")
-          .update({ tokens_remaining: fbNewRemaining, tokens_used: fbNewUsed })
-          .eq("id", activePurchase.id);
-
-        // Save design to store
-        await supabase.from("store_design_state").upsert({
-          store_id,
-          current_design: fallbackDesign,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "store_id" });
-
-        console.log("[FALLBACK] Auto-generated beautiful design, tokens remaining:", fbNewRemaining);
-
         return new Response(JSON.stringify({
-          success: true, type: "design",
-          message: "Updated 5 sections with your design changes",
-          design: fallbackDesign,
-          tokens_remaining: fbNewRemaining,
-          history_id: fallbackHistoryRow?.id || null,
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          success: false,
+          error: "AI failed to generate design. Please try again."
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
       }
 
       const responseType = parsed.type || "text";
