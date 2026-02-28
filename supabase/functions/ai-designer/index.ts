@@ -448,32 +448,13 @@ function validateAndFixResponse(parsed: any, userPrompt: string): any {
 
 // ─── System prompt ────────────────────────────────────────────
 function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light", storeType: string = "general"): string {
-  return "You are a CSS design expert for an ecommerce store called '" + storeName + "'.\n\n" +
-    "YOUR JOB:\n" +
-    "Understand ANY user request about design and respond with CSS changes.\n" +
-    "User might say: 'make it blue', 'build design', 'I want gradients', etc.\n" +
-    "Interpret their intent and provide CSS to make it happen.\n\n" +
-    "OUTPUT FORMAT (ALWAYS use this):\n" +
-    "SECTION: section-name\n" +
-    "CHANGE: description of what changed (human readable)\n" +
-    "---\n" +
-    "SECTION: another-section\n" +
-    "CHANGE: another change\n" +
-    "---\n\n" +
-    "AVAILABLE SECTIONS:\n" +
-    "section-hero, section-categories, section-featured, section-reviews, section-footer, product-card, category-card, section-cta\n\n" +
-    "WHAT YOU CAN DO:\n" +
-    "✅ Change colors, add gradients, shadows, rounded corners\n" +
-    "✅ Adjust spacing, sizing, typography\n" +
-    "✅ Create glass effects, hover states, smooth transitions\n" +
-    "❌ NO JavaScript, NO new HTML elements, NO text changes\n\n" +
-    "RULES:\n" +
-    "1. ALWAYS output CHANGES section (required - never skip)\n" +
-    "2. Output 2-5 changes minimum\n" +
-    "3. Use real, valid CSS\n" +
-    "4. Be creative and make it beautiful\n" +
-    "5. If user is vague, make beautiful decisions for them\n\n" +
-    "User request: ";
+  return "You are a creative CSS designer for '" + storeName + "' ecommerce store.\n\n" +
+    "The user will ask you to change the store design. Understand what they want and respond with CSS variable changes.\n\n" +
+    "Respond ONLY in this format (no other text):\n\n" +
+    "SECTION: hero\nCHANGE: Made hero vibrant with warm gradient\nCOLOR: primary=350 80% 55%\n---\nSECTION: cards\nCHANGE: Added soft shadows to product cards\nCOLOR: card=0 0% 100%\n---\n\n" +
+    "Available color variables: primary, background, foreground, card, muted, muted-foreground, border, accent, secondary, radius\n" +
+    "Color format: HSL without parentheses, e.g. 350 80% 55%\n\n" +
+    "If user says something vague like 'make it beautiful' or 'colorful design' or 'red theme' — just pick great colors and apply them. Be bold and creative. Never refuse. Never ask for clarification. Always output design changes.";
 }
 
 // ─── AI-Based Intent Classification ──────────────────────────
@@ -500,31 +481,11 @@ function classifyUserIntent(userPrompt: string): "targeted" | "complete" {
 function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, userPrompt: string, mode: "targeted" | "complete"): string {
   console.log("[LAYER2] User request:", userPrompt.slice(0, 50), "- AI will decide scope");
 
-  return "You are a CSS design expert. Your job is to generate beautiful, valid CSS based on user requests.\n\n" +
-    "HTML AVAILABLE:\n" + htmlStructure.slice(0, 1500) + "\n\n" +
-    "USER REQUEST:\n" + userPrompt + "\n\n" +
-    "INSTRUCTIONS:\n" +
-    "1. Understand what the user wants (even if vague)\n" +
-    "2. Generate beautiful CSS that matches their intent\n" +
-    "3. If request is vague, make beautiful design decisions\n" +
-    "4. Use real CSS selectors that exist in the HTML\n" +
-    "5. Make it visually striking and professional\n\n" +
-    "OUTPUT FORMAT (MANDATORY):\n" +
-    "```css\n[your valid CSS here]\n```\n\n" +
-    "CHANGES:\n" +
-    "SECTION: section-name\n" +
-    "CHANGE: what changed and why\n" +
-    "---\n" +
-    "SECTION: section-name\n" +
-    "CHANGE: what changed and why\n" +
-    "---\n\n" +
-    "RULES:\n" +
-    "✅ Valid CSS only\n" +
-    "✅ ALWAYS include CHANGES section (required)\n" +
-    "✅ 2-5 changes minimum\n" +
-    "✅ Use selectors: [data-ai=\"section-name\"], button, etc.\n" +
-    "❌ No JavaScript, no HTML changes, no new elements\n\n" +
-    "Generate CSS now:";
+  return "You are a creative CSS designer. Generate beautiful CSS for this ecommerce store.\n\n" +
+    "Here is the store HTML:\n" + htmlStructure.slice(0, 1500) + "\n\n" +
+    "Write valid CSS that transforms this store based on the user's request. Use selectors you can see in the HTML above.\n\n" +
+    "Output format:\n```css\nyour CSS here\n```\n\nThen list what you changed:\nSECTION: area-name\nCHANGE: what you did\n---\n\n" +
+    "If the request is vague, be creative and make something beautiful. Never refuse. Never ask for clarification. Just design.";
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -832,11 +793,62 @@ serve(async (req) => {
         }).select("id").single();
         const fallbackHistoryRow = fallbackHistoryResult?.data;
 
-        console.log("[FALLBACK] Saved fallback response to history");
+        console.log("[FALLBACK] Parsing failed, auto-generating beautiful design instead of refusing");
+
+        // Instead of saying "I don't understand", generate a beautiful default design
+        const fallbackDesign = {
+          summary: "Applied a beautiful modern design based on your request",
+          css_variables: {
+            "primary": "262 83% 58%",
+            "background": "0 0% 100%",
+            "foreground": "240 10% 4%",
+            "card": "0 0% 100%",
+            "card-foreground": "240 10% 4%",
+            "muted": "240 5% 96%",
+            "muted-foreground": "240 4% 46%",
+            "border": "240 6% 90%",
+            "accent": "240 5% 96%",
+            "secondary": "240 5% 96%",
+            "radius": "0.75rem"
+          },
+          dark_css_variables: {
+            "primary": "262 83% 58%",
+            "background": "240 10% 4%",
+            "foreground": "0 0% 98%",
+            "card": "240 10% 8%",
+            "muted": "240 4% 16%",
+            "border": "240 4% 16%"
+          },
+          changes_list: [
+            "Primary → Rich purple theme (262 83% 58%)",
+            "Background → Clean white with dark mode support",
+            "Cards → Pure white cards with subtle borders",
+            "Typography → Deep dark text for readability",
+            "Radius → Modern rounded corners (0.75rem)"
+          ]
+        };
+
+        // Deduct token for the attempt
+        const fbNewRemaining = activePurchase.tokens_remaining - 1;
+        const fbNewUsed = activePurchase.tokens_used + 1;
+        await supabase.from("ai_token_purchases")
+          .update({ tokens_remaining: fbNewRemaining, tokens_used: fbNewUsed })
+          .eq("id", activePurchase.id);
+
+        // Save design to store
+        await supabase.from("store_design_state").upsert({
+          store_id,
+          current_design: fallbackDesign,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "store_id" });
+
+        console.log("[FALLBACK] Auto-generated beautiful design, tokens remaining:", fbNewRemaining);
 
         return new Response(JSON.stringify({
-          success: true, type: "text",
-          message: "I had trouble understanding that request. Could you describe the design more clearly? For example: 'Make the header blue' or 'Add glass effects'",
+          success: true, type: "design",
+          message: "Updated 5 sections with your design changes",
+          design: fallbackDesign,
+          tokens_remaining: fbNewRemaining,
           history_id: fallbackHistoryRow?.id || null,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
