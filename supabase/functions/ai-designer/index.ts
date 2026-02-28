@@ -129,13 +129,13 @@ interface ParsedSection {
 }
 
 function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: string } {
-  console.log("[PARSER] Parsing AI text response");
+  console.log("[PARSER] Parsing AI text response (" + aiText.length + " chars)");
   const sections: ParsedSection[] = [];
-  const blocks = aiText.split('---').map(b => b.trim()).filter(Boolean);
 
+  // Try SECTION/CHANGE/COLOR block format first
+  const blocks = aiText.split('---').map(b => b.trim()).filter(Boolean);
   blocks.forEach((block, blockIdx) => {
     const lines = block.split('\n').filter(l => l.trim());
-
     let section: ParsedSection | null = null;
     lines.forEach(line => {
       if (line.startsWith('SECTION:')) {
@@ -146,13 +146,28 @@ function parseDesignText(aiText: string): { sections: ParsedSection[]; rawText: 
         section.color = line.replace('COLOR:', '').trim();
       }
     });
-
     if (section?.name && section?.change) {
       sections.push(section);
-      console.log("[PARSER] Block " + blockIdx + ": " + section.name + " → " + section.change.slice(0, 50) + "...");
+      console.log("[PARSER] Block " + blockIdx + ": " + (section as ParsedSection).name + " → " + (section as ParsedSection).change.slice(0, 50));
     }
   });
 
+  // If no structured blocks found, scan entire text for variable=value patterns
+  if (sections.length === 0) {
+    console.log("[PARSER] No SECTION blocks found, scanning for loose variable patterns");
+    const varPattern = /\b(primary|background|foreground|card|muted|border|accent|secondary|radius)\s*[=:]\s*([\d]+\s+[\d]+%\s+[\d]+%|[\d.]+\s*rem)/gi;
+    const matches = [...aiText.matchAll(varPattern)];
+    if (matches.length > 0) {
+      sections.push({
+        name: "store",
+        change: "Updated store colors based on your request",
+        color: matches.map(m => m[1].toLowerCase() + "=" + m[2].trim()).join(" ")
+      });
+      console.log("[PARSER] Found " + matches.length + " loose variable patterns");
+    }
+  }
+
+  console.log("[PARSER] Total sections parsed: " + sections.length);
   return { sections, rawText: aiText };
 }
 
@@ -177,44 +192,12 @@ function validateColorHarmony(hslColor: string, baseHSL: string): { harmonic: bo
 
 // ─── Semantic validation ──────────────────────────────────────
 function validateDesignSections(sections: ParsedSection[], currentDesign?: any): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-  const validSections = ['header', 'hero', 'products', 'categories', 'cta', 'footer'];
-
+  // Flexible validation - only reject if completely empty
   if (!sections || sections.length === 0) {
-    errors.push("No design sections found in response");
-    return { valid: false, errors };
+    return { valid: false, errors: ["No design sections found in response"] };
   }
-
-  // Require at least 2 sections for design changes (not just 1)
-  if (sections.length < 2) {
-    errors.push("Only " + sections.length + " section found. Please update at least 2-3 sections for a complete design");
-    return { valid: false, errors };
-  }
-
-  sections.forEach((section, idx) => {
-    // Validate section name
-    const sectionName = section.name.toLowerCase().trim();
-    if (!validSections.some(vs => sectionName.includes(vs))) {
-      errors.push("Section " + (idx + 1) + ": \"" + section.name + "\" not recognized. Use: " + validSections.join(", "));
-    }
-
-    // Validate change description
-    if (!section.change || section.change.length < 3) {
-      errors.push("Section " + (idx + 1) + ": Change description too short");
-    }
-
-    // Validate color format if provided
-    if (section.color && !section.color.match(/^\d+\s+\d+%\s+\d+%$/)) {
-      errors.push("Section " + (idx + 1) + ": Color format invalid. Use HSL like \"220 85% 45%\"");
-    } else if (section.color && currentDesign?.css_variables?.primary) {
-      // Check color harmony with existing primary color
-      const harmony = validateColorHarmony(section.color, currentDesign.css_variables.primary);
-      console.log("[HARMONY] Section \"" + section.name + "\": " + harmony.reason);
-    }
-  });
-
-  console.log("[VALIDATION] Sections: " + sections.length + ", Errors: " + (errors.length === 0 ? "Valid" : errors.length));
-  return { valid: errors.length === 0, errors };
+  console.log("[VALIDATION] Accepted " + sections.length + " section(s)");
+  return { valid: true, errors: [] };
 }
 
 // ─── Validate CSS variable values ───────────────────
@@ -273,7 +256,28 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
   };
 
   sections.forEach(section => {
-    // First try exact match, then fallback to includes
+    // Add to changes list
+    changesList.push(section.name.charAt(0).toUpperCase() + section.name.slice(1) + " → " + section.change);
+
+    if (!section.color) return;
+
+    // Handle loose variable=value pairs (from fallback parser)
+    // e.g. "primary=350 80% 55% background=220 15% 10%"
+    if (section.color.includes('=')) {
+      const pairPattern = /(primary|background|foreground|card|muted|muted-foreground|border|accent|secondary|radius)\s*=\s*([\d]+\s+[\d]+%\s+[\d]+%|[\d.]+\s*rem)/gi;
+      const pairs = [...section.color.matchAll(pairPattern)];
+      pairs.forEach(pair => {
+        const varName = pair[1].toLowerCase();
+        const value = pair[2].trim();
+        if (isValidCSSValue(varName, value)) {
+          cssVariables[varName] = value;
+          console.log("[MAP] Loose pattern → variable \"--" + varName + "\" = " + value);
+        }
+      });
+      return; // Skip section-to-var mapping for loose patterns
+    }
+
+    // Standard SECTION/CHANGE/COLOR format: look up section → variable mapping
     let sectionName = sectionToVarMap[section.name.toLowerCase()] ? section.name.toLowerCase() : null;
     if (!sectionName) {
       sectionName = Object.keys(sectionToVarMap).find(key =>
@@ -281,20 +285,16 @@ function buildDesignFromSections(sections: ParsedSection[], message: string): an
       ) || 'section-hero';
     }
 
-    // Add to changes list
-    changesList.push((sectionName.charAt(0).toUpperCase() + sectionName.slice(1)) + " → " + section.change);
-
     // If color provided, apply it to the main variable for this section
-    if (section.color) {
+    {
       const vars = sectionToVarMap[sectionName] || ['primary'];
-      const mainVar = vars[0]; // Apply to first variable in the section
+      const mainVar = vars[0];
 
-      // Validate CSS value before assigning
       if (isValidCSSValue(mainVar, section.color)) {
         cssVariables[mainVar] = section.color;
         console.log("[MAP] Section \"" + sectionName + "\" → variable \"--" + mainVar + "\" = " + section.color);
       } else {
-        console.log("[VALIDATION] Rejected incomplete value for \"--" + mainVar + "\": \"" + section.color + "\" (keeping default: \"" + realVarDefaults[mainVar] + "\")");
+        console.log("[SKIP] Invalid value for \"--" + mainVar + "\": \"" + section.color + "\"");
       }
 
       // Parse change description for creative effects
@@ -448,13 +448,11 @@ function validateAndFixResponse(parsed: any, userPrompt: string): any {
 
 // ─── System prompt ────────────────────────────────────────────
 function buildSystemPrompt(storeName: string, currentDesign: any, theme: string = "light", storeType: string = "general"): string {
-  return "You are a creative CSS designer for '" + storeName + "' ecommerce store.\n\n" +
-    "The user will ask you to change the store design. Understand what they want and respond with CSS variable changes.\n\n" +
-    "Respond ONLY in this format (no other text):\n\n" +
-    "SECTION: hero\nCHANGE: Made hero vibrant with warm gradient\nCOLOR: primary=350 80% 55%\n---\nSECTION: cards\nCHANGE: Added soft shadows to product cards\nCOLOR: card=0 0% 100%\n---\n\n" +
-    "Available color variables: primary, background, foreground, card, muted, muted-foreground, border, accent, secondary, radius\n" +
-    "Color format: HSL without parentheses, e.g. 350 80% 55%\n\n" +
-    "If user says something vague like 'make it beautiful' or 'colorful design' or 'red theme' — just pick great colors and apply them. Be bold and creative. Never refuse. Never ask for clarification. Always output design changes.";
+  return "You are a CSS designer for '" + storeName + "' ecommerce store.\n\n" +
+    "CSS variables you can change:\nprimary, background, foreground, card, muted, muted-foreground, border, accent, secondary, radius\n\n" +
+    "Color format: HSL without parentheses, e.g. 350 80% 55%\n" +
+    "Radius format: rem value, e.g. 1rem\n\n" +
+    "Response format:\nSECTION: hero\nCHANGE: description of what you changed\nCOLOR: primary=350 80% 55%\n---\nSECTION: cards\nCHANGE: description\nCOLOR: card=0 0% 98%\n---";
 }
 
 // ─── AI-Based Intent Classification ──────────────────────────
