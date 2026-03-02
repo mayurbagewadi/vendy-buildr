@@ -29,32 +29,109 @@ import {
   Send,
   Bot,
   User,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   chatWithAI,
   applyDesign,
+  applyLayer2CSS,
   resetDesign,
   getAppliedDesign,
+  getLayer2CSS,
   getTokenBalance,
   buildDesignCSS,
   injectGoogleFonts,
   generateFullCSS,
+  generateFullCSSStream,
   injectLayer2CSS,
   type AIDesignResult,
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
 
+// ═══ STRUCTURAL SKELETON EXTRACTOR ═══
+// Converts a DOM element into a clean structural skeleton for the AI.
+// Keeps: tag names, data-ai attributes, id, role, structural classes (grid, flex, container)
+// Removes: Tailwind utility classes, inline styles, image URLs, long text content, event handlers
+// This gives the AI full visibility into the page structure without token bloat.
+
+function extractSkeleton(el: Element, depth: number = 0, maxDepth: number = 6): string {
+  if (depth > maxDepth) return '';
+
+  const tag = el.tagName.toLowerCase();
+
+  // Skip invisible/irrelevant elements
+  if (['script', 'style', 'svg', 'path', 'noscript', 'link', 'meta'].includes(tag)) return '';
+
+  // Build attributes: keep data-ai, id, role, href (shortened), type
+  const attrs: string[] = [];
+  const dataAi = el.getAttribute('data-ai');
+  if (dataAi) attrs.push('data-ai="' + dataAi + '"');
+  const id = el.getAttribute('id');
+  if (id) attrs.push('id="' + id + '"');
+  const role = el.getAttribute('role');
+  if (role) attrs.push('role="' + role + '"');
+  const href = el.getAttribute('href');
+  if (href) attrs.push('href="' + (href.length > 30 ? href.slice(0, 30) + '...' : href) + '"');
+  const type = el.getAttribute('type');
+  if (type) attrs.push('type="' + type + '"');
+
+  // Keep structural classes only (grid, flex, container, hidden, etc)
+  const className = el.getAttribute('class') || '';
+  const structuralClasses = className.split(/\s+/).filter((c: string) =>
+    /^(grid|flex|container|hidden|block|inline|relative|absolute|fixed|sticky|overflow|gap-|space-|col-|row-|items-|justify-|md:|lg:|sm:)/.test(c)
+  );
+  if (structuralClasses.length > 0) attrs.push('class="' + structuralClasses.slice(0, 5).join(' ') + '"');
+
+  const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+  const indent = '  '.repeat(depth);
+
+  // Self-closing tags
+  if (['img', 'input', 'br', 'hr'].includes(tag)) {
+    // For img, show alt but not src
+    const alt = el.getAttribute('alt');
+    const imgAttr = alt ? attrStr + ' alt="' + alt.slice(0, 30) + '"' : attrStr;
+    return indent + '<' + tag + imgAttr + '/>\n';
+  }
+
+  // Get children
+  const children = Array.from(el.children);
+  const directText = Array.from(el.childNodes)
+    .filter((n) => n.nodeType === 3 && n.textContent && n.textContent.trim().length > 0)
+    .map((n) => (n.textContent || '').trim().slice(0, 40))
+    .join(' ');
+
+  // Leaf elements (no children) — show text content
+  if (children.length === 0) {
+    const text = directText || el.textContent?.trim().slice(0, 40) || '';
+    if (!text) return '';
+    return indent + '<' + tag + attrStr + '>' + text + '</' + tag + '>\n';
+  }
+
+  // Container elements — recurse into children
+  let childHTML = '';
+  for (const child of children) {
+    childHTML += extractSkeleton(child, depth + 1, maxDepth);
+  }
+
+  if (!childHTML.trim() && !directText) return '';
+
+  let result = indent + '<' + tag + attrStr + '>\n';
+  if (directText) result += indent + '  ' + directText + '\n';
+  result += childHTML;
+  result += indent + '</' + tag + '>\n';
+  return result;
+}
+
 // Capture clean HTML snapshot from iframe (called once on first load)
-// This snapshot is used for ALL subsequent AI requests to avoid stale/cached data
-// Uses targeted extraction (only key sections) to minimize token usage
+// Extracts full structural skeleton of each section — AI sees ALL nested elements
 function captureCleanHTMLSnapshot(iframe: HTMLIFrameElement): string {
   const doc = iframe.contentDocument || iframe.contentWindow?.document;
   if (!doc || !doc.body) return "";
 
-  // Use targeted extraction - only capture key sections, not full body
   const targets = [
     { name: "header",             selector: '[data-ai="header"]' },
     { name: "hero",               selector: '[data-ai="section-hero"]' },
@@ -70,43 +147,16 @@ function captureCleanHTMLSnapshot(iframe: HTMLIFrameElement): string {
   for (const { name, selector } of targets) {
     const el = doc.querySelector(selector);
     if (el) {
-      // Capture full element for context, but limit to 500 chars per element
-      const snippet = el.outerHTML.slice(0, 500);
-      parts.push("<!-- " + name + " -->\n" + snippet + (snippet.length === 500 ? "..." : ""));
+      const skeleton = extractSkeleton(el, 0, 5); // max 5 levels deep
+      if (skeleton.trim()) {
+        parts.push("<!-- " + name + " -->\n" + skeleton.trim());
+      }
     }
   }
 
   const html = parts.join("\n\n");
-  console.log('[HTML-SNAPSHOT] Captured clean HTML snapshot (targeted):', { length: html.length, elementCount: parts.length });
+  console.log('[HTML-SNAPSHOT] Captured structural skeleton:', { length: html.length, elementCount: parts.length });
   return html;
-}
-
-// Extract HTML per-section so AI sees all sections regardless of DOM order
-function buildTargetedHTML(iframe: HTMLIFrameElement): string {
-  const doc = iframe.contentDocument || iframe.contentWindow?.document;
-  if (!doc) return "";
-
-  const targets = [
-    { name: "header",             selector: '[data-ai="header"]' },
-    { name: "hero",               selector: '[data-ai="section-hero"]' },
-    { name: "categories-section", selector: '[data-ai="section-categories"]' },
-    { name: "category-card",      selector: '[data-ai="category-card"]' },
-    { name: "product-card",       selector: '[data-ai="product-card"]' },
-    { name: "featured-section",   selector: '[data-ai="section-featured"]' },
-    { name: "footer",             selector: '[data-ai="section-footer"]' },
-    { name: "button",             selector: "button" },
-  ];
-
-  const parts: string[] = [];
-  for (const { name, selector } of targets) {
-    const el = doc.querySelector(selector);
-    if (el) {
-      // First 300 chars of the element's opening tag is enough to show classes/attributes
-      const snippet = el.outerHTML.slice(0, 300);
-      parts.push("<!-- " + name + " -->\n" + snippet + (snippet.length === 300 ? "..." : ""));
-    }
-  }
-  return parts.join("\n\n");
 }
 
 // UI message type (shown in the chat UI)
@@ -171,6 +221,10 @@ const AIDesigner = () => {
   const previewDesignRef = useRef<AIDesignResult | null>(null); // always-current ref for iframe onLoad
   const cssRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // retry CSS injection after React hydration
   const cleanHTMLSnapshotRef = useRef<string | null>(null); // Clean HTML snapshot for all AI requests (captured once on first iframe load)
+  const cumulativeCSSRef = useRef<string>(''); // Tracks cumulative CSS across multiple AI turns
+  const savedLayer2CSSRef = useRef<string | null>(null); // Layer 2 CSS loaded from DB on page load (persists across refreshes)
+  const imageInputRef = useRef<HTMLInputElement>(null); // Hidden file input for image attachment
+  const abortControllerRef = useRef<AbortController | null>(null); // Signal to abort streaming AI response
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -194,6 +248,7 @@ const AIDesigner = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cleanHTMLSnapshot, setCleanHTMLSnapshot] = useState<string | null>(null); // Clean HTML captured on first load, used for all AI requests
   const [designVersions, setDesignVersions] = useState<Array<{ id: string; design: AIDesignResult; timestamp: Date }>>([]);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null); // Base64 image to send with next message
 
   useEffect(() => {
     loadInitialData();
@@ -202,38 +257,21 @@ const AIDesigner = () => {
     };
   }, []);
 
-  // Auto-scroll chat to bottom on initial load
-  // useLayoutEffect runs synchronously after DOM commit (refs are guaranteed set)
-  // requestAnimationFrame ensures browser has finished layout calculations
-  useLayoutEffect(() => {
-    if (isLoading || messages.length === 0) return;
-    if (!isInitialScrollRef.current) return; // Only for initial load
-
-    const rafId = requestAnimationFrame(() => {
-      const container = messagesContainerRef.current;
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-      isInitialScrollRef.current = false;
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [isLoading, messages]);
-
-  // Auto-scroll chat to bottom for new messages (after initial load)
+  // Scroll to bottom whenever messages change.
+  // scrollIntoView is browser-native and handles complex layout timing internally —
+  // no setTimeout needed. "instant" on first load, "smooth" for new messages.
   useEffect(() => {
     if (isLoading || messages.length === 0) return;
-    if (isInitialScrollRef.current) return; // Skip initial load (handled above)
 
-    const timer = setTimeout(() => {
-      const container = messagesContainerRef.current;
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [messages]);
+    if (isInitialScrollRef.current) {
+      // Initial load — jump instantly to bottom (no animation)
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      isInitialScrollRef.current = false;
+    } else {
+      // New message — smooth scroll
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isLoading, messages]);
 
   // Load chat history from ai_designer_history table
   // Returns the most recent design found in history (for preview fallback)
@@ -395,12 +433,20 @@ const AIDesigner = () => {
         : `${window.location.origin}/${store.slug}`;
       setStoreUrl(url);
 
-      const [balance, appliedDesign] = await Promise.all([
+      const [balance, appliedDesign, layer2CSS] = await Promise.all([
         getTokenBalance(store.id),
         getAppliedDesign(store.id),
+        getLayer2CSS(store.id),
       ]);
 
       setTokenBalance(balance);
+
+      // Restore Layer 2 CSS from DB — so design persists after page refresh
+      if (layer2CSS) {
+        savedLayer2CSSRef.current = layer2CSS;
+        cumulativeCSSRef.current = layer2CSS;
+        console.log('[LAYER2-RESTORE] Loaded', layer2CSS.length, 'chars of Layer 2 CSS from DB');
+      }
 
       // Load chat history — also returns the most recent generated design for preview fallback
       const lastHistoryDesign = await loadChatHistory(store.id);
@@ -446,6 +492,81 @@ const AIDesigner = () => {
       .filter((m): m is APIChatMessage => m !== null);
   };
 
+  // Build conversation history for Layer 2 (CSS-aware format).
+  // AI messages include a CSS summary so the AI knows what it previously generated,
+  // enabling iterative design: "now make buttons green" knows what came before.
+  const buildLayer2History = (uiMessages: UIMessage[]): APIChatMessage[] => {
+    return uiMessages
+      .filter((m) => m.id !== "welcome" && !m.isLoading)
+      .map((m): APIChatMessage | null => {
+        if (m.role === "user") return { role: "user", content: m.content };
+        // AI message: summarize what CSS was generated so AI has design memory
+        if (m.design?.css_overrides) {
+          const selectorCount = (m.design.css_overrides.match(/[^}]+\{/g) || []).length;
+          const changes = (m.design.changes_list || []).slice(0, 4).join("; ");
+          const content = "[Applied CSS — " + selectorCount + " rules. Changes: " + (changes || m.design.summary) + "]";
+          return { role: "assistant", content };
+        }
+        if (m.design) {
+          const vars = Object.keys(m.design.css_variables || {}).slice(0, 5).join(", ");
+          const changes = (m.design.changes_list || []).slice(0, 4).join("; ");
+          const content = "[Updated CSS variables: " + vars + ". Changes: " + (changes || m.design.summary) + "]";
+          return { role: "assistant", content };
+        }
+        if (!m.content || m.content === "Text conversation") return null;
+        return { role: "assistant", content: m.content };
+      })
+      .filter((m): m is APIChatMessage => m !== null)
+      .slice(-8); // last 8 messages to control token usage
+  };
+
+  // Compress image client-side to max 1024px JPEG before sending to AI
+  // Reduces token cost significantly (12MP camera photo → ~150KB compressed)
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const MAX = 1024;
+        let { width, height } = img;
+        if (width > MAX) { height = Math.round((height * MAX) / width); width = MAX; }
+        if (height > MAX) { width = Math.round((width * MAX) / height); height = MAX; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset so same file can be selected again
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image too large. Max 10MB.");
+      return;
+    }
+    try {
+      const compressed = await compressImage(file);
+      setAttachedImage(compressed);
+    } catch {
+      toast.error("Failed to read image.");
+    }
+  };
+
+  const handleStopGeneration = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsSending(false);
+    inputRef.current?.focus();
+    toast.success("Generation stopped");
+  };
+
   const handleSend = async () => {
     if (!storeId || !userId) return;
     const text = inputValue.trim();
@@ -457,7 +578,6 @@ const AIDesigner = () => {
     }
 
     const userMsgId = `user-${Date.now()}`;
-    const loadingMsgId = `loading-${Date.now()}`;
     const now = new Date();
 
     const userMsg: UIMessage = {
@@ -466,6 +586,31 @@ const AIDesigner = () => {
       content: text,
       timestamp: now,
     };
+
+    // ═══ NON-DESIGN PROMPT DETECTION ═══
+    // Detect greetings, questions, etc. — respond instantly without calling AI or spending tokens
+    const lower = text.toLowerCase().replace(/[^a-z\s?]/g, '').trim();
+    const greetings = ['hi', 'hey', 'hello', 'hii', 'hiii', 'yo', 'sup', 'hola', 'namaste', 'good morning', 'good evening', 'good afternoon', 'good night', 'whats up', 'wassup'];
+    const questionPhrases = ['what can you do', 'who are you', 'help', 'how does this work', 'what is this', 'how to use', 'what do you do'];
+    const isGreeting = greetings.some((g) => lower === g || lower === g + '?');
+    const isQuestion = questionPhrases.some((q) => lower.startsWith(q));
+
+    if (isGreeting || isQuestion) {
+      const response = isGreeting
+        ? "Hey! I'm your AI Designer. Tell me how you'd like your store to look — try something like \"make it modern and minimal\" or \"use a warm earthy theme with rounded buttons\"."
+        : "I'm your AI Designer! I can redesign your store's colors, layout, fonts, and style. Just describe what you want — for example:\n\n• \"Make it look premium and elegant\"\n• \"Use a green nature theme\"\n• \"Make buttons rounded and cards have shadows\"\n• \"Give me a dark mode luxury feel\"";
+      const aiMsg: UIMessage = {
+        id: `ai-${Date.now()}`,
+        role: "ai",
+        content: response,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMsg, aiMsg]);
+      setInputValue("");
+      return;
+    }
+
+    const loadingMsgId = `loading-${Date.now()}`;
     const loadingMsg: UIMessage = {
       id: loadingMsgId,
       role: "ai",
@@ -485,19 +630,59 @@ const AIDesigner = () => {
       // This avoids stale/cached HTML that causes the "second request fails" issue
       const cleanHTML = cleanHTMLSnapshotRef.current;
 
+      console.log('[AI-PATH] cleanHTMLSnapshot available:', !!cleanHTML, cleanHTML ? '(' + cleanHTML.length + ' chars)' : '(null - will use Layer 1 fallback)');
+
       if (cleanHTML) {
         // Use Layer 2 (Full CSS Generation with HTML access)
-        console.log('[LAYER2] Using Layer 2 with clean HTML snapshot');
+        console.log('[LAYER2] ✅ Using Layer 2 with clean HTML snapshot');
         console.log('[LAYER2] HTML Snapshot size:', cleanHTML.length, 'chars');
 
         try {
-        const layer2Result = await generateFullCSS(
+        // Build conversation history for Layer 2 — AI gets CSS context from previous turns
+        const allMessages = [...messages, userMsg];
+        const layer2History = buildLayer2History(allMessages);
+        console.log('[LAYER2] Passing', layer2History.length, 'messages to AI as conversation history');
+
+        // Create AbortController for this request — user can cancel anytime
+        abortControllerRef.current = new AbortController();
+
+        // Stream AI response — show text progressively in chat
+        let streamedText = '';
+        const layer2Result = await generateFullCSSStream(
           storeId,
           userId,
-          cleanHTML.slice(0, 3000), // Use clean snapshot, slice to reasonable size
+          cleanHTML.slice(0, 6000), // Structural skeleton — all sections fit within ~4-5K chars
           null, // Layer 1 data not available - AI will work with HTML context alone
-          text
+          text,
+          layer2History,
+          (chunk) => {
+            // Option B: Buffer all chunks, only show SUMMARY section text progressively
+            // CSS code (before SUMMARY:) is hidden behind loading spinner
+            streamedText += chunk;
+
+            const summaryIdx = streamedText.indexOf('SUMMARY:');
+            if (summaryIdx === -1) return; // Still in CSS section — keep spinner
+
+            // Extract only the conversational text after SUMMARY:, stop at CHANGES:
+            const afterSummary = streamedText.slice(summaryIdx + 8).trimStart();
+            const changesIdx = afterSummary.indexOf('CHANGES:');
+            const visibleText = changesIdx !== -1
+              ? afterSummary.slice(0, changesIdx).trimEnd()
+              : afterSummary;
+
+            if (!visibleText) return; // Nothing to show yet
+
+            setMessages((prev) => prev.map((m) =>
+              m.id === loadingMsgId
+                ? { ...m, content: visibleText, isLoading: false }
+                : m
+            ));
+          },
+          resolvedTheme === "dark" ? "dark" : "light", // Tell AI which mode the store is currently in
+          attachedImage || undefined, // Vision: pass image if user attached one
+          abortControllerRef.current!.signal, // Allow user to cancel
         );
+        setAttachedImage(null); // Clear image after send
 
         // ═══ DEEP DEBUG LOGGING - LAYER 2 CHANGES ═══
         console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -547,7 +732,10 @@ const AIDesigner = () => {
 
         console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-        // Inject Layer 2 CSS into preview
+        // Server returns merged CSS (existing + new) — track locally and inject
+        cumulativeCSSRef.current = layer2Result.css;
+
+        // Inject merged CSS into preview
         if (iframe) {
           injectLayer2CSS(iframe, layer2Result.css);
         }
@@ -559,6 +747,10 @@ const AIDesigner = () => {
           css_variables: {}, // Layer 2 uses full CSS, not just variables
           css_overrides: layer2Result.css, // Store Layer 2 CSS in overrides
         };
+
+        // Enable Publish button — mark this design as pending
+        setPendingDesign(layer2Design);
+        setPendingHistoryId(undefined); // Layer 2 has no history_id (CSS stored directly in DB)
 
         const aiMsg: UIMessage = {
           id: `ai-${Date.now()}`,
@@ -587,17 +779,19 @@ const AIDesigner = () => {
 
         toast.success("Design applied using Layer 2!");
         } catch (layer2Error: any) {
-          // Suppress AbortError from iframe autoplay conflicts
+          // Handle abort (user-initiated cancel)
           if (layer2Error.name === 'AbortError') {
-            console.warn('[LAYER2] AbortError (iframe autoplay):', layer2Error.message);
+            // User clicked Stop button — remove loading message
+            setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
+            console.log('[LAYER2] Generation cancelled by user');
           } else {
             console.error('[LAYER2] Error:', layer2Error);
             toast.error("Design generation failed: " + (layer2Error.message || 'Unknown error'));
           }
         }
       } else {
-        // Fallback to Layer 1 if extraction failed
-        console.warn('[LAYER2] HTML extraction failed, falling back to Layer 1');
+        // Fallback to Layer 1 if HTML snapshot not captured (iframe not ready)
+        console.warn('[AI-PATH] ⚠️ No HTML snapshot — using Layer 1 (CSS variables only). [data-ai] elements may not have rendered yet.');
 
         // Limit to last 20 messages to avoid request size issues
         const recentMessages = [...messages, userMsg].slice(-20);
@@ -753,7 +947,15 @@ const AIDesigner = () => {
     setIsPublishing(true);
     const previousDesign = currentDesign; // snapshot before state update
     try {
-      await applyDesign(storeId, pendingDesign, pendingHistoryId);
+      const isLayer2Design = !!pendingDesign.css_overrides && Object.keys(pendingDesign.css_variables || {}).length === 0;
+      if (isLayer2Design) {
+        // Layer 2: explicitly save CSS to DB so customer store sees it
+        // Never assume DB was updated during generation — always write on Publish
+        await applyLayer2CSS(storeId, pendingDesign.css_overrides!);
+      } else {
+        // Layer 1: apply CSS variables to live store
+        await applyDesign(storeId, pendingDesign, pendingHistoryId);
+      }
       const publishedDesign = pendingDesign;
       setCurrentDesign(publishedDesign);
       setPendingDesign(null);
@@ -786,9 +988,11 @@ const AIDesigner = () => {
       setPendingHistoryId(undefined);
       previewDesignRef.current = null; // sync — handleIframeLoad will inject nothing
       setPreviewDesign(null);
-      // Clear HTML snapshot and versions when user resets (starts fresh)
+      // Clear HTML snapshot, cumulative CSS, saved Layer 2 CSS, and versions when user resets (starts fresh)
       cleanHTMLSnapshotRef.current = null;
       setCleanHTMLSnapshot(null);
+      cumulativeCSSRef.current = '';
+      savedLayer2CSSRef.current = null;
       setDesignVersions([]);
       // Remember that user explicitly reset — prevents history design from being restored on refresh
       localStorage.setItem(`ai_designer_reset_${storeId}`, '1');
@@ -847,21 +1051,43 @@ const AIDesigner = () => {
   const handleIframeLoad = () => {
     console.log('[AI-DEBUG] iframe onLoad fired, previewDesign in ref:', !!previewDesignRef.current);
 
-    // CAPTURE CLEAN HTML SNAPSHOT on first load (only if not already captured)
-    if (!cleanHTMLSnapshotRef.current && iframeRef.current) {
+    // CAPTURE CLEAN HTML SNAPSHOT — retry with delays for React hydration
+    // The iframe loads an HTML shell first, then React mounts [data-ai] elements.
+    // onLoad fires before React hydrates, so we retry until elements appear.
+    const attemptSnapshotCapture = (attempt: number) => {
+      if (cleanHTMLSnapshotRef.current || !iframeRef.current) return; // already captured or no iframe
+
       const snapshot = captureCleanHTMLSnapshot(iframeRef.current);
-      cleanHTMLSnapshotRef.current = snapshot;
-      setCleanHTMLSnapshot(snapshot);
-      console.log('[HTML-SNAPSHOT] First load - snapshot captured and stored');
-    }
+      if (snapshot && snapshot.length > 0) {
+        cleanHTMLSnapshotRef.current = snapshot;
+        setCleanHTMLSnapshot(snapshot);
+        console.log('[HTML-SNAPSHOT] Captured on attempt', attempt + 1, '- length:', snapshot.length);
+      } else if (attempt < 5) {
+        // React hasn't rendered [data-ai] elements yet — retry
+        const delays = [500, 1500, 3000, 5000, 8000];
+        console.log('[HTML-SNAPSHOT] Attempt', attempt + 1, 'found no elements, retrying in', delays[attempt] + 'ms');
+        setTimeout(() => attemptSnapshotCapture(attempt + 1), delays[attempt]);
+      } else {
+        console.warn('[HTML-SNAPSHOT] All 5 attempts failed — no [data-ai] elements found. Layer 2 will not be available.');
+      }
+    };
+    attemptSnapshotCapture(0);
 
     // Inject immediately on load
     injectCSSIntoIframe(previewDesignRef.current);
+    if (savedLayer2CSSRef.current && iframeRef.current) {
+      injectLayer2CSS(iframeRef.current, savedLayer2CSSRef.current);
+    }
     // Retry multiple times to survive React hydration and lazy CSS loading in the iframe
     if (cssRetryTimerRef.current) clearTimeout(cssRetryTimerRef.current);
     const retries = [500, 1500, 3000];
     retries.forEach((delay) => {
-      setTimeout(() => injectCSSIntoIframe(previewDesignRef.current), delay);
+      setTimeout(() => {
+        injectCSSIntoIframe(previewDesignRef.current);
+        if (savedLayer2CSSRef.current && iframeRef.current) {
+          injectLayer2CSS(iframeRef.current, savedLayer2CSSRef.current);
+        }
+      }, delay);
     });
   };
 
@@ -877,7 +1103,7 @@ const AIDesigner = () => {
   const ChatPanel = (
     <div className="flex flex-col h-full" style={{ minHeight: "560px" }}>
       {/* Messages area */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-4" style={{ maxHeight: "480px" }}>
         {messages.map((msg, index) => {
           const previousMsg = index > 0 ? messages[index - 1] : undefined;
           const showDateSeparator = shouldShowDateSeparator(msg, previousMsg);
@@ -982,15 +1208,37 @@ const AIDesigner = () => {
                     </div>
                   )}
 
-                  {/* Changes list */}
+                  {/* Changes list — rich display with section name + description */}
                   {msg.design.changes_list && msg.design.changes_list.length > 0 && (
-                    <ul className="space-y-0.5">
-                      {msg.design.changes_list.map((c, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-primary flex-shrink-0 mt-0.5" />
-                          {c.replace(/\[data-ai="([^"]+)"\]/g, '$1')}
-                        </li>
-                      ))}
+                    <ul className="space-y-2 mt-1">
+                      {msg.design.changes_list.map((c, i) => {
+                        const arrowIdx = c.indexOf(" → ");
+                        const section = arrowIdx !== -1 ? c.slice(0, arrowIdx) : c;
+                        const desc = arrowIdx !== -1 ? c.slice(arrowIdx + 3) : "";
+                        // Cycle through accent colors for visual variety
+                        const colors = [
+                          "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                          "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+                          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                          "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+                          "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+                          "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+                        ];
+                        const color = colors[i % colors.length];
+                        return (
+                          <li key={i} className="flex flex-col gap-0.5">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${color}`}>
+                              <CheckCircle2 className="w-2.5 h-2.5 flex-shrink-0" />
+                              {section.replace(/\[data-ai="([^"]+)"\]/g, '$1')}
+                            </span>
+                            {desc && (
+                              <p className="text-xs text-muted-foreground leading-relaxed pl-1">
+                                {desc.replace(/\[data-ai="([^"]+)"\]/g, '$1')}
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
@@ -1049,34 +1297,83 @@ const AIDesigner = () => {
       )}
 
       {/* Input area */}
-      <div className="border-t border-border px-3 py-2.5 flex gap-2 items-end">
-        <textarea
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            tokenBalance.has_tokens
-              ? "Ask for suggestions or describe a design… (Enter to send)"
-              : "Buy tokens to generate designs"
-          }
-          disabled={isSending}
-          rows={2}
-          className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-          style={{ minHeight: "40px", maxHeight: "120px" }}
-        />
-        <Button
-          size="icon"
-          onClick={handleSend}
-          disabled={isSending || !inputValue.trim()}
-          className="h-9 w-9 flex-shrink-0"
-        >
-          {isSending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </Button>
+      <div className="border-t border-border px-3 py-2.5">
+        {/* Image thumbnail — shown above bar when attached */}
+        {attachedImage && (
+          <div className="mb-1.5 flex items-center gap-2">
+            <div className="relative inline-block">
+              <img
+                src={attachedImage}
+                alt="Attached"
+                className="h-10 w-10 object-cover rounded-md border border-border"
+              />
+              <button
+                onClick={() => setAttachedImage(null)}
+                className="absolute -top-1 -right-1 bg-background border border-border rounded-full w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground">Image attached</span>
+          </div>
+        )}
+
+        {/* Unified input bar */}
+        <div className="flex items-center gap-1.5 rounded-xl border border-input bg-background px-2.5 py-2 focus-within:ring-1 focus-within:ring-ring">
+          {/* Image attach icon — inside the bar */}
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isSending}
+            title="Attach image reference"
+            className={`flex-shrink-0 transition-colors disabled:opacity-40 ${
+              attachedImage
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ImagePlus className="w-7 h-7" />
+          </button>
+
+          {/* Hidden file input */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+
+          <textarea
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              tokenBalance.has_tokens
+                ? "Describe a design or ask for suggestions…"
+                : "Buy tokens to generate designs"
+            }
+            disabled={isSending}
+            rows={2}
+            className="flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 py-1"
+            style={{ maxHeight: "115px" }}
+          />
+
+          <Button
+            size="icon"
+            onClick={isSending ? handleStopGeneration : handleSend}
+            disabled={!isSending && !inputValue.trim()}
+            className="flex-shrink-0 h-9 w-9 rounded-lg"
+            variant={isSending ? "destructive" : "default"}
+          >
+            {isSending ? (
+              <X className="w-4 h-4" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1127,17 +1424,6 @@ const AIDesigner = () => {
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-primary" />
-          AI Designer
-        </h1>
-        <p className="text-muted-foreground">
-          Chat with AI to redesign your store's look and feel
-        </p>
-      </div>
-
       {/* Token Balance Card */}
       <Card>
         <CardContent className="pt-4">

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const EDGE_FUNCTION = "ai-designer";
+const EDGE_FUNCTION_URL = "https://api.digitaldukandar.in/functions/v1/" + EDGE_FUNCTION;
 
 export interface AIDesignResult {
   summary: string;
@@ -397,7 +398,8 @@ export async function generateFullCSS(
   userId: string,
   htmlStructure: string,
   layer1Baseline: any,
-  prompt: string
+  prompt: string,
+  conversationHistory?: Array<{role: string; content: string}>
 ): Promise<{ css: string; tokens_remaining: number; changes_list?: string[]; message?: string }> {
   const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION, {
     body: {
@@ -406,7 +408,9 @@ export async function generateFullCSS(
       user_id: userId,
       html_structure: htmlStructure,
       layer1_baseline: layer1Baseline,
-      messages: [{ role: "user", content: prompt }],
+      messages: conversationHistory && conversationHistory.length > 0
+        ? conversationHistory
+        : [{ role: "user", content: prompt }],
     },
   });
 
@@ -418,6 +422,98 @@ export async function generateFullCSS(
     tokens_remaining: data.tokens_remaining,
     changes_list: data.changes_list,
     message: data.message,
+  };
+}
+
+/**
+ * Generate full CSS (Layer 2) — uses Supabase functions.invoke() for CORS compatibility
+ * Streaming parameter is sent but not processed by client (edge function handles it)
+ */
+export async function generateFullCSSStream(
+  storeId: string,
+  userId: string,
+  htmlStructure: string,
+  layer1Baseline: any,
+  prompt: string,
+  conversationHistory?: Array<{role: string; content: string}>,
+  onChunk?: (text: string) => void,
+  theme?: string,
+  imageBase64?: string,
+  signal?: AbortSignal,
+): Promise<{ css: string; tokens_remaining: number; changes_list?: string[]; message?: string }> {
+  // Use raw fetch() to support SSE streaming from the edge function.
+  // supabase.functions.invoke() buffers the full response and cannot read SSE events.
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch(EDGE_FUNCTION_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    signal, // Allow cancellation via AbortController
+    body: JSON.stringify({
+      action: "generate_full_css",
+      store_id: storeId,
+      user_id: userId,
+      html_structure: htmlStructure,
+      layer1_baseline: layer1Baseline,
+      messages: conversationHistory && conversationHistory.length > 0
+        ? conversationHistory
+        : [{ role: "user", content: prompt }],
+      theme: theme || "light",
+      ...(imageBase64 ? { image_base64: imageBase64 } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("AI request failed: " + response.status);
+  }
+
+  // Read SSE stream
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: any = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; // keep incomplete line in buffer
+
+    for (const line of lines) {
+      // Skip SSE heartbeat comments (": heartbeat", ": connected")
+      if (line.startsWith(":")) continue;
+
+      if (line.startsWith("data: ")) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.error) throw new Error(data.error);
+          if (data.done) {
+            result = data;
+          } else if (data.chunk && onChunk) {
+            onChunk(data.chunk);
+          }
+        } catch (parseErr: any) {
+          if (parseErr.message && !parseErr.message.includes("JSON")) throw parseErr;
+        }
+      }
+    }
+  }
+
+  if (!result) throw new Error("Stream ended without a result");
+  if (!result.css) throw new Error("No CSS received from AI");
+
+  return {
+    css: result.css,
+    tokens_remaining: result.tokens_remaining,
+    changes_list: result.changes_list,
+    message: result.message,
   };
 }
 

@@ -56,7 +56,14 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
           Purpose: Individual category display in horizontal scrollable list
           Content: Category image, category name, product count badge
           AI Can Change: Card border radius, shadow effects, spacing, image size, text colors, badge styles, hover effects
-          Selectors: [data-ai="category-card"] - affects all category cards
+          Selectors:
+            [data-ai="category-card"]                → outer wrapper (padding, spacing)
+            [data-ai="category-card-inner"]          → Card shell (border, shadow, background, border-radius)
+            [data-ai="category-card-image-container"] → photo box (aspect ratio, size, shape)
+            [data-ai="category-card-image"]          → the photo itself (object-fit, brightness, scale)
+            [data-ai="category-card-overlay"]        → gradient overlay on photo (color, opacity)
+            [data-ai="category-card-name"]           → category name text (font, size, color, weight)
+            [data-ai="category-card-count"]          → product count text (font, size, color)
       */}
       <motion.div
         whileHover={{ y: -8, scale: 1.05 }}
@@ -65,25 +72,26 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
         className="group h-full"
         animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
       >
-        <Card className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary transition-all duration-500 shadow-md hover:shadow-[0_5px_40px_-20px_rgba(0,0,0,0.4)] rounded-2xl">
+        <Card data-ai="category-card-inner" className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary transition-all duration-500 shadow-md hover:shadow-[0_5px_40px_-20px_rgba(0,0,0,0.4)] rounded-2xl">
           <CardContent className="p-0 relative">
             {/* Image Container with Gradient Overlay */}
-            <div className="relative aspect-square overflow-hidden rounded-xl">
+            <div data-ai="category-card-image-container" className="relative aspect-square overflow-hidden rounded-xl">
               <LazyImage
                 src={directImageUrl}
                 alt={generateCategoryImageAlt(name)}
+                data-ai="category-card-image"
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-90 group-hover:brightness-100"
               />
               {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-500" />
+              <div data-ai="category-card-overlay" className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-500" />
 
               {/* Category Name Overlay */}
               <div className="absolute inset-x-0 bottom-0 p-3 transform translate-y-0 transition-transform duration-500">
-                <h3 className="font-bold text-base md:text-lg text-foreground drop-shadow-lg transition-colors duration-300">
+                <h3 data-ai="category-card-name" className="font-bold text-base md:text-lg text-foreground drop-shadow-lg transition-colors duration-300">
                   {name}
                 </h3>
                 {productCount !== undefined && (
-                  <p className="text-xs text-muted-foreground mt-1 opacity-90 group-hover:text-primary transition-colors duration-300">
+                  <p data-ai="category-card-count" className="text-xs text-muted-foreground mt-1 opacity-90 group-hover:text-primary transition-colors duration-300">
                     {productCount} {productCount === 1 ? 'product' : 'products'}
                   </p>
                 )}

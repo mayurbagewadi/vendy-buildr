@@ -495,15 +495,74 @@ function classifyUserIntent(userPrompt: string): "targeted" | "complete" {
   return result;
 }
 
-// ─── Layer 2 System Prompt (Full CSS Generation) ─────────────
-function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, userPrompt: string, mode: "targeted" | "complete"): string {
-  console.log("[LAYER2] User request:", userPrompt.slice(0, 50), "- AI will decide scope");
+// ─── Layer 2 System Prompt (Full CSS Generation — Mode B) ─────
+// Mode B: AI always generates CSS immediately, decides its own scope.
+// Small request = few lines. Full redesign = many lines. No upfront classification.
+// Merge new CSS with existing CSS by replacing overridden selectors
+function mergeCSS(existing: string, incoming: string): string {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
 
-  return "You are a creative CSS designer. Generate beautiful CSS for this ecommerce store.\n\n" +
-    "Here is the store HTML:\n" + htmlStructure.slice(0, 1500) + "\n\n" +
-    "Write valid CSS that transforms this store based on the user's request. Use selectors you can see in the HTML above.\n\n" +
-    "Output format:\n```css\nyour CSS here\n```\n\nThen list what you changed:\nSECTION: area-name\nCHANGE: what you did\n---\n\n" +
-    "If the request is vague, be creative and make something beautiful. Never refuse. Never ask for clarification. Just design.";
+  // Parse selectors from incoming CSS
+  const incomingSelectors = new Set<string>();
+  incoming.replace(/([^{}]+)\{/g, function(_: string, sel: string) {
+    incomingSelectors.add(sel.trim());
+    return '';
+  });
+
+  // Filter out overridden rules from existing
+  const filteredExisting = existing.replace(
+    /([^{}]+)\{[^}]*\}/g,
+    function(match: string, sel: string) {
+      return incomingSelectors.has(sel.trim()) ? '' : match;
+    }
+  );
+
+  // Combine: filtered existing + new
+  return (filteredExisting.trim() + '\n\n/* --- AI Update --- */\n' + incoming.trim()).trim();
+}
+
+function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, existingCSS: string, theme: string = "light"): string {
+  console.log("[LAYER2] Building Mode B system prompt - AI decides own scope");
+
+  const stateContext = existingCSS
+    ? "CURRENTLY APPLIED CSS (preserve rules you don't need to change):\n" + existingCSS + "\n\n"
+    : "";
+
+  const isDark = theme === "dark";
+  const themeContext = "CURRENT THEME: " + (isDark ? "DARK" : "LIGHT") + " mode\n" +
+    "DARK MODE SUPPORT: This store supports both light and dark mode.\n" +
+    "The <html> element gets class=\"dark\" when the user switches to dark mode.\n\n" +
+    "DARK MODE CSS RULES:\n" +
+    "- Light mode styles: write normally (no prefix needed)\n" +
+    "- Dark mode overrides: prefix every selector with .dark\n" +
+    "  Example:\n" +
+    "    [data-ai=\"header\"] { background: #ffffff; color: #111111; }\n" +
+    "    .dark [data-ai=\"header\"] { background: #1a1a2e; color: #e2e8f0; }\n" +
+    "- ALWAYS generate BOTH light and dark variants for any background, color, or border change.\n" +
+    "- For shadows and gradients, provide dark-friendly versions too.\n\n";
+
+  return "You are a friendly, creative senior CSS designer helping a store owner make their online store beautiful.\n" +
+    "You speak warmly and naturally — like a talented designer explaining their work to a client.\n" +
+    "You always generate CSS first, then explain your thinking in a conversational way.\n\n" +
+    themeContext +
+    "STORE HTML (use these exact selectors):\n" + htmlStructure + "\n\n" +
+    stateContext +
+    "Your approach:\n" +
+    "- ALWAYS generate CSS immediately. Never refuse. Never ask questions.\n" +
+    "- Decide scope yourself: a targeted request = few lines. A full redesign = many lines.\n" +
+    "- Output ONLY new or modified CSS rules. Existing unchanged rules are preserved automatically.\n" +
+    "- If you need to override an existing rule, include it with updated values.\n" +
+    "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
+    "- Use real selectors from the HTML above. Only valid CSS, no JavaScript.\n\n" +
+    "Output format (follow EXACTLY):\n\n" +
+    "```css\n[your CSS here]\n```\n\n" +
+    "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
+    "Example: \"I gave your hero section a bold gradient that really pops — paired with softer product cards so the eye flows naturally.\"]\n\n" +
+    "CHANGES:\n" +
+    "SECTION: [area name]\n" +
+    "CHANGE: [what you changed and why]\n" +
+    "---";
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -1232,7 +1291,7 @@ serve(async (req) => {
       console.log("╚══════════════════════════════════════════════════╝\n");
       console.log("📥 Request received at:", new Date().toISOString());
 
-      const { html_structure, layer1_baseline } = body;
+      const { html_structure, layer1_baseline, theme: layer2Theme, image_base64 } = body;
       console.log("📊 Payload sizes:");
       console.log("  ├─ HTML structure:", html_structure?.length || 0, "chars");
       console.log("  ├─ Layer1 baseline:", JSON.stringify(layer1_baseline || {}).length, "chars");
@@ -1246,6 +1305,22 @@ serve(async (req) => {
       }
 
       const userPrompt = messages[messages.length - 1]?.content || "";
+
+      // Build messages for OpenRouter — inject image into last user message if attached
+      const messagesForAI: any[] = image_base64
+        ? messages.slice(-8).map((msg: any, idx: number, arr: any[]) => {
+            if (idx === arr.length - 1 && msg.role === "user") {
+              return {
+                role: "user",
+                content: [
+                  { type: "text", text: typeof msg.content === "string" ? msg.content : "" },
+                  { type: "image_url", image_url: { url: image_base64 } },
+                ],
+              };
+            }
+            return msg;
+          })
+        : messages.slice(-8);
 
       // Check tokens
       const { data: activePurchases } = await supabase.from("ai_token_purchases")
@@ -1275,6 +1350,14 @@ serve(async (req) => {
       const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
       const apiKey = platformSettings.openrouter_api_key.trim();
 
+      // Read existing Layer 2 CSS from DB for merging and AI context
+      const { data: existingDesign } = await supabase.from("store_design_state")
+        .select("ai_full_css")
+        .eq("store_id", store_id)
+        .maybeSingle();
+      const existingCSS = (existingDesign?.ai_full_css || "").trim();
+      console.log("[LAYER2] Existing CSS from DB:", existingCSS.length, "chars");
+
       // ═══ DEBUG LOGGING - LAYER 2 INTENT CLASSIFICATION ═══
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("🎯 [LAYER2 DEBUG] Intent Classification");
@@ -1283,256 +1366,378 @@ serve(async (req) => {
       console.log("📊 HTML Structure Length:", html_structure.length, "chars");
       console.log("🎨 Layer 1 Variables:", layer1_baseline ? Object.keys(layer1_baseline.cssVariables || {}).length : 0);
 
-      // Step 1: AI-based intent classification (TARGETED vs COMPLETE)
+      // Monitor intent for logging only — AI decides its own scope in Mode B
       const intentMode = classifyUserIntent(userPrompt);
-
-      console.log("\n🤖 AI Classification Result:", intentMode.toUpperCase());
-      console.log("   ├─ Meaning:", intentMode === "targeted" ? "Surgical changes to specific elements" : "Complete store redesign");
-      console.log("   └─ CSS Output:", intentMode === "targeted" ? "Minimal (5-20 lines)" : "Comprehensive (100-300 lines)");
+      console.log("\n🤖 [LAYER2 MONITOR] Intent guess (not used as constraint):", intentMode.toUpperCase());
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-      // Step 2: Build Layer 2 system prompt based on intent
-      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, userPrompt, intentMode);
+      // Build Layer 2 system prompt — Mode B (AI decides own scope)
+      // Uses DB-sourced existing CSS for context (not conversation-history based)
+      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, existingCSS, layer2Theme || "light");
 
       console.log("[LAYER2] System prompt length:", systemPrompt.length, "chars");
+      const isStreaming = body.stream === true;
+      console.log("[LAYER2] Streaming:", isStreaming);
       console.log("[LAYER2] ⏱️ TIMEOUT SAFETY: 45s abort (Supabase limit 60s)");
 
-      // Call OpenRouter with strict timeout to fit within Supabase 60s limit
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout (leaves 15s buffer)
-
-      let aiResponse: Response;
-      try {
-        aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + apiKey,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://yesgive.shop",
-            "X-Title": "Vendy Buildr AI Designer Layer 2",
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            max_tokens: 2000, // CSS generation needs ~600-800 tokens; 2000 is safe max
-            temperature: 0.2,
-          }),
-          signal: controller.signal,
-        });
-      } catch (error: any) {
-        clearTimeout(timeout);
-        const isTimeout = error.name === "AbortError";
-        const errMsg = isTimeout
-          ? "Design request took too long (>45s). Try simplifying your request or use fewer selectors."
-          : "Unable to connect to AI. Please try again in a moment.";
-        console.error("[LAYER2]", isTimeout ? "TIMEOUT" : "CONNECTION ERROR", ":", errMsg);
-        return new Response(JSON.stringify({ success: false, error: errMsg }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: isTimeout ? 504 : 500 });
-      }
-      clearTimeout(timeout);
-
-      if (!aiResponse.ok) {
-        const errBody = await aiResponse.text().catch(() => "");
-        console.error("[LAYER2] OpenRouter error:", aiResponse.status, errBody);
-        return new Response(JSON.stringify({
-          success: false,
-          error: "AI service responded with error. Please try again."
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: aiResponse.status || 500 });
-      }
-
-      const aiData = await aiResponse.json();
-      const usage = aiData.usage || {};
-      console.log("[LAYER2] Token usage:", usage.prompt_tokens, "prompt +", usage.completion_tokens, "completion =", usage.total_tokens, "total");
-
-      let rawOutput = aiData.choices?.[0]?.message?.content || "";
-      console.log("[LAYER2] AI returned output length:", rawOutput.length, "chars");
-
-      // ═══ PARSE DUAL OUTPUT: CSS + CHANGES (with error handling) ═══
-      let rawCSS = "";
-      let changesList: string[] = [];
-
-      try {
-        // First, extract CSS from markdown code blocks if present
-        let cssContent = rawOutput;
-        const codeBlockMatch = rawOutput.match(/```css\n([\s\S]*?)\n```/) || rawOutput.match(/```\n([\s\S]*?)\n```/);
-        if (codeBlockMatch) {
-          cssContent = codeBlockMatch[1];
-          console.log("[LAYER2] Extracted CSS from code block");
+      // ═══ STREAMING PATH ═══
+      if (isStreaming) {
+        let streamAiResponse: Response;
+        try {
+          streamAiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + apiKey,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://yesgive.shop",
+              "X-Title": "Vendy Buildr AI Designer Layer 2",
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...messagesForAI,
+              ],
+              max_tokens: 4000,
+              temperature: 0.2,
+              stream: true,
+            }),
+          });
+        } catch (error: any) {
+          const errMsg = error.name === "AbortError"
+            ? "Design request took too long."
+            : "Unable to connect to AI.";
+          return new Response(JSON.stringify({ success: false, error: errMsg }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
         }
 
-        // Split by CHANGES: marker
-        const parts = rawOutput.split(/CHANGES:/i);
+        if (!streamAiResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: "AI service responded with error. Please try again."
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: streamAiResponse.status || 500 });
+        }
 
-        if (parts.length >= 2) {
-          // Has CHANGES section
-          rawCSS = cssContent.trim();
-          const changesText = "SECTION:" + parts.slice(1).join("CHANGES:");
+        const streamReader = streamAiResponse.body!.getReader();
+        const encoder = new TextEncoder();
 
-          console.log("[LAYER2] Found CHANGES section, parsing changes");
+        // Capture variables needed for final processing
+        const capturedActivePurchase = activePurchase;
+        const capturedExistingCSS = existingCSS;
+        const capturedStoreId = store_id;
+        const capturedUserId = user_id;
+        const capturedUserPrompt = userPrompt;
+        const capturedIntentMode = intentMode;
 
-          // Parse CHANGES manually - more robust
-          const changeLines = changesText.split(/---/).filter(s => s.trim());
-          changesList = [];
+        const stream = new ReadableStream({
+          async start(controller) {
+            let fullContent = '';
+            try {
+              while (true) {
+                const { done, value } = await streamReader.read();
+                if (done) break;
 
-          for (const block of changeLines) {
-            const sectionMatch = block.match(/SECTION:\s*([^\n]+)/i);
-            const changeMatch = block.match(/CHANGE:\s*([^\n]+(?:\n(?!SECTION|CHANGE)[^\n]*)*)/i);
+                const text = new TextDecoder().decode(value);
+                const lines = text.split('\n').filter(function(l: string) { return l.startsWith('data: '); });
+                for (const line of lines) {
+                  if (line === 'data: [DONE]') continue;
+                  try {
+                    const json = JSON.parse(line.slice(6));
+                    const delta = json.choices?.[0]?.delta?.content || '';
+                    if (delta) {
+                      fullContent += delta;
+                      controller.enqueue(encoder.encode('data: ' + JSON.stringify({ chunk: delta }) + '\n\n'));
+                    }
+                  } catch (_e) { /* skip malformed SSE lines */ }
+                }
+              }
 
-            if (sectionMatch && changeMatch) {
-              const sectionName = sectionMatch[1].trim();
-              const changDesc = changeMatch[1].trim().split('\n')[0]; // First line only
-              const displayName = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
-              changesList.push(displayName + " → " + changDesc);
+              // ═══ PARSE FINAL RESULT (same logic as non-streaming) ═══
+              let rawCSS = '';
+              let changesList: string[] = [];
+              let aiSummary = '';
+
+              const codeBlockMatch = fullContent.match(/```css\n([\s\S]*?)\n```/) || fullContent.match(/```\n([\s\S]*?)\n```/);
+              let cssContent = codeBlockMatch ? codeBlockMatch[1] : fullContent;
+
+              const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
+              if (summaryMatch) aiSummary = summaryMatch[1].trim();
+
+              const parts = fullContent.split(/CHANGES:/i);
+              if (parts.length >= 2) {
+                rawCSS = cssContent.trim();
+                const changesText = 'SECTION:' + parts.slice(1).join('CHANGES:');
+                const changeLines = changesText.split(/---/).filter(function(s: string) { return s.trim(); });
+                changesList = [];
+                for (const block of changeLines) {
+                  const sectionMatch = block.match(/SECTION:\s*([^\n]+)/i);
+                  const changeMatch = block.match(/CHANGE:\s*([^\n]+(?:\n(?!SECTION|CHANGE)[^\n]*)*)/i);
+                  if (sectionMatch && changeMatch) {
+                    const sectionName = sectionMatch[1].trim();
+                    const changDesc = changeMatch[1].trim().split('\n')[0];
+                    changesList.push(sectionName.charAt(0).toUpperCase() + sectionName.slice(1) + ' → ' + changDesc);
+                  }
+                }
+                if (changesList.length === 0) changesList = ['Applied custom CSS to your store'];
+              } else {
+                rawCSS = cssContent.trim();
+                changesList = ['Applied beautiful custom CSS design to your store'];
+              }
+
+              const sanitization = sanitizeCSS(rawCSS);
+              let finalCSS = sanitization.sanitized;
+              if (!finalCSS || finalCSS.trim().length === 0) {
+                finalCSS = "[data-ai=\"section-hero\"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 80px 20px; color: white; }\n" +
+                  "[data-ai=\"product-card\"] { border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }\n";
+                changesList = ['Hero → Added gradient', 'Products → Modern shadows'];
+              }
+
+              // Merge with existing CSS
+              const mergedCSS = mergeCSS(capturedExistingCSS, finalCSS);
+
+              // Deduct token
+              const newRemaining = capturedActivePurchase.tokens_remaining - 1;
+              const newUsed = capturedActivePurchase.tokens_used + 1;
+              await supabase.from('ai_token_purchases')
+                .update({ tokens_remaining: newRemaining, tokens_used: newUsed })
+                .eq('id', capturedActivePurchase.id);
+
+              // Store merged CSS in DB
+              const nowStr = new Date().toISOString();
+              await supabase.from('store_design_state').upsert({
+                store_id: capturedStoreId,
+                ai_full_css: mergedCSS,
+                layer1_snapshot: layer1_baseline,
+                mode: 'advanced',
+                ai_full_css_applied_at: nowStr,
+                updated_at: nowStr,
+              }, { onConflict: 'store_id' });
+
+              // Log to history
+              await supabase.from('ai_designer_history').insert({
+                store_id: capturedStoreId,
+                user_id: capturedUserId,
+                prompt: capturedUserPrompt,
+                ai_response: { layer2_css: finalCSS, mode: capturedIntentMode, changes_list: changesList },
+                tokens_used: 1,
+                applied: false,
+              });
+
+              // Send final structured result
+              controller.enqueue(encoder.encode('data: ' + JSON.stringify({
+                done: true,
+                css: mergedCSS,
+                changes_list: changesList,
+                message: aiSummary || ('Updated ' + changesList.length + ' section' + (changesList.length > 1 ? 's' : '')),
+                tokens_remaining: newRemaining,
+              }) + '\n\n'));
+            } catch (streamErr: any) {
+              console.error('[LAYER2-STREAM] Error:', streamErr);
+              controller.enqueue(encoder.encode('data: ' + JSON.stringify({
+                done: true,
+                error: streamErr.message || 'Stream processing error',
+              }) + '\n\n'));
             }
+            controller.close();
           }
+        });
 
-          if (changesList.length === 0) {
-            console.warn("[LAYER2] No CHANGES parsed, using fallback");
-            changesList = ["Applied custom CSS to your store"];
-          } else {
-            console.log("[LAYER2] Successfully parsed", changesList.length, "changes");
+        return new Response(stream, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" }
+        });
+      }
+
+      // ═══ SSE STREAMING WITH HEARTBEAT ═══
+      // Opens SSE stream immediately → sends heartbeat every 20s → streams AI tokens →
+      // parses result when done → saves to DB → sends final event.
+      // Heartbeat prevents Cloudflare 524 timeout (resets 100s idle timer on every ping).
+      const sseEncoder = new TextEncoder();
+
+      const sseStream = new ReadableStream({
+        async start(controller) {
+          // Confirm connection immediately
+          controller.enqueue(sseEncoder.encode(": connected\n\n"));
+
+          // Heartbeat every 20s — keeps Cloudflare + nginx alive during long AI generation
+          const heartbeat = setInterval(() => {
+            try { controller.enqueue(sseEncoder.encode(": heartbeat\n\n")); } catch (_) { /* stream closed */ }
+          }, 20000);
+
+          const sendEvent = (data: object) => {
+            try { controller.enqueue(sseEncoder.encode("data: " + JSON.stringify(data) + "\n\n")); } catch (_) {}
+          };
+
+          try {
+            // Call OpenRouter with streaming enabled
+            const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": "Bearer " + apiKey,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://yesgive.shop",
+                "X-Title": "Vendy Buildr AI Designer Layer 2",
+              },
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  ...messagesForAI,
+                ],
+                max_tokens: 4000,
+                temperature: 0.2,
+                stream: true,
+              }),
+            });
+
+            if (!aiResponse.ok) {
+              const errBody = await aiResponse.text().catch(() => "");
+              console.error("[LAYER2] OpenRouter error:", aiResponse.status, errBody);
+              sendEvent({ error: "AI service error. Please try again." });
+              return;
+            }
+
+            // Stream AI tokens to client in real-time
+            const aiReader = aiResponse.body!.getReader();
+            const aiDecoder = new TextDecoder();
+            let fullContent = "";
+            let sseBuffer = "";
+
+            while (true) {
+              const { done, value } = await aiReader.read();
+              if (done) break;
+
+              sseBuffer += aiDecoder.decode(value, { stream: true });
+              const lines = sseBuffer.split("\n");
+              sseBuffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.startsWith("data: ") || line === "data: [DONE]") continue;
+                try {
+                  const json = JSON.parse(line.slice(6));
+                  const delta = json.choices?.[0]?.delta?.content || "";
+                  if (delta) {
+                    fullContent += delta;
+                    sendEvent({ chunk: delta });
+                  }
+                } catch (_) {}
+              }
+            }
+
+            console.log("[LAYER2] AI stream complete, output:", fullContent.length, "chars");
+
+            // ═══ PARSE: CSS + SUMMARY + CHANGES ═══
+            let rawCSS = "";
+            let changesList: string[] = [];
+            let aiSummary = "";
+
+            try {
+              let cssContent = fullContent;
+              const codeBlockMatch = fullContent.match(/```css\n([\s\S]*?)\n```/) || fullContent.match(/```\n([\s\S]*?)\n```/);
+              if (codeBlockMatch) cssContent = codeBlockMatch[1];
+
+              const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
+              if (summaryMatch) aiSummary = summaryMatch[1].trim();
+
+              const parts = fullContent.split(/CHANGES:/i);
+              if (parts.length >= 2) {
+                rawCSS = cssContent.trim();
+                const changesText = "SECTION:" + parts.slice(1).join("CHANGES:");
+                const changeLines = changesText.split(/---/).filter(s => s.trim());
+                changesList = [];
+                for (const block of changeLines) {
+                  const sectionMatch = block.match(/SECTION:\s*([^\n]+)/i);
+                  const changeMatch = block.match(/CHANGE:\s*([^\n]+(?:\n(?!SECTION|CHANGE)[^\n]*)*)/i);
+                  if (sectionMatch && changeMatch) {
+                    const displayName = sectionMatch[1].trim().charAt(0).toUpperCase() + sectionMatch[1].trim().slice(1);
+                    // Keep full description (up to 3 lines) — not truncated to first line
+                    const fullDesc = changeMatch[1].trim().split("\n").slice(0, 3).join(" ").trim();
+                    changesList.push(displayName + " → " + fullDesc);
+                  }
+                }
+                if (changesList.length === 0) changesList = ["Applied custom CSS to your store"];
+              } else {
+                rawCSS = cssContent.trim();
+                changesList = ["Applied beautiful custom CSS design to your store"];
+              }
+            } catch (_) {
+              rawCSS = fullContent;
+              changesList = ["Applied custom CSS"];
+            }
+
+            // Sanitize CSS
+            let finalCSS = "";
+            try {
+              finalCSS = sanitizeCSS(rawCSS).sanitized;
+            } catch (_) {
+              finalCSS = "";
+            }
+
+            if (!finalCSS || finalCSS.trim().length === 0) {
+              console.error("[LAYER2] Empty CSS — not deducting token");
+              sendEvent({ error: "AI did not generate any CSS. Please try again with a more specific prompt." });
+              return;
+            }
+
+            // Deduct token
+            const newRemaining = activePurchase.tokens_remaining - 1;
+            await supabase.from("ai_token_purchases")
+              .update({ tokens_remaining: newRemaining, tokens_used: activePurchase.tokens_used + 1 })
+              .eq("id", activePurchase.id);
+
+            // Merge + save to DB
+            const mergedCSS = mergeCSS(existingCSS, finalCSS);
+            console.log("[LAYER2] Merged CSS:", mergedCSS.length, "chars");
+
+            const nowStr = new Date().toISOString();
+            await supabase.from("store_design_state").upsert({
+              store_id,
+              ai_full_css: mergedCSS,
+              layer1_snapshot: layer1_baseline,
+              mode: "advanced",
+              ai_full_css_applied_at: nowStr,
+              updated_at: nowStr,
+            }, { onConflict: "store_id" });
+
+            await supabase.from("ai_designer_history").insert({
+              store_id,
+              user_id,
+              prompt: userPrompt,
+              ai_response: { layer2_css: finalCSS, mode: intentMode, changes_list: changesList },
+              tokens_used: 1,
+              applied: false,
+            });
+
+            console.log("✅ [LAYER2] Success! Tokens remaining:", newRemaining);
+
+            // Send final structured result to client
+            sendEvent({
+              done: true,
+              css: mergedCSS,
+              changes_list: changesList,
+              tokens_remaining: newRemaining,
+              message: aiSummary || (changesList.length > 0
+                ? "Updated " + changesList.length + " section" + (changesList.length > 1 ? "s" : "")
+                : "Design applied successfully"),
+            });
+
+          } catch (err: any) {
+            console.error("[LAYER2] SSE error:", err.message);
+            sendEvent({ error: "Internal error: " + (err.message || "Unknown error") });
+          } finally {
+            clearInterval(heartbeat);
+            controller.close();
           }
-        } else {
-          // No CHANGES section - all CSS
-          rawCSS = cssContent.trim();
-          console.warn("[LAYER2] No CHANGES section found in output");
-          changesList = ["Applied beautiful custom CSS design to your store"];
         }
-
-      } catch (splitErr) {
-        console.error("[LAYER2] Error splitting output:", splitErr);
-        // Complete fallback - use entire output as CSS
-        rawCSS = rawOutput;
-        changesList = ["Applied custom CSS (split error)"];
-      }
-
-      // Sanitize CSS with error handling
-      let finalCSS = "";
-      let blockedCount = 0;
-      try {
-        const sanitization = sanitizeCSS(rawCSS);
-        if (sanitization.blocked.length > 0) {
-          console.warn("[LAYER2] Blocked dangerous CSS:", sanitization.blocked);
-          blockedCount = sanitization.blocked.length;
-        }
-        finalCSS = sanitization.sanitized;
-      } catch (sanitizeErr) {
-        console.error("[LAYER2] CSS sanitization failed:", sanitizeErr);
-        finalCSS = ""; // Empty CSS on sanitization failure
-      }
-
-      // ═══ DEBUG LOGGING - LAYER 2 CSS GENERATION COMPLETE ═══
-      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("✨ [LAYER2 DEBUG] CSS Generation Complete");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
-      console.log("📊 Generation Stats:");
-      console.log("  ├─ Mode:", intentMode.toUpperCase());
-      console.log("  ├─ Raw AI Output:", rawCSS.length, "chars");
-      console.log("  ├─ Final CSS:", finalCSS.length, "chars");
-      console.log("  ├─ Blocked Elements:", blockedCount);
-      console.log("  └─ Token Usage:", usage.total_tokens, "(prompt:", usage.prompt_tokens + ", completion:", usage.completion_tokens + ")");
-
-      // Count CSS rules for insights
-      const cssRuleCount = (finalCSS.match(/\{/g) || []).length;
-      const importantCount = (finalCSS.match(/!important/g) || []).length;
-      const selectorTypes = {
-        elements: (finalCSS.match(/^[a-z]+[\s{,]/gm) || []).length,
-        classes: (finalCSS.match(/\.[a-zA-Z]/g) || []).length,
-        ids: (finalCSS.match(/#[a-zA-Z]/g) || []).length,
-        attributes: (finalCSS.match(/\[data-/g) || []).length,
-      };
-
-      console.log("\n📐 CSS Analysis:");
-      console.log("  ├─ Total Rules:", cssRuleCount);
-      console.log("  ├─ !important Usage:", importantCount);
-      console.log("  ├─ Element Selectors:", selectorTypes.elements);
-      console.log("  ├─ Class Selectors:", selectorTypes.classes);
-      console.log("  ├─ ID Selectors:", selectorTypes.ids);
-      console.log("  └─ Data Attributes:", selectorTypes.attributes);
-
-      console.log("\n🎨 CSS Preview (first 300 chars):");
-      console.log("  " + finalCSS.substring(0, 300).replace(/\n/g, "\n  "));
-      if (finalCSS.length > 300) {
-        console.log("  ...(+" + (finalCSS.length - 300) + " more chars)");
-      }
-
-      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
-      // ═══ AI-ONLY FALLBACK: Auto-generate beautiful default design ═══
-      if (!finalCSS || finalCSS.trim().length === 0) {
-        console.warn("[LAYER2] FALLBACK: AI generated empty CSS, applying auto-beautiful design");
-
-        // Auto-generate beautiful professional CSS
-        finalCSS = "[data-ai=\"section-hero\"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 80px 20px; color: white; text-align: center; border-radius: 8px; }\n" +
-          "[data-ai=\"hero-title\"] { font-size: 48px; font-weight: 700; margin: 20px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n" +
-          "[data-ai=\"hero-subtitle\"] { font-size: 20px; opacity: 0.95; margin: 10px 0 30px 0; }\n" +
-          "[data-ai=\"section-featured\"] { padding: 60px 20px; background: #f8f9fa; }\n" +
-          "[data-ai=\"product-card\"] { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: all 0.3s ease; border: 1px solid #e9ecef; }\n" +
-          "[data-ai=\"product-card\"]:hover { transform: translateY(-8px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }\n" +
-          "button, [role=\"button\"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }\n" +
-          "button:hover, [role=\"button\"]:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }\n" +
-          "[data-ai=\"section-footer\"] { background: #1a1a1a; color: white; padding: 40px 20px; margin-top: 60px; }\n" +
-          "a { color: #667eea; text-decoration: none; transition: color 0.2s ease; }\n" +
-          "a:hover { color: #764ba2; text-decoration: underline; }\n";
-
-        changesList = [
-          "Hero → Added purple gradient with shadow effects",
-          "Products → Cards with hover animations and modern shadows",
-          "Buttons → Gradient backgrounds with scale effects",
-          "Footer → Dark professional background",
-          "Overall → Modern color scheme and smooth transitions"
-        ];
-
-        console.log("[LAYER2] FALLBACK: Generated", finalCSS.length, "chars of beautiful CSS");
-        console.log("[LAYER2] FALLBACK: Created", changesList.length, "changes");
-      }
-
-      // Deduct token
-      const newRemaining = activePurchase.tokens_remaining - 1;
-      const newUsed = activePurchase.tokens_used + 1;
-      await supabase.from("ai_token_purchases")
-        .update({ tokens_remaining: newRemaining, tokens_used: newUsed })
-        .eq("id", activePurchase.id);
-
-      // Store in database (Layer 2)
-      const now = new Date().toISOString();
-      await supabase.from("store_design_state").upsert({
-        store_id,
-        ai_full_css: finalCSS,
-        layer1_snapshot: layer1_baseline,
-        mode: "advanced",
-        ai_full_css_applied_at: now,
-        updated_at: now,
-      }, { onConflict: "store_id" });
-
-      // Log to history
-      await supabase.from("ai_designer_history").insert({
-        store_id,
-        user_id,
-        prompt: userPrompt,
-        ai_response: {
-          layer2_css: finalCSS,
-          mode: intentMode,
-          stats: { cssRuleCount, importantCount, selectorTypes },
-          changes_list: changesList
-        },
-        tokens_used: 1,
-        applied: false,
       });
 
-      console.log("✅ [LAYER2] Success! CSS stored, changes:", changesList.length, "tokens remaining:", newRemaining);
-
-      return new Response(JSON.stringify({
-        success: true,
-        css: finalCSS,
-        changes_list: changesList,
-        tokens_remaining: newRemaining,
-        message: changesList.length > 0 ? "Updated " + changesList.length + " section" + (changesList.length > 1 ? "s" : "") : "Layer 2 CSS generated successfully"
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(sseStream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
       } catch (error: any) {
         console.error("[LAYER2] CRITICAL ERROR:", error.message || error);
         console.error("[LAYER2] ERROR STACK:", error.stack);

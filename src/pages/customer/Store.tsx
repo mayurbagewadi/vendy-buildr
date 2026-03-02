@@ -136,14 +136,29 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       try {
         const { data } = await supabase
           .from('store_design_state')
-          .select('current_design')
+          .select('current_design, ai_full_css, mode')
           .eq('store_id', store.id)
           .maybeSingle();
 
+        // Layer 2: full CSS injection (takes priority over Layer 1)
+        if (data?.mode === 'advanced' && data?.ai_full_css) {
+          let layer2El = document.getElementById('ai-layer2-styles');
+          if (!layer2El) {
+            layer2El = document.createElement('style');
+            layer2El.id = 'ai-layer2-styles';
+            document.head.appendChild(layer2El);
+          }
+          layer2El.textContent = data.ai_full_css;
+        } else {
+          // No Layer 2 — remove if previously injected
+          const layer2El = document.getElementById('ai-layer2-styles');
+          if (layer2El) layer2El.remove();
+        }
+
+        // Layer 1: CSS variables
         if (data?.current_design) {
           setAiDesign(data.current_design as unknown as AIDesignResult);
 
-          // Build CSS string from design JSON and inject into document
           const cssString = buildDesignCSS(data.current_design as unknown as AIDesignResult);
           let styleEl = document.getElementById('ai-designer-styles');
           if (!styleEl) {
@@ -154,7 +169,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           styleEl.textContent = cssString;
         } else {
           setAiDesign(null);
-          // No AI design - remove any existing AI styles (fallback to platform default)
           const styleEl = document.getElementById('ai-designer-styles');
           if (styleEl) styleEl.remove();
         }
