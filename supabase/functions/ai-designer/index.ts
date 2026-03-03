@@ -1631,7 +1631,7 @@ serve(async (req) => {
                   { role: "system", content: systemPrompt },
                   ...messagesForAI,
                 ],
-                max_tokens: 4000,
+                max_tokens: 16000,
                 temperature: 0.2,
                 stream: true,
               }),
@@ -1655,10 +1655,17 @@ serve(async (req) => {
                 if (!line.startsWith("data: ") || line === "data: [DONE]") continue;
                 try {
                   const json = JSON.parse(line.slice(6));
-                  const delta = json.choices?.[0]?.delta?.content || "";
-                  if (delta) {
-                    fullContent += delta;
-                    sendEvent({ chunk: delta });
+                  const delta = json.choices?.[0]?.delta;
+                  // Capture actual content tokens
+                  const content = delta?.content || "";
+                  if (content) {
+                    fullContent += content;
+                    sendEvent({ chunk: content });
+                  }
+                  // Forward reasoning/thinking tokens as progress indicator
+                  const reasoning = delta?.reasoning_content || delta?.reasoning || delta?.thinking || "";
+                  if (reasoning) {
+                    sendEvent({ thinking: reasoning });
                   }
                 } catch (_) {}
               }
@@ -1687,11 +1694,12 @@ serve(async (req) => {
             let changesList: string[] = [];
             let aiSummary = "";
 
+            // Declared outside try so accessible in error logging below
+            let cleanedContent = fullContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+            if (cleanedContent.length === 0) cleanedContent = fullContent;
+            console.log("[LAYER2] After stripping <think> tags:", cleanedContent.length, "chars (was", fullContent.length, ")");
+
             try {
-              // Strip <think>...</think> tags from thinking models (kimi-k2-thinking, etc.)
-              let cleanedContent = fullContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-              if (cleanedContent.length === 0) cleanedContent = fullContent; // fallback if everything was in think tags
-              console.log("[LAYER2] After stripping <think> tags:", cleanedContent.length, "chars (was", fullContent.length, ")");
 
               let cssContent = cleanedContent;
               let codeBlockFound = false;

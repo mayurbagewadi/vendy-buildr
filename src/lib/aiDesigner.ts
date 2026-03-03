@@ -440,6 +440,7 @@ export async function generateFullCSSStream(
   theme?: string,
   imageBase64?: string,
   signal?: AbortSignal,
+  onThinking?: (text: string) => void,
 ): Promise<{ css: string; tokens_remaining: number; changes_list?: string[]; message?: string }> {
   // Use raw fetch() to support SSE streaming from the edge function.
   // supabase.functions.invoke() buffers the full response and cannot read SSE events.
@@ -492,6 +493,8 @@ export async function generateFullCSSStream(
             result = data;
           } else if (data.chunk && onChunk) {
             onChunk(data.chunk);
+          } else if (data.thinking && onThinking) {
+            onThinking(data.thinking);
           }
         } catch (parseErr: any) {
           console.error("[SSE-PARSE] Error parsing SSE:", parseErr.message);

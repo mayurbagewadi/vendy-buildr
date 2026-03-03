@@ -656,31 +656,49 @@ const AIDesigner = () => {
           text,
           layer2History,
           (chunk) => {
-            // Option B: Buffer all chunks, only show SUMMARY section text progressively
-            // CSS code (before SUMMARY:) is hidden behind loading spinner
             streamedText += chunk;
 
+            // Show SUMMARY text when available (clean conversational response)
             const summaryIdx = streamedText.indexOf('SUMMARY:');
-            if (summaryIdx === -1) return; // Still in CSS section — keep spinner
+            if (summaryIdx !== -1) {
+              const afterSummary = streamedText.slice(summaryIdx + 8).trimStart();
+              const changesIdx = afterSummary.indexOf('CHANGES:');
+              const visibleText = changesIdx !== -1
+                ? afterSummary.slice(0, changesIdx).trimEnd()
+                : afterSummary;
+              if (visibleText) {
+                setMessages((prev) => prev.map((m) =>
+                  m.id === loadingMsgId
+                    ? { ...m, content: visibleText, isLoading: false, isThinking: false }
+                    : m
+                ));
+                return;
+              }
+            }
 
-            // Extract only the conversational text after SUMMARY:, stop at CHANGES:
-            const afterSummary = streamedText.slice(summaryIdx + 8).trimStart();
-            const changesIdx = afterSummary.indexOf('CHANGES:');
-            const visibleText = changesIdx !== -1
-              ? afterSummary.slice(0, changesIdx).trimEnd()
-              : afterSummary;
-
-            if (!visibleText) return; // Nothing to show yet
-
-            setMessages((prev) => prev.map((m) =>
-              m.id === loadingMsgId
-                ? { ...m, content: visibleText, isLoading: false }
-                : m
-            ));
+            // While CSS is being generated (before SUMMARY:), show live CSS lines as progress
+            const cssLines = streamedText.split('\n').filter(l => l.trim().startsWith('[data-ai') || l.trim().startsWith('.dark'));
+            if (cssLines.length > 0) {
+              setMessages((prev) => prev.map((m) =>
+                m.id === loadingMsgId
+                  ? { ...m, content: 'Styling ' + cssLines.length + ' section' + (cssLines.length > 1 ? 's' : '') + '...', isLoading: false, isThinking: true }
+                  : m
+              ));
+            }
           },
-          resolvedTheme === "dark" ? "dark" : "light", // Tell AI which mode the store is currently in
-          attachedImage || undefined, // Vision: pass image if user attached one
-          abortControllerRef.current!.signal, // Allow user to cancel
+          resolvedTheme === "dark" ? "dark" : "light",
+          attachedImage || undefined,
+          abortControllerRef.current!.signal,
+          (thinkingChunk) => {
+            // Show "AI is thinking..." while reasoning tokens arrive (before CSS generation starts)
+            if (!streamedText) {
+              setMessages((prev) => prev.map((m) =>
+                m.id === loadingMsgId
+                  ? { ...m, content: 'Thinking...', isLoading: false, isThinking: true }
+                  : m
+              ));
+            }
+          },
         );
         setAttachedImage(null); // Clear image after send
 
