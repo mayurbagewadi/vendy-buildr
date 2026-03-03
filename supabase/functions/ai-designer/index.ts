@@ -1495,6 +1495,16 @@ serve(async (req) => {
               // Merge with existing CSS
               const mergedCSS = mergeCSS(capturedExistingCSS, finalCSS);
 
+              // 🔍 DEBUG: Log CSS being saved
+              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('📢 [EDGE-FUNCTION] Saving CSS to database');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('Store ID:', capturedStoreId);
+              console.log('Final CSS length:', finalCSS.length);
+              console.log('Merged CSS length:', mergedCSS.length);
+              console.log('Final CSS preview:', finalCSS.substring(0, 300));
+              console.log('Merged CSS full:', mergedCSS);
+
               // Deduct token
               const newRemaining = capturedActivePurchase.tokens_remaining - 1;
               const newUsed = capturedActivePurchase.tokens_used + 1;
@@ -1504,6 +1514,7 @@ serve(async (req) => {
 
               // Store merged CSS in DB
               const nowStr = new Date().toISOString();
+              console.log('📝 [EDGE-FUNCTION] Upserting to store_design_state...');
               await supabase.from('store_design_state').upsert({
                 store_id: capturedStoreId,
                 ai_full_css: mergedCSS,
@@ -1512,6 +1523,7 @@ serve(async (req) => {
                 ai_full_css_applied_at: nowStr,
                 updated_at: nowStr,
               }, { onConflict: 'store_id' });
+              console.log('✅ [EDGE-FUNCTION] CSS saved to database successfully');
 
               // Log to history
               await supabase.from('ai_designer_history').insert({

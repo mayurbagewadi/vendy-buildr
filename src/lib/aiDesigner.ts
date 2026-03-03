@@ -537,6 +537,15 @@ export async function getLayer2CSS(storeId: string): Promise<string | null> {
  * Apply Layer 2 CSS to store
  */
 export async function applyLayer2CSS(storeId: string, css: string): Promise<void> {
+  // 🔍 DEBUG: Log what's being saved to DB
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('💾 [APPLY-LAYER2-CSS] Saving full CSS to database');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Store ID:', storeId);
+  console.log('CSS Length:', css.length, 'characters');
+  console.log('CSS Preview (first 200 chars):', css.substring(0, 200) + '...');
+  console.log('CSS Full:', css);
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("store_design_state")
@@ -548,7 +557,11 @@ export async function applyLayer2CSS(storeId: string, css: string): Promise<void
       updated_at: now,
     }, { onConflict: "store_id" });
 
-  if (error) throw error;
+  if (error) {
+    console.error('❌ [APPLY-LAYER2-CSS-ERROR]', error);
+    throw error;
+  }
+  console.log('✅ [APPLY-LAYER2-CSS-SUCCESS] CSS saved to database');
 }
 
 /**

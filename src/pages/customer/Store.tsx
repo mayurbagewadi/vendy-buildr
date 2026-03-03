@@ -140,8 +140,23 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           .eq('store_id', store.id)
           .maybeSingle();
 
+        // 🔍 DEBUG: Log what's being loaded from DB
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📖 [STORE-LOAD-DESIGN] Loading design from database');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Store ID:', store.id);
+        console.log('Design data:', data);
+        console.log('Mode:', data?.mode);
+        console.log('Has Layer 2 CSS:', !!data?.ai_full_css);
+        if (data?.ai_full_css) {
+          console.log('Layer 2 CSS length:', data.ai_full_css.length);
+          console.log('Layer 2 CSS preview (first 300 chars):', data.ai_full_css.substring(0, 300));
+          console.log('Layer 2 CSS FULL:', data.ai_full_css);
+        }
+
         // Layer 2: full CSS injection (takes priority over Layer 1)
         if (data?.mode === 'advanced' && data?.ai_full_css) {
+          console.log('💉 [STORE] Injecting Layer 2 CSS...');
           let layer2El = document.getElementById('ai-layer2-styles');
           if (!layer2El) {
             layer2El = document.createElement('style');
@@ -149,7 +164,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             document.head.appendChild(layer2El);
           }
           layer2El.textContent = data.ai_full_css;
+          console.log('✅ [STORE] Layer 2 CSS injected into page. Checking result...');
+          // Verify what's actually in the style tag
+          console.log('💾 [VERIFY] Style tag content length:', layer2El.textContent?.length);
+          console.log('💾 [VERIFY] Style tag content:', layer2El.textContent);
         } else {
+          console.log('⚠️  [STORE] No Layer 2 CSS to inject (mode:', data?.mode, ', has CSS:', !!data?.ai_full_css, ')');
           // No Layer 2 — remove if previously injected
           const layer2El = document.getElementById('ai-layer2-styles');
           if (layer2El) layer2El.remove();
@@ -157,6 +177,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
         // Layer 1: CSS variables
         if (data?.current_design) {
+          console.log('💉 [STORE] Injecting Layer 1 CSS variables...');
           setAiDesign(data.current_design as unknown as AIDesignResult);
 
           const cssString = buildDesignCSS(data.current_design as unknown as AIDesignResult);
@@ -167,13 +188,15 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             document.head.appendChild(styleEl);
           }
           styleEl.textContent = cssString;
+          console.log('✅ [STORE] Layer 1 CSS injected');
         } else {
+          console.log('⚠️  [STORE] No Layer 1 design to apply');
           setAiDesign(null);
           const styleEl = document.getElementById('ai-designer-styles');
           if (styleEl) styleEl.remove();
         }
       } catch (error) {
-        console.error('Failed to load AI design:', error);
+        console.error('❌ [STORE-LOAD-DESIGN-ERROR] Failed to load AI design:', error);
       }
     };
 

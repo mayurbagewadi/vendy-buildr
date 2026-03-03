@@ -947,14 +947,28 @@ const AIDesigner = () => {
     setIsPublishing(true);
     const previousDesign = currentDesign; // snapshot before state update
     try {
+      // 🔍 DEBUG: Log what's being published
+      console.log('📢 [PUBLISH-START] Publishing design...', {
+        storeId,
+        pendingDesign,
+        css_overridesLength: pendingDesign.css_overrides ? Object.keys(pendingDesign.css_overrides).length : 0,
+        css_overrides: pendingDesign.css_overrides,
+      });
+
       const isLayer2Design = !!pendingDesign.css_overrides && Object.keys(pendingDesign.css_variables || {}).length === 0;
+      console.log('📢 [PUBLISH-TYPE]', { isLayer2Design, designType: isLayer2Design ? 'LAYER2' : 'LAYER1' });
+
       if (isLayer2Design) {
         // Layer 2: explicitly save CSS to DB so customer store sees it
         // Never assume DB was updated during generation — always write on Publish
+        console.log('📢 [PUBLISH-LAYER2] Saving full CSS to database...', { css_length: pendingDesign.css_overrides!.length });
         await applyLayer2CSS(storeId, pendingDesign.css_overrides!);
+        console.log('✅ [PUBLISH-LAYER2-SUCCESS] CSS saved to database');
       } else {
         // Layer 1: apply CSS variables to live store
+        console.log('📢 [PUBLISH-LAYER1] Saving CSS variables...', { pendingDesign });
         await applyDesign(storeId, pendingDesign, pendingHistoryId);
+        console.log('✅ [PUBLISH-LAYER1-SUCCESS] CSS variables saved');
       }
       const publishedDesign = pendingDesign;
       setCurrentDesign(publishedDesign);
@@ -963,6 +977,7 @@ const AIDesigner = () => {
       // Clear reset flag — user has published a new design
       localStorage.removeItem(`ai_designer_reset_${storeId}`);
       toast.success("Design published to your live store!");
+      console.log('✅ [PUBLISH-COMPLETE] Design published successfully');
       // Add confirmation message to chat
       const confirmMsg = buildPublishConfirmationMessage(previousDesign, publishedDesign);
       setMessages(prev => [...prev, {
@@ -972,6 +987,7 @@ const AIDesigner = () => {
         timestamp: new Date(),
       }]);
     } catch (error: any) {
+      console.error('❌ [PUBLISH-ERROR]', error);
       toast.error(error.message || "Failed to publish design");
     } finally {
       setIsPublishing(false);
