@@ -1457,8 +1457,24 @@ serve(async (req) => {
               let changesList: string[] = [];
               let aiSummary = '';
 
-              const codeBlockMatch = fullContent.match(/```css\n([\s\S]*?)\n```/) || fullContent.match(/```\n([\s\S]*?)\n```/);
-              let cssContent = codeBlockMatch ? codeBlockMatch[1] : fullContent;
+              let cssContent = fullContent;
+              const codeBlockPatterns1 = [
+                /```css\s*\n([\s\S]*?)\n\s*```/,
+                /```css\s*([\s\S]*?)```/,
+                /```\s*\n([\s\S]*?)\n\s*```/,
+                /```\s*([\s\S]*?)```/,
+              ];
+              for (const cbPattern of codeBlockPatterns1) {
+                const m = fullContent.match(cbPattern);
+                if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); break; }
+              }
+              // Always strip SUMMARY/CHANGES and leftover code fences
+              cssContent = cssContent
+                .replace(/SUMMARY:[\s\S]*$/i, '')
+                .replace(/CHANGES:[\s\S]*$/i, '')
+                .replace(/^```(?:css)?\s*/gm, '')
+                .replace(/```\s*$/gm, '')
+                .trim();
 
               const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
               if (summaryMatch) aiSummary = summaryMatch[1].trim();
@@ -1644,8 +1660,23 @@ serve(async (req) => {
 
             try {
               let cssContent = fullContent;
-              const codeBlockMatch = fullContent.match(/```css\n([\s\S]*?)\n```/) || fullContent.match(/```\n([\s\S]*?)\n```/);
-              if (codeBlockMatch) cssContent = codeBlockMatch[1];
+              const codeBlockPatterns2 = [
+                /```css\s*\n([\s\S]*?)\n\s*```/,
+                /```css\s*([\s\S]*?)```/,
+                /```\s*\n([\s\S]*?)\n\s*```/,
+                /```\s*([\s\S]*?)```/,
+              ];
+              for (const cbPattern of codeBlockPatterns2) {
+                const m = fullContent.match(cbPattern);
+                if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); break; }
+              }
+              // Always strip SUMMARY/CHANGES and leftover code fences
+              cssContent = cssContent
+                .replace(/SUMMARY:[\s\S]*$/i, '')
+                .replace(/CHANGES:[\s\S]*$/i, '')
+                .replace(/^```(?:css)?\s*/gm, '')
+                .replace(/```\s*$/gm, '')
+                .trim();
 
               const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
               if (summaryMatch) aiSummary = summaryMatch[1].trim();
