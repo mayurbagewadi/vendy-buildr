@@ -1394,12 +1394,14 @@ serve(async (req) => {
       console.log("[LAYER2] System prompt length:", systemPrompt.length, "chars");
       const isStreaming = body.stream === true;
       console.log("[LAYER2] Streaming:", isStreaming);
-      console.log("[LAYER2] ⏱️ TIMEOUT SAFETY: 45s abort (Supabase limit 60s)");
+      console.log("[LAYER2] ⏱️ TIMEOUT SAFETY: 120s abort (Supabase limit 150s)");
 
       // ═══ STREAMING PATH ═══
       if (isStreaming) {
         let streamAiResponse: Response;
         try {
+          const streamAbort = new AbortController();
+          const streamTimeout = setTimeout(() => streamAbort.abort(), 120000);
           streamAiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -1414,11 +1416,14 @@ serve(async (req) => {
                 { role: "system", content: systemPrompt },
                 ...messagesForAI,
               ],
-              max_tokens: 4000,
+              max_tokens: 8000,
               temperature: 0.2,
               stream: true,
+              provider: { sort: "throughput" },
             }),
+            signal: streamAbort.signal,
           });
+          clearTimeout(streamTimeout);
         } catch (error: any) {
           const errMsg = error.name === "AbortError"
             ? "Design request took too long."
@@ -1617,6 +1622,9 @@ serve(async (req) => {
 
           try {
             // Call OpenRouter with streaming enabled
+            // AbortController: 120s timeout (Supabase hard limit is 150s)
+            const abortCtrl = new AbortController();
+            const abortTimeout = setTimeout(() => abortCtrl.abort(), 120000);
             const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -1631,16 +1639,19 @@ serve(async (req) => {
                   { role: "system", content: systemPrompt },
                   ...messagesForAI,
                 ],
-                max_tokens: 16000,
+                max_tokens: 8000,
                 temperature: 0.2,
                 stream: true,
+                provider: { sort: "throughput" },
               }),
+              signal: abortCtrl.signal,
             });
+            clearTimeout(abortTimeout);
 
             if (!aiResponse.ok) {
               const errBody = await aiResponse.text().catch(() => "");
               console.error("[LAYER2] OpenRouter error:", aiResponse.status, errBody);
-              sendEvent({ error: "AI service error. Please try again." });
+              sendEvent({ done: true, error: "AI service error. Please try again." });
               return;
             }
 
@@ -1834,7 +1845,10 @@ serve(async (req) => {
 
           } catch (err: any) {
             console.error("[LAYER2] SSE error:", err.message);
-            sendEvent({ error: "Internal error: " + (err.message || "Unknown error") });
+            const errMsg = err.name === "AbortError"
+              ? "Design generation timed out (120s). Try a simpler prompt."
+              : "Internal error: " + (err.message || "Unknown error");
+            sendEvent({ done: true, error: errMsg });
           } finally {
             clearInterval(heartbeat);
             controller.close();
