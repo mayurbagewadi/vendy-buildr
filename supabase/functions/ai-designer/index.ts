@@ -1690,13 +1690,29 @@ serve(async (req) => {
                 if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); codeBlockFound = true; break; }
               }
               console.log("[LAYER2] Code block extracted:", codeBlockFound, "| cssContent length:", cssContent.length);
-              // Always strip SUMMARY/CHANGES and leftover code fences
-              cssContent = cssContent
-                .replace(/SUMMARY:[\s\S]*$/i, '')
-                .replace(/CHANGES:[\s\S]*$/i, '')
-                .replace(/^```(?:css)?\s*/gm, '')
-                .replace(/```\s*$/gm, '')
-                .trim();
+
+              if (codeBlockFound) {
+                // Strip SUMMARY/CHANGES and leftover code fences from extracted code block
+                cssContent = cssContent
+                  .replace(/SUMMARY:[\s\S]*$/i, '')
+                  .replace(/CHANGES:[\s\S]*$/i, '')
+                  .replace(/^```(?:css)?\s*/gm, '')
+                  .replace(/```\s*$/gm, '')
+                  .trim();
+              } else {
+                // No code block found - try to extract CSS rules directly before SUMMARY
+                const beforeSummary = cleanedContent.split(/SUMMARY:/i)[0];
+                // Extract anything that looks like CSS rules ([selector] { ... })
+                const cssRuleMatches = beforeSummary.match(/\[data-ai="[^"]+"\][^{]*\{[^}]*\}/gs);
+                if (cssRuleMatches && cssRuleMatches.length > 0) {
+                  cssContent = cssRuleMatches.join('\n');
+                  console.log("[LAYER2] Extracted", cssRuleMatches.length, "CSS rules from text");
+                } else {
+                  // Last resort - use everything before SUMMARY as potential CSS
+                  cssContent = beforeSummary.trim();
+                  console.log("[LAYER2] No code block found, using text before SUMMARY as CSS");
+                }
+              }
 
               const summaryMatch = cleanedContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
               if (summaryMatch) aiSummary = summaryMatch[1].trim();
