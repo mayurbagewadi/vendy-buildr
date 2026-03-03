@@ -1738,8 +1738,15 @@ serve(async (req) => {
             console.log("[LAYER2] finalCSS length after sanitize:", finalCSS.length);
 
             if (!finalCSS || finalCSS.trim().length === 0) {
-              console.error("[LAYER2] Empty CSS — not deducting token");
-              sendEvent({ error: "AI did not generate any CSS. Please try again with a more specific prompt." });
+              console.error("[LAYER2] Empty CSS generated");
+              console.error("[LAYER2] rawCSS was:", rawCSS.substring(0, 500));
+              console.error("[LAYER2] cleanedContent was:", cleanedContent.substring(0, 500));
+              console.error("[LAYER2] fullContent was:", fullContent.substring(0, 500));
+              console.error("[LAYER2] Not deducting token, sending error");
+              sendEvent({
+                done: true,
+                error: "AI did not generate any CSS. Please try again with a more specific prompt."
+              });
               return;
             }
 

@@ -484,13 +484,17 @@ export async function generateFullCSSStream(
       if (line.startsWith("data: ")) {
         try {
           const data = JSON.parse(line.slice(6));
-          if (data.error) throw new Error(data.error);
+          if (data.error) {
+            console.error("[SSE-ERROR] Edge function error:", data.error);
+            throw new Error(data.error);
+          }
           if (data.done) {
             result = data;
           } else if (data.chunk && onChunk) {
             onChunk(data.chunk);
           }
         } catch (parseErr: any) {
+          console.error("[SSE-PARSE] Error parsing SSE:", parseErr.message);
           if (parseErr.message && !parseErr.message.includes("JSON")) throw parseErr;
         }
       }
@@ -512,6 +516,7 @@ export async function generateFullCSSStream(
   }
 
   if (!result) throw new Error("Stream ended without a result");
+  if (result.error) throw new Error(result.error);
   if (!result.css) throw new Error("No CSS received from AI");
 
   return {
