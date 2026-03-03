@@ -666,7 +666,7 @@ serve(async (req) => {
 
       // Fetch platform settings
       const { data: platformSettings } = await supabase.from("platform_settings")
-        .select("openrouter_api_key, openrouter_model").eq("id", SETTINGS_ID).single();
+        .select("openrouter_api_key, openrouter_model, openrouter_fallback_model").eq("id", SETTINGS_ID).single();
 
       if (!platformSettings?.openrouter_api_key) {
         return new Response(JSON.stringify({ success: false, error: "AI not configured. Please contact platform support." }),
@@ -682,7 +682,11 @@ serve(async (req) => {
         .select("current_design").eq("store_id", store_id).maybeSingle();
 
       const systemPrompt = buildSystemPrompt(store?.name || "Store", designState?.current_design || null, theme || "light");
-      const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
+      const model = (platformSettings.openrouter_model || platformSettings.openrouter_fallback_model || "").trim();
+      if (!model) {
+        return new Response(JSON.stringify({ success: false, error: "No AI model configured. Please set a model in Super Admin → Platform Settings." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
       const apiKey = platformSettings.openrouter_api_key.trim();
 
       // ═══ LIMIT CHAT HISTORY TO PREVENT TOKEN BLOAT ═══
@@ -1059,9 +1063,15 @@ serve(async (req) => {
       }
 
       const { data: genSettings } = await supabase.from("platform_settings")
-        .select("openrouter_api_key, openrouter_model").eq("id", SETTINGS_ID).single();
+        .select("openrouter_api_key, openrouter_model, openrouter_fallback_model").eq("id", SETTINGS_ID).single();
       if (!genSettings?.openrouter_api_key) {
         return new Response(JSON.stringify({ success: false, error: "AI not configured. Please contact platform support." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const genModel = (genSettings.openrouter_model || genSettings.openrouter_fallback_model || "").trim();
+      if (!genModel) {
+        return new Response(JSON.stringify({ success: false, error: "No AI model configured. Please set a model in Super Admin → Platform Settings." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
@@ -1083,7 +1093,7 @@ serve(async (req) => {
             "X-Title": "Vendy Buildr AI Designer",
           },
           body: JSON.stringify({
-            model: (genSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim(),
+            model: genModel,
             messages: [{ role: "system", content: genSystemPrompt }, ...genMessages],
             max_tokens: 4000,
             temperature: 0.1,
@@ -1153,7 +1163,7 @@ serve(async (req) => {
                   "X-Title": "Vendy Buildr AI Designer",
                 },
                 body: JSON.stringify({
-                  model: (genSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim(),
+                  model: genModel,
                   messages: [
                     { role: "system", content: genSystemPrompt },
                     { role: "user", content: enhancePromptForRetry(prompt, genAttempt, genLastError, genContext) }
@@ -1181,7 +1191,7 @@ serve(async (req) => {
         await supabase.from("ai_generation_failures").insert({
           store_id, user_id, user_prompt: prompt,
           error_message: genLastError,
-          model: genSettings.openrouter_model || "moonshotai/kimi-k2-thinking",
+          model: genModel,
           raw_ai_output: genContent.substring(0, 2000),
           attempt_count: 3,
         }).catch(e => console.error("[LOG_ERROR]", e.message));
@@ -1338,7 +1348,7 @@ serve(async (req) => {
 
       // Fetch platform settings
       const { data: platformSettings } = await supabase.from("platform_settings")
-        .select("openrouter_api_key, openrouter_model").eq("id", SETTINGS_ID).single();
+        .select("openrouter_api_key, openrouter_model, openrouter_fallback_model").eq("id", SETTINGS_ID).single();
 
       if (!platformSettings?.openrouter_api_key) {
         return new Response(JSON.stringify({
@@ -1347,7 +1357,13 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
 
-      const model = (platformSettings.openrouter_model || "moonshotai/kimi-k2-thinking").trim();
+      const model = (platformSettings.openrouter_model || platformSettings.openrouter_fallback_model || "").trim();
+      if (!model) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "No AI model configured. Please set a model in Super Admin → Platform Settings."
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
       const apiKey = platformSettings.openrouter_api_key.trim();
 
       // Read existing Layer 2 CSS from DB for merging and AI context
