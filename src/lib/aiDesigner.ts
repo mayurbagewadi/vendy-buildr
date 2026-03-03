@@ -478,18 +478,9 @@ export async function generateFullCSSStream(
   let buffer = "";
   let result: any = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || ""; // keep incomplete line in buffer
-
+  const processLines = (lines: string[]) => {
     for (const line of lines) {
-      // Skip SSE heartbeat comments (": heartbeat", ": connected")
-      if (line.startsWith(":")) continue;
-
+      if (line.startsWith(":")) continue; // SSE heartbeat comment
       if (line.startsWith("data: ")) {
         try {
           const data = JSON.parse(line.slice(6));
@@ -504,6 +495,20 @@ export async function generateFullCSSStream(
         }
       }
     }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      // Process any remaining data in buffer (no trailing newline)
+      if (buffer.trim()) processLines(buffer.split("\n"));
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; // keep incomplete line in buffer
+    processLines(lines);
   }
 
   if (!result) throw new Error("Stream ended without a result");
