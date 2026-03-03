@@ -1457,7 +1457,11 @@ serve(async (req) => {
               let changesList: string[] = [];
               let aiSummary = '';
 
-              let cssContent = fullContent;
+              // Strip <think>...</think> tags from thinking models
+              let cleanedContent1 = fullContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+              if (cleanedContent1.length === 0) cleanedContent1 = fullContent;
+
+              let cssContent = cleanedContent1;
               const codeBlockPatterns1 = [
                 /```css\s*\n([\s\S]*?)\n\s*```/,
                 /```css\s*([\s\S]*?)```/,
@@ -1465,7 +1469,7 @@ serve(async (req) => {
                 /```\s*([\s\S]*?)```/,
               ];
               for (const cbPattern of codeBlockPatterns1) {
-                const m = fullContent.match(cbPattern);
+                const m = cleanedContent1.match(cbPattern);
                 if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); break; }
               }
               // Always strip SUMMARY/CHANGES and leftover code fences
@@ -1476,10 +1480,10 @@ serve(async (req) => {
                 .replace(/```\s*$/gm, '')
                 .trim();
 
-              const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
+              const summaryMatch = cleanedContent1.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
               if (summaryMatch) aiSummary = summaryMatch[1].trim();
 
-              const parts = fullContent.split(/CHANGES:/i);
+              const parts = cleanedContent1.split(/CHANGES:/i);
               if (parts.length >= 2) {
                 rawCSS = cssContent.trim();
                 const changesText = 'SECTION:' + parts.slice(1).join('CHANGES:');
@@ -1630,15 +1634,8 @@ serve(async (req) => {
             let fullContent = "";
             let sseBuffer = "";
 
-            while (true) {
-              const { done, value } = await aiReader.read();
-              if (done) break;
-
-              sseBuffer += aiDecoder.decode(value, { stream: true });
-              const lines = sseBuffer.split("\n");
-              sseBuffer = lines.pop() || "";
-
-              for (const line of lines) {
+            const processSSELines = (linesToProcess: string[]) => {
+              for (const line of linesToProcess) {
                 if (!line.startsWith("data: ") || line === "data: [DONE]") continue;
                 try {
                   const json = JSON.parse(line.slice(6));
@@ -1649,9 +1646,25 @@ serve(async (req) => {
                   }
                 } catch (_) {}
               }
+            };
+
+            while (true) {
+              const { done, value } = await aiReader.read();
+              if (done) {
+                // Flush remaining buffer — last chunk may lack trailing newline
+                if (sseBuffer.trim()) processSSELines(sseBuffer.split("\n"));
+                break;
+              }
+
+              sseBuffer += aiDecoder.decode(value, { stream: true });
+              const lines = sseBuffer.split("\n");
+              sseBuffer = lines.pop() || "";
+              processSSELines(lines);
             }
 
             console.log("[LAYER2] AI stream complete, output:", fullContent.length, "chars");
+            console.log("[LAYER2] Full AI output preview (first 500):", fullContent.substring(0, 500));
+            console.log("[LAYER2] Full AI output tail (last 300):", fullContent.substring(Math.max(0, fullContent.length - 300)));
 
             // ═══ PARSE: CSS + SUMMARY + CHANGES ═══
             let rawCSS = "";
@@ -1659,7 +1672,13 @@ serve(async (req) => {
             let aiSummary = "";
 
             try {
-              let cssContent = fullContent;
+              // Strip <think>...</think> tags from thinking models (kimi-k2-thinking, etc.)
+              let cleanedContent = fullContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+              if (cleanedContent.length === 0) cleanedContent = fullContent; // fallback if everything was in think tags
+              console.log("[LAYER2] After stripping <think> tags:", cleanedContent.length, "chars (was", fullContent.length, ")");
+
+              let cssContent = cleanedContent;
+              let codeBlockFound = false;
               const codeBlockPatterns2 = [
                 /```css\s*\n([\s\S]*?)\n\s*```/,
                 /```css\s*([\s\S]*?)```/,
@@ -1667,9 +1686,10 @@ serve(async (req) => {
                 /```\s*([\s\S]*?)```/,
               ];
               for (const cbPattern of codeBlockPatterns2) {
-                const m = fullContent.match(cbPattern);
-                if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); break; }
+                const m = cleanedContent.match(cbPattern);
+                if (m && m[1].trim().length > 20) { cssContent = m[1].trim(); codeBlockFound = true; break; }
               }
+              console.log("[LAYER2] Code block extracted:", codeBlockFound, "| cssContent length:", cssContent.length);
               // Always strip SUMMARY/CHANGES and leftover code fences
               cssContent = cssContent
                 .replace(/SUMMARY:[\s\S]*$/i, '')
@@ -1678,10 +1698,10 @@ serve(async (req) => {
                 .replace(/```\s*$/gm, '')
                 .trim();
 
-              const summaryMatch = fullContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
+              const summaryMatch = cleanedContent.match(/SUMMARY:\s*([^\n]+(?:\n(?!CHANGES:|SECTION:|CHANGE:)[^\n]*)*)/i);
               if (summaryMatch) aiSummary = summaryMatch[1].trim();
 
-              const parts = fullContent.split(/CHANGES:/i);
+              const parts = cleanedContent.split(/CHANGES:/i);
               if (parts.length >= 2) {
                 rawCSS = cssContent.trim();
                 const changesText = "SECTION:" + parts.slice(1).join("CHANGES:");
@@ -1708,12 +1728,14 @@ serve(async (req) => {
             }
 
             // Sanitize CSS
+            console.log("[LAYER2] rawCSS length:", rawCSS.length, "| preview:", rawCSS.substring(0, 200));
             let finalCSS = "";
             try {
               finalCSS = sanitizeCSS(rawCSS).sanitized;
             } catch (_) {
               finalCSS = "";
             }
+            console.log("[LAYER2] finalCSS length after sanitize:", finalCSS.length);
 
             if (!finalCSS || finalCSS.trim().length === 0) {
               console.error("[LAYER2] Empty CSS — not deducting token");
