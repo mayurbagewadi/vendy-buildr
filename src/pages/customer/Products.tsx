@@ -215,7 +215,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header storeSlug={slug} />
+      <Header storeSlug={slug} storeId={storeId || undefined} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {loading ? (
