@@ -1542,11 +1542,13 @@ serve(async (req) => {
 
         // Insert PENDING ledger entry (receipt before OpenRouter call)
         // If insert fails due to unique conflict (concurrent retry), we continue — optimistic lock handles billing
-        await supabase.from("ai_token_ledger").insert({
-          store_id, user_id, idempotency_key,
-          status: "pending",
-          purchase_id: activePurchase.id,
-        }).select("id").single().catch(() => null); // ignore conflict errors
+        try {
+          await supabase.from("ai_token_ledger").insert({
+            store_id, user_id, idempotency_key,
+            status: "pending",
+            purchase_id: activePurchase.id,
+          });
+        } catch (_) { /* ignore conflict errors — idempotency key already exists */ }
       }
 
       // Fetch platform settings
