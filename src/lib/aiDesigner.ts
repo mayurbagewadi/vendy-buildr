@@ -487,6 +487,7 @@ function logAICSSForPages(css: string): void {
     'checkout-page-heading', 'checkout-form', 'checkout-summary',
     'customer-info-card', 'customer-info-heading',
     'delivery-address-card', 'delivery-address-heading',
+    'checkout-field-input', 'checkout-field-label', 'delivery-time-option',
     'payment-method-card', 'payment-method-heading', 'payment-option',
     'place-order-button',
     'order-summary-heading', 'order-item',

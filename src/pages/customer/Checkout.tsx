@@ -970,9 +970,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         name="fullName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name *</FormLabel>
+                            <FormLabel data-ai="checkout-field-label">Full Name *</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter your full name" {...field} />
+                              <Input data-ai="checkout-field-input" placeholder="Enter your full name" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -984,9 +984,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Phone Number *</FormLabel>
+                            <FormLabel data-ai="checkout-field-label">Phone Number *</FormLabel>
                             <FormControl>
-                              <Input placeholder="10-digit mobile number" {...field} />
+                              <Input data-ai="checkout-field-input" placeholder="10-digit mobile number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -998,9 +998,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         name="email"
                         render={({ field }) => (
                           <FormItem className="md:col-span-2">
-                            <FormLabel>Email (Optional)</FormLabel>
+                            <FormLabel data-ai="checkout-field-label">Email (Optional)</FormLabel>
                             <FormControl>
-                              <Input placeholder="your.email@example.com" {...field} />
+                              <Input data-ai="checkout-field-input" placeholder="your.email@example.com" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1019,9 +1019,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         name="address"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Complete Address *</FormLabel>
+                            <FormLabel data-ai="checkout-field-label">Complete Address *</FormLabel>
                             <FormControl>
                               <Input
+                                data-ai="checkout-field-input"
                                 placeholder="House/Flat No., Street, Area"
                                 {...field}
                               />
@@ -1037,9 +1038,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                           name="landmark"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Landmark (Optional)</FormLabel>
+                              <FormLabel data-ai="checkout-field-label">Landmark (Optional)</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nearby location" {...field} />
+                                <Input data-ai="checkout-field-input" placeholder="Nearby location" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1051,9 +1052,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                           name="pincode"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>PIN Code *</FormLabel>
+                              <FormLabel data-ai="checkout-field-label">PIN Code *</FormLabel>
                               <FormControl>
-                                <Input placeholder="6-digit PIN code" {...field} />
+                                <Input data-ai="checkout-field-input" placeholder="6-digit PIN code" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1073,19 +1074,19 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                                 defaultValue={field.value}
                                 className="space-y-2"
                               >
-                                <div className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
                                   <RadioGroupItem value="morning" id="morning" />
                                   <Label htmlFor="morning" className="flex-1 cursor-pointer font-normal">
                                     Morning (9 AM - 12 PM)
                                   </Label>
                                 </div>
-                                <div className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
                                   <RadioGroupItem value="evening" id="evening" />
                                   <Label htmlFor="evening" className="flex-1 cursor-pointer font-normal">
                                     Evening (4 PM - 7 PM)
                                   </Label>
                                 </div>
-                                <div className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
                                   <RadioGroupItem value="anytime" id="anytime" />
                                   <Label htmlFor="anytime" className="flex-1 cursor-pointer font-normal">
                                     Anytime
