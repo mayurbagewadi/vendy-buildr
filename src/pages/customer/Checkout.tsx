@@ -954,14 +954,14 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           <span className="text-foreground">Checkout</span>
         </nav>
 
-        <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+        <h1 data-ai="checkout-page-heading" className="text-3xl font-bold mb-8">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Customer Information Form */}
           <div data-ai="checkout-form" className="lg:col-span-2">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <Card>
+                <Card data-ai="customer-info-card">
                   <CardContent className="p-6">
                     <h2 data-ai="customer-info-heading" className="text-xl font-semibold mb-4">Customer Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1010,7 +1010,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card data-ai="delivery-address-card">
                   <CardContent className="p-6">
                     <h2 data-ai="delivery-address-heading" className="text-xl font-semibold mb-4">Delivery Address</h2>
                     <div className="space-y-4">
@@ -1178,7 +1178,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card data-ai="payment-method-card">
                   <CardContent className="p-6">
                     <h2 data-ai="payment-method-heading" className="text-xl font-semibold mb-4">Payment Method</h2>
 
@@ -1190,6 +1190,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                       <div className="space-y-3">
                         {paymentMethods.map((method) => (
                           <motion.div
+                            data-ai="payment-option"
                             key={method.id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -1292,6 +1293,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 </Card>
 
                 <Button
+                  data-ai="place-order-button"
                   type="submit"
                   size="lg"
                   className="w-full md:w-auto"
@@ -1326,11 +1328,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           <div data-ai="checkout-summary" className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+                <h2 data-ai="order-summary-heading" className="text-xl font-bold mb-4">Order Summary</h2>
 
                 <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                   {cart.map((item) => (
                     <div
+                      data-ai="order-item"
                       key={`${item.productId}-${item.variant}`}
                       className="flex gap-3 pb-3 border-b border-border last:border-0"
                     >
@@ -1353,7 +1356,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 </div>
 
                 {/* Coupon Section */}
-                <div className="mb-4 pb-4 border-b border-border space-y-3">
+                <div data-ai="coupon-section" className="mb-4 pb-4 border-b border-border space-y-3">
                   <div className="flex items-center gap-2">
                     <Ticket className="w-4 h-4 text-primary" />
                     <Label className="text-sm font-medium">Apply Coupon</Label>
@@ -1362,6 +1365,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   {!appliedCoupon ? (
                     <div className="flex gap-2">
                       <Input
+                        data-ai="coupon-input"
                         placeholder="Enter coupon code"
                         value={couponCode}
                         onChange={(e) => {
@@ -1372,6 +1376,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                         className="text-sm"
                       />
                       <Button
+                        data-ai="apply-coupon-button"
                         size="sm"
                         variant="outline"
                         onClick={applyCoupon}
@@ -1415,7 +1420,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   </div>
 
                   {(discountAmount > 0 || autoDiscountAmount > 0) && (
-                    <div className="flex justify-between text-sm">
+                    <div data-ai="price-discount" className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
                         {appliedCoupon ? 'Coupon Discount' : autoDiscountApplied ? 'Automatic Discount' : 'Discount'}
                         {autoDiscountApplied && !appliedCoupon && (

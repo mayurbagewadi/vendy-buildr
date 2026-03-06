@@ -4,7 +4,7 @@
  *
  * PURPOSE: Server-side AI integration for store design generation
  * MODELS: Kimi K2.5 (moonshotai/kimi-k2) via OpenRouter
- * TOKEN SYSTEM: Credit-based, each generation = 1 token deducted
+ * TOKEN SYSTEM: Credit-based, deducts ACTUAL OpenRouter tokens per generation (not hardcoded 1)
  *
  * ═════════════════════════════════════════════════════════════════════════════
  * CHANGE LOG WITH DATES & BUSINESS IMPACT
@@ -677,11 +677,12 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- If you need to override an existing rule, include it with updated values.\n" +
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
     "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
-    "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n\n" +
+    "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n" +
+    "- NEVER use gradients (linear-gradient, radial-gradient, conic-gradient) unless the user EXPLICITLY asks for a gradient. Use solid colors only by default.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
     "```css\n[your CSS here]\n```\n\n" +
     "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
-    "Example: \"I gave your hero section a bold gradient that really pops — paired with softer product cards so the eye flows naturally.\"]\n\n" +
+    "Example: \"I gave your hero section a bold primary color background — paired with softer product cards so the eye flows naturally.\"]\n\n" +
     "CHANGES:\n" +
     "SECTION: [area name]\n" +
     "CHANGE: [what you changed and why]\n" +
@@ -1463,7 +1464,7 @@ serve(async (req) => {
       console.log("╚══════════════════════════════════════════════════╝\n");
       console.log("📥 Request received at:", new Date().toISOString());
 
-      const { html_structure, layer1_baseline, theme: layer2Theme, image_base64, site_manifest } = body;
+      const { html_structure, layer1_baseline, theme: layer2Theme, image_base64, site_manifest, idempotency_key } = body;
       console.log("📊 Payload sizes (contributes to token count):");
       console.log("  ├─ HTML structure:", html_structure?.length || 0, "chars (~" + Math.ceil((html_structure?.length || 0) / 4) + " tokens)");
       console.log("  ├─ Layer1 baseline:", JSON.stringify(layer1_baseline || {}).length, "chars");
@@ -1497,7 +1498,7 @@ serve(async (req) => {
 
       // Check tokens
       const { data: activePurchases } = await supabase.from("ai_token_purchases")
-        .select("id, tokens_remaining, tokens_used")
+        .select("id, tokens_remaining, tokens_used, version")
         .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0)
         .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
 
@@ -1507,6 +1508,45 @@ serve(async (req) => {
           success: false,
           error: "No tokens remaining. Please purchase more tokens to continue."
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+      }
+
+      // ─── Idempotency check: prevent double charge on network retry ───
+      if (idempotency_key) {
+        const { data: existingLedger } = await supabase
+          .from("ai_token_ledger")
+          .select("status, cached_css, total_tokens")
+          .eq("idempotency_key", idempotency_key)
+          .maybeSingle();
+
+        if (existingLedger?.status === "completed" && existingLedger?.cached_css) {
+          // Already processed — return cached CSS as SSE done event (no charge)
+          console.log("[IDEMPOTENCY] Duplicate request detected, returning cached result for key:", idempotency_key);
+          const sseEncoder2 = new TextEncoder();
+          const cachedStream = new ReadableStream({
+            start(ctrl) {
+              ctrl.enqueue(sseEncoder2.encode("data: " + JSON.stringify({
+                done: true,
+                css: existingLedger.cached_css,
+                tokens_remaining: activePurchase.tokens_remaining,
+                changes_list: ["Returned cached design (no extra charge)"],
+                message: "Design loaded from cache",
+                cached: true,
+              }) + "\n\n"));
+              ctrl.close();
+            }
+          });
+          return new Response(cachedStream, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+          });
+        }
+
+        // Insert PENDING ledger entry (receipt before OpenRouter call)
+        // If insert fails due to unique conflict (concurrent retry), we continue — optimistic lock handles billing
+        await supabase.from("ai_token_ledger").insert({
+          store_id, user_id, idempotency_key,
+          status: "pending",
+          purchase_id: activePurchase.id,
+        }).select("id").single().catch(() => null); // ignore conflict errors
       }
 
       // Fetch platform settings
@@ -1582,6 +1622,7 @@ serve(async (req) => {
               max_tokens: 8000,
               temperature: 0.2,
               stream: true,
+              stream_options: { include_usage: true },
               provider: { sort: "throughput" },
             }),
             signal: streamAbort.signal,
@@ -1616,6 +1657,7 @@ serve(async (req) => {
         const stream = new ReadableStream({
           async start(controller) {
             let fullContent = '';
+            let capturedUsageLegacy: any = null;
             try {
               while (true) {
                 const { done, value } = await streamReader.read();
@@ -1627,6 +1669,8 @@ serve(async (req) => {
                   if (line === 'data: [DONE]') continue;
                   try {
                     const json = JSON.parse(line.slice(6));
+                    // Capture actual token usage from OpenRouter final chunk
+                    if (json.usage) capturedUsageLegacy = json.usage;
                     const delta = json.choices?.[0]?.delta?.content || '';
                     if (delta) {
                       fullContent += delta;
@@ -1691,9 +1735,9 @@ serve(async (req) => {
               const sanitization = sanitizeCSS(rawCSS);
               let finalCSS = sanitization.sanitized;
               if (!finalCSS || finalCSS.trim().length === 0) {
-                finalCSS = "[data-ai=\"section-hero\"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 80px 20px; color: white; }\n" +
+                finalCSS = "[data-ai=\"section-hero\"] { background: hsl(var(--primary)); padding: 80px 20px; color: hsl(var(--primary-foreground)); }\n" +
                   "[data-ai=\"product-card\"] { border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }\n";
-                changesList = ['Hero → Added gradient', 'Products → Modern shadows'];
+                changesList = ['Hero → Applied primary color', 'Products → Modern shadows'];
               }
 
               // Merge with existing CSS
@@ -1709,12 +1753,18 @@ serve(async (req) => {
               console.log('Final CSS preview:', finalCSS.substring(0, 300));
               console.log('Merged CSS full:', mergedCSS);
 
-              // Deduct token
-              const newRemaining = capturedActivePurchase.tokens_remaining - 1;
-              const newUsed = capturedActivePurchase.tokens_used + 1;
+              // Deduct ACTUAL OpenRouter tokens (not hardcoded 1)
+              const legacyPromptTok = capturedUsageLegacy?.prompt_tokens || 0;
+              const legacyCompTok = capturedUsageLegacy?.completion_tokens || 0;
+              const legacyTotalTok = (legacyPromptTok + legacyCompTok) || 1;
+              const legacyCostUSD = ((legacyPromptTok * 0.002) + (legacyCompTok * 0.006)) / 1000;
+              console.log('[LAYER2-LEGACY] Token usage — prompt:', legacyPromptTok, 'completion:', legacyCompTok, 'total:', legacyTotalTok, 'cost: $' + legacyCostUSD.toFixed(6));
+              const newRemaining = Math.max(0, capturedActivePurchase.tokens_remaining - legacyTotalTok);
+              const newUsed = capturedActivePurchase.tokens_used + legacyTotalTok;
               await supabase.from('ai_token_purchases')
-                .update({ tokens_remaining: newRemaining, tokens_used: newUsed })
-                .eq('id', capturedActivePurchase.id);
+                .update({ tokens_remaining: newRemaining, tokens_used: newUsed, version: (capturedActivePurchase.version || 0) + 1, updated_at: new Date().toISOString() })
+                .eq('id', capturedActivePurchase.id)
+                .eq('version', capturedActivePurchase.version || 0);
 
               // Store merged CSS in DB
               const nowStr = new Date().toISOString();
@@ -1735,7 +1785,7 @@ serve(async (req) => {
                 user_id: capturedUserId,
                 prompt: capturedUserPrompt,
                 ai_response: { layer2_css: finalCSS, mode: capturedIntentMode, changes_list: changesList },
-                tokens_used: 1,
+                tokens_used: legacyTotalTok,
                 applied: false,
               });
 
@@ -1805,6 +1855,7 @@ serve(async (req) => {
                 max_tokens: 8000,
                 temperature: 0.2,
                 stream: true,
+                stream_options: { include_usage: true },
                 provider: { sort: "throughput" },
               }),
               signal: abortCtrl.signal,
@@ -1823,12 +1874,18 @@ serve(async (req) => {
             const aiDecoder = new TextDecoder();
             let fullContent = "";
             let sseBuffer = "";
+            let capturedUsage: any = null; // actual token counts from OpenRouter final chunk
 
             const processSSELines = (linesToProcess: string[]) => {
               for (const line of linesToProcess) {
                 if (!line.startsWith("data: ") || line === "data: [DONE]") continue;
                 try {
                   const json = JSON.parse(line.slice(6));
+                  // Capture actual token usage from OpenRouter final usage chunk
+                  if (json.usage) {
+                    capturedUsage = json.usage;
+                    console.log("[LAYER2] OpenRouter usage captured:", json.usage);
+                  }
                   const delta = json.choices?.[0]?.delta;
                   // Capture actual content tokens
                   const content = delta?.content || "";
@@ -1964,11 +2021,43 @@ serve(async (req) => {
               return;
             }
 
-            // Deduct token
-            const newRemaining = activePurchase.tokens_remaining - 1;
-            await supabase.from("ai_token_purchases")
-              .update({ tokens_remaining: newRemaining, tokens_used: activePurchase.tokens_used + 1 })
-              .eq("id", activePurchase.id);
+            // ─── Deduct ACTUAL OpenRouter tokens (not hardcoded 1) ───
+            const promptTokens = capturedUsage?.prompt_tokens || 0;
+            const completionTokens = capturedUsage?.completion_tokens || 0;
+            const totalTokens = (promptTokens + completionTokens) || 1; // fallback to 1 if usage not captured
+            const costUSD = ((promptTokens * 0.002) + (completionTokens * 0.006)) / 1000;
+            console.log("[LAYER2] Token usage — prompt:", promptTokens, "completion:", completionTokens, "total:", totalTokens, "cost: $" + costUSD.toFixed(6));
+
+            const newRemaining = Math.max(0, activePurchase.tokens_remaining - totalTokens);
+            const { data: updateResult } = await supabase.from("ai_token_purchases")
+              .update({
+                tokens_remaining: newRemaining,
+                tokens_used: activePurchase.tokens_used + totalTokens,
+                version: (activePurchase.version || 0) + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", activePurchase.id)
+              .eq("version", activePurchase.version || 0) // optimistic lock
+              .select("id");
+
+            if (!updateResult || updateResult.length === 0) {
+              // Race condition: another concurrent request changed the version first
+              // Re-fetch latest balance and retry deduction once
+              console.warn("[RACE-CONDITION] Optimistic lock failed, retrying token deduction");
+              const { data: freshPurchases } = await supabase.from("ai_token_purchases")
+                .select("id, tokens_remaining, tokens_used, version")
+                .eq("store_id", store_id).eq("status", "active")
+                .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
+              const fresh = freshPurchases?.[0];
+              if (fresh) {
+                await supabase.from("ai_token_purchases").update({
+                  tokens_remaining: Math.max(0, fresh.tokens_remaining - totalTokens),
+                  tokens_used: fresh.tokens_used + totalTokens,
+                  version: (fresh.version || 0) + 1,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", fresh.id).eq("version", fresh.version || 0);
+              }
+            }
 
             // Merge + save to DB
             const mergedCSS = mergeCSS(existingCSS, finalCSS);
@@ -1989,11 +2078,24 @@ serve(async (req) => {
               user_id,
               prompt: userPrompt,
               ai_response: { layer2_css: finalCSS, mode: intentMode, changes_list: changesList },
-              tokens_used: 1,
+              tokens_used: totalTokens,
               applied: false,
             });
 
-            console.log("✅ [LAYER2] Success! Tokens remaining:", newRemaining);
+            // ─── Update ledger to COMPLETED (receipt with actual token counts) ───
+            if (idempotency_key) {
+              await supabase.from("ai_token_ledger").update({
+                status: "completed",
+                prompt_tokens: promptTokens,
+                completion_tokens: completionTokens,
+                total_tokens: totalTokens,
+                cost_usd: costUSD,
+                cached_css: mergedCSS,
+                completed_at: nowStr,
+              }).eq("idempotency_key", idempotency_key);
+            }
+
+            console.log("✅ [LAYER2] Success! Tokens remaining:", newRemaining, "| Used:", totalTokens, "| Cost: $" + costUSD.toFixed(6));
 
             // Send final structured result to client
             sendEvent({
@@ -2008,6 +2110,13 @@ serve(async (req) => {
 
           } catch (err: any) {
             console.error("[LAYER2] SSE error:", err.message);
+            // Mark ledger entry as FAILED — no tokens deducted on failure
+            if (idempotency_key) {
+              await supabase.from("ai_token_ledger").update({
+                status: "failed",
+                completed_at: new Date().toISOString(),
+              }).eq("idempotency_key", idempotency_key).catch(() => null);
+            }
             const errMsg = err.name === "AbortError"
               ? "Design generation timed out (120s). Try a simpler prompt."
               : "Internal error: " + (err.message || "Unknown error");

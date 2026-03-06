@@ -156,7 +156,6 @@ function captureCleanHTMLSnapshot(iframe: HTMLIFrameElement): string {
   }
 
   const html = parts.join("\n\n");
-  console.log('[HTML-SNAPSHOT] Captured structural skeleton:', { length: html.length, elementCount: parts.length });
   return html;
 }
 
@@ -183,7 +182,6 @@ function captureOtherPageSnapshot(iframe: HTMLIFrameElement, label: string): str
   }
 
   const html = parts.join('\n\n');
-  console.log('[SCAN-' + label + '] Captured ' + parts.length + ' elements, ' + html.length + ' chars');
   return html;
 }
 
@@ -475,7 +473,6 @@ const AIDesigner = () => {
       if (layer2CSS) {
         savedLayer2CSSRef.current = layer2CSS;
         cumulativeCSSRef.current = layer2CSS;
-        console.log('[LAYER2-RESTORE] Loaded', layer2CSS.length, 'chars of Layer 2 CSS from DB');
       }
 
       // Load chat history — also returns the most recent generated design for preview fallback
@@ -660,18 +657,11 @@ const AIDesigner = () => {
       // This avoids stale/cached HTML that causes the "second request fails" issue
       const cleanHTML = cleanHTMLSnapshotRef.current;
 
-      console.log('[AI-PATH] cleanHTMLSnapshot available:', !!cleanHTML, cleanHTML ? '(' + cleanHTML.length + ' chars)' : '(null - will use Layer 1 fallback)');
-
       if (cleanHTML) {
-        // Use Layer 2 (Full CSS Generation with HTML access)
-        console.log('[LAYER2] ✅ Using Layer 2 with clean HTML snapshot');
-        console.log('[LAYER2] HTML Snapshot size:', cleanHTML.length, 'chars');
-
         try {
         // Build conversation history for Layer 2 — AI gets CSS context from previous turns
         const allMessages = [...messages, userMsg];
         const layer2History = buildLayer2History(allMessages);
-        console.log('[LAYER2] Passing', layer2History.length, 'messages to AI as conversation history');
 
         // Create AbortController for this request — user can cancel anytime
         abortControllerRef.current = new AbortController();
@@ -733,54 +723,6 @@ const AIDesigner = () => {
         );
         setAttachedImage(null); // Clear image after send
 
-        // ═══ DEEP DEBUG LOGGING - LAYER 2 CHANGES ═══
-        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log("🎨 [LAYER2 CHANGES] AI Design Generation Complete");
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
-        console.log("📊 LAYER 2 RESULT:");
-        console.log("  ├─ CSS Length:", layer2Result.css.length, "chars");
-        console.log("  ├─ Changes Count:", layer2Result.changes_list?.length || 0);
-        console.log("  ├─ Message:", layer2Result.message);
-        console.log("  └─ Tokens Remaining:", layer2Result.tokens_remaining);
-
-        if (layer2Result.changes_list && layer2Result.changes_list.length > 0) {
-          console.log("\n📝 DETAILED CHANGES BREAKDOWN:");
-          layer2Result.changes_list.forEach((change, idx) => {
-            console.log(`  ${idx + 1}. ${change}`);
-          });
-        }
-
-        console.log("\n💅 CSS PREVIEW (first 500 chars):");
-        console.log(layer2Result.css.substring(0, 500));
-        if (layer2Result.css.length > 500) {
-          console.log(`  ...(+${layer2Result.css.length - 500} more chars)`);
-        }
-
-        // Count what was changed
-        const cssAnalysis = {
-          selectors: (layer2Result.css.match(/[^}]+\{/g) || []).length,
-          classSelectors: (layer2Result.css.match(/\.[a-zA-Z-_]+/g) || []).length,
-          dataAttributes: (layer2Result.css.match(/\[data-[a-zA-Z-]+/g) || []).length,
-          importantRules: (layer2Result.css.match(/!important/g) || []).length,
-          gradients: (layer2Result.css.match(/linear-gradient|radial-gradient/g) || []).length,
-          blurEffects: (layer2Result.css.match(/backdrop-filter:|blur\(/g) || []).length,
-          shadows: (layer2Result.css.match(/box-shadow:|text-shadow:/g) || []).length,
-          transforms: (layer2Result.css.match(/transform:/g) || []).length,
-        };
-
-        console.log("\n🔍 CSS ANALYSIS:");
-        console.log("  ├─ Total Selectors:", cssAnalysis.selectors);
-        console.log("  ├─ Class Selectors:", cssAnalysis.classSelectors);
-        console.log("  ├─ Data Attributes:", cssAnalysis.dataAttributes);
-        console.log("  ├─ !important Rules:", cssAnalysis.importantRules);
-        console.log("  ├─ Gradients:", cssAnalysis.gradients);
-        console.log("  ├─ Blur Effects:", cssAnalysis.blurEffects);
-        console.log("  ├─ Shadows:", cssAnalysis.shadows);
-        console.log("  └─ Transforms:", cssAnalysis.transforms);
-
-        console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
         // Server returns merged CSS (existing + new) — track locally and inject
         cumulativeCSSRef.current = layer2Result.css;
 
@@ -832,7 +774,7 @@ const AIDesigner = () => {
           if (layer2Error.name === 'AbortError') {
             // User clicked Stop button — remove loading message
             setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
-            console.log('[LAYER2] Generation cancelled by user');
+            // Generation cancelled by user
           } else {
             console.error('[LAYER2] Error:', layer2Error);
             toast.error("Design generation failed: " + (layer2Error.message || 'Unknown error'));
@@ -840,14 +782,9 @@ const AIDesigner = () => {
         }
       } else {
         // Fallback to Layer 1 if HTML snapshot not captured (iframe not ready)
-        console.warn('[AI-PATH] ⚠️ No HTML snapshot — using Layer 1 (CSS variables only). [data-ai] elements may not have rendered yet.');
-
-        // Limit to last 20 messages to avoid request size issues
         const recentMessages = [...messages, userMsg].slice(-20);
-        console.log('[API-DEBUG] Sending', recentMessages.length, 'messages (limited from', messages.length + 1, 'total)');
         const history = buildAPIHistory(recentMessages);
         const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
-        console.log('[AI-DEBUG] chatWithAI result:', JSON.stringify({ type: result.type, hasDesign: !!result.design, message: result.message?.slice(0, 80), css_variables: result.design?.css_variables, css_overrides_length: result.design?.css_overrides?.length }));
 
         const aiMsg: UIMessage = {
           id: `ai-${Date.now()}`,
@@ -996,37 +933,21 @@ const AIDesigner = () => {
     setIsPublishing(true);
     const previousDesign = currentDesign; // snapshot before state update
     try {
-      // 🔍 DEBUG: Log what's being published
-      console.log('📢 [PUBLISH-START] Publishing design...', {
-        storeId,
-        pendingDesign,
-        css_overridesLength: pendingDesign.css_overrides ? Object.keys(pendingDesign.css_overrides).length : 0,
-        css_overrides: pendingDesign.css_overrides,
-      });
-
       const isLayer2Design = !!pendingDesign.css_overrides && Object.keys(pendingDesign.css_variables || {}).length === 0;
-      console.log('📢 [PUBLISH-TYPE]', { isLayer2Design, designType: isLayer2Design ? 'LAYER2' : 'LAYER1' });
 
       if (isLayer2Design) {
         // Layer 2: explicitly save CSS to DB so customer store sees it
         // Never assume DB was updated during generation — always write on Publish
-        console.log('📢 [PUBLISH-LAYER2] Saving full CSS to database...', { css_length: pendingDesign.css_overrides!.length });
         await applyLayer2CSS(storeId, pendingDesign.css_overrides!);
-        console.log('✅ [PUBLISH-LAYER2-SUCCESS] CSS saved to database');
       } else {
-        // Layer 1: apply CSS variables to live store
-        console.log('📢 [PUBLISH-LAYER1] Saving CSS variables...', { pendingDesign });
         await applyDesign(storeId, pendingDesign, pendingHistoryId);
-        console.log('✅ [PUBLISH-LAYER1-SUCCESS] CSS variables saved');
       }
       const publishedDesign = pendingDesign;
       setCurrentDesign(publishedDesign);
       setPendingDesign(null);
       setPendingHistoryId(undefined);
-      // Clear reset flag — user has published a new design
       localStorage.removeItem(`ai_designer_reset_${storeId}`);
       toast.success("Design published to your live store!");
-      console.log('✅ [PUBLISH-COMPLETE] Design published successfully');
       // Add confirmation message to chat
       const confirmMsg = buildPublishConfirmationMessage(previousDesign, publishedDesign);
       setMessages(prev => [...prev, {
@@ -1088,11 +1009,7 @@ const AIDesigner = () => {
   const injectCSSIntoIframe = (design: AIDesignResult | null) => {
     try {
       const iframe = iframeRef.current;
-      console.log('[AI-DEBUG] injectCSSIntoIframe called, design:', !!design, 'iframe:', !!iframe, 'contentDocument:', !!iframe?.contentDocument, 'head:', !!iframe?.contentDocument?.head);
-      if (!iframe?.contentDocument?.head) {
-        console.warn('[AI-DEBUG] Cannot inject — iframe head not accessible');
-        return;
-      }
+      if (!iframe?.contentDocument?.head) return;
       const existing = iframe.contentDocument.getElementById('ai-preview-styles');
       if (existing) existing.remove();
       if (!design) {
@@ -1101,16 +1018,13 @@ const AIDesigner = () => {
         return;
       }
       const css = buildDesignCSS(design);
-      console.log('[AI-DEBUG] Generated CSS length:', css.length, '\n', css.slice(0, 300));
       const styleEl = iframe.contentDocument.createElement('style');
       styleEl.id = 'ai-preview-styles';
       styleEl.textContent = css;
       iframe.contentDocument.head.appendChild(styleEl);
-      // Inject Google Fonts
       injectGoogleFonts(iframe.contentDocument, design.fonts);
-      console.log('[AI-DEBUG] CSS + fonts injected successfully into iframe head');
-    } catch (err) {
-      console.error('[AI-DEBUG] CSS injection failed (likely cross-origin):', err);
+    } catch (_err) {
+      // Cross-origin injection may fail silently
     }
   };
 
@@ -1141,7 +1055,6 @@ const AIDesigner = () => {
         } else if (attemptCount < retryDelays.length) {
           setTimeout(tryCapture, retryDelays[attemptCount++]);
         } else {
-          console.warn('[MULTI-PAGE-SCAN] ' + label + ' — no [data-ai] elements after all retries');
           finish('');
         }
       };
@@ -1149,8 +1062,7 @@ const AIDesigner = () => {
       hiddenIframe.onload = () => setTimeout(tryCapture, retryDelays[attemptCount++]);
       hiddenIframe.src = url;
 
-      // Safety net — never hang for more than 25 seconds
-      setTimeout(() => { console.warn('[MULTI-PAGE-SCAN] ' + label + ' timed out'); finish(''); }, 25000);
+      setTimeout(() => { finish(''); }, 25000);
     });
   };
 
@@ -1173,26 +1085,21 @@ const AIDesigner = () => {
   // Silently scan Products, Categories, and a product detail page in hidden iframes.
   // Runs ONCE after home page snapshot is captured. User can chat immediately — scan is non-blocking.
   const scanOtherPages = async (storeBaseUrl: string) => {
-    console.log('[MULTI-PAGE-SCAN] Starting silent scan of all store pages...');
-    const base = storeBaseUrl.replace(/\/$/, ''); // strip trailing slash
-
+    const base = storeBaseUrl.replace(/\/$/, '');
     const extraSnapshots: string[] = [];
 
-    // 1. Products page — filter sidebar, products grid
     try {
       setPagesScanStatus('Scanning products page...');
       const snap = await loadPageAndCapture(base + '/products', 'PRODUCTS');
       if (snap) extraSnapshots.push('<!-- PRODUCTS PAGE -->\n' + snap);
-    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Products failed:', e); }
+    } catch (_e) {}
 
-    // 2. Categories page
     try {
       setPagesScanStatus('Scanning categories page...');
       const snap = await loadPageAndCapture(base + '/categories', 'CATEGORIES');
       if (snap) extraSnapshots.push('<!-- CATEGORIES PAGE -->\n' + snap);
-    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Categories failed:', e); }
+    } catch (_e) {}
 
-    // 3. Product detail page — find first product link from home page
     try {
       const productUrl = findFirstProductUrl();
       if (productUrl) {
@@ -1200,26 +1107,20 @@ const AIDesigner = () => {
         const snap = await loadPageAndCapture(productUrl, 'PRODUCT-DETAIL');
         if (snap) extraSnapshots.push('<!-- PRODUCT DETAIL PAGE -->\n' + snap);
       }
-    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Product detail failed:', e); }
+    } catch (_e) {}
 
-    // Combine home snapshot + extra page snapshots
     if (extraSnapshots.length > 0) {
       const homeSnap = cleanHTMLSnapshotRef.current || '';
       const combined = '<!-- HOME PAGE -->\n' + homeSnap + '\n\n' + extraSnapshots.join('\n\n');
       cleanHTMLSnapshotRef.current = combined;
       setCleanHTMLSnapshot(combined);
-      console.log('[MULTI-PAGE-SCAN] Done. Combined snapshot: ' + combined.length + ' chars, ' + extraSnapshots.length + ' extra pages');
-    } else {
-      console.warn('[MULTI-PAGE-SCAN] No extra pages captured — AI will work with home page only');
     }
 
-    setPagesScanStatus(null); // clear indicator
+    setPagesScanStatus(null);
   };
   // ─────────────────────────────────────────────────────────────────────
 
   const handleIframeLoad = () => {
-    console.log('[AI-DEBUG] iframe onLoad fired, previewDesign in ref:', !!previewDesignRef.current);
-
     // CAPTURE CLEAN HTML SNAPSHOT — retry with delays for React hydration
     // The iframe loads an HTML shell first, then React mounts [data-ai] elements.
     // onLoad fires before React hydrates, so we retry until elements appear.
@@ -1230,7 +1131,6 @@ const AIDesigner = () => {
       if (snapshot && snapshot.length > 0) {
         cleanHTMLSnapshotRef.current = snapshot;
         setCleanHTMLSnapshot(snapshot);
-        console.log('[HTML-SNAPSHOT] Captured on attempt', attempt + 1, '- length:', snapshot.length);
 
         // Trigger silent multi-page scan — runs once, non-blocking, enriches the snapshot
         if (!hasScannedRef.current && storeUrl) {
@@ -1240,10 +1140,9 @@ const AIDesigner = () => {
       } else if (attempt < 5) {
         // React hasn't rendered [data-ai] elements yet — retry
         const delays = [500, 1500, 3000, 5000, 8000];
-        console.log('[HTML-SNAPSHOT] Attempt', attempt + 1, 'found no elements, retrying in', delays[attempt] + 'ms');
         setTimeout(() => attemptSnapshotCapture(attempt + 1), delays[attempt]);
       } else {
-        console.warn('[HTML-SNAPSHOT] All 5 attempts failed — no [data-ai] elements found. Layer 2 will not be available.');
+        // All attempts failed — Layer 2 will not be available
       }
     };
     attemptSnapshotCapture(0);

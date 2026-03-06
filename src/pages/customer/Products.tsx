@@ -234,10 +234,10 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
           <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside data-ai="filter-sidebar" className={`lg:w-64 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-            <Card className="sticky top-24">
+            <Card data-ai="filter-card" className="sticky top-24">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <h2 data-ai="filter-heading" className="text-lg font-bold text-foreground flex items-center gap-2">
                     <Filter className="w-5 h-5" />
                     Filters
                   </h2>
@@ -254,11 +254,11 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
                 {/* Categories */}
                 {categories.length > 0 && (
-                  <div className="mb-6">
-                    <Label className="text-sm font-semibold mb-3 block">Categories</Label>
+                  <div data-ai="categories-section" className="mb-6">
+                    <Label data-ai="categories-label" className="text-sm font-semibold mb-3 block">Categories</Label>
                     <div data-ai="category-checkboxes" className="space-y-3">
                       {categories.map((category) => (
-                        <div key={category} className="flex items-center gap-2">
+                        <div data-ai="category-item" key={category} className="flex items-center gap-2">
                           <Checkbox
                             id={category}
                             checked={selectedCategories.includes(category)}
@@ -277,8 +277,8 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                 )}
 
                 {/* Price Range */}
-                <div>
-                  <Label className="text-sm font-semibold mb-3 block">
+                <div data-ai="price-range-section">
+                  <Label data-ai="price-range-label" className="text-sm font-semibold mb-3 block">
                     Price Range
                   </Label>
                   <div className="px-2">
@@ -291,7 +291,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                       onValueChange={setPriceRange}
                       className="mb-4"
                     />
-                    <div className="flex justify-between text-sm text-muted-foreground">
+                    <div data-ai="price-range-values" className="flex justify-between text-sm text-muted-foreground">
                       <span>₹{priceRange[0]}</span>
                       <span>₹{priceRange[1]}</span>
                     </div>
@@ -306,7 +306,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-foreground">All Products</h1>
+                <h1 data-ai="products-heading" className="text-2xl font-bold text-foreground">All Products</h1>
                 <p data-ai="products-count" className="text-muted-foreground">
                   Showing {filteredProducts.length} products
                 </p>
