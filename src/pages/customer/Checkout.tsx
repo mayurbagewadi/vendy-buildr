@@ -1411,7 +1411,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     <span className="text-muted-foreground">
                       Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
                     </span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
+                    <span data-ai="price-subtotal">₹{cartTotal.toFixed(2)}</span>
                   </div>
 
                   {(discountAmount > 0 || autoDiscountAmount > 0) && (
@@ -1436,13 +1436,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Delivery</span>
-                    <span className="text-success">FREE</span>
+                    <span data-ai="price-delivery" className="text-success">FREE</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold">Total</span>
-                  <span className="text-2xl font-bold text-primary">₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount)).toFixed(2)}</span>
+                  <span data-ai="price-total" className="text-2xl font-bold text-primary">₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount)).toFixed(2)}</span>
                 </div>
 
                 <div className="bg-accent p-3 rounded-lg">

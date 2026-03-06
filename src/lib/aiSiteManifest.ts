@@ -61,6 +61,9 @@ export const STORE_SITE_MANIFEST = {
       selectors: {
         checkout_form:     "[data-ai='checkout-form']     — left column: customer info + address + payment method cards",
         checkout_summary:  "[data-ai='checkout-summary']  — right column: order summary with items, totals, coupon, place order button",
+        price_subtotal:    "[data-ai='price-subtotal']    — subtotal amount display (₹xxx)",
+        price_delivery:    "[data-ai='price-delivery']    — delivery cost display (FREE)",
+        price_total:       "[data-ai='price-total']       — final total amount display (₹xxx)",
       }
     },
   },
@@ -115,6 +118,9 @@ CART PAGE (/cart):
 CHECKOUT PAGE (/checkout):
   [data-ai="checkout-form"]      customer info + address + payment method selection
   [data-ai="checkout-summary"]   order items, totals, coupon input, place order button
+  [data-ai="price-subtotal"]     subtotal amount (₹xxx)
+  [data-ai="price-delivery"]     delivery cost (FREE)
+  [data-ai="price-total"]        final total amount (₹xxx)
 
 IMPORTANT: Write CSS for ALL relevant selectors — not just what you see in the preview.
 The preview shows the home page only. Your CSS will be applied to ALL pages listed above.`;
