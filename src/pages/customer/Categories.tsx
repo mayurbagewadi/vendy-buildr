@@ -195,7 +195,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-b from-muted/30 to-background py-16">
+        <section data-ai="categories-page" className="bg-gradient-to-b from-muted/30 to-background py-16">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
@@ -207,7 +207,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
             </div>
 
             {/* Categories Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div data-ai="categories-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {categories.map((category) => (
                 <CategoryCard
                   key={category.id}

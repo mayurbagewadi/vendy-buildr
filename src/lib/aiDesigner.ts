@@ -441,6 +441,7 @@ export async function generateFullCSSStream(
   imageBase64?: string,
   signal?: AbortSignal,
   onThinking?: (text: string) => void,
+  siteManifest?: string,
 ): Promise<{ css: string; tokens_remaining: number; changes_list?: string[]; message?: string }> {
   // Use raw fetch() to support SSE streaming from the edge function.
   // supabase.functions.invoke() buffers the full response and cannot read SSE events.
@@ -466,6 +467,7 @@ export async function generateFullCSSStream(
         : [{ role: "user", content: prompt }],
       theme: theme || "light",
       ...(imageBase64 ? { image_base64: imageBase64 } : {}),
+      ...(siteManifest ? { site_manifest: siteManifest } : {}),
     }),
   });
 

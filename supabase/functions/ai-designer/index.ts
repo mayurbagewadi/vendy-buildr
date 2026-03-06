@@ -522,11 +522,15 @@ function mergeCSS(existing: string, incoming: string): string {
   return (filteredExisting.trim() + '\n\n/* --- AI Update --- */\n' + incoming.trim()).trim();
 }
 
-function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, existingCSS: string, theme: string = "light"): string {
+function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, existingCSS: string, theme: string = "light", siteManifest: string = ""): string {
   console.log("[LAYER2] Building Mode B system prompt - AI decides own scope");
 
   const stateContext = existingCSS
     ? "CURRENTLY APPLIED CSS (preserve rules you don't need to change):\n" + existingCSS + "\n\n"
+    : "";
+
+  const manifestContext = siteManifest
+    ? siteManifest + "\n\n"
     : "";
 
   const isDark = theme === "dark";
@@ -546,7 +550,8 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "You speak warmly and naturally — like a talented designer explaining their work to a client.\n" +
     "You always generate CSS first, then explain your thinking in a conversational way.\n\n" +
     themeContext +
-    "STORE HTML (use these exact selectors):\n" + htmlStructure + "\n\n" +
+    manifestContext +
+    "HOME PAGE HTML SNAPSHOT (visual structure reference — preview iframe shows this page only):\n" + htmlStructure + "\n\n" +
     stateContext +
     "Your approach:\n" +
     "- ALWAYS generate CSS immediately. Never refuse. Never ask questions.\n" +
@@ -554,7 +559,8 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- Output ONLY new or modified CSS rules. Existing unchanged rules are preserved automatically.\n" +
     "- If you need to override an existing rule, include it with updated values.\n" +
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
-    "- Use real selectors from the HTML above. Only valid CSS, no JavaScript.\n\n" +
+    "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
+    "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
     "```css\n[your CSS here]\n```\n\n" +
     "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
@@ -1301,7 +1307,7 @@ serve(async (req) => {
       console.log("╚══════════════════════════════════════════════════╝\n");
       console.log("📥 Request received at:", new Date().toISOString());
 
-      const { html_structure, layer1_baseline, theme: layer2Theme, image_base64 } = body;
+      const { html_structure, layer1_baseline, theme: layer2Theme, image_base64, site_manifest } = body;
       console.log("📊 Payload sizes:");
       console.log("  ├─ HTML structure:", html_structure?.length || 0, "chars");
       console.log("  ├─ Layer1 baseline:", JSON.stringify(layer1_baseline || {}).length, "chars");
@@ -1389,7 +1395,7 @@ serve(async (req) => {
 
       // Build Layer 2 system prompt — Mode B (AI decides own scope)
       // Uses DB-sourced existing CSS for context (not conversation-history based)
-      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, existingCSS, layer2Theme || "light");
+      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, existingCSS, layer2Theme || "light", site_manifest || "");
 
       console.log("[LAYER2] System prompt length:", systemPrompt.length, "chars");
       const isStreaming = body.stream === true;

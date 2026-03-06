@@ -958,7 +958,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Customer Information Form */}
-          <div className="lg:col-span-2">
+          <div data-ai="checkout-form" className="lg:col-span-2">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
@@ -1323,7 +1323,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           </div>
 
           {/* Order Review */}
-          <div className="lg:col-span-1">
+          <div data-ai="checkout-summary" className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>

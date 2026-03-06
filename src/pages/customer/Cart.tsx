@@ -84,7 +84,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
-          <div className="lg:col-span-2">
+          <div data-ai="cart-items" className="lg:col-span-2">
             <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
             <div className="space-y-4">
               {cart.map((item) => (
@@ -177,7 +177,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
           </div>
 
           {/* Order Summary */}
-          <div className="lg:col-span-1">
+          <div data-ai="cart-summary" className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>

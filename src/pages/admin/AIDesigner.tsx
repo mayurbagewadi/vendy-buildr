@@ -51,6 +51,7 @@ import {
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
+import { getManifestForPrompt } from "@/lib/aiSiteManifest";
 
 // ═══ STRUCTURAL SKELETON EXTRACTOR ═══
 // Converts a DOM element into a clean structural skeleton for the AI.
@@ -699,6 +700,7 @@ const AIDesigner = () => {
               ));
             }
           },
+          getManifestForPrompt(), // Site manifest — gives AI full knowledge of all pages
         );
         setAttachedImage(null); // Clear image after send
 

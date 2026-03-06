@@ -233,7 +233,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
         ) : (
           <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
-          <aside className={`lg:w-64 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+          <aside data-ai="filter-sidebar" className={`lg:w-64 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <Card className="sticky top-24">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -300,7 +300,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
           </aside>
 
           {/* Products Grid */}
-          <div className="flex-1">
+          <div data-ai="products-grid" className="flex-1">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>

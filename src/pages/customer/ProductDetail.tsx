@@ -493,7 +493,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Image Gallery with Swipe Support */}
-          <div>
+          <div data-ai="product-gallery">
             {/* Mobile: Swipeable Carousel */}
             <div className="lg:hidden mb-4">
               <Carousel className="w-full" opts={{ loop: true }}>
@@ -657,7 +657,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           </div>
 
           {/* Product Info */}
-          <div>
+          <div data-ai="product-info">
             <div className="mb-4">
               <Badge variant="secondary" className="mb-2">{product.category}</Badge>
               <h1 className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
@@ -666,7 +666,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
             {/* Variant Selection */}
             {product.variants && product.variants.length > 0 ? (
-              <Card ref={variantSectionRef} className={`mb-6 ${!selectedVariant ? 'ring-2 ring-primary/50 ring-offset-2' : ''}`}>
+              <Card data-ai="variant-selector" ref={variantSectionRef} className={`mb-6 ${!selectedVariant ? 'ring-2 ring-primary/50 ring-offset-2' : ''}`}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Label className="text-base font-semibold">
@@ -735,7 +735,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             )}
 
             {/* Quantity Selector - Touch Optimized */}
-            <div className="mb-6">
+            <div data-ai="quantity-selector" className="mb-6">
               <Label className="text-base font-semibold mb-3 block">Quantity</Label>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center border border-border rounded-lg">
@@ -770,7 +770,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             </div>
 
             {/* Action Buttons - Desktop Only */}
-            <div className="space-y-3 mb-6 hidden md:block">
+            <div data-ai="product-actions" className="space-y-3 mb-6 hidden md:block">
               <Button
                 onClick={handleAddToCart}
                 className="w-full min-h-[48px]"
@@ -821,7 +821,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
         {/* Related Products Section */}
         {relatedProducts.length > 0 && (
-          <div className="mt-16">
+          <div data-ai="related-products" className="mt-16">
             <h2 className="text-2xl font-bold text-foreground mb-6">
               More Products
             </h2>
@@ -845,7 +845,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       </main>
 
       {/* Sticky Bottom Bar with Add to Cart - Mobile Only */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg z-50 safe-area-inset-bottom">
+      <div data-ai="mobile-add-to-cart" className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg z-50 safe-area-inset-bottom">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
             {/* Price and Variant Info */}
