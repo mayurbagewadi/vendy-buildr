@@ -468,6 +468,64 @@ export async function resetLayer2(storeId: string): Promise<void> {
 }
 
 /**
+ * Debug: Log which CSS rules AI generated for Products filter and Checkout elements
+ */
+function logAICSSForPages(css: string): void {
+  // Extract individual CSS rules
+  const rulePattern = /([^{]+)\{([^}]+)\}/g;
+  const filterRules: string[] = [];
+  const checkoutRules: string[] = [];
+
+  const FILTER_ATTRS = [
+    'filter-sidebar', 'filter-card', 'filter-heading', 'filter-toggle-mobile',
+    'categories-section', 'categories-label', 'category-checkboxes', 'category-item',
+    'price-range-section', 'price-range-label', 'price-range-slider', 'price-range-values',
+    'clear-filters-button', 'products-heading', 'products-grid', 'products-count', 'sort-button',
+  ];
+
+  const CHECKOUT_ATTRS = [
+    'checkout-page-heading', 'checkout-form', 'checkout-summary',
+    'customer-info-card', 'customer-info-heading',
+    'delivery-address-card', 'delivery-address-heading',
+    'payment-method-card', 'payment-method-heading', 'payment-option',
+    'place-order-button',
+    'order-summary-heading', 'order-item',
+    'coupon-section', 'coupon-input', 'apply-coupon-button',
+    'price-subtotal', 'price-delivery', 'price-total', 'price-discount',
+  ];
+
+  let match;
+  while ((match = rulePattern.exec(css)) !== null) {
+    const selector = match[1].trim();
+    const props = match[2].trim();
+    const rule = selector + ' {\n  ' + props.replace(/;\s*/g, ';\n  ').trim() + '\n}';
+
+    if (FILTER_ATTRS.some(attr => selector.includes(attr))) {
+      filterRules.push(rule);
+    }
+    if (CHECKOUT_ATTRS.some(attr => selector.includes(attr))) {
+      checkoutRules.push(rule);
+    }
+  }
+
+  if (filterRules.length > 0) {
+    console.group('%c[AI-DEBUG] Products Filter CSS (' + filterRules.length + ' rules)', 'color: #6366f1; font-weight: bold;');
+    filterRules.forEach(rule => console.log(rule));
+    console.groupEnd();
+  } else {
+    console.log('%c[AI-DEBUG] Products Filter: No CSS rules generated for filter elements', 'color: #f59e0b;');
+  }
+
+  if (checkoutRules.length > 0) {
+    console.group('%c[AI-DEBUG] Checkout Page CSS (' + checkoutRules.length + ' rules)', 'color: #10b981; font-weight: bold;');
+    checkoutRules.forEach(rule => console.log(rule));
+    console.groupEnd();
+  } else {
+    console.log('%c[AI-DEBUG] Checkout Page: No CSS rules generated for checkout elements', 'color: #f59e0b;');
+  }
+}
+
+/**
  * Inject Layer 2 CSS into iframe
  */
 export function injectLayer2CSS(iframe: HTMLIFrameElement, css: string): void {
@@ -482,4 +540,7 @@ export function injectLayer2CSS(iframe: HTMLIFrameElement, css: string): void {
   styleEl.setAttribute('data-ai-layer', '2');
   styleEl.textContent = css;
   doc.head.appendChild(styleEl);
+
+  // Log which rules target Products filter and Checkout elements
+  logAICSSForPages(css);
 }
