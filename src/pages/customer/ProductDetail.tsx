@@ -659,9 +659,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           {/* Product Info */}
           <div data-ai="product-info">
             <div className="mb-4">
-              <Badge variant="secondary" className="mb-2">{product.category}</Badge>
-              <h1 className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
-              <p className="text-muted-foreground">{product.description}</p>
+              <Badge data-ai="category-badge" variant="secondary" className="mb-2">{product.category}</Badge>
+              <h1 data-ai="product-name" className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
+              <p data-ai="product-description" className="text-muted-foreground">{product.description}</p>
             </div>
 
             {/* Variant Selection */}
@@ -728,7 +728,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
               </Card>
             ) : (
               <div className="mb-6">
-                <p className="text-3xl font-bold text-primary">
+                <p data-ai="product-price" className="text-3xl font-bold text-primary">
                   {product.price_range || product.priceRange || `₹${product.basePrice || product.base_price || 0}`}
                 </p>
               </div>
@@ -806,12 +806,12 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   {baseSku && (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">SKU:</dt>
-                      <dd className="font-medium">{baseSku}</dd>
+                      <dd data-ai="product-sku" className="font-medium">{baseSku}</dd>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Availability:</dt>
-                    <dd className="font-medium text-success">In Stock</dd>
+                    <dd data-ai="product-availability" className="font-medium text-success">In Stock</dd>
                   </div>
                 </dl>
               </CardContent>
@@ -822,7 +822,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         {/* Related Products Section */}
         {relatedProducts.length > 0 && (
           <div data-ai="related-products" className="mt-16">
-            <h2 className="text-2xl font-bold text-foreground mb-6">
+            <h2 data-ai="more-products-heading" className="text-2xl font-bold text-foreground mb-6">
               More Products
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

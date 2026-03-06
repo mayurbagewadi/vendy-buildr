@@ -85,7 +85,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div data-ai="cart-items" className="lg:col-span-2">
-            <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
+            <h1 data-ai="cart-page-heading" className="text-3xl font-bold mb-6">Shopping Cart</h1>
             <div className="space-y-4">
               {cart.map((item) => (
                 <Card key={`${item.productId}-${item.variant}`}>
@@ -93,6 +93,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                     <div className="flex gap-4">
                       {/* Product Image */}
                       <LazyImage
+                        data-ai="cart-item-image"
                         src={item.productImage}
                         alt={item.productName}
                         className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg flex-shrink-0"
@@ -102,9 +103,9 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h3 className="font-semibold text-lg">{item.productName}</h3>
+                            <h3 data-ai="cart-item-name" className="font-semibold text-lg">{item.productName}</h3>
                             {item.variant && (
-                              <p className="text-sm text-muted-foreground">
+                              <p data-ai="cart-item-variant" className="text-sm text-muted-foreground">
                                 Variant: {item.variant}
                               </p>
                             )}
@@ -113,6 +114,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                             )}
                           </div>
                           <Button
+                            data-ai="remove-item-button"
                             variant="ghost"
                             size="icon"
                             onClick={() => removeItem(item.productId, item.variant)}
@@ -123,7 +125,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
                           {/* Quantity Controls - Touch Optimized */}
-                          <div className="flex items-center border border-border rounded-lg w-fit">
+                          <div data-ai="quantity-buttons" className="flex items-center border border-border rounded-lg w-fit">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -163,7 +165,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                             <p className="text-sm text-muted-foreground">
                               ₹{item.price} each
                             </p>
-                            <p className="text-xl font-bold text-primary">
+                            <p data-ai="cart-item-price" className="text-xl font-bold text-primary">
                               ₹{item.price * item.quantity}
                             </p>
                           </div>
@@ -183,21 +185,21 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
                 
                 <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-muted-foreground">
+                  <div data-ai="order-summary-labels" className="flex justify-between text-muted-foreground">
                     <span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
                     <span>₹{cartTotal}</span>
                   </div>
-                  <div className="flex justify-between text-muted-foreground">
+                  <div data-ai="order-summary-labels" className="flex justify-between text-muted-foreground">
                     <span>Delivery</span>
                     <span className="text-success">FREE</span>
                   </div>
                   <div className="border-t border-border pt-3 flex justify-between items-center">
-                    <span className="text-lg font-semibold">Total</span>
+                    <span data-ai="order-summary-labels" className="text-lg font-semibold">Total</span>
                     <span className="text-2xl font-bold text-primary">₹{cartTotal}</span>
                   </div>
                 </div>
 
-                <Button asChild className="w-full min-h-[48px]" size="lg">
+                <Button data-ai="checkout-button" asChild className="w-full min-h-[48px]" size="lg">
                   <Link to={checkoutLink}>
                     Proceed to Checkout
                   </Link>

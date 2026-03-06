@@ -963,7 +963,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
+                    <h2 data-ai="customer-info-heading" className="text-xl font-semibold mb-4">Customer Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -1012,7 +1012,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                 <Card>
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Delivery Address</h2>
+                    <h2 data-ai="delivery-address-heading" className="text-xl font-semibold mb-4">Delivery Address</h2>
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
@@ -1180,7 +1180,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                 <Card>
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
+                    <h2 data-ai="payment-method-heading" className="text-xl font-semibold mb-4">Payment Method</h2>
 
                     {paymentMethods.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">

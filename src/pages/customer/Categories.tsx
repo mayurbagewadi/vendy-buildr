@@ -198,10 +198,10 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
         <section data-ai="categories-page" className="bg-gradient-to-b from-muted/30 to-background py-16">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              <h1 data-ai="categories-hero-heading" className="text-4xl md:text-5xl font-bold text-foreground mb-4">
                 Shop by Category
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p data-ai="categories-hero-subtitle" className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Explore our curated collections designed just for you
               </p>
             </div>

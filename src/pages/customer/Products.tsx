@@ -242,6 +242,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                     Filters
                   </h2>
                   <Button
+                    data-ai="clear-filters-button"
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
@@ -255,7 +256,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                 {categories.length > 0 && (
                   <div className="mb-6">
                     <Label className="text-sm font-semibold mb-3 block">Categories</Label>
-                    <div className="space-y-3">
+                    <div data-ai="category-checkboxes" className="space-y-3">
                       {categories.map((category) => (
                         <div key={category} className="flex items-center gap-2">
                           <Checkbox
@@ -282,6 +283,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                   </Label>
                   <div className="px-2">
                     <Slider
+                      data-ai="price-range-slider"
                       min={0}
                       max={10000}
                       step={100}
@@ -305,12 +307,13 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">All Products</h1>
-                <p className="text-muted-foreground">
+                <p data-ai="products-count" className="text-muted-foreground">
                   Showing {filteredProducts.length} products
                 </p>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
+                  data-ai="filter-toggle-mobile"
                   variant="outline"
                   onClick={() => setShowFilters(!showFilters)}
                   className="lg:hidden flex-1"
@@ -319,7 +322,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                   Filters
                 </Button>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger data-ai="sort-button" className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
