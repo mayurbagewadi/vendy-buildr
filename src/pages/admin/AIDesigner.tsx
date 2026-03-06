@@ -160,6 +160,33 @@ function captureCleanHTMLSnapshot(iframe: HTMLIFrameElement): string {
   return html;
 }
 
+// Capture structural skeleton from ANY page — scans all [data-ai] elements universally.
+// Used for hidden-iframe multi-page scanning (Products, Categories, ProductDetail).
+// Unlike captureCleanHTMLSnapshot (home-page-specific), this works for any page type.
+function captureOtherPageSnapshot(iframe: HTMLIFrameElement, label: string): string {
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc || !doc.body) return "";
+
+  const parts: string[] = [];
+  const seen = new Set<string>();
+
+  // Scan every [data-ai] element in document order — no hardcoded target list
+  const elements = doc.querySelectorAll('[data-ai]');
+  for (const el of elements) {
+    const dataAiVal = el.getAttribute('data-ai');
+    if (!dataAiVal || seen.has(dataAiVal)) continue;
+    seen.add(dataAiVal);
+    const skeleton = extractSkeleton(el, 0, 4); // 4 levels deep keeps it concise
+    if (skeleton.trim()) {
+      parts.push('<!-- ' + dataAiVal + ' -->\n' + skeleton.trim());
+    }
+  }
+
+  const html = parts.join('\n\n');
+  console.log('[SCAN-' + label + '] Captured ' + parts.length + ' elements, ' + html.length + ' chars');
+  return html;
+}
+
 // UI message type (shown in the chat UI)
 interface UIMessage {
   id: string;
@@ -226,6 +253,7 @@ const AIDesigner = () => {
   const savedLayer2CSSRef = useRef<string | null>(null); // Layer 2 CSS loaded from DB on page load (persists across refreshes)
   const imageInputRef = useRef<HTMLInputElement>(null); // Hidden file input for image attachment
   const abortControllerRef = useRef<AbortController | null>(null); // Signal to abort streaming AI response
+  const hasScannedRef = useRef(false); // Prevent duplicate multi-page scans (run once per session)
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -250,6 +278,7 @@ const AIDesigner = () => {
   const [cleanHTMLSnapshot, setCleanHTMLSnapshot] = useState<string | null>(null); // Clean HTML captured on first load, used for all AI requests
   const [designVersions, setDesignVersions] = useState<Array<{ id: string; design: AIDesignResult; timestamp: Date }>>([]);
   const [attachedImage, setAttachedImage] = useState<string | null>(null); // Base64 image to send with next message
+  const [pagesScanStatus, setPagesScanStatus] = useState<string | null>(null); // "Scanning products page..." etc, null = done
 
   useEffect(() => {
     loadInitialData();
@@ -652,7 +681,7 @@ const AIDesigner = () => {
         const layer2Result = await generateFullCSSStream(
           storeId,
           userId,
-          cleanHTML.slice(0, 6000), // Structural skeleton — all sections fit within ~4-5K chars
+          cleanHTML.slice(0, 10000), // Multi-page structural skeleton (home + products + categories + detail)
           null, // Layer 1 data not available - AI will work with HTML context alone
           text,
           layer2History,
@@ -1028,6 +1057,7 @@ const AIDesigner = () => {
       cleanHTMLSnapshotRef.current = null;
       setCleanHTMLSnapshot(null);
       cumulativeCSSRef.current = '';
+      hasScannedRef.current = false; // allow re-scan after reset
       savedLayer2CSSRef.current = null;
       setDesignVersions([]);
       // Remember that user explicitly reset — prevents history design from being restored on refresh
@@ -1084,6 +1114,109 @@ const AIDesigner = () => {
     }
   };
 
+  // ── Multi-page scan helpers ────────────────────────────────────────────
+  // Load a URL in a hidden off-screen iframe, wait for React hydration,
+  // capture all [data-ai] skeletons, then destroy the iframe.
+  const loadPageAndCapture = (url: string, label: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const hiddenIframe = document.createElement('iframe');
+      hiddenIframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1280px;height:900px;visibility:hidden;pointer-events:none;z-index:-1;';
+      document.body.appendChild(hiddenIframe);
+
+      let attemptCount = 0;
+      const retryDelays = [1500, 2500, 4000, 6000, 8000];
+      let finished = false;
+
+      const finish = (snapshot: string) => {
+        if (finished) return;
+        finished = true;
+        try { document.body.removeChild(hiddenIframe); } catch { /* already removed */ }
+        resolve(snapshot);
+      };
+
+      const tryCapture = () => {
+        const snapshot = captureOtherPageSnapshot(hiddenIframe, label);
+        if (snapshot.length > 0) {
+          finish(snapshot);
+        } else if (attemptCount < retryDelays.length) {
+          setTimeout(tryCapture, retryDelays[attemptCount++]);
+        } else {
+          console.warn('[MULTI-PAGE-SCAN] ' + label + ' — no [data-ai] elements after all retries');
+          finish('');
+        }
+      };
+
+      hiddenIframe.onload = () => setTimeout(tryCapture, retryDelays[attemptCount++]);
+      hiddenIframe.src = url;
+
+      // Safety net — never hang for more than 25 seconds
+      setTimeout(() => { console.warn('[MULTI-PAGE-SCAN] ' + label + ' timed out'); finish(''); }, 25000);
+    });
+  };
+
+  // Walk the home page iframe's links to find the first product detail URL
+  const findFirstProductUrl = (): string | null => {
+    if (!iframeRef.current) return null;
+    const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
+    if (!doc) return null;
+    const links = Array.from(doc.querySelectorAll('a[href]')) as HTMLAnchorElement[];
+    for (const link of links) {
+      const href = link.getAttribute('href') || '';
+      // Match /products/some-slug or /storeslug/products/some-slug (but NOT bare /products)
+      if (href.match(/\/products\/.+/) && !href.endsWith('/products')) {
+        return window.location.origin + href;
+      }
+    }
+    return null;
+  };
+
+  // Silently scan Products, Categories, and a product detail page in hidden iframes.
+  // Runs ONCE after home page snapshot is captured. User can chat immediately — scan is non-blocking.
+  const scanOtherPages = async (storeBaseUrl: string) => {
+    console.log('[MULTI-PAGE-SCAN] Starting silent scan of all store pages...');
+    const base = storeBaseUrl.replace(/\/$/, ''); // strip trailing slash
+
+    const extraSnapshots: string[] = [];
+
+    // 1. Products page — filter sidebar, products grid
+    try {
+      setPagesScanStatus('Scanning products page...');
+      const snap = await loadPageAndCapture(base + '/products', 'PRODUCTS');
+      if (snap) extraSnapshots.push('<!-- PRODUCTS PAGE -->\n' + snap);
+    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Products failed:', e); }
+
+    // 2. Categories page
+    try {
+      setPagesScanStatus('Scanning categories page...');
+      const snap = await loadPageAndCapture(base + '/categories', 'CATEGORIES');
+      if (snap) extraSnapshots.push('<!-- CATEGORIES PAGE -->\n' + snap);
+    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Categories failed:', e); }
+
+    // 3. Product detail page — find first product link from home page
+    try {
+      const productUrl = findFirstProductUrl();
+      if (productUrl) {
+        setPagesScanStatus('Scanning product detail page...');
+        const snap = await loadPageAndCapture(productUrl, 'PRODUCT-DETAIL');
+        if (snap) extraSnapshots.push('<!-- PRODUCT DETAIL PAGE -->\n' + snap);
+      }
+    } catch (e) { console.warn('[MULTI-PAGE-SCAN] Product detail failed:', e); }
+
+    // Combine home snapshot + extra page snapshots
+    if (extraSnapshots.length > 0) {
+      const homeSnap = cleanHTMLSnapshotRef.current || '';
+      const combined = '<!-- HOME PAGE -->\n' + homeSnap + '\n\n' + extraSnapshots.join('\n\n');
+      cleanHTMLSnapshotRef.current = combined;
+      setCleanHTMLSnapshot(combined);
+      console.log('[MULTI-PAGE-SCAN] Done. Combined snapshot: ' + combined.length + ' chars, ' + extraSnapshots.length + ' extra pages');
+    } else {
+      console.warn('[MULTI-PAGE-SCAN] No extra pages captured — AI will work with home page only');
+    }
+
+    setPagesScanStatus(null); // clear indicator
+  };
+  // ─────────────────────────────────────────────────────────────────────
+
   const handleIframeLoad = () => {
     console.log('[AI-DEBUG] iframe onLoad fired, previewDesign in ref:', !!previewDesignRef.current);
 
@@ -1098,6 +1231,12 @@ const AIDesigner = () => {
         cleanHTMLSnapshotRef.current = snapshot;
         setCleanHTMLSnapshot(snapshot);
         console.log('[HTML-SNAPSHOT] Captured on attempt', attempt + 1, '- length:', snapshot.length);
+
+        // Trigger silent multi-page scan — runs once, non-blocking, enriches the snapshot
+        if (!hasScannedRef.current && storeUrl) {
+          hasScannedRef.current = true;
+          scanOtherPages(storeUrl); // intentionally not awaited — user can chat immediately
+        }
       } else if (attempt < 5) {
         // React hasn't rendered [data-ai] elements yet — retry
         const delays = [500, 1500, 3000, 5000, 8000];
@@ -1426,6 +1565,12 @@ const AIDesigner = () => {
           {previewDesign && (
             <Badge variant="outline" className="text-primary border-primary text-xs">
               AI Applied
+            </Badge>
+          )}
+          {pagesScanStatus && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+              {pagesScanStatus}
             </Badge>
           )}
         </div>
