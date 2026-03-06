@@ -494,6 +494,16 @@ function logAICSSForPages(css: string): void {
     'price-subtotal', 'price-delivery', 'price-total', 'price-discount',
   ];
 
+  const filterButtonRules: string[] = [];
+
+  // Button selectors to watch — catches AI targeting buttons inside filter/products area
+  const FILTER_BUTTON_SELECTORS = [
+    'clear-filters-button', 'filter-toggle-mobile', 'sort-button',
+    // Generic button selectors scoped to filter/products
+    'filter-sidebar', 'filter-card', 'products-grid',
+  ];
+  const GENERIC_BUTTON_PATTERNS = ['button', 'btn', '[type="button"]', '[type="submit"]', 'SelectTrigger'];
+
   let match;
   while ((match = rulePattern.exec(css)) !== null) {
     const selector = match[1].trim();
@@ -506,6 +516,16 @@ function logAICSSForPages(css: string): void {
     if (CHECKOUT_ATTRS.some(attr => selector.includes(attr))) {
       checkoutRules.push(rule);
     }
+
+    // Catch button rules: specific button data-ai attrs OR generic button inside filter scope
+    const isButtonDataAI = ['clear-filters-button', 'filter-toggle-mobile', 'sort-button'].some(attr => selector.includes(attr));
+    const isScopedButton = FILTER_BUTTON_SELECTORS.some(scope => selector.includes(scope))
+      && GENERIC_BUTTON_PATTERNS.some(btn => selector.toLowerCase().includes(btn.toLowerCase()));
+    const isGlobalButton = GENERIC_BUTTON_PATTERNS.some(btn => selector.toLowerCase().includes(btn.toLowerCase()));
+
+    if (isButtonDataAI || isScopedButton || isGlobalButton) {
+      filterButtonRules.push('[SCOPE: ' + (isButtonDataAI ? 'filter-button' : isScopedButton ? 'filter-scoped' : 'global') + '] ' + rule);
+    }
   }
 
   if (filterRules.length > 0) {
@@ -514,6 +534,14 @@ function logAICSSForPages(css: string): void {
     console.groupEnd();
   } else {
     console.log('%c[AI-DEBUG] Products Filter: No CSS rules generated for filter elements', 'color: #f59e0b;');
+  }
+
+  if (filterButtonRules.length > 0) {
+    console.group('%c[AI-DEBUG] Filter Buttons CSS (' + filterButtonRules.length + ' rules — includes global button rules)', 'color: #a855f7; font-weight: bold;');
+    filterButtonRules.forEach(rule => console.log(rule));
+    console.groupEnd();
+  } else {
+    console.log('%c[AI-DEBUG] Filter Buttons: No button CSS rules generated', 'color: #f59e0b;');
   }
 
   if (checkoutRules.length > 0) {
