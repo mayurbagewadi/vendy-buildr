@@ -453,6 +453,7 @@ export async function generateFullCSSStream(
         ? conversationHistory
         : [{ role: "user", content: prompt }],
       theme: theme || "light",
+      stream: true,
       ...(imageBase64 ? { image_base64: imageBase64 } : {}),
       ...(siteManifest ? { site_manifest: siteManifest } : {}),
       idempotency_key,
