@@ -777,7 +777,14 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
     "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
     "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n" +
-    "- DO NOT auto-apply gradients. Only use solid colors by default. You MAY suggest gradients in your SUMMARY as an optional enhancement (e.g., 'Would you like a gradient hero? Let me know!'). Only generate gradient CSS if user explicitly asks 'add gradient', 'make it gradient', etc.\n" +
+    "- GRADIENT RULE (CRITICAL):\n" +
+    "  * By default: NO gradients. Use solid colors only.\n" +
+    "  * If user says: 'add gradient', 'make gradient', 'gradient design', 'gradient hero', etc → GENERATE GRADIENTS immediately.\n" +
+    "  * Allowed gradient sections when user asks: [data-ai=\"section-hero\"], [data-ai=\"header\"], [data-ai=\"section-featured\"], footer areas, buttons.\n" +
+    "  * Gradient syntax: background: linear-gradient(135deg, color1, color2); or background: radial-gradient(...);\n" +
+    "  * Define colors inline (no var() for gradients): background: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 45%));\n" +
+    "  * You can suggest gradients in SUMMARY: 'Would you like a gradient instead? Let me know!'\n" +
+    "  * When user says yes to gradients, update the design with actual linear-gradient or radial-gradient CSS.\n\n"
     "- PROTECTED FORM ELEMENTS — DO NOT MODIFY THESE UNDER ANY CIRCUMSTANCES:\n" +
     "  [data-ai=\"checkout-field-input\"], [data-ai=\"checkout-field-label\"], [data-ai=\"checkout-form\"],\n" +
     "  [data-ai=\"customer-info-card\"], [data-ai=\"delivery-address-card\"], [data-ai=\"payment-method-card\"],\n" +
@@ -793,8 +800,11 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "  * If you use an animation like animation: aurora 15s ease infinite, you MUST define @keyframes aurora { ... }\n" +
     "  * NEVER reference a variable or animation that isn't defined. The browser will ignore undefined values.\n" +
     "  * When using gradients, define them as CSS variables or inline, never as undefined var() references.\n" +
-    "- NEVER add or change background or background-color on section containers, cards, or page wrappers (like [data-ai=\"section-hero\"], [data-ai=\"checkout-form\"], [data-ai=\"filter-card\"], [data-ai=\"cart-summary\"], [data-ai=\"customer-info-card\"] etc.) unless the user EXPLICITLY asks to change the background or color. If user says 'change font', 'make buttons rounded', 'update border' — do NOT touch any background property on sections or cards.\n" +
-    "- Background changes are ONLY allowed on: badges, tags, price labels, individual product cards, and accent elements — never on full-page sections, card wrappers, or form containers.\n\n" +
+    "- BACKGROUND CHANGE RULE:\n" +
+    "  * Protected: [data-ai=\"checkout-form\"], [data-ai=\"filter-card\"], [data-ai=\"cart-summary\"], [data-ai=\"customer-info-card\"], [data-ai=\"delivery-address-card\"] — NEVER change backgrounds on these.\n" +
+    "  * Allowed when user explicitly asks: [data-ai=\"section-hero\"], [data-ai=\"header\"], [data-ai=\"section-featured\"], footer, buttons, badges, tags — these CAN have background changes.\n" +
+    "  * If user says 'change font', 'make buttons rounded', 'update border' but NOT 'background' or 'gradient' — do NOT touch background property.\n" +
+    "  * If user says 'add gradient', 'gradient design', 'gradient hero' → APPLY BACKGROUND GRADIENTS to hero/header/footer immediately.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
     "```css\n[your CSS here]\n```\n\n" +
     "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
