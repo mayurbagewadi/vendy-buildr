@@ -505,13 +505,21 @@ export async function generateFullCSSStream(
 
   if (!result) throw new Error("Stream ended without a result");
   if (result.error) throw new Error(result.error);
-  if (!result.css) throw new Error("No CSS received from AI");
+
+  // If CSS missing from stream response, fetch from DB as fallback
+  // (edge function saves to store_design_state before sending done event)
+  let css = result.css;
+  if (!css) {
+    console.warn("[generateFullCSSStream] No CSS in stream response, fetching from DB...");
+    css = await getLayer2CSS(storeId) || "";
+  }
+  if (!css) throw new Error("No CSS received from AI");
 
   return {
-    css: result.css,
-    tokens_remaining: result.tokens_remaining,
-    changes_list: result.changes_list,
-    message: result.message,
+    css,
+    tokens_remaining: result.tokens_remaining || 0,
+    changes_list: result.changes_list || [],
+    message: result.message || "Design applied successfully",
   };
 }
 

@@ -808,14 +808,18 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "  * Allowed when user explicitly asks: [data-ai=\"section-hero\"], [data-ai=\"header\"], [data-ai=\"section-featured\"], footer, buttons, badges, tags — these CAN have background changes.\n" +
     "  * If user says 'change font', 'make buttons rounded', 'update border' but NOT 'background' or 'gradient' — do NOT touch background property.\n" +
     "  * If user says 'add gradient', 'gradient design', 'gradient hero' → APPLY BACKGROUND GRADIENTS to hero/header/footer immediately.\n\n" +
-    "Output format (follow EXACTLY):\n\n" +
+    "Output format (MANDATORY — you MUST include all 3 parts: CSS, SUMMARY, and CHANGES):\n\n" +
     "```css\n[your CSS here]\n```\n\n" +
-    "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
-    "Example: \"I gave your hero section a bold primary color background — paired with softer product cards so the eye flows naturally.\"]\n\n" +
+    "SUMMARY: [REQUIRED — 1-2 sentence friendly explanation of what you changed and why. Talk to the store owner directly. " +
+    "Example: \"I gave your hero a bold purple-pink gradient with glass-effect header — your product cards now have clean rounded corners for a premium feel.\"]\n\n" +
     "CHANGES:\n" +
-    "SECTION: [area name]\n" +
-    "CHANGE: [what you changed and why]\n" +
-    "---";
+    "SECTION: [area name, e.g. Header, Hero, Product Cards]\n" +
+    "CHANGE: [specific change, e.g. Added gradient background with glass blur effect]\n" +
+    "---\n" +
+    "SECTION: [next area]\n" +
+    "CHANGE: [what you changed]\n" +
+    "---\n\n" +
+    "IMPORTANT: Always include SUMMARY and at least 2 CHANGES sections. Never skip them.";
 }
 
 // ─── Main handler ─────────────────────────────────────────────
