@@ -125,6 +125,45 @@ function sanitizeCSS(css: string): { safe: boolean; sanitized: string; blocked: 
   return { safe: blocked.length === 0, sanitized, blocked };
 }
 
+// ─── Form Element Protection (prevent breaking checkout/forms) ──────────
+function validateFormSafety(css: string): { safe: boolean; violations: string[] } {
+  const violations: string[] = [];
+
+  const protectedSelectors = [
+    'checkout-field-input', 'checkout-field-label', 'checkout-form',
+    'customer-info-card', 'delivery-address-card', 'payment-method-card',
+    'place-order-button', 'coupon-input', 'apply-coupon-button',
+    'cart-item', 'cart-summary', 'order-summary'
+  ];
+
+  const forbiddenProps = ['display', 'visibility', 'opacity', 'pointer-events', 'z-index', 'height', 'width', 'position', 'overflow'];
+
+  // Check for rules targeting protected elements with forbidden properties
+  const rulePattern = /\[data-ai="([^"]+)"\]\s*\{([^}]+)\}|button\s*\{([^}]+)\}|input\s*\{([^}]+)\}/gi;
+  let match;
+  while ((match = rulePattern.exec(css)) !== null) {
+    const selector = match[1] || '';
+    const props = match[2] || match[3] || match[4] || '';
+
+    // Check if selector is protected
+    const isProtected = protectedSelectors.some(p => selector.includes(p));
+    if (!isProtected) continue;
+
+    // Check for forbidden properties
+    forbiddenProps.forEach(prop => {
+      const propPattern = new RegExp(prop + '\\s*:', 'gi');
+      if (propPattern.test(props)) {
+        violations.push('Protected element [data-ai="' + selector + '"] cannot use property: ' + prop);
+      }
+    });
+  }
+
+  return {
+    safe: violations.length === 0,
+    violations
+  };
+}
+
 // ─── Design System Context (for AI Intelligence) ─────────────
 interface DesignSystemContext {
   availableColors: Record<string, string>;
@@ -679,8 +718,17 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
     "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n" +
     "- DO NOT auto-apply gradients. Only use solid colors by default. You MAY suggest gradients in your SUMMARY as an optional enhancement (e.g., 'Would you like a gradient hero? Let me know!'). Only generate gradient CSS if user explicitly asks 'add gradient', 'make it gradient', etc.\n" +
+    "- PROTECTED FORM ELEMENTS — DO NOT MODIFY THESE UNDER ANY CIRCUMSTANCES:\n" +
+    "  [data-ai=\"checkout-field-input\"], [data-ai=\"checkout-field-label\"], [data-ai=\"checkout-form\"],\n" +
+    "  [data-ai=\"customer-info-card\"], [data-ai=\"delivery-address-card\"], [data-ai=\"payment-method-card\"],\n" +
+    "  [data-ai=\"order-summary-heading\"], [data-ai=\"place-order-button\"],\n" +
+    "  [data-ai=\"coupon-input\"], [data-ai=\"apply-coupon-button\"],\n" +
+    "  [data-ai=\"cart-item\"], [data-ai=\"cart-summary\"],\n" +
+    "  button, input, textarea, select, [role=\"button\"], [role=\"radio\"], [role=\"checkbox\"]\n" +
+    "  FORBIDDEN PROPERTIES: display, visibility, opacity, pointer-events, z-index, height, width, position, overflow\n" +
+    "  If user asks to style buttons/inputs: only modify color, font, border-radius, padding — NEVER hide or disable them.\n" +
     "- NEVER add or change background or background-color on section containers, cards, or page wrappers (like [data-ai=\"section-hero\"], [data-ai=\"checkout-form\"], [data-ai=\"filter-card\"], [data-ai=\"cart-summary\"], [data-ai=\"customer-info-card\"] etc.) unless the user EXPLICITLY asks to change the background or color. If user says 'change font', 'make buttons rounded', 'update border' — do NOT touch any background property on sections or cards.\n" +
-    "- Background changes are ONLY allowed on: buttons, badges, tags, price labels, individual product cards, and accent elements — never on full-page sections or card wrappers.\n\n" +
+    "- Background changes are ONLY allowed on: badges, tags, price labels, individual product cards, and accent elements — never on full-page sections, card wrappers, or form containers.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
     "```css\n[your CSS here]\n```\n\n" +
     "SUMMARY: [1-2 sentence friendly explanation of what you did and why, like talking to the store owner. " +
@@ -1744,6 +1792,18 @@ serve(async (req) => {
                 changesList = ['Hero → Applied primary color', 'Products → Modern shadows'];
               }
 
+              // Validate form element safety
+              const formSafety = validateFormSafety(finalCSS);
+              if (!formSafety.safe) {
+                console.error('[FORM-PROTECTION] Violations detected:', formSafety.violations);
+                formSafety.violations.forEach(v => console.warn('[PROTECTION]', v));
+                // Strip out the dangerous rules
+                finalCSS = finalCSS.split('\n').filter(line => {
+                  return !formSafety.violations.some(v => line.includes(v.split('cannot use')[0].trim()));
+                }).join('\n');
+                console.log('[FORM-PROTECTION] Dangerous rules removed, CSS length:', finalCSS.length);
+              }
+
               // Merge with existing CSS
               const mergedCSS = mergeCSS(capturedExistingCSS, finalCSS);
 
@@ -2061,6 +2121,17 @@ serve(async (req) => {
                   updated_at: new Date().toISOString(),
                 }).eq("id", fresh.id).eq("version", fresh.version || 0);
               }
+            }
+
+            // Validate form element safety
+            const formSafety = validateFormSafety(finalCSS);
+            if (!formSafety.safe) {
+              console.error('[FORM-PROTECTION] Violations detected:', formSafety.violations);
+              formSafety.violations.forEach(v => console.warn('[PROTECTION]', v));
+              finalCSS = finalCSS.split('\n').filter(line => {
+                return !formSafety.violations.some(v => line.includes(v.split('cannot use')[0].trim()));
+              }).join('\n');
+              console.log('[FORM-PROTECTION] Dangerous rules removed, CSS length:', finalCSS.length);
             }
 
             // Merge + save to DB
