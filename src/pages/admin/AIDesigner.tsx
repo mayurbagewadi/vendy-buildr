@@ -357,7 +357,11 @@ const AIDesigner = () => {
 
           // Detect Layer 1 format (css_variables) or Layer 2 format (layer2_css)
           const hasLayer1Data = aiResponse.css_variables && Object.keys(aiResponse.css_variables).length > 0;
-          const hasLayer2Data = aiResponse.layer2_css && aiResponse.layer2_css.length > 0;
+          // Validate layer2_css is actual CSS — not a legacy description string like "[Applied CSS — N rules...]"
+          const isRealCSS = aiResponse.layer2_css &&
+            !aiResponse.layer2_css.startsWith('[Applied CSS') &&
+            !aiResponse.layer2_css.startsWith('[');
+          const hasLayer2Data = isRealCSS && aiResponse.layer2_css.length > 0;
           const hasDesignData = hasLayer1Data || hasLayer2Data;
           const isTextMessage = aiResponse.type === "text" || (!aiResponse.type && !hasDesignData);
 

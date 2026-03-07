@@ -673,7 +673,10 @@ function classifyUserIntent(userPrompt: string): "targeted" | "complete" {
     "colour scheme", "color scheme", "aesthetic", "rebrand", "restyle",
     "beautiful", "nice", "modern", "professional", "elegant", "fancy",
     "i want ", "make the", "change the", "update the", "improve the",
-    "website design", "store design", "shop design", "look good", "look nice"
+    "website design", "store design", "shop design", "look good", "look nice",
+    "gradient", "gradient design", "gradient theme", "gradient color", "gradient website",
+    "gradient store", "gradient style", "colourful", "colorful", "vibrant", "bold design",
+    "warm design", "cool design", "dark design", "light design", "minimal design"
   ];
   const result = completeKeywords.some(kw => lower.includes(kw)) ? "complete" : "targeted";
   console.log("[CLASSIFY] Keyword-based result:", result, "for:", userPrompt.slice(0, 50));
