@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
 import { supabase } from "@/integrations/supabase/client";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 interface HeaderProps {
   storeSlug?: string;
@@ -90,7 +91,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
           <Link to={homeLink} className="flex items-center gap-2 group">
             {storeLogoUrl ? (
               <img
-                src={storeLogoUrl}
+                src={convertToDirectImageUrl(storeLogoUrl) || storeLogoUrl}
                 alt={storeName || "Store logo"}
                 className="h-8 w-auto object-contain transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg"
               />
