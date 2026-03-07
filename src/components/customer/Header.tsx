@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils
 import { useToast } from "@/hooks/use-toast";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HeaderProps {
   storeSlug?: string;
@@ -17,6 +18,24 @@ interface HeaderProps {
 }
 
 const Header = ({ storeSlug, storeId }: HeaderProps) => {
+  const [storeName, setStoreName] = useState<string>("");
+  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!storeId) return;
+    supabase
+      .from('stores')
+      .select('name, logo_url')
+      .eq('id', storeId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setStoreName(data.name || "");
+          setStoreLogoUrl(data.logo_url || null);
+        }
+      });
+  }, [storeId]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
@@ -69,10 +88,20 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to={homeLink} className="flex items-center gap-2 group">
-            <AppLogo size={24} className="transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" />
-            <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
-              MyStore
-            </span>
+            {storeLogoUrl ? (
+              <img
+                src={storeLogoUrl}
+                alt={storeName || "Store logo"}
+                className="h-8 w-auto object-contain transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg"
+              />
+            ) : (
+              <AppLogo size={24} className="transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" />
+            )}
+            {storeName && (
+              <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
+                {storeName}
+              </span>
+            )}
           </Link>
 
           {/* Desktop Navigation */}
