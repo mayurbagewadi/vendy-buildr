@@ -96,12 +96,14 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
                 className="h-8 w-auto object-contain transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg"
               />
             ) : (
-              <AppLogo size={24} className="transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" />
-            )}
-            {storeName && (
-              <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
-                {storeName}
-              </span>
+              <>
+                <AppLogo size={24} className="transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" />
+                {storeName && (
+                  <span className="text-xl font-bold text-foreground hidden sm:block transition-colors duration-300 group-hover:text-primary">
+                    {storeName}
+                  </span>
+                )}
+              </>
             )}
           </Link>
 
