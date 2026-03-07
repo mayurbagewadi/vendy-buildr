@@ -83,6 +83,7 @@ interface StoreData {
     section_title: string;
   } | null;
   instagram_username: string | null;
+  google_reviews_enabled: boolean | null;
 }
 
 interface ProfileData {
@@ -411,8 +412,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     return "py-16";
   })();
 
-  // Check if Instagram Reels section will be shown
+  // Check if any section between Featured Products and New Arrivals will be shown
   const showInstagramReels = store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage;
+  const showGoogleReviews = store.google_reviews_enabled;
+  const hasMiddleSections = showInstagramReels || showGoogleReviews;
 
   const sectionPyLarge = (() => {
     const p = aiDesign?.layout?.section_padding;
@@ -504,7 +507,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             AI Can Change: Grid layout (columns), card backgrounds, shadows, border radius, product spacing, heading styles, button colors
             Selectors: [data-ai="section-featured"] - entire section | [data-ai="product-card"] - individual product cards
         */}
-        <section data-ai="section-featured" className={`py-16 ${showInstagramReels ? 'pb-16' : 'pb-4'} bg-background`}>
+        <section data-ai="section-featured" className={`py-16 ${hasMiddleSections ? 'pb-16' : 'pb-4'} bg-background`}>
           <div className="container mx-auto px-4">
             <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
               <div className="flex justify-between items-center mb-8">
@@ -564,14 +567,16 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             AI Can Change: Background colors, review card styles, spacing, border radius, text colors, heading styles, shadows
             Selectors: [data-ai="section-reviews"] - entire reviews section
         */}
-        <section data-ai="section-reviews" className={`${sectionPy} bg-muted/30`}>
-          <div className="container mx-auto px-4">
-            <GoogleReviewsSection
-              storeId={store.id}
-              autoPlay={true}
-            />
-          </div>
-        </section>
+        {store.google_reviews_enabled && (
+          <section data-ai="section-reviews" className={`${sectionPy} bg-muted/30`}>
+            <div className="container mx-auto px-4">
+              <GoogleReviewsSection
+                storeId={store.id}
+                autoPlay={true}
+              />
+            </div>
+          </section>
+        )}
 
         {/* ═══ NEW ARRIVALS SECTION ═══
             Purpose: Showcase recently added/new products
@@ -580,7 +585,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             Selectors: [data-ai="section-new-arrivals"] - entire section | [data-ai="product-card"] - individual product cards
         */}
         {newArrivals.length > 0 && (
-          <section data-ai="section-new-arrivals" className={`${showInstagramReels ? sectionPy : 'py-16 pt-4'}`}>
+          <section data-ai="section-new-arrivals" className={`${hasMiddleSections ? sectionPy : 'py-16 pt-4'}`}>
             <div className="container mx-auto px-4">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
                 <div className="flex justify-between items-center mb-8">
