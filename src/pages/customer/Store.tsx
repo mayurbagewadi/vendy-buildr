@@ -411,6 +411,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     return "py-16";
   })();
 
+  // Check if Instagram Reels section will be shown
+  const showInstagramReels = store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage;
+
   const sectionPyLarge = (() => {
     const p = aiDesign?.layout?.section_padding;
     if (p === "compact") return "py-10";
@@ -501,7 +504,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             AI Can Change: Grid layout (columns), card backgrounds, shadows, border radius, product spacing, heading styles, button colors
             Selectors: [data-ai="section-featured"] - entire section | [data-ai="product-card"] - individual product cards
         */}
-        <section data-ai="section-featured" className={`${sectionPy} bg-background`}>
+        <section data-ai="section-featured" className={`py-16 ${showInstagramReels ? 'pb-16' : 'pb-4'} bg-background`}>
           <div className="container mx-auto px-4">
             <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
               <div className="flex justify-between items-center mb-8">
@@ -577,7 +580,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             Selectors: [data-ai="section-new-arrivals"] - entire section | [data-ai="product-card"] - individual product cards
         */}
         {newArrivals.length > 0 && (
-          <section data-ai="section-new-arrivals" className={`${sectionPy}`}>
+          <section data-ai="section-new-arrivals" className={`${showInstagramReels ? sectionPy : 'py-16 pt-4'}`}>
             <div className="container mx-auto px-4">
               <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
                 <div className="flex justify-between items-center mb-8">
