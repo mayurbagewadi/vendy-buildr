@@ -47,6 +47,8 @@ import {
   generateFullCSS,
   generateFullCSSStream,
   injectLayer2CSS,
+  extractCSSVarsFromCSS,
+  validateDesignColors,
   type AIDesignResult,
   type TokenBalance,
   type ChatMessage as APIChatMessage,
@@ -729,6 +731,18 @@ const AIDesigner = () => {
         // Inject merged CSS into preview
         if (iframe) {
           injectLayer2CSS(iframe, layer2Result.css);
+        }
+
+        // Validate color harmony and WCAG accessibility
+        const cssVars = extractCSSVarsFromCSS(layer2Result.css);
+        if (Object.keys(cssVars).length > 0) {
+          const validation = validateDesignColors(cssVars);
+          if (validation.colorHarmony === 'dissonant') {
+            toast.warning('Color harmony: colors may clash. Ask AI for complementary or analogous colors.', { duration: 5000 });
+          }
+          validation.contrastIssues.forEach(issue => {
+            toast.warning('Accessibility: ' + issue, { duration: 6000 });
+          });
         }
 
         // Format AI message with Layer 2 design data for rich UI display

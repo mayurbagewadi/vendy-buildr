@@ -137,6 +137,104 @@ function isValidCSSValue(varName: string, value: string): boolean {
   return parts.length === 3;
 }
 
+// ── Color Harmony & Accessibility Validation ─────────────────────────────
+
+function parseHSL(value: string): { h: number; s: number; l: number } | null {
+  const match = value.trim().match(/^(\d+\.?\d*)\s+(\d+\.?\d*)%\s+(\d+\.?\d*)%$/);
+  if (!match) return null;
+  return { h: parseFloat(match[1]), s: parseFloat(match[2]), l: parseFloat(match[3]) };
+}
+
+function hslToLuminance(h: number, s: number, l: number): number {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+  };
+  const r = f(0), g = f(8), b = f(4);
+  const lin = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function wcagContrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function classifyHarmony(h1: number, h2: number): string {
+  let diff = Math.abs(h1 - h2) % 360;
+  if (diff > 180) diff = 360 - diff;
+  if (diff <= 30) return 'analogous';
+  if (Math.abs(diff - 180) <= 30) return 'complementary';
+  if (Math.abs(diff - 120) <= 25) return 'triadic';
+  if (Math.abs(diff - 150) <= 20) return 'split-complementary';
+  return 'dissonant';
+}
+
+export interface DesignValidation {
+  colorHarmony: string | null;
+  contrastIssues: string[];
+  accessibilityPassed: boolean;
+}
+
+/** Extract CSS variables from a :root block inside a full CSS string (Layer 2) */
+export function extractCSSVarsFromCSS(css: string): Record<string, string> {
+  const vars: Record<string, string> = {};
+  const rootMatch = css.match(/:root\s*\{([^}]+)\}/);
+  if (!rootMatch) return vars;
+  const varPattern = /--([a-zA-Z-]+):\s*([^;]+);/g;
+  let m;
+  while ((m = varPattern.exec(rootMatch[1])) !== null) {
+    vars[m[1]] = m[2].trim();
+  }
+  return vars;
+}
+
+/** Validate color harmony and WCAG contrast ratios. Returns issues found. */
+export function validateDesignColors(cssVars: Record<string, string>): DesignValidation {
+  const result: DesignValidation = {
+    colorHarmony: null,
+    contrastIssues: [],
+    accessibilityPassed: true,
+  };
+
+  const primary = cssVars['primary'] ? parseHSL(cssVars['primary']) : null;
+  const background = cssVars['background'] ? parseHSL(cssVars['background']) : null;
+  const foreground = cssVars['foreground'] ? parseHSL(cssVars['foreground']) : null;
+
+  // Color harmony: primary vs background hue relationship
+  if (primary && background) {
+    result.colorHarmony = classifyHarmony(primary.h, background.h);
+  }
+
+  // WCAG AA: text on background contrast (min 4.5:1 for normal text)
+  if (foreground && background) {
+    const fgLum = hslToLuminance(foreground.h, foreground.s, foreground.l);
+    const bgLum = hslToLuminance(background.h, background.s, background.l);
+    const ratio = wcagContrastRatio(fgLum, bgLum);
+    if (ratio < 4.5) {
+      result.contrastIssues.push('Text contrast ' + ratio.toFixed(1) + ':1 (WCAG AA requires 4.5:1)');
+      result.accessibilityPassed = false;
+    }
+  }
+
+  // WCAG AA: primary color on background (min 3:1 for large/bold text)
+  if (primary && background) {
+    const pLum = hslToLuminance(primary.h, primary.s, primary.l);
+    const bgLum = hslToLuminance(background.h, background.s, background.l);
+    const ratio = wcagContrastRatio(pLum, bgLum);
+    if (ratio < 3.0) {
+      result.contrastIssues.push('Primary color contrast ' + ratio.toFixed(1) + ':1 (WCAG AA large text requires 3:1)');
+      result.accessibilityPassed = false;
+    }
+  }
+
+  return result;
+}
+
 // Build a CSS string from design variables to inject into a style tag
 export function buildDesignCSS(design: AIDesignResult): string {
   // Default fallback values for incomplete CSS variables

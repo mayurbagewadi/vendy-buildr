@@ -678,7 +678,7 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
     "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
     "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n" +
-    "- NEVER use gradients (linear-gradient, radial-gradient, conic-gradient) unless the user EXPLICITLY asks for a gradient. Use solid colors only by default.\n" +
+    "- DO NOT auto-apply gradients. Only use solid colors by default. You MAY suggest gradients in your SUMMARY as an optional enhancement (e.g., 'Would you like a gradient hero? Let me know!'). Only generate gradient CSS if user explicitly asks 'add gradient', 'make it gradient', etc.\n" +
     "- NEVER add or change background or background-color on section containers, cards, or page wrappers (like [data-ai=\"section-hero\"], [data-ai=\"checkout-form\"], [data-ai=\"filter-card\"], [data-ai=\"cart-summary\"], [data-ai=\"customer-info-card\"] etc.) unless the user EXPLICITLY asks to change the background or color. If user says 'change font', 'make buttons rounded', 'update border' — do NOT touch any background property on sections or cards.\n" +
     "- Background changes are ONLY allowed on: buttons, badges, tags, price labels, individual product cards, and accent elements — never on full-page sections or card wrappers.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
