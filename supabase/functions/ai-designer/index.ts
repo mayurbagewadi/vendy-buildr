@@ -164,6 +164,66 @@ function validateFormSafety(css: string): { safe: boolean; violations: string[] 
   };
 }
 
+// ─── CSS Variable & Animation Validation ──────────────────────────────
+function validateCSSIntegrity(css: string): { valid: boolean; issues: string[]; fixed: string } {
+  const issues: string[] = [];
+  let fixed = css;
+
+  // Extract all CSS variable definitions
+  const definedVars = new Set<string>();
+  const varDefPattern = /--([a-zA-Z0-9-]+)\s*:/g;
+  let varMatch;
+  while ((varMatch = varDefPattern.exec(css)) !== null) {
+    definedVars.add('--' + varMatch[1]);
+  }
+
+  // Find all CSS variable usages
+  const varUsagePattern = /var\(--([a-zA-Z0-9-]+)\)/g;
+  const usedVars = new Set<string>();
+  let usageMatch;
+  while ((usageMatch = varUsagePattern.exec(css)) !== null) {
+    usedVars.add('--' + usageMatch[1]);
+  }
+
+  // Check for undefined variables
+  usedVars.forEach(varName => {
+    if (!definedVars.has(varName)) {
+      issues.push('Undefined CSS variable: ' + varName);
+    }
+  });
+
+  // Extract all animation names
+  const definedAnimations = new Set<string>();
+  const keyframesPattern = /@keyframes\s+([a-zA-Z0-9-]+)\s*\{/g;
+  let kfMatch;
+  while ((kfMatch = keyframesPattern.exec(css)) !== null) {
+    definedAnimations.add(kfMatch[1]);
+  }
+
+  // Find all animation usages
+  const animationPattern = /animation\s*:\s*([a-zA-Z0-9-]+)/g;
+  const usedAnimations = new Set<string>();
+  let animMatch;
+  while ((animMatch = animationPattern.exec(css)) !== null) {
+    usedAnimations.add(animMatch[1]);
+  }
+
+  // Check for undefined animations
+  usedAnimations.forEach(animName => {
+    if (!definedAnimations.has(animName) && animName !== 'none') {
+      issues.push('Undefined @keyframes animation: ' + animName);
+      // Remove the animation rule
+      fixed = fixed.replace(new RegExp('animation\\s*:\\s*' + animName + '\\s*[^;]*;', 'g'), 'animation: none;');
+    }
+  });
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    fixed
+  };
+}
+
 // ─── Design System Context (for AI Intelligence) ─────────────
 interface DesignSystemContext {
   availableColors: Record<string, string>;
@@ -727,6 +787,12 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "  button, input, textarea, select, [role=\"button\"], [role=\"radio\"], [role=\"checkbox\"]\n" +
     "  FORBIDDEN PROPERTIES: display, visibility, opacity, pointer-events, z-index, height, width, position, overflow\n" +
     "  If user asks to style buttons/inputs: only modify color, font, border-radius, padding — NEVER hide or disable them.\n" +
+    "- CSS VARIABLE & ANIMATION RULES (CRITICAL):\n" +
+    "  * If you use a CSS variable like var(--my-color), you MUST define it in a :root block at the start of your CSS.\n" +
+    "    Example: :root { --my-color: #ff0000; --glass-bg: rgba(255,255,255,0.1); }\n" +
+    "  * If you use an animation like animation: aurora 15s ease infinite, you MUST define @keyframes aurora { ... }\n" +
+    "  * NEVER reference a variable or animation that isn't defined. The browser will ignore undefined values.\n" +
+    "  * When using gradients, define them as CSS variables or inline, never as undefined var() references.\n" +
     "- NEVER add or change background or background-color on section containers, cards, or page wrappers (like [data-ai=\"section-hero\"], [data-ai=\"checkout-form\"], [data-ai=\"filter-card\"], [data-ai=\"cart-summary\"], [data-ai=\"customer-info-card\"] etc.) unless the user EXPLICITLY asks to change the background or color. If user says 'change font', 'make buttons rounded', 'update border' — do NOT touch any background property on sections or cards.\n" +
     "- Background changes are ONLY allowed on: badges, tags, price labels, individual product cards, and accent elements — never on full-page sections, card wrappers, or form containers.\n\n" +
     "Output format (follow EXACTLY):\n\n" +
@@ -1804,6 +1870,15 @@ serve(async (req) => {
                 console.log('[FORM-PROTECTION] Dangerous rules removed, CSS length:', finalCSS.length);
               }
 
+              // Validate CSS variable and animation definitions
+              const integrity = validateCSSIntegrity(finalCSS);
+              if (!integrity.valid) {
+                console.error('[CSS-INTEGRITY] Issues detected:', integrity.issues);
+                integrity.issues.forEach(issue => console.warn('[INTEGRITY]', issue));
+                finalCSS = integrity.fixed;
+                console.log('[CSS-INTEGRITY] Fixed CSS, new length:', finalCSS.length);
+              }
+
               // Merge with existing CSS
               const mergedCSS = mergeCSS(capturedExistingCSS, finalCSS);
 
@@ -2132,6 +2207,15 @@ serve(async (req) => {
                 return !formSafety.violations.some(v => line.includes(v.split('cannot use')[0].trim()));
               }).join('\n');
               console.log('[FORM-PROTECTION] Dangerous rules removed, CSS length:', finalCSS.length);
+            }
+
+            // Validate CSS variable and animation definitions
+            const integrity = validateCSSIntegrity(finalCSS);
+            if (!integrity.valid) {
+              console.error('[CSS-INTEGRITY] Issues detected:', integrity.issues);
+              integrity.issues.forEach(issue => console.warn('[INTEGRITY]', issue));
+              finalCSS = integrity.fixed;
+              console.log('[CSS-INTEGRITY] Fixed CSS, new length:', finalCSS.length);
             }
 
             // Merge + save to DB
