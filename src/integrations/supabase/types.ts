@@ -117,6 +117,53 @@ export type Database = {
           },
         ]
       }
+      ai_generation_failures: {
+        Row: {
+          attempt_count: number | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          model: string | null
+          raw_ai_output: string | null
+          status: string | null
+          store_id: string
+          user_id: string
+          user_prompt: string
+        }
+        Insert: {
+          attempt_count?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          model?: string | null
+          raw_ai_output?: string | null
+          status?: string | null
+          store_id: string
+          user_id: string
+          user_prompt: string
+        }
+        Update: {
+          attempt_count?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          model?: string | null
+          raw_ai_output?: string | null
+          status?: string | null
+          store_id?: string
+          user_id?: string
+          user_prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_failures_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_history_archives: {
         Row: {
           archive_date: string
@@ -155,6 +202,69 @@ export type Database = {
           record_count?: number
         }
         Relationships: []
+      }
+      ai_token_ledger: {
+        Row: {
+          cached_css: string | null
+          completed_at: string | null
+          completion_tokens: number | null
+          cost_usd: number | null
+          created_at: string | null
+          id: string
+          idempotency_key: string
+          prompt_tokens: number | null
+          purchase_id: string | null
+          status: string | null
+          store_id: string
+          total_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          cached_css?: string | null
+          completed_at?: string | null
+          completion_tokens?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          id?: string
+          idempotency_key: string
+          prompt_tokens?: number | null
+          purchase_id?: string | null
+          status?: string | null
+          store_id: string
+          total_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          cached_css?: string | null
+          completed_at?: string | null
+          completion_tokens?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          id?: string
+          idempotency_key?: string
+          prompt_tokens?: number | null
+          purchase_id?: string | null
+          status?: string | null
+          store_id?: string
+          total_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_ledger_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "ai_token_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_token_ledger_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_token_packages: {
         Row: {
@@ -195,6 +305,7 @@ export type Database = {
       ai_token_purchases: {
         Row: {
           amount_paid: number
+          billing_mode: string | null
           created_at: string | null
           expires_at: string | null
           id: string
@@ -208,9 +319,11 @@ export type Database = {
           tokens_used: number | null
           updated_at: string | null
           user_id: string
+          version: number | null
         }
         Insert: {
           amount_paid: number
+          billing_mode?: string | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
@@ -224,9 +337,11 @@ export type Database = {
           tokens_used?: number | null
           updated_at?: string | null
           user_id: string
+          version?: number | null
         }
         Update: {
           amount_paid?: number
+          billing_mode?: string | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
@@ -240,6 +355,7 @@ export type Database = {
           tokens_used?: number | null
           updated_at?: string | null
           user_id?: string
+          version?: number | null
         }
         Relationships: [
           {
@@ -1771,27 +1887,39 @@ export type Database = {
       }
       store_design_state: {
         Row: {
+          ai_full_css: string | null
+          ai_full_css_applied_at: string | null
           created_at: string | null
           current_design: Json | null
           last_applied_at: string | null
+          layer1_snapshot: Json | null
+          mode: string | null
           store_id: string
           updated_at: string | null
           version: number | null
           version_history: Json | null
         }
         Insert: {
+          ai_full_css?: string | null
+          ai_full_css_applied_at?: string | null
           created_at?: string | null
           current_design?: Json | null
           last_applied_at?: string | null
+          layer1_snapshot?: Json | null
+          mode?: string | null
           store_id: string
           updated_at?: string | null
           version?: number | null
           version_history?: Json | null
         }
         Update: {
+          ai_full_css?: string | null
+          ai_full_css_applied_at?: string | null
           created_at?: string | null
           current_design?: Json | null
           last_applied_at?: string | null
+          layer1_snapshot?: Json | null
+          mode?: string | null
           store_id?: string
           updated_at?: string | null
           version?: number | null
