@@ -154,7 +154,8 @@ const Index = () => {
       title: "Instagram Videos",
       description: "Embed Instagram videos directly on your website for better engagement.",
       gradient: "from-fuchsia-500 to-pink-500",
-      size: "normal"
+      size: "normal",
+      comingSoon: true
     },
     {
       icon: LineChart,
@@ -570,6 +571,15 @@ const Index = () => {
 
                 {/* Decorative corner accent */}
                 <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-10 transition-opacity duration-500`} />
+
+                {/* Coming Soon Badge */}
+                {feature.comingSoon && (
+                  <div className="absolute top-3 right-3 z-20">
+                    <div className={`px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-lg`}>
+                      Coming Soon
+                    </div>
+                  </div>
+                )}
 
                 <div className="relative z-10 h-full flex flex-col">
                   {/* Icon with animated background - reduced glow by 50% */}
