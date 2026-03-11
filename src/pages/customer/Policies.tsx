@@ -71,12 +71,13 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
     try {
       setLoading(true);
       
-      const { data: store, error: storeError } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .single();
+      let storeQuery = supabase.from("stores").select("*").eq("is_active", true);
+      if (slug.includes('.')) {
+        storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+      } else {
+        storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+      }
+      const { data: store, error: storeError } = await storeQuery.maybeSingle();
 
       if (storeError || !store) {
         toast.error("Store not found");

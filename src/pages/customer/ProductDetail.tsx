@@ -109,11 +109,13 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         // Get store ID if we're on a store-scoped URL
         let currentStoreId: string | null = null;
         if (storeSlugFromRoute) {
-          const { data: store } = await supabase
-            .from('stores')
-            .select('id')
-            .eq('slug', storeSlugFromRoute)
-            .maybeSingle();
+          let storeQuery = supabase.from('stores').select('id');
+          if (storeSlugFromRoute.includes('.')) {
+            storeQuery = storeQuery.or(`custom_domain.eq.${storeSlugFromRoute},subdomain.eq.${storeSlugFromRoute}`);
+          } else {
+            storeQuery = storeQuery.or(`subdomain.eq.${storeSlugFromRoute},slug.eq.${storeSlugFromRoute}`);
+          }
+          const { data: store } = await storeQuery.maybeSingle();
 
           if (store?.id) {
             currentStoreId = store.id;

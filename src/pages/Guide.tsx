@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,11 +40,22 @@ const scrollbarHideStyles = `
   }
 `;
 
+interface SubOption {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  sections: {
+    heading: string;
+    content: string | string[];
+  }[];
+}
+
 interface MenuSection {
   id: string;
   title: string;
   icon: React.ReactNode;
-  content: {
+  content?: {
     title: string;
     description: string;
     sections: {
@@ -52,13 +63,60 @@ interface MenuSection {
       content: string | string[];
     }[];
   };
+  subOptions?: SubOption[];
   disabled?: boolean;
 }
 
 const Guide = () => {
   const [activeMenu, setActiveMenu] = useState("store-signup");
+  const [activeSubOption, setActiveSubOption] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [barPosition, setBarPosition] = useState(0);
+  const [barHeight, setBarHeight] = useState(0);
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+  const menuItemsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  // Toggle menu open/close - if clicking same item, close it
+  const handleMenuClick = (menuId: string) => {
+    if (activeMenu === menuId) {
+      // Clicking same menu - toggle close
+      setActiveMenu(null);
+      setActiveSubOption(null);
+    } else {
+      // Clicking different menu - open it
+      setActiveMenu(menuId);
+      const menuItem = menuItems.find(item => item.id === menuId);
+      if (menuItem?.subOptions && menuItem.subOptions.length > 0) {
+        setActiveSubOption(menuItem.subOptions[0].id);
+      } else {
+        setActiveSubOption(null);
+      }
+    }
+  };
+
+  // Update sliding bar position when active menu changes or when scrolling
+  useEffect(() => {
+    const updateBarPosition = () => {
+      const activeElement = menuItemsRef.current[activeMenu || ""];
+      if (activeElement && menuContainerRef.current) {
+        const container = menuContainerRef.current;
+        const elementTop = activeElement.offsetTop;
+        const elementHeight = activeElement.offsetHeight;
+
+        setBarPosition(elementTop);
+        setBarHeight(elementHeight);
+      }
+    };
+
+    updateBarPosition();
+
+    const container = menuContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", updateBarPosition);
+      return () => container.removeEventListener("scroll", updateBarPosition);
+    }
+  }, [activeMenu]);
 
   const menuItems: MenuSection[] = [
     {
@@ -471,6 +529,109 @@ const Guide = () => {
       }
     },
     {
+      id: "settings",
+      title: "Settings",
+      icon: "⚙️",
+      subOptions: [
+        {
+          id: "custom-domain",
+          label: "Custom Domain",
+          title: "Add Your Custom Domain - Complete Guide",
+          description: "Connect your own domain (like yourstore.com) to your DigitalDukandar store.",
+          sections: [
+            {
+              heading: "What You'll Need",
+              content: [
+                "• A custom domain (buy from GoDaddy, Namecheap, Hostinger, etc.)",
+                "• A free Cloudflare account (cloudflare.com)",
+                "• Your store admin access"
+              ]
+            },
+            {
+              heading: "STEP 1: Enter Domain in Your Store Admin Settings",
+              content: [
+                "1. Log in to your store admin panel",
+                "2. Go to Settings (bottom menu)",
+                "3. Scroll to 'Custom Domain' section",
+                "4. Enter your domain (e.g., sasumasale.com) - without http:// or https://",
+                "5. Click Save"
+              ]
+            },
+            {
+              heading: "STEP 2: Set Up Cloudflare (Free Account)",
+              content: [
+                "1. Go to cloudflare.com/sign-up",
+                "2. Create account with your email",
+                "3. Click 'Add a Domain'",
+                "4. Enter your domain name",
+                "5. Select Free Plan",
+                "6. Cloudflare will show you new nameservers"
+              ]
+            },
+            {
+              heading: "STEP 3: Update Nameservers in Your Domain Registrar",
+              content: [
+                "Go to where you bought your domain (GoDaddy, Namecheap, etc.):",
+                "",
+                "For GoDaddy:",
+                "  • Log in → My Products → Domains",
+                "  • Click your domain → Manage DNS",
+                "  • Replace nameservers with Cloudflare's",
+                "",
+                "For Namecheap:",
+                "  • Log in → Dashboard → Domain List",
+                "  • Click Manage → Nameservers tab",
+                "  • Select Custom DNS and enter Cloudflare nameservers",
+                "",
+                "⏱️ Wait 5-30 minutes for nameservers to propagate"
+              ]
+            },
+            {
+              heading: "STEP 4: Add CNAME Record in Cloudflare",
+              content: [
+                "1. In Cloudflare dashboard, go to DNS tab",
+                "2. Click 'Add Record'",
+                "3. Fill in:",
+                "   • Type: CNAME",
+                "   • Name: @ (root domain)",
+                "   • Content: digitaldukandar.in",
+                "   • Proxy: DNS only (gray cloud, not orange)",
+                "   • TTL: Auto",
+                "4. Click Save"
+              ]
+            },
+            {
+              heading: "STEP 5: Configure SSL in Cloudflare",
+              content: [
+                "1. Go to SSL/TLS → Overview",
+                "2. Change Encryption mode to 'Flexible'",
+                "3. Done! ✅"
+              ]
+            },
+            {
+              heading: "STEP 6: Verify It's Working",
+              content: [
+                "1. Open Command Prompt or Terminal",
+                "2. Run: curl -I https://yourdomain.com",
+                "3. Should see: HTTP/1.1 200 OK",
+                "4. Visit https://yourdomain.com in browser",
+                "5. Your store should load with all products"
+              ]
+            },
+            {
+              heading: "Troubleshooting",
+              content: [
+                "DNS Error? → Wait 5-30 minutes for propagation",
+                "404 or JSON error? → Proxy status must be 'DNS only' (gray cloud)",
+                "SSL Error? → Change Cloudflare encryption to 'Flexible'",
+                "Store not found? → Check domain is entered correctly in Settings"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       id: "products",
       title: "Products Management",
       icon: "📦",
@@ -552,23 +713,62 @@ const Guide = () => {
     }
   ];
 
-  const activeSection = menuItems.find(item => item.id === activeMenu);
+  const activeMenuItem = menuItems.find(item => item.id === activeMenu);
+
+  // Handle both new subOptions and old content structure
+  const getActiveSection = () => {
+    if (!activeMenu || !activeMenuItem) return null;
+
+    if (activeMenuItem.subOptions) {
+      const selected = activeMenuItem.subOptions.find(opt => opt.id === activeSubOption);
+      if (!selected && activeMenuItem.subOptions.length > 0) {
+        setActiveSubOption(activeMenuItem.subOptions[0].id);
+        return activeMenuItem.subOptions[0];
+      }
+      return selected;
+    }
+
+    return activeMenuItem.content ? { ...activeMenuItem.content, sections: activeMenuItem.content.sections } : null;
+  };
+
+  const activeSection = getActiveSection();
 
   // Real-time search filtering
   const filteredMenuItems = useMemo(() => {
     if (!searchQuery.trim()) return menuItems;
 
     const query = searchQuery.toLowerCase();
-    return menuItems.filter(item =>
-      item.title.toLowerCase().includes(query) ||
-      item.content.title.toLowerCase().includes(query) ||
-      item.content.description.toLowerCase().includes(query) ||
-      item.content.sections.some(section =>
-        section.heading.toLowerCase().includes(query) ||
-        (typeof section.content === 'string' && section.content.toLowerCase().includes(query)) ||
-        (Array.isArray(section.content) && section.content.some(c => c.toLowerCase().includes(query)))
-      )
-    );
+    return menuItems.filter(item => {
+      // Check item title
+      if (item.title.toLowerCase().includes(query)) return true;
+
+      // If item has content (old style), search within it
+      if (item.content) {
+        if (item.content.title.toLowerCase().includes(query)) return true;
+        if (item.content.description.toLowerCase().includes(query)) return true;
+        if (item.content.sections.some(section =>
+          section.heading.toLowerCase().includes(query) ||
+          (typeof section.content === 'string' && section.content.toLowerCase().includes(query)) ||
+          (Array.isArray(section.content) && section.content.some(c => c.toLowerCase().includes(query)))
+        )) return true;
+      }
+
+      // If item has subOptions (new style like Settings), search within it
+      if (item.subOptions && item.subOptions.length > 0) {
+        return item.subOptions.some(option =>
+          option.label.toLowerCase().includes(query) ||
+          option.title.toLowerCase().includes(query) ||
+          option.description.toLowerCase().includes(query) ||
+          option.sections.some(section =>
+            section.heading.toLowerCase().includes(query) ||
+            (typeof section.content === 'string' && section.content.toLowerCase().includes(query)) ||
+            (Array.isArray(section.content) && section.content.some(c => c.toLowerCase().includes(query)))
+          )
+        );
+      }
+
+      return false;
+    });
   }, [searchQuery, menuItems]);
 
   return (
@@ -648,10 +848,21 @@ const Guide = () => {
         <div className="flex gap-8 pb-8 h-full">
           {/* Sidebar Navigation */}
           <aside className={cn(
-            "w-72 lg:w-80 flex-shrink-0 transition-all duration-300 ease-in-out",
+            "w-72 lg:w-80 flex-shrink-0 transition-all duration-300 ease-in-out relative",
             sidebarOpen ? "block" : "hidden"
           )}>
-            <div className="sticky top-[120px] space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-3 hide-scrollbar">
+            {/* Sliding Bar - Outside scroll container */}
+            <div
+              className="absolute left-0 w-2 bg-gradient-to-b from-primary via-primary to-primary/80 rounded-r-lg z-10 shadow-md shadow-primary/40"
+              style={{
+                top: `calc(120px + ${barPosition}px)`,
+                height: `${barHeight}px`,
+                opacity: activeMenu ? 1 : 0,
+              }}
+            />
+
+            <div className="sticky top-[120px] space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-3 hide-scrollbar" ref={menuContainerRef}>
+
               <div className="mb-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 mb-3">
                   Guide Topics
@@ -659,32 +870,63 @@ const Guide = () => {
               </div>
 
               {filteredMenuItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveMenu(item.id);
-                  }}
-                  disabled={item.disabled}
-                  className={cn(
-                    "w-full text-left px-5 py-4 rounded-xl transition-all duration-300 flex items-center justify-between group menu-item-hover",
-                    "animate-fade-in-up",
-                    activeMenu === item.id
-                      ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]"
-                      : "hover:bg-muted/80 text-foreground/90 hover:text-foreground border border-border/30 hover:border-border/50 hover:shadow-md",
-                    item.disabled && "opacity-50 cursor-not-allowed hover:transform-none"
+                <div key={item.id} style={{ animationDelay: `${index * 0.05}s` }} className="animate-fade-in-up">
+                  {/* Main Menu Item */}
+                  <button
+                    ref={(el) => {
+                      if (el) menuItemsRef.current[item.id] = el;
+                    }}
+                    onClick={() => {
+                      handleMenuClick(item.id);
+                    }}
+                    disabled={item.disabled}
+                    className={cn(
+                      "w-full text-left px-5 py-4 rounded-xl transition-all duration-300 flex items-center justify-between group menu-item-hover",
+                      activeMenu === item.id
+                        ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]"
+                        : "hover:bg-muted/80 text-foreground/90 hover:text-foreground border border-border/30 hover:border-border/50 hover:shadow-md",
+                      item.disabled && "opacity-50 cursor-not-allowed hover:transform-none"
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="text-xl">{item.icon}</span>
+                      <span className="font-medium text-[15px]">{item.title}</span>
+                    </span>
+                    {item.disabled ? (
+                      <Lock className="w-3.5 h-3.5 opacity-50" />
+                    ) : item.subOptions && item.subOptions.length > 0 ? (
+                      <ChevronRight className={cn(
+                        "w-4 h-4 transition-transform duration-300",
+                        activeMenu === item.id && "rotate-90"
+                      )} />
+                    ) : activeMenu === item.id ? (
+                      <ChevronRight className="w-4 h-4 ml-auto transition-transform group-hover:translate-x-1" />
+                    ) : null}
+                  </button>
+
+                  {/* Sub-Options Dropdown (only for items with subOptions) */}
+                  {item.subOptions && item.subOptions.length > 0 && activeMenu === item.id && (
+                    <div className="mt-2 ml-2 pl-4 border-l-2 border-primary/30 space-y-2">
+                      {item.subOptions.map((subOption) => (
+                        <button
+                          key={subOption.id}
+                          onClick={() => setActiveSubOption(subOption.id)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 rounded-lg transition-all duration-200 text-sm font-medium",
+                            activeSubOption === subOption.id
+                              ? "bg-primary/20 text-primary border border-primary/50"
+                              : "text-foreground/70 hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border/50"
+                          )}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-current" />
+                            {subOption.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium text-[15px]">{item.title}</span>
-                  </span>
-                  {item.disabled ? (
-                    <Lock className="w-3.5 h-3.5 opacity-50" />
-                  ) : activeMenu === item.id ? (
-                    <ChevronRight className="w-4 h-4 ml-auto transition-transform group-hover:translate-x-1" />
-                  ) : null}
-                </button>
+                </div>
               ))}
 
               {searchQuery && filteredMenuItems.length === 0 && (
@@ -703,14 +945,14 @@ const Guide = () => {
                 {/* Title Section */}
                 <div className="border-b border-border/40 pb-8 pt-4">
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
-                    {activeSection.content.title}
+                    {activeSection?.title}
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-                    {activeSection.content.description}
+                    {activeSection?.description}
                   </p>
                 </div>
 
-                {activeSection.disabled ? (
+                {activeMenuItem?.disabled ? (
                   <div className="bg-gradient-to-br from-muted/40 to-muted/20 border-2 border-dashed border-muted-foreground/20 rounded-2xl p-16 text-center">
                     <div className="inline-flex p-4 bg-muted/50 rounded-full mb-4">
                       <Lock className="w-12 h-12 text-muted-foreground" />
@@ -722,7 +964,7 @@ const Guide = () => {
                   </div>
                 ) : (
                   <div className="space-y-12">
-                    {activeSection.content.sections.map((section, idx) => (
+                    {activeSection?.sections?.map((section, idx) => (
                       <section key={idx} className="scroll-mt-32">
                         <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground pt-4 pb-2 border-l-4 border-primary pl-6">
                           {section.heading}
@@ -763,7 +1005,7 @@ const Guide = () => {
                 )}
 
                 {/* CTA Section */}
-                {!activeSection.disabled && (
+                {!activeMenuItem?.disabled && (
                   <div className="mt-20 bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 rounded-2xl p-10 border border-primary/20 shadow-xl shadow-primary/5">
                     <h3 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">
                       Still have questions?

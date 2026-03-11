@@ -78,12 +78,13 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
         // Fetch store data if accessing via /:slug/categories
         if (slug) {
-          const { data: storeData } = await supabase
-            .from("stores")
-            .select("id, name")
-            .eq("slug", slug)
-            .eq("is_active", true)
-            .maybeSingle();
+          let storeQuery = supabase.from("stores").select("id, name").eq("is_active", true);
+          if (slug.includes('.')) {
+            storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+          } else {
+            storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+          }
+          const { data: storeData } = await storeQuery.maybeSingle();
 
           if (storeData) {
             storeIdToUse = storeData.id;

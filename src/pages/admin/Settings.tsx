@@ -1626,16 +1626,16 @@ const AdminSettings = () => {
                             <div className="bg-muted p-2 rounded mt-2 font-mono text-xs">
                               {isRootDomain ? (
                                 <>
-                                  <div>Type: A</div>
-                                  <div>Name: @ (or leave blank)</div>
-                                  <div>Value: Your Server IP</div>
-                                  <div className="mt-2 text-muted-foreground">Alternative: Use CNAME for www, then redirect @ to www</div>
+                                  <div>Type: CNAME</div>
+                                  <div>Name: @ (or your subdomain)</div>
+                                  <div>Value: digitaldukandar.in</div>
+                                  <div className="mt-2 text-muted-foreground">Use Cloudflare for free SSL</div>
                                 </>
                               ) : (
                                 <>
                                   <div>Type: CNAME</div>
                                   <div>Name: {subdomain}</div>
-                                  <div>Value: yesgive.shop</div>
+                                  <div>Value: digitaldukandar.in</div>
                                 </>
                               )}
                             </div>
