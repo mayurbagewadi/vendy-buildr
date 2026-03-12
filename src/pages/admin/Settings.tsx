@@ -638,11 +638,22 @@ const AdminSettings = () => {
       }
 
       for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
+        let file = validFiles[i];
 
         setUploadingFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 10 } : f
         ));
+
+        // Compress banner before uploading to Google Drive
+        try {
+          const originalSize = (file.size / 1024 / 1024).toFixed(2);
+          file = await compressImage(file, 5);
+          const compressedSize = (file.size / 1024 / 1024).toFixed(2);
+          console.log(`Banner compressed for Drive: ${originalSize}MB → ${compressedSize}MB`);
+        } catch (compressError) {
+          console.error('Compression failed:', compressError);
+          // Continue with original file if compression fails
+        }
 
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
@@ -666,7 +677,6 @@ const AdminSettings = () => {
           clearInterval(progressInterval);
 
           if (response.error) {
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
             throw new Error(response.error.message || 'Failed to upload image');
           }
 
@@ -674,19 +684,10 @@ const AdminSettings = () => {
             setUploadingFiles(prev => prev.map((f, idx) =>
               idx === i ? { ...f, progress: 100 } : f
             ));
-
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
             setFormData(prev => ({
               ...prev,
               heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
             }));
-
-            toast({
-              title: "Banner Uploaded",
-              description: `${file.name} uploaded successfully`,
-            });
           }
         } catch (fileError) {
           clearInterval(progressInterval);
@@ -694,9 +695,14 @@ const AdminSettings = () => {
         }
       }
 
-      // Reload media library and storage stats
+      setUploadingFiles([]);
+      toast({
+        title: "Banners Uploaded",
+        description: `Successfully uploaded ${validFiles.length} banner(s)`,
+      });
+
+      // Reload media library
       loadMediaLibrary();
-      loadSettings();
     } catch (error: any) {
       let errorMessage = error.message || '';
       if (error.context?.body) {
