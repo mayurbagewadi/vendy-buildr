@@ -179,8 +179,8 @@ serve(async (req) => {
       }),
     });
 
-    // Return the direct image URL using thumbnail API
-    const imageUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    // Return direct viewable image URL (works with img tags)
+    const imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
     console.log('File uploaded successfully:', { fileId, imageUrl });
 
