@@ -684,9 +684,11 @@ const AdminSettings = () => {
             setUploadingFiles(prev => prev.map((f, idx) =>
               idx === i ? { ...f, progress: 100 } : f
             ));
+            // Convert to thumbnail format (uc?export=view fails in img tags)
+            const bannerUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
             setFormData(prev => ({
               ...prev,
-              heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
+              heroBannerUrls: [...prev.heroBannerUrls, bannerUrl]
             }));
           }
         } catch (fileError) {
