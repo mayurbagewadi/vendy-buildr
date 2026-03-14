@@ -20,6 +20,7 @@ import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
 import { compressImage } from "@/lib/imageCompression";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 // Utility function to generate URL-friendly slugs from product names
 const generateSlug = (name: string): string => {
@@ -532,7 +533,9 @@ category: "",
               setUploadingFiles(prev => prev.map((f, idx) =>
                 idx === i ? { ...f, progress: 100 } : f
               ));
-              uploadedImageUrls.push(response.data.imageUrl);
+              // Convert to thumbnail format (uc?export=view fails in img tags)
+              const productImageUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
+              uploadedImageUrls.push(productImageUrl);
             }
           } catch (fileError) {
             clearInterval(progressInterval);
