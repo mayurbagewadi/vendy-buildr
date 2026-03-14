@@ -647,7 +647,7 @@ const AdminSettings = () => {
         // Compress banner before uploading to Google Drive
         try {
           const originalSize = (file.size / 1024 / 1024).toFixed(2);
-          file = await compressImage(file, 5);
+          file = await compressImage(file, 1);
           const compressedSize = (file.size / 1024 / 1024).toFixed(2);
           console.log(`Banner compressed for Drive: ${originalSize}MB → ${compressedSize}MB`);
         } catch (compressError) {
