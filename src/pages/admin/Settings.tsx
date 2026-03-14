@@ -684,9 +684,10 @@ const AdminSettings = () => {
             setUploadingFiles(prev => prev.map((f, idx) =>
               idx === i ? { ...f, progress: 100 } : f
             ));
+            const convertedUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
             setFormData(prev => ({
               ...prev,
-              heroBannerUrls: [...prev.heroBannerUrls, response.data.imageUrl]
+              heroBannerUrls: [...prev.heroBannerUrls, convertedUrl]
             }));
           }
         } catch (fileError) {
