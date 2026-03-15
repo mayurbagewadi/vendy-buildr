@@ -125,7 +125,7 @@ HOME PAGE:
   [data-ai="section-categories"] horizontal category chips row
   [data-ai="category-card"]      individual category card (image + name)
   [data-ai="section-featured"]   featured products section with heading
-  [data-ai="product-card"]       individual product card (image, name, price, add button)
+  [data-ai="product-card"]       individual product card. Inner HTML: Card > CardContent(image) + CardContent(category text + h3 name + p.text-primary price) + CardFooter(Button "View Details"). To style button: [data-ai="product-card"] button. To style price: [data-ai="product-card"] p.text-primary or override --primary. Do NOT use > div:last-child — use descendant selectors instead.
   [data-ai="section-footer"]     footer: store info, social links, policies
 
 PRODUCTS PAGE (/products):

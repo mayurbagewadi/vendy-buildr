@@ -757,6 +757,16 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
   // FIX 1: Few-shot example (P0) — AI imitates this format exactly
   const fewShotExample = "EXAMPLE OF A PERFECT RESPONSE:\n\n" +
     "```css\n" +
+    ":root {\n" +
+    "  --primary: 260 70% 50%;\n" +
+    "  --primary-foreground: 0 0% 100%;\n" +
+    "  --ring: 260 70% 50%;\n" +
+    "}\n" +
+    ".dark {\n" +
+    "  --primary: 260 70% 65%;\n" +
+    "  --primary-foreground: 0 0% 100%;\n" +
+    "  --ring: 260 70% 65%;\n" +
+    "}\n" +
     "[data-ai=\"section-hero\"] {\n" +
     "  background: linear-gradient(135deg, hsl(260 70% 50%), hsl(290 65% 45%));\n" +
     "  padding: 5rem 2rem;\n" +
@@ -841,7 +851,22 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "- If you need to override an existing rule, include it with updated values.\n" +
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
     "- Use ONLY selectors from the Site Manifest and HTML above. Only valid CSS, no JavaScript.\n" +
+    "- SELECTOR RULE: Use descendant selectors, NOT direct child (>). The HTML has nested wrapper components.\n" +
+    "  WRONG: [data-ai=\"product-card\"] > div:last-child button\n" +
+    "  RIGHT: [data-ai=\"product-card\"] button\n" +
+    "  RIGHT: [data-ai=\"product-card\"] h3\n" +
+    "  RIGHT: [data-ai=\"product-card\"] p\n" +
     "- When designing globally (colors, fonts, buttons), include ALL pages from the manifest — not just the home page.\n" +
+    "- THEME COLOR VARIABLE (CRITICAL):\n" +
+    "  * Many elements use Tailwind classes like text-primary, bg-primary, ring-primary, border-primary.\n" +
+    "  * These read from the CSS variable --primary (HSL format without hsl() wrapper, e.g. '330 81% 60%').\n" +
+    "  * When doing a color theme change (e.g. pink, green, purple), you MUST include a :root block that overrides --primary to match your theme.\n" +
+    "  * Available variables: --primary, --primary-foreground, --accent, --accent-foreground, --ring\n" +
+    "  * Format: :root { --primary: H S% L%; --primary-foreground: H S% L%; --ring: H S% L%; }\n" +
+    "  * Also include: .dark { --primary: H S% L%; --primary-foreground: H S% L%; --ring: H S% L%; }\n" +
+    "  * Example for pink theme: :root { --primary: 330 81% 60%; --primary-foreground: 0 0% 100%; --ring: 330 81% 60%; }\n" +
+    "  * This ensures radio buttons, prices, borders, and all Tailwind-based elements match your theme.\n" +
+    "  * For targeted changes (not theme changes), do NOT override :root variables.\n\n" +
     "- GRADIENT RULE (CRITICAL):\n" +
     "  * By default: NO gradients. Use solid colors only.\n" +
     "  * If user says: 'add gradient', 'make gradient', 'gradient design', 'gradient hero', etc → GENERATE GRADIENTS immediately.\n" +
