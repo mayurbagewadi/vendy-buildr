@@ -648,14 +648,19 @@ const AdminSettings = () => {
         uploadFormData.append('file', file);
         uploadFormData.append('type', 'banners');
 
+        console.log(`[DRIVE-UPLOAD] Starting upload: ${file.name}, size: ${(file.size/1024/1024).toFixed(2)}MB, type: ${file.type}`);
+
         const progressInterval = setInterval(() => {
           setUploadingFiles(prev => prev.map((f, idx) =>
             idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
           ));
         }, 200);
 
+        const uploadStartTime = Date.now();
+
         try {
           // Google Drive upload via edge function
+          console.log(`[DRIVE-UPLOAD] Calling edge function upload-to-drive...`);
           const response = await supabase.functions.invoke('upload-to-drive', {
             body: uploadFormData,
             headers: {
@@ -663,24 +668,36 @@ const AdminSettings = () => {
             },
           });
 
+          const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(1);
           clearInterval(progressInterval);
 
+          console.log(`[DRIVE-UPLOAD] Edge function responded in ${uploadDuration}s`);
+          console.log(`[DRIVE-UPLOAD] Response error:`, response.error);
+          console.log(`[DRIVE-UPLOAD] Response data:`, response.data);
+
           if (response.error) {
+            console.error(`[DRIVE-UPLOAD] Upload failed:`, response.error);
             throw new Error(response.error.message || 'Failed to upload image');
           }
 
           if (response.data?.imageUrl) {
+            console.log(`[DRIVE-UPLOAD] Success! imageUrl: ${response.data.imageUrl}, fileId: ${response.data.fileId}`);
             setUploadingFiles(prev => prev.map((f, idx) =>
               idx === i ? { ...f, progress: 100 } : f
             ));
             // Convert to thumbnail format (uc?export=view fails in img tags)
             const bannerUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
+            console.log(`[DRIVE-UPLOAD] Final banner URL: ${bannerUrl}`);
             setFormData(prev => ({
               ...prev,
               heroBannerUrls: [...prev.heroBannerUrls, bannerUrl]
             }));
+          } else {
+            console.warn(`[DRIVE-UPLOAD] No imageUrl in response. Full response:`, JSON.stringify(response.data));
           }
         } catch (fileError) {
+          const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(1);
+          console.error(`[DRIVE-UPLOAD] Exception after ${uploadDuration}s:`, fileError);
           clearInterval(progressInterval);
           throw fileError;
         }
