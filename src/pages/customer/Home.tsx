@@ -261,31 +261,7 @@ const Home = () => {
           </section>
         )}
 
-        {/* CTA Section */}
-        <section className="py-20 bg-primary text-primary-foreground">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Ready to Start Shopping?
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Explore thousands of products and great deals
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/products">
-                <Button size="lg" variant="secondary">
-                  Browse Products
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link to="/pricing">
-                <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
-                  View Pricing Plans
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
+
       </main>
 
       <Footer />
