@@ -61,6 +61,9 @@ const AddProduct = () => {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [pricingMode, setPricingMode] = useState<"single" | "variants">("single");
+  const [basePrice, setBasePrice] = useState("");
+  const [baseStock, setBaseStock] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
   const [storeId, setStoreId] = useState<string | null>(null);
@@ -397,6 +400,24 @@ category: "",
   };
 
   const onSubmit = async (data: ProductFormData) => {
+    // Validate pricing
+    if (pricingMode === "single" && (!basePrice || parseFloat(basePrice) <= 0)) {
+      toast({
+        title: "Price required",
+        description: "Please enter a valid product price",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (pricingMode === "variants" && variants.length === 0) {
+      toast({
+        title: "Variants required",
+        description: "Please add at least one variant or switch to single price",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check subscription limits before publishing
     if (data.status === "published" && !subscriptionLimits.canPublishProduct()) {
       toast({
@@ -561,12 +582,14 @@ category: "",
         status: data.status as 'published' | 'draft' | 'inactive',
         images: allImages,
         videoUrl: videoUrl.trim() || undefined,
-        variants: variants.map(v => ({
+        basePrice: pricingMode === "single" && basePrice ? parseFloat(basePrice) : undefined,
+        stock: pricingMode === "single" && baseStock ? parseInt(baseStock) : 0,
+        variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
           sku: v.sku,
-        })),
-        priceRange: getPriceRange() || undefined,
+        })) : [],
+        priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -723,16 +746,66 @@ category: "",
                   </CardContent>
                 </Card>
 
-                {/* Product Variants */}
+                {/* Pricing */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Product Variants</CardTitle>
+                    <CardTitle>Pricing</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Create different variations of your product (e.g., sizes, weights, colors)
+                      Set a single price or create multiple variants (e.g., sizes, weights, colors)
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Add New Variant */}
+                    {/* Pricing Mode Toggle */}
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={pricingMode === "single" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPricingMode("single")}
+                      >
+                        Single Price
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={pricingMode === "variants" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPricingMode("variants")}
+                      >
+                        Multiple Variants
+                      </Button>
+                    </div>
+
+                    {/* Single Price Mode */}
+                    {pricingMode === "single" && (
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium">Price (₹)</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={basePrice}
+                              onChange={(e) => setBasePrice(e.target.value)}
+                              className="no-spinner"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Stock</label>
+                            <Input
+                              type="number"
+                              placeholder="0 = Unlimited"
+                              value={baseStock}
+                              onChange={(e) => setBaseStock(e.target.value)}
+                              className="no-spinner"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Multiple Variants Mode */}
+                    {pricingMode === "variants" && (<>
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Add Variant</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -880,6 +953,7 @@ category: "",
                         </div>
                       </div>
                     )}
+                    </>)}
                   </CardContent>
                 </Card>
 
