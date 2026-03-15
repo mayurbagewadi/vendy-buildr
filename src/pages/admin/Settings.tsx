@@ -644,6 +644,46 @@ const AdminSettings = () => {
           idx === i ? { ...f, progress: 10 } : f
         ));
 
+        // Convert large images to JPEG for Google Drive (PNG can be 2-5MB, JPEG ~300KB)
+        // Supabase Edge Functions have ~2MB body limit
+        if (file.size > 1.5 * 1024 * 1024) {
+          try {
+            const originalSize = (file.size / 1024 / 1024).toFixed(2);
+            const canvas = document.createElement('canvas');
+            const img = new Image();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = reject;
+              img.src = dataUrl;
+            });
+            // Keep original dimensions but cap at 2048px
+            const maxDim = 2048;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              const ratio = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * ratio);
+              h = Math.round(h * ratio);
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+            const blob = await new Promise<Blob>((resolve, reject) => {
+              canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.85);
+            });
+            const jpegName = file.name.replace(/\.[^.]+$/, '.jpg');
+            file = new File([blob], jpegName, { type: 'image/jpeg' });
+            console.log(`[DRIVE-UPLOAD] Converted to JPEG: ${originalSize}MB → ${(file.size/1024/1024).toFixed(2)}MB`);
+          } catch (convErr) {
+            console.error('[DRIVE-UPLOAD] JPEG conversion failed, using original:', convErr);
+          }
+        }
+
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
         uploadFormData.append('type', 'banners');
