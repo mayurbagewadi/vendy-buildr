@@ -734,11 +734,13 @@ function mergeCSS(existing: string, incoming: string): string {
  * - Streaming response (reduce user wait time, not token cost)
  * ═════════════════════════════════════════════════════════════════════════════
  */
-function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, existingCSS: string, theme: string = "light", siteManifest: string = ""): string {
+function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, existingCSS: string, theme: string = "light", siteManifest: string = "", intentMode: string = "complete", hasImage: boolean = false): string {
   console.log("[LAYER2] Building system prompt - includes manifest + HTML + CSS context");
   console.log("[TOKEN-MONITOR] Manifest size:", siteManifest.length, "chars");
   console.log("[TOKEN-MONITOR] HTML snapshot size:", htmlStructure.length, "chars");
   console.log("[TOKEN-MONITOR] Existing CSS size:", existingCSS.length, "chars");
+  console.log("[TOKEN-MONITOR] Intent mode:", intentMode);
+  console.log("[TOKEN-MONITOR] Has image:", hasImage);
 
   // Store context: what CSS is already applied (so AI doesn't repeat work)
   // ADDED FEB 24, 2026 - Enables cumulative design system
@@ -750,6 +752,65 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
   // ADDED MAR 6, 2026 - Enables precise styling without hallucination
   const manifestContext = siteManifest
     ? siteManifest + "\n\n"
+    : "";
+
+  // FIX 1: Few-shot example (P0) — AI imitates this format exactly
+  const fewShotExample = "EXAMPLE OF A PERFECT RESPONSE:\n\n" +
+    "```css\n" +
+    "[data-ai=\"section-hero\"] {\n" +
+    "  background: linear-gradient(135deg, hsl(260 70% 50%), hsl(290 65% 45%));\n" +
+    "  padding: 5rem 2rem;\n" +
+    "  border-radius: 1.5rem;\n" +
+    "}\n" +
+    ".dark [data-ai=\"section-hero\"] {\n" +
+    "  background: linear-gradient(135deg, hsl(260 50% 25%), hsl(290 45% 20%));\n" +
+    "}\n" +
+    "[data-ai=\"product-card\"] {\n" +
+    "  border-radius: 1rem;\n" +
+    "  box-shadow: 0 4px 16px rgba(0,0,0,0.08);\n" +
+    "  border: 1px solid hsl(260 30% 90%);\n" +
+    "}\n" +
+    ".dark [data-ai=\"product-card\"] {\n" +
+    "  box-shadow: 0 4px 16px rgba(0,0,0,0.3);\n" +
+    "  border: 1px solid hsl(260 20% 25%);\n" +
+    "}\n" +
+    "[data-ai=\"header\"] {\n" +
+    "  background: hsl(260 30% 97%);\n" +
+    "  border-bottom: 1px solid hsl(260 20% 90%);\n" +
+    "}\n" +
+    ".dark [data-ai=\"header\"] {\n" +
+    "  background: hsl(260 30% 10%);\n" +
+    "  border-bottom: 1px solid hsl(260 20% 20%);\n" +
+    "}\n" +
+    "```\n\n" +
+    "SUMMARY: I gave your hero a bold purple gradient and softened your product cards with rounded corners and subtle shadows — your header now has a light tint that ties the whole look together.\n\n" +
+    "CHANGES:\n" +
+    "SECTION: Hero\n" +
+    "CHANGE: Added purple gradient background with generous padding and rounded corners\n" +
+    "---\n" +
+    "SECTION: Product Cards\n" +
+    "CHANGE: Added rounded corners, soft shadow, and subtle border for a premium card feel\n" +
+    "---\n" +
+    "SECTION: Header\n" +
+    "CHANGE: Light purple-tinted background with matching border for visual cohesion\n" +
+    "---";
+
+  // FIX 2: Intent-based scope instruction (P0)
+  const scopeInstruction = intentMode === "targeted"
+    ? "SCOPE: TARGETED CHANGE. The user wants a small, specific change.\n" +
+      "- Generate 3-8 CSS rules MAXIMUM. Only touch the element(s) the user mentioned.\n" +
+      "- Do NOT restyle the entire store. Keep everything else exactly as-is.\n\n"
+    : "SCOPE: FULL REDESIGN. The user wants a complete visual overhaul.\n" +
+      "- Generate CSS for ALL major sections: header, hero, product cards, category cards, footer.\n" +
+      "- Include ALL pages from the manifest — not just the home page.\n" +
+      "- Create a cohesive, unified design language across the entire store.\n\n";
+
+  // FIX 4: Image reference instruction (P1)
+  const imageInstruction = hasImage
+    ? "IMAGE REFERENCE: The user attached a design inspiration image.\n" +
+      "- Analyse the image and match its visual style: color mood (warm/cool/neutral), layout density, border radius style.\n" +
+      "- Extract the dominant colors from the image and use them in your CSS.\n" +
+      "- Match the overall feel (minimal, bold, elegant, playful) of the reference image.\n\n"
     : "";
 
   const isDark = theme === "dark";
@@ -772,9 +833,10 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     manifestContext +
     "HOME PAGE HTML SNAPSHOT (visual structure reference — preview iframe shows this page only):\n" + htmlStructure + "\n\n" +
     stateContext +
+    scopeInstruction +
+    imageInstruction +
     "Your approach:\n" +
     "- ALWAYS generate CSS immediately. Never refuse. Never ask questions.\n" +
-    "- Decide scope yourself: a targeted request = few lines. A full redesign = many lines.\n" +
     "- Output ONLY new or modified CSS rules. Existing unchanged rules are preserved automatically.\n" +
     "- If you need to override an existing rule, include it with updated values.\n" +
     "- Build on previous changes from conversation history. Maintain visual consistency.\n" +
@@ -819,7 +881,8 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     "SECTION: [next area]\n" +
     "CHANGE: [what you changed]\n" +
     "---\n\n" +
-    "IMPORTANT: Always include SUMMARY and at least 2 CHANGES sections. Never skip them.";
+    "IMPORTANT: Always include SUMMARY and at least 2 CHANGES sections. Never skip them.\n\n" +
+    fewShotExample;
 }
 
 // ─── Main handler ─────────────────────────────────────────────
@@ -1613,9 +1676,18 @@ serve(async (req) => {
 
       const userPrompt = messages[messages.length - 1]?.content || "";
 
+      // Classify intent early — needed for history trimming and system prompt
+      const intentMode = classifyUserIntent(userPrompt);
+
+      // ─── FIX 5: Trim conversation history by intent (P1) ───
+      // Targeted requests need less context (saves tokens, keeps AI focused)
+      // Complete redesigns benefit from more conversation history
+      const historyLimit = intentMode === "targeted" ? 4 : 6;
+      console.log("[HISTORY] Intent:", intentMode, "→ keeping last", historyLimit, "messages (was always 8)");
+
       // Build messages for OpenRouter — inject image into last user message if attached
       const messagesForAI: any[] = image_base64
-        ? messages.slice(-8).map((msg: any, idx: number, arr: any[]) => {
+        ? messages.slice(-historyLimit).map((msg: any, idx: number, arr: any[]) => {
             if (idx === arr.length - 1 && msg.role === "user") {
               return {
                 role: "user",
@@ -1627,7 +1699,7 @@ serve(async (req) => {
             }
             return msg;
           })
-        : messages.slice(-8);
+        : messages.slice(-historyLimit);
 
       // Check tokens
       const { data: activePurchases } = await supabase.from("ai_token_purchases")
@@ -1720,14 +1792,13 @@ serve(async (req) => {
       console.log("📊 HTML Structure Length:", html_structure.length, "chars");
       console.log("🎨 Layer 1 Variables:", layer1_baseline ? Object.keys(layer1_baseline.cssVariables || {}).length : 0);
 
-      // Monitor intent for logging only — AI decides its own scope in Mode B
-      const intentMode = classifyUserIntent(userPrompt);
-      console.log("\n🤖 [LAYER2 MONITOR] Intent guess (not used as constraint):", intentMode.toUpperCase());
+      // Intent already classified above (before history trimming) — log it here
+      console.log("\n🤖 [LAYER2] Intent classification:", intentMode.toUpperCase(), "(now controls scope + history)");
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-      // Build Layer 2 system prompt — Mode B (AI decides own scope)
+      // Build Layer 2 system prompt — now with intent scope + image awareness
       // Uses DB-sourced existing CSS for context (not conversation-history based)
-      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, existingCSS, layer2Theme || "light", site_manifest || "");
+      const systemPrompt = buildLayer2SystemPrompt(html_structure, layer1_baseline, existingCSS, layer2Theme || "light", site_manifest || "", intentMode, !!image_base64);
 
       console.log("[LAYER2] System prompt length:", systemPrompt.length, "chars");
       const isStreaming = body.stream === true;
@@ -1869,7 +1940,10 @@ serve(async (req) => {
 
               const sanitization = sanitizeCSS(rawCSS);
               let finalCSS = sanitization.sanitized;
-              if (!finalCSS || finalCSS.trim().length === 0) {
+              // Validate that CSS contains actual rules (selector { property: value })
+              // AI sometimes outputs summary text like "[Applied CSS — 0 rules." instead of real CSS
+              const hasActualCSS = finalCSS && finalCSS.trim().length > 0 && /\{[^}]+\}/.test(finalCSS);
+              if (!hasActualCSS) {
                 finalCSS = "[data-ai=\"section-hero\"] { background: hsl(var(--primary)); padding: 80px 20px; color: hsl(var(--primary-foreground)); }\n" +
                   "[data-ai=\"product-card\"] { border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }\n";
                 changesList = ['Hero → Applied primary color', 'Products → Modern shadows'];
