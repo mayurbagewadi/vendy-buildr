@@ -21,7 +21,7 @@ jobs:
           command_timeout: 10m
           script: |
             # Go to project directory
-            cd /var/www/digitaldukandar.in
+            cd /var/www/digitaldukandar
 
             # Reset any local changes and pull latest code
             git fetch origin production
