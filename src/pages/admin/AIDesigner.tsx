@@ -53,7 +53,7 @@ import {
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
-import { getManifestForPrompt } from "@/lib/aiSiteManifest";
+import { getManifestForPrompt, STORE_SITE_MANIFEST } from "@/lib/aiSiteManifest";
 
 // ═══ STRUCTURAL SKELETON EXTRACTOR ═══
 // Converts a DOM element into a clean structural skeleton for the AI.
@@ -732,20 +732,28 @@ const AIDesigner = () => {
         // Server returns merged CSS (existing + new) — track locally and inject
         cumulativeCSSRef.current = layer2Result.css;
 
-        // ─── FIX 3: Validate selectors before injection (P1) ───
-        // Check that all [data-ai="..."] selectors in the CSS actually exist in the iframe DOM
-        if (iframe && layer2Result.css) {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (iframeDoc) {
-            const selectorMatches = [...layer2Result.css.matchAll(/\[data-ai="([^"]+)"\]/g)];
-            const usedSelectors = [...new Set(selectorMatches.map(m => m[1]))];
-            const missingSelectors = usedSelectors.filter(sel => !iframeDoc.querySelector('[data-ai="' + sel + '"]'));
-            if (missingSelectors.length > 0) {
-              console.warn('[SELECTOR-CHECK] AI used selectors not found in DOM:', missingSelectors);
-              toast.warning('Some AI styles target elements not on this page: ' + missingSelectors.slice(0, 3).join(', ') + (missingSelectors.length > 3 ? ' +' + (missingSelectors.length - 3) + ' more' : ''), { duration: 5000 });
-            } else if (usedSelectors.length > 0) {
-              console.log('[SELECTOR-CHECK] All', usedSelectors.length, 'selectors verified in DOM');
-            }
+        // ─── FIX 3: Validate selectors against site manifest (P1) ───
+        // Check against ALL known selectors across all pages, not just current iframe DOM
+        if (layer2Result.css) {
+          const allManifestSelectors = new Set<string>();
+          Object.values(STORE_SITE_MANIFEST.pages).forEach((page: any) => {
+            Object.values(page.selectors).forEach((desc: any) => {
+              const match = String(desc).match(/\[data-ai='([^']+)'\]/);
+              if (match) allManifestSelectors.add(match[1]);
+            });
+          });
+          Object.values(STORE_SITE_MANIFEST.shared_components.selectors).forEach((desc: any) => {
+            const match = String(desc).match(/\[data-ai='([^']+)'\]/);
+            if (match) allManifestSelectors.add(match[1]);
+          });
+          const selectorMatches = [...layer2Result.css.matchAll(/\[data-ai="([^"]+)"\]/g)];
+          const usedSelectors = [...new Set(selectorMatches.map(m => m[1]))];
+          const unknownSelectors = usedSelectors.filter(sel => !allManifestSelectors.has(sel));
+          if (unknownSelectors.length > 0) {
+            console.warn('[SELECTOR-CHECK] AI used unknown selectors not in manifest:', unknownSelectors);
+            toast.warning('AI used unknown selectors: ' + unknownSelectors.slice(0, 3).join(', '), { duration: 5000 });
+          } else if (usedSelectors.length > 0) {
+            console.log('[SELECTOR-CHECK] All', usedSelectors.length, 'selectors verified against manifest');
           }
         }
 
