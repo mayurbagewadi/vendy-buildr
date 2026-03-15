@@ -620,44 +620,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           </section>
         )}
 
-        {/* ═══ CALL-TO-ACTION (CTA) SECTION ═══
-            Purpose: Promotional section encouraging users to browse products or contact
-            Content: Large heading, description text, action buttons (Browse All, WhatsApp)
-            AI Can Change: Background colors, text colors, button styles, spacing, border radius, gradients, shadows
-            Selectors: [data-ai="section-cta"] - entire CTA section | button - action buttons
-        */}
-        <section data-ai="section-cta" className="py-20 bg-primary text-primary-foreground mb-0">
-          <div className="container mx-auto px-4 text-center">
-            <AnimateOnScroll animation="scaleUp" duration={0.8}>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Ready to Start Shopping?
-              </h2>
-              <p className="text-xl mb-8 opacity-90">
-                Explore our full collection of amazing products
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to={productsLink}>
-                  <Button size="lg" variant="secondary">
-                    Browse All Products
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                {store.whatsapp_number && (
-                  <a
-                    href={`https://wa.me/${store.whatsapp_number.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
-                      Contact on WhatsApp
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </a>
-                )}
-              </div>
-            </AnimateOnScroll>
-          </div>
-        </section>
+
       </main>
 
       <StoreFooter
