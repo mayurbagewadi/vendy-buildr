@@ -337,7 +337,7 @@ const Pricing = () => {
         <meta name="title" content="Pricing Plans - Affordable Online Store Builder India | DigitalDukandar" />
         <meta name="description" content="Flexible pricing for Indian entrepreneurs. Start FREE 14-day trial. Plans from ₹299/month. Unlimited products, WhatsApp orders, custom domain, analytics. No hidden fees. Cancel anytime." />
         <meta name="keywords" content="online store pricing India, e-commerce platform cost, affordable store builder, WhatsApp store pricing, small business e-commerce plans, digital store subscription India" />
-        <link rel="canonical" content="https://digitaldukandar.in/pricing" />
+        <link rel="canonical" href="https://digitaldukandar.in/pricing" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
@@ -546,7 +546,7 @@ const Pricing = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 bg-muted/20 py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2024 StoreBuilder. All rights reserved.</p>
+          <p>© 2026 DigitalDukandar. All rights reserved.</p>
         </div>
       </footer>
     </div>

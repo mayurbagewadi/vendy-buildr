@@ -38,7 +38,7 @@ export function generateProductSchema(props: ProductSchemaProps) {
     offers: {
       '@type': 'Offer',
       url: url,
-      priceCurrency: 'USD', // You can make this dynamic based on store settings
+      priceCurrency: 'INR',
       ...(price && { price: price.toFixed(2) }),
       ...(priceRange && !price && { price: priceRange }),
       availability: `https://schema.org/${availability}`,

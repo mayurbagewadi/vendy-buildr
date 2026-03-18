@@ -13,6 +13,7 @@ import { getPublishedProducts } from "@/lib/productData";
 import type { Product as ProductType } from "@/lib/productData";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
+import { SEOHead } from "@/components/seo/SEOHead";
 
 interface Product {
   id: string;
@@ -129,6 +130,11 @@ const Home = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEOHead
+        title={`${store?.name} | Shop Online`}
+        description={store?.description || "Browse our collection of products. Shop online with easy WhatsApp ordering and fast delivery."}
+        image={store?.logo_url || undefined}
+      />
       <Header />
       
       <main className="flex-1">

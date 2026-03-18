@@ -16,59 +16,50 @@ export const AnimatedText = ({
   as: Component = 'span',
   gradient = false
 }: AnimatedTextProps) => {
-  const textRef = useRef<HTMLElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
+  const words = text.split(' ');
 
   useEffect(() => {
-    if (!textRef.current) return;
+    if (!containerRef.current) return;
 
-    const words = text.split(' ');
-    textRef.current.innerHTML = words
-      .map((word) => {
-        const chars = word.split('');
-        return `<span class="word inline-block mr-2">${chars
-          .map(
-            (char) =>
-              `<span class="char inline-block ${gradient ? 'gradient-char' : ''}">${char === ' ' ? '&nbsp;' : char}</span>`
-          )
-          .join('')}</span>`;
-      })
-      .join(' ');
+    const wordInners = containerRef.current.querySelectorAll('.word-inner');
 
-    const chars = textRef.current.querySelectorAll('.char');
-
-    // Character stagger animation
+    // Premium word-reveal: each word slides up from below its clip boundary
     gsap.fromTo(
-      chars,
+      wordInners,
       {
+        y: '110%',
         opacity: 0,
-        y: 50,
-        rotationX: -90,
+        rotationX: -40,
       },
       {
+        y: '0%',
         opacity: 1,
-        y: 0,
         rotationX: 0,
-        duration: 0.8,
-        stagger: 0.02,
-        ease: 'back.out(1.7)',
+        duration: 0.75,
+        stagger: 0.12,
+        ease: 'back.out(1.4)',
         delay: delay,
       }
     );
+  }, [text, delay]);
 
-    // Gradient wave animation (if gradient prop is true)
-    if (gradient) {
-      gsap.to(chars, {
-        backgroundPosition: '200% center',
-        duration: 3,
-        repeat: -1,
-        ease: 'none',
-        stagger: {
-          each: 0.1,
-          repeat: -1,
-        },
-      });
-    }
-  }, [text, delay, gradient]);
-
-  return <Component ref={textRef as any} className={className} />;
+  return (
+    <Component ref={containerRef as any} className={className} aria-label={text}>
+      {words.map((word, i) => (
+        <span
+          key={i}
+          className="word inline-block overflow-hidden"
+          style={{ marginRight: i < words.length - 1 ? '0.3em' : 0 }}
+        >
+          <span
+            className={`word-inner inline-block${gradient ? ' bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient' : ''}`}
+            style={{ opacity: 0 }}
+          >
+            {word}
+          </span>
+        </span>
+      ))}
+    </Component>
+  );
 };
