@@ -385,10 +385,13 @@ const AdminSettings = () => {
       if (!user) return;
 
       // Build update data
+      // Filter out blob: URLs from banner list — pending VPS uploads haven't been
+      // uploaded yet, so only persist real URLs to avoid broken images on refresh.
+      const savedBannerUrls = formData.heroBannerUrls.filter(url => !url.startsWith('blob:'));
       const updateData: any = {
         name: formData.storeName,
         logo_url: formData.logoUrl || null,
-        hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
+        hero_banner_urls: savedBannerUrls.length > 0 ? savedBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
         address: formData.address || null,
         policies: {
