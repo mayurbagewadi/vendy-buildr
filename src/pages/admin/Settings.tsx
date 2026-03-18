@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const AdminSettings = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const skipAutoSaveRef = useRef(true);
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
@@ -360,6 +361,13 @@ const AdminSettings = () => {
   useEffect(() => {
     // Skip auto-save on initial load
     if (isInitialLoad) return;
+
+    // Skip the first trigger after loadSettings completes
+    // (React batches setFormData + setIsInitialLoad, so both change in one render)
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
 
     const timeoutId = setTimeout(() => {
       performAutoSave();
