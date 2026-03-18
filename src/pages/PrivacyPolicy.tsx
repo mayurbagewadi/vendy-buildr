@@ -173,7 +173,7 @@ const PrivacyPolicy = () => {
       {/* Footer */}
       <footer className="border-t mt-16">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} YesGive. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} DigitalDukandar. All rights reserved.</p>
         </div>
       </footer>
     </div>

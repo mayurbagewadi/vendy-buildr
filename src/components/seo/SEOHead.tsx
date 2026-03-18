@@ -56,7 +56,7 @@ export function SEOHead({
       <meta property="og:description" content={metaDescription} />
       <meta property="og:image" content={image} />
       {canonical && <meta property="og:url" content={canonical} />}
-      <meta property="og:site_name" content="YesGive Shop" />
+      <meta property="og:site_name" content="DigitalDukandar" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

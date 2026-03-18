@@ -210,8 +210,31 @@ const Index = () => {
     }
   ];
 
-  // SEO Schema for Organization
+  // SEO Schema - Organization (for Google Knowledge Panel)
   const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "DigitalDukandar",
+    "url": "https://digitaldukandar.in",
+    "logo": "https://digitaldukandar.in/logo.png",
+    "description": "Free e-commerce platform for Indian entrepreneurs. Create your online store in 5 minutes with WhatsApp integration, custom domain, and powerful analytics.",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "availableLanguage": ["English", "Hindi"]
+    },
+    "sameAs": [
+      "https://www.instagram.com/digitaldukandar",
+      "https://www.facebook.com/digitaldukandar",
+      "https://twitter.com/digitaldukandar"
+    ],
+    "foundingDate": "2024",
+    "areaServed": "IN",
+    "priceRange": "₹₹"
+  };
+
+  // SEO Schema - SoftwareApplication
+  const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "DigitalDukandar",
@@ -274,7 +297,7 @@ const Index = () => {
         {/* Primary Meta Tags */}
         <title>DigitalDukandar - Create Your Online Store in Minutes | Free E-commerce Platform India</title>
         <meta name="title" content="DigitalDukandar - Create Your Online Store in Minutes | Free E-commerce Platform India" />
-        <meta name="description" content="Launch your professional online store in 5 minutes. Get free subdomain, WhatsApp integration, inventory management & analytics. No coding needed. Trusted by 10,000+ Indian entrepreneurs. Start free trial!" />
+        <meta name="description" content="Create your online store in 5 minutes. Free subdomain, WhatsApp integration & inventory tools. Trusted by 10,000+ Indian sellers. Start free!" />
         <meta name="keywords" content="online store builder India, create online store, e-commerce platform India, free online store, sell online India, WhatsApp store, digital store maker, small business e-commerce, Indian online shopping platform, store builder no coding" />
         <link rel="canonical" href="https://digitaldukandar.in" />
 
@@ -302,9 +325,13 @@ const Index = () => {
         <meta name="geo.placename" content="India" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
-        {/* Structured Data */}
+        {/* Structured Data - Organization */}
         <script type="application/ld+json">
           {JSON.stringify(organizationSchema)}
+        </script>
+        {/* Structured Data - SoftwareApplication */}
+        <script type="application/ld+json">
+          {JSON.stringify(softwareSchema)}
         </script>
       </Helmet>
 
@@ -333,9 +360,6 @@ const Index = () => {
             </a>
             <Link to="/guide" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Guide
-            </Link>
-            <Link to="/demo" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Demo Store
             </Link>
           </nav>
           
@@ -398,13 +422,6 @@ const Index = () => {
                   >
                     Guide
                   </Link>
-                  <Link
-                    to="/demo"
-                    className="text-lg font-medium text-foreground hover:text-primary transition-colors py-3 border-b"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Demo Store
-                  </Link>
                   <div className="flex flex-col gap-3 mt-6">
                     <Link to="/auth" className="w-full">
                       <Button variant="outline" size="lg" className="w-full h-12 min-h-[48px]">
@@ -465,14 +482,14 @@ const Index = () => {
             {/* Main Heading */}
             <div className="hero-heading mb-6">
               <AnimatedText
-                text="Free Online Store India"
+                text="Free Online Store"
                 as="h1"
                 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground leading-[1.1]"
                 delay={0.3}
               />
               <AnimatedText
                 text="Launch in 5 Minutes"
-                as="h1"
+                as="h2"
                 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mt-2 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient"
                 delay={0.6}
                 gradient
@@ -941,7 +958,7 @@ const Index = () => {
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 StoreBuilder. All rights reserved.
+              © 2026 DigitalDukandar. All rights reserved.
             </p>
           </div>
         </div>

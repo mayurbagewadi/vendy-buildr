@@ -134,7 +134,7 @@ const Guide = () => {
               "✅ Free to start - 14-day free trial, no credit card needed",
               "✅ WhatsApp integrated - Customers order via WhatsApp directly",
               "✅ Pre-loaded store - Get demo products and categories automatically",
-              "✅ Instant subdomain - Your store goes live immediately at yourstore.yesgive.shop",
+              "✅ Instant subdomain - Your store goes live immediately at yourstore.digitaldukandar.in",
               "✅ Google Drive integration - Store your product images in Google Drive",
               "✅ Multi-payment support - Accept both Online and Cash on Delivery",
               "✅ Easy analytics - Track sales, orders, and customer insights",
@@ -157,7 +157,7 @@ const Guide = () => {
             content: [
               "On your mobile or desktop:",
               "",
-              "1. Open yesgive.shop",
+              "1. Open digitaldukandar.in",
               "2. Click the 3-bar Menu icon (☰) at top left",
               "3. Click 'Get Started' button",
               "4. Click 'Sign in with Google'",
@@ -196,7 +196,7 @@ const Guide = () => {
               "",
               "🔗 Store URL (Auto-generated - Read-only)",
               "  • Your unique web address automatically generated from store name",
-              "  • Example: 'Fresh Fruits Market' → freshfruits.yesgive.shop",
+              "  • Example: 'Fresh Fruits Market' → freshfruits.digitaldukandar.in",
               "  • Only lowercase letters and numbers",
               "  • This CANNOT be changed later, so choose your store name carefully!",
               "  • You'll see a ✓ (available) or ✗ (taken) indicator"
@@ -776,7 +776,7 @@ const Guide = () => {
       <style>{scrollbarHideStyles}</style>
       <Helmet>
         <title>Guide | DigitalDukandar</title>
-        <meta name="description" content="Comprehensive guides and documentation for DigitalDukandar platform." />
+        <meta name="description" content="Step-by-step guides for DigitalDukandar. Learn how to set up your store, manage products, configure payments, and grow your online business." />
         <meta name="keywords" content="guide, documentation, help, tutorials, discounts, coupons" />
         <meta property="og:title" content="Guide | DigitalDukandar" />
         <meta property="og:description" content="Comprehensive guides and documentation for DigitalDukandar platform." />

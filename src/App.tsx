@@ -2,13 +2,32 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
+import { useEffect } from "react";
+
+// Load AdSense only on public-facing pages, not admin/helper routes
+function AdSenseLoader() {
+  const { pathname } = useLocation();
+  const isPrivatePath = /^\/(admin|superadmin|helper|onboarding|checkout|cart|payment-success|auth)/.test(pathname);
+
+  useEffect(() => {
+    if (isPrivatePath) return;
+    if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) return;
+    const script = document.createElement('script');
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9838772035675365';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    document.head.appendChild(script);
+  }, [isPrivatePath]);
+
+  return null;
+}
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -94,6 +113,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <AdSenseLoader />
                 <ScrollToTop />
                 <Routes>
                   {domainInfo.isStoreSpecific && storeIdentifier ? (

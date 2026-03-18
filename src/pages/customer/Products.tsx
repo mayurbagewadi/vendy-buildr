@@ -16,6 +16,8 @@ import { ErrorDisplay } from "@/components/customer/ErrorDisplay";
 import { getPublishedProducts } from "@/lib/productData";
 import type { Product } from "@/lib/productData";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
+import { SEOHead } from "@/components/seo/SEOHead";
+import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 
 interface ProductsProps {
   slug?: string;
@@ -216,6 +218,14 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {storeData && (
+        <SEOHead
+          title={`Products | ${storeData.name}`}
+          description={storeData.description || `Shop all products at ${storeData.name}. Browse our full collection with easy WhatsApp ordering.`}
+          canonical={getStoreCanonicalUrl(storeData.slug, storeData.subdomain, storeData.custom_domain) + "/products"}
+          image={storeData.logo_url || undefined}
+        />
+      )}
       <Header storeSlug={slug} storeId={storeId || undefined} />
 
       <main className="flex-1 container mx-auto px-4 py-8">

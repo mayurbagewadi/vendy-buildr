@@ -70,10 +70,10 @@ export function getPlatformUrls(baseUrl: string): SitemapUrl[] {
       priority: 0.8
     },
     {
-      loc: `${baseUrl}/auth`,
+      loc: `${baseUrl}/guide`,
       lastmod: today,
       changefreq: 'monthly',
-      priority: 0.6
+      priority: 0.7
     },
     {
       loc: `${baseUrl}/privacy-policy`,

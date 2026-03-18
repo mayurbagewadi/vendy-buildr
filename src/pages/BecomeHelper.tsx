@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -286,6 +287,11 @@ export default function BecomeHelper() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Become a Helper — Earn Commission | DigitalDukandar</title>
+        <meta name="description" content="Join DigitalDukandar's helper program. Earn 10% commission helping Indian entrepreneurs build online stores. Apply free, work flexible hours." />
+        <link rel="canonical" href="https://digitaldukandar.in/become-helper" />
+      </Helmet>
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
