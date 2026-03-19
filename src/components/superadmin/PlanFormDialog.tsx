@@ -53,6 +53,7 @@ const planFormSchema = z.object({
   enable_custom_domain: z.boolean().default(false),
   enable_order_emails: z.boolean().default(false),
   enable_ai_voice: z.boolean().default(false),
+  enable_discounts_coupons: z.boolean().default(false),
   google_reviews_calls_limit: z.coerce.number().min(0).default(15),
   google_reviews_period: z.enum(["monthly", "yearly"]).default("monthly"),
 });
@@ -98,6 +99,7 @@ export const PlanFormDialog = ({
       enable_custom_domain: false,
       enable_order_emails: false,
       enable_ai_voice: false,
+      enable_discounts_coupons: false,
       google_reviews_calls_limit: 15,
       google_reviews_period: "monthly",
     },
@@ -130,6 +132,7 @@ export const PlanFormDialog = ({
         enable_custom_domain: false,
         enable_order_emails: false,
         enable_ai_voice: false,
+        enable_discounts_coupons: false,
         google_reviews_calls_limit: 15,
         google_reviews_period: "monthly",
       });
@@ -550,6 +553,27 @@ export const PlanFormDialog = ({
                       <FormLabel className="text-base">AI Voice Assistant</FormLabel>
                       <FormDescription>
                         Allow store owners to add ElevenLabs AI voice embed code
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="enable_discounts_coupons"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Discounts & Coupons</FormLabel>
+                      <FormDescription>
+                        Allow store owners to create coupon codes and automatic discounts
                       </FormDescription>
                     </div>
                     <FormControl>

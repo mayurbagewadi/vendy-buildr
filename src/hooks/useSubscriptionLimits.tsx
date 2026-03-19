@@ -12,6 +12,7 @@ interface SubscriptionLimits {
   enableLocationSharing: boolean;
   enableCustomDomain: boolean;
   enableAiVoice: boolean;
+  enableDiscountsCoupons: boolean;
   isLoading: boolean;
   hasActiveSubscription: boolean;
 }
@@ -28,6 +29,7 @@ export function useSubscriptionLimits() {
     enableLocationSharing: false,
     enableCustomDomain: false,
     enableAiVoice: false,
+    enableDiscountsCoupons: false,
     isLoading: true,
     hasActiveSubscription: false,
   });
@@ -95,7 +97,8 @@ export function useSubscriptionLimits() {
             enable_analytics,
             enable_location_sharing,
             enable_custom_domain,
-            enable_ai_voice
+            enable_ai_voice,
+            enable_discounts_coupons
           )
         `)
         .eq("user_id", user.id)
@@ -140,6 +143,7 @@ export function useSubscriptionLimits() {
         enableLocationSharing: plan.enable_location_sharing || false,
         enableCustomDomain: plan.enable_custom_domain || false,
         enableAiVoice: plan.enable_ai_voice || false,
+        enableDiscountsCoupons: plan.enable_discounts_coupons || false,
         isLoading: false,
         hasActiveSubscription: ['active', 'trial'].includes(subscription.status),
       });

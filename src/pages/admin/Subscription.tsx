@@ -22,6 +22,7 @@ interface SubscriptionPlan {
   enable_location_sharing: boolean;
   enable_analytics: boolean;
   enable_order_emails: boolean;
+  enable_discounts_coupons: boolean;
 }
 
 interface UserSubscription {
@@ -533,6 +534,12 @@ const SubscriptionPage = () => {
                   <span className="text-sm text-foreground">Location Tracking</span>
                 </li>
               )}
+              {currentSubscription.subscription_plans.enable_discounts_coupons && (
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-foreground">Discounts & Coupons</span>
+                </li>
+              )}
 
             </ul>
           </div>
@@ -624,7 +631,13 @@ const SubscriptionPage = () => {
                       <span className="text-sm text-foreground">Location Tracking</span>
                     </li>
                   )}
-                  
+                  {plan.enable_discounts_coupons && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">Discounts & Coupons</span>
+                    </li>
+                  )}
+
                   {/* Order limits */}
                   {plan.whatsapp_orders_limit !== null && (
                     <li className="flex items-start gap-2">

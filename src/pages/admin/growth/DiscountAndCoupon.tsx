@@ -62,6 +62,7 @@ const DiscountAndCoupon = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [storeId, setStoreId] = useState<string>("");
+  const [hasAccess, setHasAccess] = useState(false);
 
   // Switch state: true = Coupons, false = Automatic Discounts
   const [showCoupons, setShowCoupons] = useState(true);
@@ -127,6 +128,27 @@ const DiscountAndCoupon = () => {
         navigate("/auth");
         return;
       }
+
+      // Check subscription feature access
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select("status, subscription_plans(enable_discounts_coupons)")
+        .eq("user_id", session.user.id)
+        .in("status", ["active", "trial"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const featureEnabled = subscription?.subscription_plans?.enable_discounts_coupons || false;
+      const isActive = ["active", "trial"].includes(subscription?.status || "");
+
+      if (!featureEnabled || !isActive) {
+        setHasAccess(false);
+        setIsLoading(false);
+        return;
+      }
+
+      setHasAccess(true);
 
       const { data: store } = await supabase
         .from("stores")
@@ -648,6 +670,21 @@ const DiscountAndCoupon = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-12">
+        <Ticket className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+        <h2 className="text-2xl font-bold mb-2">Discounts & Coupons Not Available</h2>
+        <p className="text-muted-foreground mb-6">
+          You need a subscription plan with Discounts & Coupons enabled to access this feature.
+        </p>
+        <Button onClick={() => navigate("/pricing")}>
+          View Plans
+        </Button>
       </div>
     );
   }
