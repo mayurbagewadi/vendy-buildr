@@ -12,6 +12,7 @@ interface SubscriptionPlan {
   enable_location_sharing: boolean;
   enable_analytics: boolean;
   enable_order_emails: boolean;
+  enable_discounts_coupons: boolean;
 }
 
 export function FeatureManagement() {
@@ -27,7 +28,7 @@ export function FeatureManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from("subscription_plans")
-        .select("id, name, enable_location_sharing, enable_analytics, enable_order_emails")
+        .select("id, name, enable_location_sharing, enable_analytics, enable_order_emails, enable_discounts_coupons")
         .order("display_order");
 
       if (error) throw error;
@@ -45,7 +46,7 @@ export function FeatureManagement() {
 
   const toggleFeature = async (
     planId: string,
-    feature: "enable_location_sharing" | "enable_analytics" | "enable_order_emails",
+    feature: "enable_location_sharing" | "enable_analytics" | "enable_order_emails" | "enable_discounts_coupons",
     value: boolean
   ) => {
     try {
@@ -127,6 +128,21 @@ export function FeatureManagement() {
                     checked={plan.enable_order_emails}
                     onCheckedChange={(checked) =>
                       toggleFeature(plan.id, "enable_order_emails", checked)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">Discounts & Coupons</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Create coupon codes and automatic discounts
+                    </p>
+                  </div>
+                  <Switch
+                    checked={plan.enable_discounts_coupons}
+                    onCheckedChange={(checked) =>
+                      toggleFeature(plan.id, "enable_discounts_coupons", checked)
                     }
                   />
                 </div>

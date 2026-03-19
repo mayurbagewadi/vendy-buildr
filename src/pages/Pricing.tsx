@@ -22,6 +22,7 @@ interface SubscriptionPlan {
   enable_location_sharing: boolean;
   enable_analytics: boolean;
   enable_order_emails: boolean;
+  enable_discounts_coupons: boolean;
   badge_text: string | null;
   badge_color: string | null;
   is_popular: boolean;
@@ -117,6 +118,10 @@ const Pricing = () => {
 
     if (plan.enable_order_emails) {
       features.push('Email notifications');
+    }
+
+    if (plan.enable_discounts_coupons) {
+      features.push('Discounts & Coupons');
     }
 
     // Trial period

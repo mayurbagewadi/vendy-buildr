@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const AdminSettings = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const skipAutoSaveRef = useRef(true);
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
@@ -361,6 +362,13 @@ const AdminSettings = () => {
     // Skip auto-save on initial load
     if (isInitialLoad) return;
 
+    // Skip the first trigger after loadSettings completes
+    // (React batches setFormData + setIsInitialLoad, so both change in one render)
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       performAutoSave();
     }, 2000); // 2 second debounce
@@ -586,45 +594,106 @@ const AdminSettings = () => {
     }
 
     try {
-      // For VPS: Compress and store locally (defer upload until save)
+      // For VPS: Upload immediately so auto-save picks up real URLs
       if (uploadDestination === 'vps') {
-        const processedFiles: File[] = [];
+        setIsUploadingBanner(true);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { data: store, error: storeError } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb, storage_limit_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (storeError || !store) throw new Error('Store not found');
+
+        const currentUsage = store.storage_used_mb || 0;
+        const limit = store.storage_limit_mb || 100;
+
+        const uploadedUrls: string[] = [];
+        let totalUploadedSize = 0;
 
         for (const file of validFiles) {
+          // Compress
+          let processedFile = file;
           try {
-            const originalSize = (file.size / 1024 / 1024).toFixed(2);
             const compressed = await compressImage(file, 5);
-            const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
-            console.log(`Banner compressed: ${originalSize}MB → ${compressedSize}MB`);
-            processedFiles.push(compressed);
+            console.log(`Banner compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB`);
+            processedFile = compressed;
           } catch (compressError) {
-            console.error('Compression failed:', compressError);
-            toast({
-              title: "Compression failed",
-              description: `Failed to compress ${file.name}, using original`,
-              variant: "destructive",
-            });
-            processedFiles.push(file);
+            console.error('Compression failed, using original:', compressError);
           }
+
+          const fileSizeMB = processedFile.size / 1024 / 1024;
+
+          // Check storage limit
+          if (currentUsage + totalUploadedSize + fileSizeMB > limit) {
+            toast({
+              variant: "destructive",
+              title: "Storage Limit Exceeded",
+              description: `Not enough space for ${file.name}. Delete images from Media Library to free up space.`,
+            });
+            continue;
+          }
+
+          // Upload to VPS
+          const uploadData = new FormData();
+          uploadData.append('file', processedFile);
+          uploadData.append('type', 'banners');
+          if (storeSlug) uploadData.append('store_slug', storeSlug);
+
+          const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+            method: 'POST',
+            body: uploadData,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            throw new Error(`Upload failed: ${errorText}`);
+          }
+
+          const responseData = await uploadResponse.json();
+          if (!responseData.success) throw new Error(responseData.error || 'Upload failed');
+
+          const imageUrl = responseData.imageUrl;
+
+          // Track in media_library
+          await supabase.from('media_library').insert({
+            store_id: store.id,
+            file_url: imageUrl,
+            file_name: file.name,
+            file_size_mb: fileSizeMB,
+            file_type: 'banners',
+          });
+
+          // Update storage usage
+          totalUploadedSize += fileSizeMB;
+          await supabase
+            .from('stores')
+            .update({ storage_used_mb: currentUsage + totalUploadedSize })
+            .eq('id', store.id);
+
+          uploadedUrls.push(imageUrl);
         }
 
-        // Store files and create preview URLs
-        setPendingBannerFiles(prev => [...prev, ...processedFiles]);
+        if (uploadedUrls.length > 0) {
+          // Add real URLs to formData — auto-save will persist them
+          setFormData(prev => ({
+            ...prev,
+            heroBannerUrls: [...prev.heroBannerUrls, ...uploadedUrls]
+          }));
 
-        const newPreviewUrls = processedFiles.map(file => URL.createObjectURL(file));
-        setBannerPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+          toast({
+            title: "Banners Uploaded",
+            description: `${uploadedUrls.length} banner(s) uploaded (${totalUploadedSize.toFixed(2)}MB)`,
+          });
 
-        // Add preview URLs to formData for display
-        setFormData(prev => ({
-          ...prev,
-          heroBannerUrls: [...prev.heroBannerUrls, ...newPreviewUrls]
-        }));
+          loadMediaLibrary();
+        }
 
-        toast({
-          title: "Banners ready",
-          description: `${processedFiles.length} banner(s) will be uploaded when you save settings`,
-        });
-
+        setIsUploadingBanner(false);
         return;
       }
 
@@ -944,137 +1013,6 @@ const AdminSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("User not authenticated");
-      }
-
-      // Upload pending banner files (VPS only) before saving settings
-      if (pendingBannerFiles.length > 0 && uploadDestination === 'vps') {
-        try {
-          // Get store info
-          const { data: store, error: storeError } = await supabase
-            .from('stores')
-            .select('id, storage_used_mb, storage_limit_mb')
-            .eq('user_id', user.id)
-            .single();
-
-          if (storeError) throw storeError;
-          if (!store) throw new Error('Store not found');
-
-          const currentUsage = store.storage_used_mb || 0;
-          const storageLimit = store.storage_limit_mb || 100;
-
-          // Calculate total size of pending files
-          const totalPendingSize = pendingBannerFiles.reduce((sum, file) => sum + (file.size / 1024 / 1024), 0);
-
-          // Check storage limit
-          if (currentUsage + totalPendingSize > storageLimit) {
-            toast({
-              variant: "destructive",
-              title: "Storage Limit Exceeded",
-              description: `Cannot upload banners. You need ${(totalPendingSize).toFixed(2)}MB but only have ${(storageLimit - currentUsage).toFixed(2)}MB available. Delete some images from Media Library to free up space.`,
-            });
-            setIsLoading(false);
-            return;
-          }
-
-          // Upload each pending banner file
-          const uploadedUrls: string[] = [];
-          let totalUploadedSize = 0;
-
-          for (let i = 0; i < pendingBannerFiles.length; i++) {
-            const file = pendingBannerFiles[i];
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('type', 'banners');
-            if (storeSlug) {
-              formData.append('store_slug', storeSlug);
-            }
-
-            const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
-              method: 'POST',
-              body: formData,
-            });
-
-            if (!uploadResponse.ok) {
-              const errorText = await uploadResponse.text();
-              throw new Error(`Upload failed: ${errorText}`);
-            }
-
-            const responseData = await uploadResponse.json();
-            if (!responseData.success) {
-              throw new Error(responseData.error || 'Upload failed');
-            }
-
-            const imageUrl = responseData.imageUrl;
-            const fileSizeMB = file.size / 1024 / 1024;
-
-            // Track in media_library
-            const { error: mediaError } = await supabase
-              .from('media_library')
-              .insert({
-                store_id: store.id,
-                file_url: imageUrl,
-                file_name: file.name,
-                file_size_mb: fileSizeMB,
-                file_type: 'banners',
-              });
-
-            if (mediaError) {
-              console.error('Error tracking banner in media library:', mediaError);
-            }
-
-            // Update storage usage incrementally
-            const newUsage = currentUsage + totalUploadedSize + fileSizeMB;
-            const { error: storageError } = await supabase
-              .from('stores')
-              .update({ storage_used_mb: newUsage })
-              .eq('id', store.id);
-
-            if (storageError) {
-              console.error('Error updating storage usage:', storageError);
-            }
-
-            uploadedUrls.push(imageUrl);
-            totalUploadedSize += fileSizeMB;
-          }
-
-          // Replace blob URLs with actual uploaded URLs in formData
-          // Find and replace all blob URLs with their corresponding uploaded URLs
-          const updatedBannerUrls = formData.heroBannerUrls.map(url => {
-            const blobIndex = bannerPreviewUrls.indexOf(url);
-            if (blobIndex !== -1 && blobIndex < uploadedUrls.length) {
-              return uploadedUrls[blobIndex];
-            }
-            return url;
-          });
-
-          // Update formData with actual uploaded URLs
-          formData.heroBannerUrls = updatedBannerUrls;
-
-          // Clean up blob URLs
-          bannerPreviewUrls.forEach(url => {
-            if (url.startsWith('blob:')) {
-              URL.revokeObjectURL(url);
-            }
-          });
-
-          // Clear pending files and preview URLs
-          setPendingBannerFiles([]);
-          setBannerPreviewUrls([]);
-
-          toast({
-            title: "Banners Uploaded",
-            description: `Successfully uploaded ${uploadedUrls.length} banner(s) (${totalUploadedSize.toFixed(2)}MB)`,
-          });
-        } catch (uploadError) {
-          console.error('Error uploading pending banners:', uploadError);
-          toast({
-            variant: "destructive",
-            title: "Upload Failed",
-            description: uploadError instanceof Error ? uploadError.message : "Failed to upload banner images",
-          });
-          setIsLoading(false);
-          return;
-        }
       }
 
       // Update stores table
