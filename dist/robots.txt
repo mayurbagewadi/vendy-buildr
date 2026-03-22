@@ -65,12 +65,6 @@ Disallow: /api/
 Sitemap: https://digitaldukandar.in/sitemap.xml
 
 # Block aggressive crawlers that don't respect crawl-delay
-User-agent: AhrefsBot
-Disallow: /
-
-User-agent: SemrushBot
-Disallow: /
-
 User-agent: MJ12bot
 Disallow: /
 

@@ -8,7 +8,7 @@
   display: none;
 }
 
-/* Infinite Marquee Animation */
+/* Infinite Marquee Animation (desktop) */
 .review-marquee-container {
   width: 100%;
   overflow: hidden;
@@ -29,4 +29,19 @@
     /* Scroll exactly 50% (through first set of reviews) */
     transform: translateX(-50%);
   }
+}
+
+/* Mobile Ticker Carousel */
+.review-ticker-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.review-ticker-track {
+  display: flex;
+}
+
+.review-ticker-track .review-card {
+  flex-shrink: 0;
+  width: 100%;
 }

@@ -217,7 +217,7 @@ const Index = () => {
     "name": "DigitalDukandar",
     "url": "https://digitaldukandar.in",
     "logo": "https://digitaldukandar.in/logo.png",
-    "description": "Free e-commerce platform for Indian entrepreneurs. Create your online store in 5 minutes with WhatsApp integration, custom domain, and powerful analytics.",
+    "description": "Free ecommerce website builder. Create your online store in minutes with AI designer, WhatsApp integration, custom domain, and powerful analytics. No coding required.",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer support",
@@ -228,9 +228,7 @@ const Index = () => {
       "https://www.facebook.com/digitaldukandar",
       "https://twitter.com/digitaldukandar"
     ],
-    "foundingDate": "2024",
-    "areaServed": "IN",
-    "priceRange": "₹₹"
+    "foundingDate": "2024"
   };
 
   // SEO Schema - SoftwareApplication
@@ -253,7 +251,7 @@ const Index = () => {
       "bestRating": "5",
       "worstRating": "1"
     },
-    "description": "Create your online store in minutes. Launch a professional e-commerce website with custom subdomain, WhatsApp integration, and powerful analytics. No coding required.",
+    "description": "Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments and analytics. No coding required. Best Shopify alternative.",
     "url": "https://digitaldukandar.in",
     "image": "https://digitaldukandar.in/logo.png",
     "provider": {
@@ -295,34 +293,32 @@ const Index = () => {
       {/* SEO Meta Tags */}
       <Helmet>
         {/* Primary Meta Tags */}
-        <title>DigitalDukandar - Create Your Online Store in Minutes | Free E-commerce Platform India</title>
-        <meta name="title" content="DigitalDukandar - Create Your Online Store in Minutes | Free E-commerce Platform India" />
-        <meta name="description" content="Create your online store in 5 minutes. Free subdomain, WhatsApp integration & inventory tools. Trusted by 10,000+ Indian sellers. Start free!" />
-        <meta name="keywords" content="online store builder India, create online store, e-commerce platform India, free online store, sell online India, WhatsApp store, digital store maker, small business e-commerce, Indian online shopping platform, store builder no coding" />
+        <title>DigitalDukandar — Free Ecommerce Website Builder | Create Online Store &amp; Sell Online</title>
+        <meta name="title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store & Sell Online" />
+        <meta name="description" content="Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments & analytics. Trusted by 10,000+ store owners. No coding needed. Start free — no credit card required." />
+        <meta name="keywords" content="ecommerce website builder, create online store, build ecommerce website, sell online, best ecommerce platform, free online store, online store builder, ecommerce platform, AI ecommerce website builder, no code online store, whatsapp ecommerce, free ecommerce platform, shopify alternative, start selling online, ecommerce platform for small business, ecommerce website builder free, whatsapp store builder, free shopify alternative, cheap ecommerce platform, ecommerce platform for beginners, build online store free, no transaction fee ecommerce, sell online free, AI online store builder, woocommerce alternative, bigcommerce alternative, squarespace alternative, ecommerce platform comparison, small business online store, dropshipping website builder, mobile ecommerce platform, custom domain online store, sell products online, online selling platform, ecommerce store builder, website builder with ecommerce, free website with online store, sell online without fees, ecommerce website free, start online store, ecommerce builder, no code ecommerce builder, online shop builder, ecommerce site builder, create ecommerce website, ecommerce website for small business, free online shop, sell online for free, best free online store builder, ecommerce platform with whatsapp, whatsapp order management, AI store designer, ecommerce analytics, inventory management ecommerce, coupon code ecommerce, discount management online store" />
         <link rel="canonical" href="https://digitaldukandar.in" />
 
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://digitaldukandar.in" />
-        <meta property="og:title" content="DigitalDukandar - Create Your Online Store in Minutes" />
-        <meta property="og:description" content="Launch your professional online store in 5 minutes. No coding required. Trusted by 10,000+ entrepreneurs." />
+        <meta property="og:title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store" />
+        <meta property="og:description" content="Build your ecommerce website in minutes. AI-powered online store builder with WhatsApp integration, custom domain & analytics. Trusted by 10,000+ store owners. Start free!" />
         <meta property="og:image" content="https://digitaldukandar.in/logo.png" />
         <meta property="og:site_name" content="DigitalDukandar" />
-        <meta property="og:locale" content="en_IN" />
+        <meta property="og:locale" content="en_US" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://digitaldukandar.in" />
-        <meta name="twitter:title" content="DigitalDukandar - Create Your Online Store in Minutes" />
-        <meta name="twitter:description" content="Launch your professional online store in 5 minutes. No coding required. Trusted by 10,000+ entrepreneurs." />
+        <meta name="twitter:title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store" />
+        <meta name="twitter:description" content="Build your ecommerce website in minutes. AI-powered store builder with WhatsApp integration, payments & analytics. 10,000+ store owners trust us. Start free!" />
         <meta name="twitter:image" content="https://digitaldukandar.in/logo.png" />
 
         {/* Additional SEO */}
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="googlebot" content="index, follow" />
         <meta name="language" content="English" />
-        <meta name="geo.region" content="IN" />
-        <meta name="geo.placename" content="India" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
         {/* Structured Data - Organization */}
@@ -332,6 +328,155 @@ const Index = () => {
         {/* Structured Data - SoftwareApplication */}
         <script type="application/ld+json">
           {JSON.stringify(softwareSchema)}
+        </script>
+        {/* Structured Data - FAQPage */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is the best ecommerce website builder?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "This is a top-rated free ecommerce website builder that lets you create a professional online store in minutes. It includes AI-powered design, WhatsApp integration, payment processing, and analytics — no coding required."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I create an online store for free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. We offer a free 14-day trial with no credit card required. You get a free subdomain, full ecommerce features, and AI store designer from day one."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I build an ecommerce website?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "You can build an ecommerce website in 4 steps: (1) Sign up with Google, (2) Add your products, (3) Customize your store with the AI designer, (4) Go live and start selling. The whole process takes under 5 minutes."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What ecommerce platform is best for small business?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "This platform is built for small businesses. It offers affordable plans, WhatsApp order integration, inventory management, discount coupons, and built-in SEO — everything a small business needs to sell online without technical skills."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is this a good Shopify alternative?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. This is a powerful Shopify alternative with an AI store designer, WhatsApp integration, custom domain support, and plans starting at a fraction of Shopify's price. Ideal for entrepreneurs who want to sell online without high fees."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this platform have WhatsApp ecommerce integration?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. The platform has native WhatsApp integration that lets customers place orders directly via WhatsApp — making it the best ecommerce platform for businesses that sell through messaging apps."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does an AI ecommerce website builder work?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "An AI ecommerce website builder uses artificial intelligence to automatically design your store. You describe your brand or choose a style, and the AI generates colors, layouts, and themes instantly — no designer or coding needed. You can then customize and publish in minutes."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Are there ecommerce platforms with no transaction fees?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. This platform charges no transaction fees on any plan. Unlike Shopify, which charges 0.5–2% per sale unless you use Shopify Payments, you keep 100% of every sale you make. This makes it one of the most cost-effective ecommerce platforms for small businesses."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the best ecommerce platform for beginners?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The best ecommerce platform for beginners requires no coding, sets up in minutes, and includes payments, inventory, SEO, and analytics out of the box. This platform is built for beginners with a drag-and-drop builder and AI-powered store design."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I start an online store with no money?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. A free 14-day trial is available with no credit card required. You get a free subdomain, full ecommerce features, WhatsApp integration, and an AI designer at zero cost. Paid plans only start after the trial."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the cheapest way to build an ecommerce website?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The cheapest way to build an ecommerce website is to use a free ecommerce platform with no transaction fees. Starting with a free trial and zero transaction fees costs nothing until you scale — far cheaper than Shopify ($29/month + up to 2% fees) or WooCommerce (hosting + plugins)."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which ecommerce platform is better than Shopify for small business?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "For small businesses, platforms with no transaction fees, a free plan, WhatsApp integration, and an AI designer offer better value than Shopify. Shopify charges $29–$299/month plus up to 2% per transaction — costs that add up fast for small online stores."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I sell online without a website?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. With WhatsApp ecommerce integration, customers can place orders directly through WhatsApp — no separate website required. You can also share your store link on Instagram or Facebook to sell online instantly without a traditional website."
+                }
+              }
+            ]
+          })}
+        </script>
+        {/* Structured Data - HowTo */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": "How to Create an Online Store in Minutes",
+            "description": "Build your ecommerce website in 4 simple steps. No coding required.",
+            "totalTime": "PT5M",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Sign Up",
+                "text": "Create your free account in seconds with Google. No credit card required."
+              },
+              {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Add Products",
+                "text": "Build your product catalog easily. Add images, prices, and descriptions."
+              },
+              {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "Customize Your Store",
+                "text": "Brand your store with the AI designer — choose colors, logo, and layout."
+              },
+              {
+                "@type": "HowToStep",
+                "position": 4,
+                "name": "Go Live & Sell",
+                "text": "Share your store link and start selling online immediately."
+              }
+            ]
+          })}
         </script>
       </Helmet>
 
@@ -498,7 +643,7 @@ const Index = () => {
 
             {/* Subheading */}
             <p className="hero-subheading text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed font-light">
-              Create your professional online store builder for small business India. Sell online with WhatsApp integration, custom domain, and powerful inventory management. No coding required - start your free e-commerce platform today!
+              Build your ecommerce website in minutes. Sell online with AI-powered design, WhatsApp integration, custom domain, and powerful analytics. No coding required — start your free online store today.
             </p>
 
             {/* CTA Buttons */}
@@ -782,25 +927,93 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Who Is This For Section */}
+      <section className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-block mb-4">
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">For Every Seller</span>
+            </div>
+            <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground mb-6">
+              The Online Store Builder for Every Business
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Whether you're a first-time seller or scaling an existing brand, our <strong>ecommerce platform</strong> has everything you need to <strong>sell online</strong>
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                emoji: "🛍️",
+                title: "First-Time Sellers",
+                desc: "Never sold online before? Our no-code ecommerce website builder guides you from zero to live store in under 5 minutes. No technical skills, no designer, no developer needed.",
+                tags: ["No-code setup", "AI designer", "Free trial"]
+              },
+              {
+                emoji: "📱",
+                title: "WhatsApp Sellers",
+                desc: "Already selling via WhatsApp? Upgrade to a professional online store with a WhatsApp store builder that keeps orders organized and automates your catalog.",
+                tags: ["WhatsApp orders", "Product catalog", "Order tracking"]
+              },
+              {
+                emoji: "🏪",
+                title: "Small Business Owners",
+                desc: "Run a local shop or service? Build an ecommerce website for your small business with inventory management, coupons, and analytics — at a fraction of Shopify's price.",
+                tags: ["Inventory", "Discounts", "Analytics"]
+              },
+              {
+                emoji: "🚀",
+                title: "Entrepreneurs & Startups",
+                desc: "Launch your ecommerce startup fast. Our free ecommerce platform lets you test products, validate ideas, and start selling online — before spending a rupee on expensive tools.",
+                tags: ["Fast launch", "0% fees", "Scalable"]
+              },
+              {
+                emoji: "🎨",
+                title: "Creators & Artists",
+                desc: "Sell your digital products, art, or handcrafted items through a beautiful online shop builder. The AI designer makes your store look stunning without any design experience.",
+                tags: ["Beautiful design", "Digital products", "AI branding"]
+              },
+              {
+                emoji: "📦",
+                title: "Dropshippers",
+                desc: "Build a dropshipping website with product listings, stock management, and order automation. Accept payments globally and manage fulfillment from one dashboard.",
+                tags: ["Product management", "Payments", "Order automation"]
+              }
+            ].map((item, i) => (
+              <div key={i} className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                <div className="text-3xl mb-4">{item.emoji}</div>
+                <h3 className="font-semibold text-lg text-foreground mb-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed mb-4">{item.desc}</p>
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag, j) => (
+                    <span key={j} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* SEO-Rich Content Section */}
       <section className="container mx-auto px-4 lg:px-8 py-24 lg:py-32 bg-muted/20">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Why DigitalDukandar is the Best Free Online Store Builder in India
+              Why DigitalDukandar is the Best Free Ecommerce Website Builder
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Trusted by over 10,000+ small businesses across India to sell online and grow their digital presence
+              Trusted by 10,000+ entrepreneurs worldwide to build ecommerce websites and sell online without coding
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             <div className="bg-background p-8 rounded-2xl border border-border/50 shadow-lg">
               <h3 className="font-playfair text-2xl font-bold mb-4 text-foreground">
-                🇮🇳 Built for Indian Entrepreneurs
+                🌍 Built for Entrepreneurs Worldwide
               </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Our <strong>e-commerce platform India</strong> is designed specifically for local businesses. Accept payments in INR, integrate WhatsApp for customer communication, and reach customers across India with our <strong>online store builder</strong> made for the Indian market.
+                Our <strong>ecommerce website builder</strong> is designed for businesses of all sizes. Accept payments globally, integrate WhatsApp for customer communication, and reach customers everywhere with our <strong>online store builder</strong> — no technical skills required.
               </p>
             </div>
 
@@ -809,7 +1022,7 @@ const Index = () => {
                 💰 Completely Free to Start
               </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Start your <strong>free online store</strong> with our 14-day trial - no credit card required. Our <strong>affordable pricing plans</strong> start from just ₹299/month, making it the most cost-effective way to <strong>sell online India</strong> for small businesses.
+                Start your <strong>free online store</strong> with our 14-day trial — no credit card required. Our <strong>affordable ecommerce platform</strong> plans are the most cost-effective way to <strong>sell online</strong> for small businesses and entrepreneurs worldwide.
               </p>
             </div>
 
@@ -818,7 +1031,7 @@ const Index = () => {
                 📱 WhatsApp Store Integration
               </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Convert your business into a <strong>WhatsApp store</strong> instantly. Accept orders directly through WhatsApp - India's most popular messaging app. Perfect for <strong>small business e-commerce</strong> owners who want to meet customers where they are.
+                Convert your business into a <strong>WhatsApp store</strong> instantly. Accept orders directly through WhatsApp — used by over 3 billion people worldwide. Perfect for <strong>small business ecommerce</strong> owners who want to meet customers where they already are.
               </p>
             </div>
 
@@ -827,17 +1040,17 @@ const Index = () => {
                 ⚡ No Coding Required
               </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Our <strong>digital store maker</strong> requires zero technical knowledge. Create a professional <strong>online shopping website</strong> in minutes with our easy drag-and-drop interface. Perfect for <strong>store builder no coding</strong> solutions in India.
+                Our <strong>no-code ecommerce website builder</strong> requires zero technical knowledge. Create a professional <strong>online store</strong> in minutes with our AI-powered interface. Perfect for entrepreneurs who want to <strong>build an ecommerce website</strong> without coding.
               </p>
             </div>
           </div>
 
           <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-10 rounded-2xl border border-primary/20 text-center">
             <h3 className="font-playfair text-3xl font-bold mb-4 text-foreground">
-              Start Your Free Online Store in India Today
+              Start Your Free Ecommerce Website Today
             </h3>
             <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Join 10,000+ successful Indian entrepreneurs using DigitalDukandar as their <strong>e-commerce platform India</strong>. Create your <strong>online store builder for small business India</strong> in just 5 minutes.
+              Join 10,000+ entrepreneurs using DigitalDukandar as their <strong>ecommerce website builder</strong>. Create your <strong>online store</strong> in just 5 minutes — free, no credit card required.
             </p>
             <Link to="/auth">
               <Button size="lg" className="h-14 px-10 text-base font-semibold shadow-xl">
@@ -846,6 +1059,177 @@ const Index = () => {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Bar */}
+      <section className="bg-primary/5 border-y border-primary/10 py-12">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <p className="font-playfair text-4xl font-bold text-primary mb-1">10,000+</p>
+              <p className="text-sm text-muted-foreground">Online Stores Created</p>
+            </div>
+            <div>
+              <p className="font-playfair text-4xl font-bold text-primary mb-1">5 min</p>
+              <p className="text-sm text-muted-foreground">Average Setup Time</p>
+            </div>
+            <div>
+              <p className="font-playfair text-4xl font-bold text-primary mb-1">0%</p>
+              <p className="text-sm text-muted-foreground">Transaction Fees</p>
+            </div>
+            <div>
+              <p className="font-playfair text-4xl font-bold text-primary mb-1">4.8★</p>
+              <p className="text-sm text-muted-foreground">Average Store Rating</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Platform Comparison Section */}
+      <section className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-block mb-4">
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Platform Comparison</span>
+            </div>
+            <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground mb-6">
+              The Best Shopify Alternative for Small Business
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              See why thousands of entrepreneurs choose us over Shopify, Wix, and BigCommerce to build their ecommerce website
+            </p>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-border/50 shadow-lg">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="text-left p-4 font-semibold">Feature</th>
+                  <th className="p-4 font-semibold">DigitalDukandar</th>
+                  <th className="p-4 font-semibold text-primary-foreground/70">Shopify</th>
+                  <th className="p-4 font-semibold text-primary-foreground/70">Wix</th>
+                  <th className="p-4 font-semibold text-primary-foreground/70">BigCommerce</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {[
+                  ["Free Plan / Trial", "✅ 14-day free trial", "❌ No free plan", "⚠️ Limited free", "❌ No free plan"],
+                  ["Transaction Fees", "✅ 0% — zero fees", "❌ Up to 2% per sale", "⚠️ 0% with Wix Pay", "✅ 0% fees"],
+                  ["AI Store Designer", "✅ Built-in AI designer", "⚠️ Basic AI tools", "⚠️ Basic AI tools", "❌ No AI designer"],
+                  ["WhatsApp Integration", "✅ Native WhatsApp orders", "❌ Third-party only", "❌ Third-party only", "❌ Third-party only"],
+                  ["No-Code Setup", "✅ Zero coding needed", "✅ No coding needed", "✅ No coding needed", "⚠️ Some technical setup"],
+                  ["Custom Domain", "✅ Free subdomain + custom", "⚠️ Paid add-on", "⚠️ Paid add-on", "✅ Custom domain"],
+                  ["Starting Price", "✅ Free to start", "❌ $29/month", "❌ $17/month", "❌ $39/month"],
+                  ["Instagram Auto-Reply", "✅ Built-in", "❌ Not available", "❌ Not available", "❌ Not available"],
+                ].map(([feature, us, shopify, wix, bc], i) => (
+                  <tr key={i} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    <td className="p-4 font-medium text-foreground">{feature}</td>
+                    <td className="p-4 text-center font-semibold text-primary">{us}</td>
+                    <td className="p-4 text-center text-muted-foreground">{shopify}</td>
+                    <td className="p-4 text-center text-muted-foreground">{wix}</td>
+                    <td className="p-4 text-center text-muted-foreground">{bc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-8 grid md:grid-cols-3 gap-6">
+            <div className="bg-background p-6 rounded-2xl border border-border/50 shadow-sm">
+              <h3 className="font-semibold text-lg text-foreground mb-2">vs Shopify</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                As a <strong>free Shopify alternative</strong>, we offer zero transaction fees, a built-in AI designer, and native WhatsApp integration — at a fraction of Shopify's $29–$299/month cost.
+              </p>
+            </div>
+            <div className="bg-background p-6 rounded-2xl border border-border/50 shadow-sm">
+              <h3 className="font-semibold text-lg text-foreground mb-2">vs Wix</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Unlike Wix, our <strong>ecommerce website builder</strong> is purpose-built for selling online — with inventory management, discount coupons, WhatsApp orders, and advanced analytics included by default.
+              </p>
+            </div>
+            <div className="bg-background p-6 rounded-2xl border border-border/50 shadow-sm">
+              <h3 className="font-semibold text-lg text-foreground mb-2">vs WooCommerce</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Unlike WooCommerce, there's no hosting setup, no plugin management, and no coding. As a <strong>no-code ecommerce platform</strong>, you launch your online store in 5 minutes — not 5 days.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Everything you need to know about building your ecommerce website
+            </p>
+          </div>
+          <div className="space-y-4">
+            {[
+              {
+                q: "What is the best ecommerce website builder?",
+                a: "A top-rated free ecommerce website builder that lets you create a professional online store in minutes. Includes AI-powered design, WhatsApp integration, payment processing, and analytics — no coding required."
+              },
+              {
+                q: "Can I create an online store for free?",
+                a: "Yes. We offer a free 14-day trial with no credit card required. You get a free subdomain, full ecommerce features, and an AI store designer from day one."
+              },
+              {
+                q: "How do I build an ecommerce website?",
+                a: "You can build an ecommerce website in 4 steps: sign up with Google, add your products, customize with the AI designer, then go live and start selling. The whole process takes under 5 minutes."
+              },
+              {
+                q: "What ecommerce platform is best for small business?",
+                a: "This platform is built for small businesses. It offers affordable plans, WhatsApp order integration, inventory management, discount coupons, and built-in SEO — everything you need to sell online without technical skills."
+              },
+              {
+                q: "Is this a good Shopify alternative?",
+                a: "Yes. This is a powerful Shopify alternative with an AI store designer, WhatsApp integration, custom domain support, and plans at a fraction of Shopify's price. Ideal for entrepreneurs who want to sell online without high fees."
+              },
+              {
+                q: "Does this platform support WhatsApp ecommerce?",
+                a: "Yes. Native WhatsApp integration lets customers place orders directly via WhatsApp — making it the best ecommerce platform for businesses that sell through messaging apps."
+              },
+              {
+                q: "How does an AI ecommerce website builder work?",
+                a: "The AI designer automatically generates colors, layouts, and themes for your store based on your brand style. You describe what you want, and the AI builds it instantly — no designer or coding needed. Publish your store in minutes."
+              },
+              {
+                q: "Are there ecommerce platforms with no transaction fees?",
+                a: "Yes. Unlike Shopify (which charges 0.5–2% per sale), this platform charges zero transaction fees on all plans. You keep 100% of every sale — making it one of the most affordable ecommerce platforms for small businesses."
+              },
+              {
+                q: "What is the best ecommerce platform for beginners?",
+                a: "The best ecommerce platform for beginners is one that requires no coding, sets up in minutes, and includes all the tools you need out of the box — payments, inventory, SEO, and analytics. This platform is specifically designed for beginners with a drag-and-drop store builder and AI-powered design."
+              },
+              {
+                q: "Can I start an online store with no money?",
+                a: "Yes. You can start a free online store with a 14-day trial — no credit card required. You get a free subdomain, full ecommerce features, WhatsApp integration, and an AI designer at zero cost. Paid plans only begin after your trial."
+              },
+              {
+                q: "What is the cheapest way to build an ecommerce website?",
+                a: "The cheapest way to build an ecommerce website is to use a free ecommerce website builder with no transaction fees. Starting free with a 14-day trial and zero transaction fees means you pay nothing until you're ready to scale — far cheaper than Shopify ($29/month + 2% fees) or WooCommerce (hosting + plugins)."
+              },
+              {
+                q: "Which ecommerce platform is better than Shopify for small business?",
+                a: "For small businesses, platforms with no transaction fees, a free plan, and built-in tools like WhatsApp integration and an AI designer offer better value than Shopify. Shopify charges $29–$299/month plus up to 2% per transaction — costs that add up fast for small stores."
+              },
+              {
+                q: "Can I sell online without a website?",
+                a: "Yes. With WhatsApp ecommerce integration, you can receive and manage orders directly through WhatsApp — no separate website required. You can also share your store link on Instagram, Facebook, or any messaging app to sell online instantly."
+              }
+            ].map((item, i) => (
+              <div key={i} className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-semibold text-lg text-foreground mb-2">{item.q}</h3>
+                <p className="text-muted-foreground leading-relaxed">{item.a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

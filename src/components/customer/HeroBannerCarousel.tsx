@@ -80,8 +80,8 @@ const HeroBannerCarousel = ({
             <CarouselItem key={index}>
               <div className="relative h-[300px] md:h-[380px] lg:h-[450px]">
                 {/* Banner Image */}
-                <LazyImage 
-                  src={bannerUrl} 
+                <LazyImage
+                  src={bannerUrl}
                   alt={generateStoreImageAlt({
                     storeName,
                     imageType: 'banner',
