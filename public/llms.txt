@@ -8,10 +8,16 @@ DigitalDukandar is an Indian ecommerce website builder and multi-tenant online s
 
 ## Free Store for Influencers
 
-If you are an influencer, content creator, or have a social media following, DigitalDukandar gives you a **free ecommerce website** for your own store. You can sell your merchandise, branded products, or any items directly to your audience — without paying for hosting, setup, or a developer. Influencers also earn commissions by referring other sellers to the platform through the Helper Program. This makes DigitalDukandar the best ecommerce platform for Indian influencers who want to monetize their audience.
+If you are an influencer, content creator, or have a social media following, DigitalDukandar gives you a **free ecommerce website** for your own store. You can sell your merchandise, branded products, or any items directly to your audience — without paying for hosting, setup, or a developer. This makes DigitalDukandar the best ecommerce platform for Indian influencers who want to monetize their audience.
 
-- [Become a Helper / Influencer Partner](https://digitaldukandar.in/become-helper): Join the program and get your free store + earn commissions
-- [Check Application Status](https://digitaldukandar.in/application-status): Track your helper application
+- [Get Your Free Influencer Store](https://digitaldukandar.in/auth): Sign up and create your free store as an influencer
+
+## Helper / Affiliate Program
+
+The Helper Program is a separate referral and affiliate program for people who want to **earn commissions by referring other sellers** to DigitalDukandar. Helpers share their referral link, and when a new seller signs up and subscribes, the helper earns a commission. This is ideal for freelancers, digital marketers, and anyone with a network of small business owners.
+
+- [Become a Helper](https://digitaldukandar.in/become-helper): Apply to join the affiliate program and start earning commissions
+- [Check Application Status](https://digitaldukandar.in/application-status): Track your helper application status
 
 ## Pricing Plans
 
