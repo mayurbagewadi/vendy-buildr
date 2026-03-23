@@ -179,6 +179,12 @@ serve(async (req) => {
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://digitaldukandar.in/guide</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://digitaldukandar.in/become-helper</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
@@ -202,11 +208,11 @@ serve(async (req) => {
       // Add each store to platform sitemap for SEO discovery
       if (stores.length > 0) {
         for (const store of stores) {
-          // Determine store URL (prefer custom domain > subdomain > slug)
+          // Skip custom domains — different domain not allowed in this sitemap (Google policy)
+          if (store.custom_domain) continue
+
           let storeUrl = ''
-          if (store.custom_domain) {
-            storeUrl = `https://${store.custom_domain}`
-          } else if (store.subdomain) {
+          if (store.subdomain) {
             storeUrl = `https://${store.subdomain}.digitaldukandar.in`
           } else if (store.slug) {
             storeUrl = `https://digitaldukandar.in/${store.slug}`
