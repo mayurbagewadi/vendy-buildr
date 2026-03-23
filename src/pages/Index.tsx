@@ -627,7 +627,7 @@ const Index = () => {
             {/* Main Heading */}
             <div className="hero-heading mb-6">
               <AnimatedText
-                text="Free Online Store"
+                text="Free Ecommerce Website Builder"
                 as="h1"
                 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground leading-[1.1]"
                 delay={0.3}
