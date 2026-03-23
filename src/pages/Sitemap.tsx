@@ -170,12 +170,14 @@ export default function Sitemap() {
       if (stores && stores.length > 0) {
         console.log('[SITEMAP] Adding', stores.length, 'stores to sitemap');
         for (const store of stores) {
-          let storeUrl = '';
-          // Priority: custom_domain > subdomain > slug
+          // Skip custom domains — they belong to a different domain, not allowed in this sitemap
           if (store.custom_domain) {
-            storeUrl = `https://${store.custom_domain}`;
-            console.log(`[SITEMAP] Store ${store.slug}: using custom_domain -> ${storeUrl}`);
-          } else if (store.subdomain) {
+            console.log(`[SITEMAP] Skipping custom_domain store: ${store.custom_domain}`);
+            continue;
+          }
+
+          let storeUrl = '';
+          if (store.subdomain) {
             storeUrl = `https://${store.subdomain}.digitaldukandar.in`;
             console.log(`[SITEMAP] Store ${store.slug}: using subdomain -> ${storeUrl}`);
           } else {
