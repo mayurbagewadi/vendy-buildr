@@ -140,6 +140,12 @@ export default function Sitemap() {
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://digitaldukandar.in/guide</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://digitaldukandar.in/become-helper</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>
