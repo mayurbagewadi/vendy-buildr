@@ -1,0 +1,76 @@
+# DigitalDukandar — Free Online Store Builder India
+
+> DigitalDukandar is a free ecommerce website builder for Indian entrepreneurs, small businesses, and resellers. It lets anyone create a professional online store in minutes — no coding, no technical skills required. Every store gets its own subdomain, product catalog, cart, checkout, and full admin dashboard. Perfect for selling clothes, electronics, groceries, handmade goods, or any product online.
+
+## What is DigitalDukandar
+
+DigitalDukandar is an Indian ecommerce website builder and multi-tenant online store platform. Store owners sign up, set up their store, add products, and immediately start selling online. Each store runs on its own subdomain (e.g. mybrand.digitaldukandar.in) or a custom domain. The platform handles hosting, payments, shipping, SEO, and design — so sellers focus only on their products and customers.
+
+## Platform Pages
+
+- [Home](https://digitaldukandar.in/): Main landing page — start building your free online store
+- [Pricing](https://digitaldukandar.in/pricing): Free and paid subscription plans with feature breakdown
+- [Sign Up / Login](https://digitaldukandar.in/auth): Create a new store or log in to your existing store account
+- [Privacy Policy](https://digitaldukandar.in/privacy-policy): Data handling and privacy information
+- [Terms of Service](https://digitaldukandar.in/terms-of-service): Platform usage terms and conditions
+
+## Core Ecommerce Features
+
+- **Free store builder**: Create a fully functional online store for free with no coding
+- **Instant subdomain**: Every store gets a live URL (storename.digitaldukandar.in) immediately
+- **Custom domain support**: Connect your own domain (e.g. mybrand.com) to your store
+- **Product management**: Add unlimited products with images, descriptions, prices, and variants
+- **Category management**: Organize products into categories for easy browsing
+- **Shopping cart**: Built-in cart and checkout flow for customers
+- **Order management**: View, track, and manage customer orders from the dashboard
+- **Payments**: Integrated payment gateway support for Indian sellers (Razorpay)
+- **Shipping integration**: Powered by Shiprocket for pan-India delivery and tracking
+- **Discounts & Coupons**: Create promotional codes and discount campaigns
+- **WhatsApp support**: Floating WhatsApp button for customer support on every store
+
+## Store Design & Customization
+
+- **AI Designer**: AI-powered store redesign — describe your vision in plain language and the AI applies colors, fonts, layouts, and styles
+- **Theme customization**: CSS variable-based design system (primary color, background, radius, typography)
+- **Mobile responsive**: All stores are fully responsive and mobile-friendly by default
+- **Dark mode**: Built-in light/dark mode support
+
+## Growth & Marketing Tools
+
+- **SEO settings**: Per-store meta titles, descriptions, and structured data
+- **Sitemap generation**: Automatic XML sitemaps for search engine indexing
+- **Social media settings**: Instagram and social media integration per store
+- **Analytics**: Sales reports, order analytics, and growth tracking
+- **Google Reviews**: Customer review management
+
+## For Store Owners (Admin)
+
+- [Admin Dashboard](https://digitaldukandar.in/admin/dashboard): Central hub to manage your entire store
+- [Products](https://digitaldukandar.in/admin/products): Add and manage your product catalog
+- [Orders](https://digitaldukandar.in/admin/orders): View and process customer orders
+- [Categories](https://digitaldukandar.in/admin/categories): Organize products into categories
+- [Analytics](https://digitaldukandar.in/admin/analytics): Sales and traffic insights
+- [SEO Settings](https://digitaldukandar.in/admin/growth/seo): Optimize your store for search engines
+- [Shipping](https://digitaldukandar.in/admin/shipping): Configure delivery options and Shiprocket
+- [Store Settings](https://digitaldukandar.in/admin/settings): Branding, logo, store name, and preferences
+- [AI Designer](https://digitaldukandar.in/admin/ai-designer): Redesign your storefront using AI prompts
+- [Buy AI Tokens](https://digitaldukandar.in/admin/buy-tokens): Purchase credits for AI design generation
+
+## Who Is It For
+
+- Small business owners in India wanting to sell online
+- Resellers and dropshippers needing a quick storefront
+- Handmade and artisan sellers (jewellery, clothing, home decor)
+- Grocery and local shops going digital
+- Fashion brands and boutiques
+- Electronics and gadget sellers
+- Anyone who wants to build an online store without hiring a developer
+
+## Technical Details
+
+- Hosted on Indian servers for fast load times within India
+- Built with React, TypeScript, and Supabase
+- Supports both subdomain routing and custom domain routing
+- Multi-tenant architecture: thousands of stores on one platform
+- SEO-optimized storefront pages with meta tags and structured data
+- Sitemap: [https://digitaldukandar.in/sitemap.xml](https://digitaldukandar.in/sitemap.xml)
