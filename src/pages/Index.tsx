@@ -634,7 +634,7 @@ const Index = () => {
               />
               <AnimatedText
                 text="Launch in 5 Minutes"
-                as="h2"
+                as="span"
                 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mt-2 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient"
                 delay={0.6}
                 gradient
@@ -1046,9 +1046,9 @@ const Index = () => {
           </div>
 
           <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-10 rounded-2xl border border-primary/20 text-center">
-            <h3 className="font-playfair text-3xl font-bold mb-4 text-foreground">
+            <h2 className="font-playfair text-3xl font-bold mb-4 text-foreground">
               Start Your Free Ecommerce Website Today
-            </h3>
+            </h2>
             <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
               Join 10,000+ entrepreneurs using DigitalDukandar as their <strong>ecommerce website builder</strong>. Create your <strong>online store</strong> in just 5 minutes — free, no credit card required.
             </p>
