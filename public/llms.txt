@@ -1,113 +1,59 @@
-# DigitalDukandar — Free Online Store Builder India
+# DigitalDukandar
 
 > DigitalDukandar is a free ecommerce website builder for Indian entrepreneurs, small businesses, and resellers. It lets anyone create a professional online store in minutes — no coding, no technical skills required. Every store gets its own subdomain, product catalog, cart, checkout, and full admin dashboard. Perfect for selling clothes, electronics, groceries, handmade goods, or any product online.
 
-## What is DigitalDukandar
+DigitalDukandar is an Indian multi-tenant ecommerce platform. Store owners sign up, set up their store, add products, and immediately start selling online. Each store runs on its own subdomain (e.g. mybrand.digitaldukandar.in) or a custom domain. The platform handles hosting, payments, shipping, SEO, and design — so sellers focus only on their products and customers. All plans include 0% transaction fees.
 
-DigitalDukandar is an Indian ecommerce website builder and multi-tenant online store platform. Store owners sign up, set up their store, add products, and immediately start selling online. Each store runs on its own subdomain (e.g. mybrand.digitaldukandar.in) or a custom domain. The platform handles hosting, payments, shipping, SEO, and design — so sellers focus only on their products and customers.
+## Public Pages
 
-## Free Store for Influencers
+- [Home](https://digitaldukandar.in/): Platform landing page — create your free online store
+- [Pricing](https://digitaldukandar.in/pricing): Subscription plans — Free, Pro, and Enterprise with feature comparison
+- [Sign Up / Login](https://digitaldukandar.in/auth): Create a new store account or log in
+- [Store Setup Guide](https://digitaldukandar.in/guide): Step-by-step guide to launching your store
+- [Become a Helper](https://digitaldukandar.in/become-helper): Apply to the affiliate program and earn commissions by referring sellers
+- [Helper Application Status](https://digitaldukandar.in/application-status): Check your affiliate application status
 
-If you are an influencer, content creator, or have a social media following, DigitalDukandar gives you a **free ecommerce website** for your own store. You can sell your merchandise, branded products, or any items directly to your audience — without paying for hosting, setup, or a developer. This makes DigitalDukandar the best ecommerce platform for Indian influencers who want to monetize their audience.
+## Legal
 
-- [Get Your Free Influencer Store](https://digitaldukandar.in/auth): Sign up and create your free store as an influencer
+- [Privacy Policy](https://digitaldukandar.in/privacy-policy): How user data is collected and handled
+- [Terms of Service](https://digitaldukandar.in/terms-of-service): Platform usage terms and conditions
 
-## Helper / Affiliate Program
+## Optional
 
-The Helper Program is a separate referral and affiliate program for people who want to **earn commissions by referring other sellers** to DigitalDukandar. Helpers share their referral link, and when a new seller signs up and subscribes, the helper earns a commission. This is ideal for freelancers, digital marketers, and anyone with a network of small business owners.
-
-- [Become a Helper](https://digitaldukandar.in/become-helper): Apply to join the affiliate program and start earning commissions
-- [Check Application Status](https://digitaldukandar.in/application-status): Track your helper application status
+- [Sitemap](https://digitaldukandar.in/sitemap.xml): XML sitemap listing all platform and store pages
 
 ## Pricing Plans
 
-All plans include 0% transaction fees. DigitalDukandar never charges a cut of your sales.
+All plans include 0% transaction fees. DigitalDukandar never takes a cut of sales.
 
-- **Free / Starter Plan**: Free forever. Includes free subdomain, product catalog, cart, checkout, WhatsApp integration, and basic analytics. No credit card required.
-- **Pro Plan**: Paid monthly or yearly (INR). Includes custom domain, advanced analytics, priority support, unlimited products, and AI Designer access.
-- **Enterprise Plan**: For high-volume stores. Includes all Pro features plus dedicated support and extended limits.
+- **Free / Starter**: Free forever. Includes free subdomain, product catalog, cart, checkout, WhatsApp integration, and basic analytics. No credit card required.
+- **Pro**: Paid monthly or yearly in INR. Includes custom domain, advanced analytics, unlimited products, priority support, and AI Designer access.
+- **Enterprise**: For high-volume stores. All Pro features plus dedicated support and extended limits.
 
-View full pricing: [https://digitaldukandar.in/pricing](https://digitaldukandar.in/pricing)
+Note: The admin dashboard at /admin requires a store owner account. Store owners manage products, orders, shipping, SEO, and store design after logging in.
+
+## Free Store for Influencers
+
+Influencers and content creators get a free ecommerce store to sell merchandise, branded products, or any items directly to their audience — no hosting cost, no developer needed. Sign up at [https://digitaldukandar.in/auth](https://digitaldukandar.in/auth) to get started.
+
+## Helper / Affiliate Program
+
+The Helper Program is a separate referral program where helpers earn commissions by referring new sellers to DigitalDukandar. Helpers share a referral link — when a seller subscribes, the helper earns a commission. Ideal for freelancers, digital marketers, and anyone with a network of small business owners. Apply at [https://digitaldukandar.in/become-helper](https://digitaldukandar.in/become-helper).
 
 ## DigitalDukandar vs Competitors
 
-### DigitalDukandar vs Shopify
-- DigitalDukandar: 0% transaction fees on all plans. Shopify charges 0.5%–2% per sale unless you use Shopify Payments (not available in India).
-- DigitalDukandar: Free plan available. Shopify starts at $29/month (~₹2,400/month) with no free plan.
-- DigitalDukandar: Built for Indian sellers with WhatsApp integration, Razorpay, and Shiprocket. Shopify's Indian support is limited.
-- DigitalDukandar: AI Designer included. Shopify requires paid themes and apps for customization.
+**vs Shopify**: DigitalDukandar charges 0% transaction fees. Shopify charges 0.5%–2% per sale. DigitalDukandar has a free plan; Shopify starts at $29/month (~₹2,400). DigitalDukandar is built for Indian sellers with Razorpay and Shiprocket. AI Designer is included; Shopify requires paid themes and apps.
 
-### DigitalDukandar vs Dukaan
-- DigitalDukandar: Free plan with full ecommerce features. Dukaan's free plan is very limited.
-- DigitalDukandar: AI-powered store designer. Dukaan has no AI design feature.
-- DigitalDukandar: Influencer/Helper affiliate program with commission earnings. Dukaan has no referral program.
+**vs Dukaan**: DigitalDukandar has a full-featured free plan. Dukaan's free plan is very limited. DigitalDukandar includes an AI-powered store designer; Dukaan has no AI design feature. DigitalDukandar has an affiliate/helper referral program; Dukaan does not.
 
-### DigitalDukandar vs Instamojo
-- DigitalDukandar: Full store builder with product pages, cart, checkout, and admin dashboard. Instamojo is primarily a payment link tool.
-- DigitalDukandar: 0% transaction fees. Instamojo charges per transaction.
-- DigitalDukandar: Custom domain support on paid plans. Instamojo has limited store customization.
+**vs Instamojo**: DigitalDukandar is a full store builder with product pages, cart, checkout, and admin dashboard. Instamojo is primarily a payment link tool. DigitalDukandar charges 0% transaction fees; Instamojo charges per transaction.
 
-### DigitalDukandar vs WooCommerce
-- DigitalDukandar: No hosting setup, no plugins, no coding. WooCommerce requires WordPress hosting, setup, and ongoing maintenance.
-- DigitalDukandar: Live in 5 minutes. WooCommerce setup takes hours to days.
-- DigitalDukandar: All features included. WooCommerce requires paid plugins for payments, SEO, and analytics.
-
-## Platform Pages
-
-- [Home](https://digitaldukandar.in/): Main landing page — start building your free online store
-- [Pricing](https://digitaldukandar.in/pricing): Free and paid subscription plans with feature breakdown
-- [Sign Up / Login](https://digitaldukandar.in/auth): Create a new store or log in to your existing store account
-- [Store Setup Guide](https://digitaldukandar.in/guide): Step-by-step guide to launching your store
-- [Become a Helper](https://digitaldukandar.in/become-helper): Join the influencer/affiliate program
-- [Privacy Policy](https://digitaldukandar.in/privacy-policy): Data handling and privacy information
-- [Terms of Service](https://digitaldukandar.in/terms-of-service): Platform usage terms and conditions
-
-## Core Ecommerce Features
-
-- **Free store builder**: Create a fully functional online store for free with no coding
-- **0% transaction fees**: Keep 100% of every sale on all plans
-- **Instant subdomain**: Every store gets a live URL (storename.digitaldukandar.in) immediately
-- **Custom domain support**: Connect your own domain (e.g. mybrand.com) to your store
-- **Product management**: Add unlimited products with images, descriptions, prices, and variants
-- **Category management**: Organize products into categories for easy browsing
-- **Shopping cart**: Built-in cart and checkout flow for customers
-- **Order management**: View, track, and manage customer orders from the dashboard
-- **Payments**: Integrated payment gateway support for Indian sellers (Razorpay)
-- **Shipping integration**: Powered by Shiprocket for pan-India delivery and tracking
-- **Discounts & Coupons**: Create promotional codes and discount campaigns
-- **WhatsApp support**: Floating WhatsApp button for customer support on every store
-
-## Store Design & Customization
-
-- **AI Designer**: AI-powered store redesign — describe your vision in plain language and the AI applies colors, fonts, layouts, and styles
-- **Theme customization**: CSS variable-based design system (primary color, background, radius, typography)
-- **Mobile responsive**: All stores are fully responsive and mobile-friendly by default
-- **Dark mode**: Built-in light/dark mode support
-
-## Growth & Marketing Tools
-
-- **SEO settings**: Per-store meta titles, descriptions, and structured data
-- **Sitemap generation**: Automatic XML sitemaps for search engine indexing
-- **Social media settings**: Instagram and social media integration per store
-- **Analytics**: Sales reports, order analytics, and growth tracking
-- **Google Reviews**: Customer review management
+**vs WooCommerce**: DigitalDukandar requires no hosting setup, no plugins, and no coding. WooCommerce requires WordPress hosting, setup, and ongoing maintenance. DigitalDukandar goes live in 5 minutes; WooCommerce setup takes hours to days.
 
 ## Who Is It For
 
-- Indian influencers and content creators who want a free store to sell to their audience
-- Small business owners in India wanting to sell online
-- Resellers and dropshippers needing a quick storefront
-- Handmade and artisan sellers (jewellery, clothing, home decor)
-- Grocery and local shops going digital
-- Fashion brands and boutiques
-- Electronics and gadget sellers
-- Anyone who wants to build an online store without hiring a developer
+DigitalDukandar is built for Indian influencers and content creators who want a free store to sell to their audience, small business owners wanting to sell online, resellers and dropshippers, handmade and artisan sellers, grocery and local shops going digital, fashion boutiques, electronics sellers, and anyone who wants to build an online store without hiring a developer.
 
 ## Technical Details
 
-- Hosted on Indian servers for fast load times within India
-- Built with React, TypeScript, and Supabase
-- Supports both subdomain routing and custom domain routing
-- Multi-tenant architecture: thousands of stores on one platform
-- SEO-optimized storefront pages with meta tags and structured data
-- Sitemap: [https://digitaldukandar.in/sitemap.xml](https://digitaldukandar.in/sitemap.xml)
+Built with React, TypeScript, and Supabase. Hosted on Indian servers. Supports subdomain routing (storename.digitaldukandar.in) and custom domain routing. Multi-tenant architecture. All storefronts are SEO-optimized with meta tags, structured data, and automatic sitemaps.
