@@ -516,7 +516,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <p className="text-muted-foreground">Check out our top picks for you</p>
                 </div>
                 <Link to={productsLink}>
-                  <Button variant="outline">
+                  <Button variant="outline" className="border-primary text-primary">
                     See All
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -594,7 +594,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     <p className="text-muted-foreground">Fresh products just for you</p>
                   </div>
                   <Link to={productsLink}>
-                    <Button variant="outline">
+                    <Button variant="outline" className="border-primary text-primary">
                       See All
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>

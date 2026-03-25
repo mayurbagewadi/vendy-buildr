@@ -45,8 +45,8 @@ const MiniCart = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="relative" data-cart-icon>
-          <ShoppingCart className="w-4 h-4" />
+        <Button variant="outline" size="icon" className="relative border-primary" data-cart-icon>
+          <ShoppingCart className="w-4 h-4 text-primary" />
           {cartCount > 0 && (
             <Badge
               variant="destructive"

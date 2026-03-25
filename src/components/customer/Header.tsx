@@ -109,16 +109,16 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to={homeLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={homeLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Home
             </Link>
-            <Link to={productsLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={productsLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Products
             </Link>
-            <Link to={categoriesLink} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={categoriesLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Categories
             </Link>
-            <Link to={`${homeLink}#about`} className="relative text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={`${homeLink}#about`} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               About
             </Link>
           </nav>
@@ -131,7 +131,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10"
+                className="pr-10 border-primary"
               />
               <Button
                 type="submit"
@@ -150,9 +150,9 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
               variant="outline"
               size="icon"
               onClick={handleWhatsApp}
-              className="hidden sm:flex min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105"
+              className="hidden sm:flex min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105 border-primary"
             >
-              <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+              <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12 text-primary" />
             </Button>
             <ThemeToggle />
             <MiniCart />
@@ -160,12 +160,12 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105"
+              className="md:hidden min-w-[44px] min-h-[44px] group transition-all duration-300 hover:scale-105 border border-primary"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? 
-                <X className="w-5 h-5 animate-in spin-in-180 duration-300" /> : 
-                <Menu className="w-5 h-5 animate-in fade-in duration-300" />
+                <X className="w-5 h-5 animate-in spin-in-180 duration-300 text-primary" /> :
+                <Menu className="w-5 h-5 animate-in fade-in duration-300 text-primary" />
               }
             </Button>
           </div>
@@ -179,7 +179,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-10"
+              className="pr-10 border-primary"
             />
             <Button
               type="submit"
@@ -199,28 +199,28 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
             <Link
               to={homeLink}
-              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300"
+              className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
               to={productsLink}
-              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-75"
+              className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-75"
               onClick={() => setMobileMenuOpen(false)}
             >
               Products
             </Link>
             <Link
               to={categoriesLink}
-              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-150"
+              className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-150"
               onClick={() => setMobileMenuOpen(false)}
             >
               Categories
             </Link>
             <Link
               to={`${homeLink}#about`}
-              className="text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200"
+              className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200"
               onClick={() => setMobileMenuOpen(false)}
             >
               About

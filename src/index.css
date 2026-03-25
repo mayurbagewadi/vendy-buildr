@@ -30,7 +30,7 @@
 @layer base {
   :root {
     /* Professional Admin Color Palette - All HSL Values */
-    --background: 210 40% 98%;
+    --background: 30 80% 97%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -144,7 +144,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 217 91% 60%;
-    
+
     --sidebar-background: 217.2 32.6% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 217 91% 60%;
