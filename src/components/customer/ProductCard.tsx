@@ -54,7 +54,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
       onClick={handleClick}
-      className="cursor-pointer"
+      className="cursor-pointer w-[90%] mx-auto mb-6"
       data-ai="product-card"
     >
       <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden !rounded-[1.55rem]">
@@ -65,7 +65,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
             Selectors: [data-ai="product-card"] - affects all product cards
         */}
         <CardContent className="p-0">
-          <div className="relative aspect-square overflow-hidden bg-muted">
+          <div className="relative aspect-[5/4] overflow-hidden bg-muted">
             <LazyImage
               src={imageUrl}
               alt={generateProductImageAlt({
@@ -82,15 +82,15 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
             )}
           </div>
         </CardContent>
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
-          <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
+          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
             {name}
           </h3>
           <p className="text-lg font-bold text-primary">{displayPrice}</p>
         </CardContent>
-        <CardFooter className="p-4 pt-0">
-          <Button className="w-full min-h-[44px]" variant="outline">
+        <CardFooter className="p-3 pt-0">
+          <Button className="w-full min-h-[44px]" variant="default">
             View Details
           </Button>
         </CardFooter>

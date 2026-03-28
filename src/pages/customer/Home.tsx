@@ -207,7 +207,7 @@ const Home = () => {
 
         {/* Featured Products */}
         <section className="py-16 bg-background">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-5">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h2 className="text-3xl font-bold text-foreground mb-2">Featured Products</h2>
@@ -221,7 +221,7 @@ const Home = () => {
               </Link>
             </div>
             {featuredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 gap-y-8">
                 {featuredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -244,12 +244,12 @@ const Home = () => {
         {/* New Arrivals */}
         {newArrivals.length > 0 && (
           <section className="py-16">
-            <div className="container mx-auto px-4">
+            <div className="container mx-auto px-5">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-foreground mb-2">New Arrivals</h2>
                 <p className="text-muted-foreground">Fresh products just for you</p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 gap-y-8">
                 {newArrivals.map((product) => (
                   <ProductCard
                     key={product.id}
