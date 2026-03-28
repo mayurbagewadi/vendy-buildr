@@ -589,7 +589,7 @@ category: "",
           price: parseFloat(v.price),
           sku: v.sku,
         })) : [],
-        priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : undefined,
+        priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : (basePrice ? `₹${parseFloat(basePrice).toFixed(2)}` : undefined),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
