@@ -57,7 +57,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
       className="cursor-pointer"
       data-ai="product-card"
     >
-      <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+      <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden !rounded-[1.55rem]">
         {/* ═══ PRODUCT CARD ═══
             Purpose: Individual product display card in grid/list
             Content: Product image, category tag, name, price, "View Details" button
