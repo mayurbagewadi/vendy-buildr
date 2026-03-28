@@ -34,6 +34,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { getProducts, deleteProduct as deleteProductUtil, type Product as SharedProduct } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -56,6 +57,7 @@ const Products = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Load products function
@@ -478,7 +480,7 @@ const Products = () => {
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteProduct(product.id);
+                                setProductToDelete(product.id);
                               }}
                               title="Delete Product"
                             >
@@ -530,6 +532,31 @@ const Products = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => { if (!open) setProductToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (productToDelete) {
+                  handleDeleteProduct(productToDelete);
+                  setProductToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
   );
 };
 
