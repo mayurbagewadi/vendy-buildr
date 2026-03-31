@@ -34,6 +34,7 @@ interface Variant {
   name: string;
   price: number;
   sku?: string;
+  offer_price?: number;
 }
 
 interface Product {
@@ -46,6 +47,8 @@ interface Product {
   video_url?: string;
   basePrice?: number;
   base_price?: number;
+  offerPrice?: number;
+  offer_price?: number;
   baseSku?: string;
   sku?: string;
   variants?: Variant[];
@@ -321,8 +324,12 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const needsVariantSelection = hasVariants && !selectedVariant;
 
   const currentPrice = currentVariant
-    ? currentVariant.price
-    : (product.basePrice || product.base_price || 0);
+    ? (currentVariant.offer_price && currentVariant.offer_price > 0 && currentVariant.offer_price < currentVariant.price ? currentVariant.offer_price : currentVariant.price)
+    : (product.offerPrice && product.offerPrice > 0 && product.offerPrice < (product.basePrice || product.base_price || 0)
+        ? product.offerPrice
+        : (product.offer_price && product.offer_price > 0 && product.offer_price < (product.basePrice || product.base_price || 0)
+            ? product.offer_price
+            : (product.basePrice || product.base_price || 0)));
 
   const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.svg"];
   const videoUrl = product.videoUrl || product.video_url;
@@ -697,9 +704,19 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                           >
                             <div className="flex justify-between items-center">
                               <span className="font-medium">{variant.name}</span>
-                              <span className="font-bold text-primary text-lg">
-                                ₹{variant.price}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {variant.offer_price && variant.offer_price > 0 && variant.offer_price < variant.price ? (
+                                  <>
+                                    <span className="font-bold text-primary text-lg">₹{variant.offer_price}</span>
+                                    <span className="text-sm text-muted-foreground line-through">₹{variant.price}</span>
+                                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                      {Math.round((variant.price - variant.offer_price) / variant.price * 100)}% off
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="font-bold text-primary text-lg">₹{variant.price}</span>
+                                )}
+                              </div>
                             </div>
                           </Label>
                         </div>
@@ -730,9 +747,32 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
               </Card>
             ) : (
               <div className="mb-6">
-                <p data-ai="product-price" className="text-3xl font-bold text-primary">
-                  {product.price_range || product.priceRange || `₹${product.basePrice || product.base_price || 0}`}
-                </p>
+                {(() => {
+                  const sp = product.basePrice || product.base_price || 0;
+                  const op = product.offerPrice || product.offer_price;
+                  const hasOffer = op && op > 0 && op < sp;
+                  if (product.price_range || product.priceRange) {
+                    return (
+                      <p data-ai="product-price" className="text-3xl font-bold text-primary">
+                        {product.price_range || product.priceRange}
+                      </p>
+                    );
+                  }
+                  if (hasOffer) {
+                    return (
+                      <div className="flex items-center gap-3">
+                        <p data-ai="product-price" className="text-3xl font-bold text-primary">₹{op}</p>
+                        <p className="text-xl text-muted-foreground line-through">₹{sp}</p>
+                        <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-md">
+                          {Math.round((sp - op!) / sp * 100)}% off
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p data-ai="product-price" className="text-3xl font-bold text-primary">₹{sp}</p>
+                  );
+                })()}
               </div>
             )}
 

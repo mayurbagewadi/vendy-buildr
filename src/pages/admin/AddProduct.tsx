@@ -40,6 +40,7 @@ const variantSchema = z.object({
     const num = parseFloat(val);
     return !isNaN(num) && num > 0;
   }, "Price must be a valid positive number"),
+  offerPrice: z.string().optional(),
   sku: z.string().trim().optional(),
 });
 
@@ -63,9 +64,10 @@ const AddProduct = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [pricingMode, setPricingMode] = useState<"single" | "variants">("single");
   const [basePrice, setBasePrice] = useState("");
+  const [offerPrice, setOfferPrice] = useState("");
   const [baseStock, setBaseStock] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [newVariant, setNewVariant] = useState({ name: "", price: "", sku: "" });
+  const [newVariant, setNewVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
@@ -76,7 +78,7 @@ const AddProduct = () => {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Store files until save
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); // Preview URLs for display
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
-  const [editingVariant, setEditingVariant] = useState({ name: "", price: "", sku: "" });
+  const [editingVariant, setEditingVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -343,11 +345,12 @@ category: "",
       id: Date.now().toString(),
       name: newVariant.name.trim(),
       price: newVariant.price,
+      offerPrice: newVariant.offerPrice.trim() || undefined,
       sku: newVariant.sku.trim() || undefined,
     };
 
     setVariants(prev => [...prev, variant]);
-    setNewVariant({ name: "", price: "", sku: "" });
+    setNewVariant({ name: "", price: "", offerPrice: "", sku: "" });
   };
 
   const removeVariant = (id: string) => {
@@ -356,7 +359,7 @@ category: "",
 
   const startEditVariant = (variant: Variant) => {
     setEditingVariantId(variant.id);
-    setEditingVariant({ name: variant.name, price: variant.price, sku: variant.sku || "" });
+    setEditingVariant({ name: variant.name, price: variant.price, offerPrice: variant.offerPrice || "", sku: variant.sku || "" });
   };
 
   const saveEditVariant = () => {
@@ -372,18 +375,18 @@ category: "",
     setVariants(prev =>
       prev.map(v =>
         v.id === editingVariantId
-          ? { ...v, name: editingVariant.name.trim(), price: editingVariant.price, sku: editingVariant.sku.trim() || undefined }
+          ? { ...v, name: editingVariant.name.trim(), price: editingVariant.price, offerPrice: editingVariant.offerPrice.trim() || undefined, sku: editingVariant.sku.trim() || undefined }
           : v
       )
     );
 
     setEditingVariantId(null);
-    setEditingVariant({ name: "", price: "", sku: "" });
+    setEditingVariant({ name: "", price: "", offerPrice: "", sku: "" });
   };
 
   const cancelEditVariant = () => {
     setEditingVariantId(null);
-    setEditingVariant({ name: "", price: "", sku: "" });
+    setEditingVariant({ name: "", price: "", offerPrice: "", sku: "" });
   };
 
   const getPriceRange = () => {
@@ -583,10 +586,12 @@ category: "",
         images: allImages,
         videoUrl: videoUrl.trim() || undefined,
         basePrice: pricingMode === "single" && basePrice ? parseFloat(basePrice) : undefined,
+        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0 ? parseFloat(offerPrice) : undefined,
         stock: pricingMode === "single" && baseStock ? parseInt(baseStock) : 0,
         variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
+          offer_price: v.offerPrice && parseFloat(v.offerPrice) > 0 ? parseFloat(v.offerPrice) : undefined,
           sku: v.sku,
         })) : [],
         priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : (basePrice ? `₹${parseFloat(basePrice).toFixed(2)}` : undefined),
@@ -778,15 +783,26 @@ category: "",
                     {/* Single Price Mode */}
                     {pricingMode === "single" && (
                       <div className="border rounded-lg p-4 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="text-sm font-medium">Price (₹)</label>
+                            <label className="text-sm font-medium">Selling Price (₹)</label>
                             <Input
                               type="number"
                               step="0.01"
                               placeholder="0.00"
                               value={basePrice}
                               onChange={(e) => setBasePrice(e.target.value)}
+                              className="no-spinner"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Offer Price (₹)</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="Leave blank = no offer"
+                              value={offerPrice}
+                              onChange={(e) => setOfferPrice(e.target.value)}
                               className="no-spinner"
                             />
                           </div>
@@ -801,6 +817,11 @@ category: "",
                             />
                           </div>
                         </div>
+                        {offerPrice && basePrice && parseFloat(offerPrice) > 0 && parseFloat(basePrice) > 0 && parseFloat(offerPrice) < parseFloat(basePrice) && (
+                          <p className="text-sm text-green-600 font-medium">
+                            {Math.round((parseFloat(basePrice) - parseFloat(offerPrice)) / parseFloat(basePrice) * 100)}% off badge will show on product card
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -808,7 +829,7 @@ category: "",
                     {pricingMode === "variants" && (<>
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Add Variant</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                           <label className="text-sm font-medium">Variant Name</label>
                           <Input
@@ -818,13 +839,24 @@ category: "",
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Price (₹)</label>
+                          <label className="text-sm font-medium">Selling Price (₹)</label>
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={newVariant.price}
                             onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                            className="no-spinner"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Offer Price (₹)</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Leave blank = no offer"
+                            value={newVariant.offerPrice}
+                            onChange={(e) => setNewVariant(prev => ({ ...prev, offerPrice: e.target.value }))}
                             className="no-spinner"
                           />
                         </div>
@@ -858,7 +890,8 @@ category: "",
                             <TableHeader>
                               <TableRow>
                                 <TableHead>Variant Name</TableHead>
-                                <TableHead>Price</TableHead>
+                                <TableHead>Selling Price</TableHead>
+                                <TableHead>Offer Price</TableHead>
                                 <TableHead>Stock</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                               </TableRow>
@@ -881,6 +914,16 @@ category: "",
                                           step="0.01"
                                           value={editingVariant.price}
                                           onChange={(e) => setEditingVariant(prev => ({ ...prev, price: e.target.value }))}
+                                          className="h-8 no-spinner"
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          placeholder="optional"
+                                          value={editingVariant.offerPrice}
+                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, offerPrice: e.target.value }))}
                                           className="h-8 no-spinner"
                                         />
                                       </TableCell>
@@ -918,7 +961,14 @@ category: "",
                                   ) : (
                                     <>
                                       <TableCell className="font-medium">{variant.name}</TableCell>
-                                      <TableCell>${parseFloat(variant.price).toFixed(2)}</TableCell>
+                                      <TableCell>₹{parseFloat(variant.price).toFixed(2)}</TableCell>
+                                      <TableCell>
+                                        {variant.offerPrice && parseFloat(variant.offerPrice) > 0 ? (
+                                          <span className="text-green-600 font-medium">₹{parseFloat(variant.offerPrice).toFixed(2)}</span>
+                                        ) : (
+                                          <span className="text-muted-foreground">—</span>
+                                        )}
+                                      </TableCell>
                                       <TableCell className="text-muted-foreground">
                                         {variant.sku === "0" || variant.sku === "" ? "Unlimited" : (variant.sku || "—")}
                                       </TableCell>

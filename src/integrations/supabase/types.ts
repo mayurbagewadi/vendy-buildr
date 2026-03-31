@@ -1700,6 +1700,7 @@ export type Database = {
           images: Json | null
           instagram_video_url: string | null
           name: string
+          offer_price: number | null
           price_range: string | null
           sku: string | null
           slug: string | null
@@ -1719,6 +1720,7 @@ export type Database = {
           images?: Json | null
           instagram_video_url?: string | null
           name: string
+          offer_price?: number | null
           price_range?: string | null
           sku?: string | null
           slug?: string | null
@@ -1738,6 +1740,7 @@ export type Database = {
           images?: Json | null
           instagram_video_url?: string | null
           name?: string
+          offer_price?: number | null
           price_range?: string | null
           sku?: string | null
           slug?: string | null

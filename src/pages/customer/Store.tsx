@@ -533,6 +533,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
+                    basePrice={(product as any).base_price}
+                    offerPrice={(product as any).offer_price}
+                    variants={(product as any).variants}
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
@@ -610,6 +613,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     name={product.name}
                     category={product.category}
                     priceRange={product.price_range || ''}
+                    basePrice={(product as any).base_price}
+                    offerPrice={(product as any).offer_price}
+                    variants={(product as any).variants}
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}

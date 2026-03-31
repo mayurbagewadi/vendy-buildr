@@ -15,17 +15,47 @@ interface ProductCardProps {
   category: string;
   priceRange?: string;
   price_range?: string;
+  basePrice?: number;
+  base_price?: number;
+  offerPrice?: number;
+  offer_price?: number;
+  variants?: Array<{ name: string; price: number; offer_price?: number }>;
   images: string[];
   status: string;
   storeSlug?: string;
 }
 
-const ProductCard = ({ id, slug, name, category, priceRange, price_range, images, status, storeSlug }: ProductCardProps) => {
+const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, images, status, storeSlug }: ProductCardProps) => {
   const navigate = useNavigate();
   const [isAnimating, setIsAnimating] = useState(false);
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
+
+  // Offer price logic
+  const sellingPrice = basePrice || base_price;
+  const activeOfferPrice = offerPrice || offer_price;
+
+  // Variant mode: find highest discount %
+  const variantMaxDiscount = (() => {
+    if (!variants || variants.length === 0) return 0;
+    let max = 0;
+    for (const v of variants) {
+      if (v.offer_price && v.offer_price > 0 && v.offer_price < v.price) {
+        const pct = Math.round((v.price - v.offer_price) / v.price * 100);
+        if (pct > max) max = pct;
+      }
+    }
+    return max;
+  })();
+
+  // Single price: discount %
+  const singleDiscount = sellingPrice && activeOfferPrice && activeOfferPrice > 0 && activeOfferPrice < sellingPrice
+    ? Math.round((sellingPrice - activeOfferPrice) / sellingPrice * 100)
+    : 0;
+
+  const discountPct = singleDiscount || variantMaxDiscount;
+  const isVariantMode = variants && variants.length > 0;
 
   // Use slug for SEO-friendly URLs, fallback to id if slug doesn't exist
   const productIdentifier = slug || id;
@@ -75,6 +105,11 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
               })}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
+            {discountPct > 0 && (
+              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                {isVariantMode ? `Upto ${discountPct}% off` : `${discountPct}% off`}
+              </div>
+            )}
             {status === "draft" && (
               <Badge className="absolute top-2 right-2" variant="secondary">
                 Coming Soon
@@ -87,7 +122,14 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, images
           <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
             {name}
           </h3>
-          <p className="text-lg font-bold text-primary">{displayPrice}</p>
+          {singleDiscount > 0 && sellingPrice && activeOfferPrice ? (
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-bold text-primary">₹{activeOfferPrice.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground line-through">₹{sellingPrice.toFixed(2)}</p>
+            </div>
+          ) : (
+            <p className="text-lg font-bold text-primary">{displayPrice}</p>
+          )}
         </CardContent>
         <CardFooter className="p-3 pt-0">
           <Button className="w-full min-h-[44px]" variant="default">
