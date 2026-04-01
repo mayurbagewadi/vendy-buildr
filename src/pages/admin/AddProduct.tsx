@@ -1131,7 +1131,7 @@ category: "",
                             disabled={!isDriveConnected}
                           />
                           <span className="text-sm">
-                            Google Drive <span className="text-xs text-green-600 font-medium">(Recommended - Safe & Reliable)</span> {!isDriveConnected && <span className="text-xs text-muted-foreground">(Not Connected)</span>}
+                            Google Drive <span className="text-xs text-green-600 font-medium">(Recommended - Safe & Reliable)</span> {!isDriveConnected && <span className="text-xs text-red-500 font-medium">(Not Connected)</span>}
                           </span>
                         </label>
                       </div>
