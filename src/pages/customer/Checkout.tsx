@@ -1556,31 +1556,6 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         </DialogContent>
       </Dialog>
 
-      {/* Order Success Modal */}
-      <Dialog open={orderSuccess} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <div className="flex flex-col items-center gap-3 py-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
-              <DialogTitle className="text-xl text-center">Order Received Successfully!</DialogTitle>
-              <DialogDescription className="text-center text-base">
-                We'll contact you shortly on WhatsApp to confirm your order.
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              className="w-full"
-              onClick={() => {
-                window.location.href = `https://${storeSlug}.digitaldukandar.in`;
-              }}
-            >
-              Go to Home
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <style>{`
         @keyframes pulse-border {
           0%, 100% { border-color: hsl(var(--border)); }
