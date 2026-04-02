@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2 } from "lucide-react";
+import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +66,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
   const [limitDetails, setLimitDetails] = useState<{
     planName: string;
     ordersUsed: number;
@@ -914,15 +915,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           return;
         }
 
-        toast({
-          title: "Order placed successfully!",
-          description: "We'll contact you shortly on WhatsApp to confirm your order.",
-        });
-
         clearCart();
-        setTimeout(() => {
-          navigate(storeSlug ? `/${storeSlug}` : "/home");
-        }, 2000);
+        setOrderSuccess(true);
       }
 
       setIsSubmitting(false);
@@ -1545,6 +1539,31 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               className="w-full sm:w-auto"
             >
               Back to Store
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Success Modal */}
+      <Dialog open={orderSuccess} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex flex-col items-center gap-3 py-4">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+              <DialogTitle className="text-xl text-center">Order Received Successfully!</DialogTitle>
+              <DialogDescription className="text-center text-base">
+                We'll contact you shortly on WhatsApp to confirm your order.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              className="w-full"
+              onClick={() => {
+                window.location.href = `https://${storeSlug}.digitaldukandar.in`;
+              }}
+            >
+              Go to Home
             </Button>
           </DialogFooter>
         </DialogContent>
