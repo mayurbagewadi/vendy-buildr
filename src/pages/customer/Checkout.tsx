@@ -672,9 +672,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             <p className="text-muted-foreground mb-8">
               Add some products to proceed to checkout
             </p>
-            <Link to={storeSlug ? `/${storeSlug}/products` : "/products"}>
-              <Button size="lg">Continue Shopping</Button>
-            </Link>
+            <Button size="lg" onClick={() => { window.location.href = `https://${storeSlug}.digitaldukandar.in`; }}>
+              Continue Shopping
+            </Button>
           </div>
         </main>
         <Footer />
