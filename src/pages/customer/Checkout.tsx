@@ -915,8 +915,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           return;
         }
 
-        clearCart();
         setOrderSuccess(true);
+        clearCart();
       }
 
       setIsSubmitting(false);
