@@ -664,16 +664,28 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+        <Header storeSlug={storeSlug} storeId={undefined} />
         <main className="flex-1 container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
-            <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
-            <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
-            <p className="text-muted-foreground mb-8">
-              Add some products to proceed to checkout
-            </p>
+            {orderSuccess ? (
+              <>
+                <CheckCircle className="w-24 h-24 mx-auto mb-6 text-green-500" />
+                <h1 className="text-3xl font-bold mb-4">Order Received Successfully!</h1>
+                <p className="text-muted-foreground mb-8">
+                  We'll contact you shortly on WhatsApp to confirm your order.
+                </p>
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
+                <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
+                <p className="text-muted-foreground mb-8">
+                  Add some products to proceed to checkout
+                </p>
+              </>
+            )}
             <Button size="lg" onClick={() => { window.location.href = `https://${storeSlug}.digitaldukandar.in`; }}>
-              Continue Shopping
+              Go to Home
             </Button>
           </div>
         </main>
