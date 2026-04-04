@@ -1260,7 +1260,8 @@ const Index = () => {
           href={`https://wa.me/${supportWhatsapp}?text=${encodeURIComponent("Need help to setup website")}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 bg-[#25D366] hover:bg-[#20BA5A] text-white flex items-center justify-center"
+          className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 md:bottom-6 md:right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-[100] bg-[#25D366] hover:bg-[#20BA5A] text-white flex items-center justify-center pointer-events-auto"
+          style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
           title="Chat with us on WhatsApp"
           aria-label="Chat with us on WhatsApp"
         >
