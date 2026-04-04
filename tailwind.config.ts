@@ -105,7 +105,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "whatsapp-hop": "whatsapp-hop 1.2s ease-in-out infinite",
+        "whatsapp-hop": "whatsapp-hop 1.2s ease-in-out 4",
       },
     },
   },
