@@ -1265,7 +1265,7 @@ const Index = () => {
           title="Chat with us on WhatsApp"
           aria-label="Chat with us on WhatsApp"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-6 w-6 animate-whatsapp-hop" />
         </a>
       )}
     </div>

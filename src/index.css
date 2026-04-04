@@ -25,6 +25,16 @@
   }
 }
 
+/* WhatsApp Icon Hop Animation */
+@keyframes whatsappHop {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 /* E-Commerce Admin Panel Design System - Professional Blue Theme */
 
 @layer base {
