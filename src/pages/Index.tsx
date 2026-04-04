@@ -281,7 +281,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-inter">
+    <div className="min-h-screen bg-background font-inter overflow-x-hidden">
       {/* Account Deleted Dialog */}
       <AlertDialog open={showAccountDeletedDialog} onOpenChange={setShowAccountDeletedDialog}>
         <AlertDialogContent className="max-w-md">
@@ -512,14 +512,14 @@ const Index = () => {
         <FloatingParticles />
 
         {/* Gradient Blobs - Multiple layers for depth */}
-        <GradientBlob color="blue" size="lg" position={{ top: '-20%', right: '-10%' }} />
-        <GradientBlob color="purple" size="md" position={{ bottom: '-15%', left: '-5%' }} />
-        <GradientBlob color="pink" size="md" position={{ top: '30%', left: '50%' }} />
+        <GradientBlob color="blue" size="md" position={{ top: '-10%', right: '0%' }} />
+        <GradientBlob color="purple" size="sm" position={{ bottom: '-5%', left: '0%' }} />
+        <GradientBlob color="pink" size="sm" position={{ top: '30%', left: 'calc(50% - 100px)' }} />
 
         {/* Decorative Elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="hero-decorative absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
-        <div className="hero-decorative absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
+        <div className="hero-decorative absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
+        <div className="hero-decorative absolute bottom-0 left-0 w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
         
         <div className="container relative mx-auto px-4 lg:px-8 py-24 lg:py-36">
           <div className="max-w-5xl mx-auto text-center">

@@ -18,9 +18,9 @@ export const GradientBlob = ({ color, size = 'md', position }: GradientBlobProps
   };
 
   const sizes = {
-    sm: 'w-64 h-64',
-    md: 'w-96 h-96',
-    lg: 'w-[600px] h-[600px]',
+    sm: 'w-32 h-32 sm:w-48 sm:h-48 lg:w-64 lg:h-64',
+    md: 'w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96',
+    lg: 'w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96',
   };
 
   useEffect(() => {
@@ -43,10 +43,10 @@ export const GradientBlob = ({ color, size = 'md', position }: GradientBlobProps
       ease: 'none',
     });
 
-    // Position drift
+    // Position drift - limited to prevent overflow
     gsap.to(blobRef.current, {
-      x: '+=50',
-      y: '+=30',
+      x: '+=20',
+      y: '+=15',
       duration: 10,
       repeat: -1,
       yoyo: true,

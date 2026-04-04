@@ -10,18 +10,24 @@ export const FloatingParticles = () => {
     const particles = containerRef.current.querySelectorAll('.particle');
 
     particles.forEach((particle, index) => {
-      // Random starting position
+      // Random starting position - constrained within safe bounds
+      const startX = Math.random() * (window.innerWidth - 4);
+      const startY = Math.random() * (window.innerHeight - 4);
+
       gsap.set(particle, {
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        x: startX,
+        y: startY,
         scale: Math.random() * 0.5 + 0.5,
         opacity: Math.random() * 0.3 + 0.1
       });
 
-      // Floating animation
+      // Floating animation - limited drift to prevent overflow
+      const driftX = Math.random() * 100 - 50;
+      const driftY = Math.random() * 100 - 50;
+
       gsap.to(particle, {
-        y: `+=${Math.random() * 200 - 100}`,
-        x: `+=${Math.random() * 200 - 100}`,
+        y: `+=${driftY}`,
+        x: `+=${driftX}`,
         duration: Math.random() * 10 + 10,
         repeat: -1,
         yoyo: true,
