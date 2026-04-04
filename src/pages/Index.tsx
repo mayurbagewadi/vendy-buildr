@@ -951,18 +951,18 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-10 rounded-2xl border border-primary/20 text-center">
-            <h2 className="font-playfair text-3xl font-bold mb-4 text-foreground">
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-10 rounded-2xl border border-primary/20 text-center">
+            <h2 className="font-playfair text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 text-foreground">
               Start Your Free Ecommerce Website Today
             </h2>
-            <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
               Join 10,000+ entrepreneurs using DigitalDukandar as their <strong>ecommerce website builder</strong>. Create your <strong>online store</strong> in just 5 minutes — free, no credit card required.
             </p>
-            <Link to="/auth">
-              <Button size="lg" className="h-14 px-10 text-base font-semibold shadow-xl">
-                <Crown className="w-5 h-5 mr-2" />
+            <Link to="/auth" className="w-full sm:w-auto inline-block">
+              <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 text-sm sm:text-base font-semibold shadow-xl">
+                <Crown className="w-4 sm:w-5 h-4 sm:h-5 mr-2" />
                 Create Free Online Store Now
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5 ml-2" />
               </Button>
             </Link>
           </div>
@@ -1148,53 +1148,53 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/90" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
             
-            <div className="relative p-10 lg:p-20 text-center text-primary-foreground">
-              <div className="mb-6">
-                <TrendingUp className="w-16 h-16 mx-auto text-primary-foreground/90" />
+            <div className="relative p-6 sm:p-10 lg:p-20 text-center text-primary-foreground">
+              <div className="mb-4 sm:mb-6">
+                <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mx-auto text-primary-foreground/90" />
               </div>
-              <h2 className="font-playfair text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+              <h2 className="font-playfair text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
                 Ready to Launch Your Store?
               </h2>
-              <p className="text-xl md:text-2xl mb-10 opacity-95 max-w-3xl mx-auto leading-relaxed font-light">
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-10 opacity-95 max-w-3xl mx-auto leading-relaxed font-light">
                 Join thousands of successful entrepreneurs. Create your professional online store today and start selling in minutes.
               </p>
-              <div className="flex flex-col sm:flex-row gap-5 justify-center items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 justify-center items-center mb-6 sm:mb-8">
                 <Link to="/auth" className="w-full sm:w-auto">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     variant="secondary"
-                    className="w-full sm:w-auto h-14 shadow-2xl hover:shadow-primary-foreground/20 text-base px-10 font-semibold"
+                    className="w-full sm:w-auto h-11 sm:h-14 shadow-2xl hover:shadow-primary-foreground/20 text-sm sm:text-base px-6 sm:px-10 font-semibold"
                   >
-                    <Crown className="w-5 h-5 mr-2" />
+                    <Crown className="w-4 sm:w-5 h-4 sm:h-5 mr-2" />
                     Start Building Free
-                    <ArrowRight className="w-5 h-5 ml-2" />
+                    <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5 ml-2" />
                   </Button>
                 </Link>
                 <Link to="/demo" className="w-full sm:w-auto">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     variant="outline"
-                    className="w-full sm:w-auto h-14 bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white text-base px-10 font-semibold backdrop-blur-sm"
+                    className="w-full sm:w-auto h-11 sm:h-14 bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white text-sm sm:text-base px-6 sm:px-10 font-semibold backdrop-blur-sm"
                   >
-                    <Globe className="w-5 h-5 mr-2" />
+                    <Globe className="w-4 sm:w-5 h-4 sm:h-5 mr-2" />
                     View Demo Store
                   </Button>
                 </Link>
               </div>
-              <div className="flex flex-wrap justify-center items-center gap-6 text-sm font-medium opacity-90">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  <span>No credit card required</span>
+              <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium opacity-90">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Check className="w-3 sm:w-4 h-3 sm:h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">No credit card</span>
                 </div>
-                <span>•</span>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  <span>Free 14-day trial</span>
+                <span className="hidden sm:inline">•</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Check className="w-3 sm:w-4 h-3 sm:h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">14-day trial</span>
                 </div>
-                <span>•</span>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  <span>Cancel anytime</span>
+                <span className="hidden sm:inline">•</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Check className="w-3 sm:w-4 h-3 sm:h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">Cancel anytime</span>
                 </div>
               </div>
             </div>
