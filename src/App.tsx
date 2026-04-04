@@ -50,6 +50,7 @@ import AdminAIDesigner from "./pages/admin/AIDesigner";
 import BuyTokens from "./pages/admin/BuyTokens";
 import AITokenPricing from "./pages/superadmin/AITokenPricing";
 import AIDesignerAnalytics from "./pages/superadmin/AIDesignerAnalytics";
+import SuperAdminMarketing from "./pages/superadmin/Marketing";
 import AdminGoogleReviews from "./pages/admin/GoogleReviews";
 import Home from "./pages/customer/Home";
 import CustomerProducts from "./pages/customer/Products";
@@ -218,6 +219,7 @@ const App = () => {
                         <Route path="marketplace" element={<SuperAdminLayout><SuperAdminMarketplace /></SuperAdminLayout>} />
                         <Route path="ai-token-pricing" element={<SuperAdminLayout><AITokenPricing /></SuperAdminLayout>} />
                         <Route path="ai-designer-analytics" element={<SuperAdminLayout><AIDesignerAnalytics /></SuperAdminLayout>} />
+                        <Route path="marketing" element={<SuperAdminLayout><SuperAdminMarketing /></SuperAdminLayout>} />
                       </Route>
 
                       {/* Onboarding Routes */}

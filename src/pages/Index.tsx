@@ -54,6 +54,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
   SheetContent,
@@ -62,11 +63,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
+
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { heroRef, featuresRef, stepsRef } = useLandingAnimations();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
+  const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
 
   // Check for account deleted error and show dialog
   useEffect(() => {
@@ -77,6 +81,21 @@ const Index = () => {
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
+
+  // Fetch support WhatsApp number from platform settings
+  useEffect(() => {
+    const fetchSupportWhatsapp = async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('support_whatsapp_number')
+        .eq('id', SETTINGS_ID)
+        .single();
+      if (data?.support_whatsapp_number) {
+        setSupportWhatsapp(data.support_whatsapp_number);
+      }
+    };
+    fetchSupportWhatsapp();
+  }, []);
 
   const features = [
     {
@@ -1234,6 +1253,20 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* WhatsApp Support Float Button */}
+      {supportWhatsapp && (
+        <a
+          href={`https://wa.me/${supportWhatsapp}?text=${encodeURIComponent("Need help to setup website")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 bg-[#25D366] hover:bg-[#20BA5A] text-white flex items-center justify-center"
+          title="Chat with us on WhatsApp"
+          aria-label="Chat with us on WhatsApp"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </a>
+      )}
     </div>
   );
 };

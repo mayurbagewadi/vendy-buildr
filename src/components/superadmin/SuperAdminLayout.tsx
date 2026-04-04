@@ -17,6 +17,7 @@ import {
   Package,
   UserCircle,
   Sparkles,
+  MessageCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -180,6 +181,12 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       href: "/superadmin/ai-designer-analytics",
       icon: BarChart3,
       current: location.pathname === "/superadmin/ai-designer-analytics",
+    },
+    {
+      name: "Marketing",
+      href: "/superadmin/marketing",
+      icon: MessageCircle,
+      current: location.pathname === "/superadmin/marketing",
     },
     {
       name: "Platform Settings",
