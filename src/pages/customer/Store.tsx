@@ -21,6 +21,7 @@ import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { buildDesignCSS, AIDesignResult } from "@/lib/aiDesigner";
+import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 
 interface Product {
   id: string;
@@ -84,6 +85,7 @@ interface StoreData {
   } | null;
   instagram_username: string | null;
   google_reviews_enabled: boolean | null;
+  whatsapp_float_enabled: boolean | null;
 }
 
 interface ProfileData {
@@ -646,6 +648,11 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         socialLinks={store.social_links}
         policies={store.policies}
       />
+
+      {/* WhatsApp Float Button */}
+      {store.whatsapp_float_enabled !== false && store.whatsapp_number && (
+        <WhatsAppFloat storeId={store.id} />
+      )}
 
       {/* AI Voice Assistant Widget - Rendered after script loads */}
       {store.ai_voice_embed_code && scriptLoaded && (() => {

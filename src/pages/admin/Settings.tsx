@@ -54,6 +54,7 @@ const AdminSettings = () => {
     email: "",
     address: "",
     whatsappNumber: "",
+    whatsappFloatEnabled: true,
     currency: "INR",
     currencySymbol: "₹",
     customDomain: "",
@@ -172,6 +173,7 @@ const AdminSettings = () => {
         email: profile?.email || "",
         address: store?.address || "",
         whatsappNumber: store?.whatsapp_number || "",
+        whatsappFloatEnabled: store?.whatsapp_float_enabled !== false,
         currency: "INR",
         currencySymbol: "₹",
         customDomain: store?.custom_domain || "",
@@ -1021,6 +1023,7 @@ const AdminSettings = () => {
         logo_url: formData.logoUrl || null,
         hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
+        whatsapp_float_enabled: formData.whatsappFloatEnabled,
         address: formData.address || null,
         policies: {
           deliveryAreas: formData.deliveryAreas || null,
@@ -1238,6 +1241,45 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
           ))}
+
+          {/* WhatsApp Button Visibility */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                </div>
+                WhatsApp Button
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="whatsappFloatEnabled" className="text-base font-medium cursor-pointer">
+                      Show WhatsApp Button on Store
+                    </Label>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${formData.whatsappFloatEnabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                      {formData.whatsappFloatEnabled ? 'Visible' : 'Hidden'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.whatsappFloatEnabled
+                      ? "WhatsApp floating button is shown on your store homepage"
+                      : "WhatsApp floating button is hidden from your store homepage"}
+                  </p>
+                </div>
+                <Switch
+                  id="whatsappFloatEnabled"
+                  checked={formData.whatsappFloatEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, whatsappFloatEnabled: checked }))
+                  }
+                  className={`ml-4 ${formData.whatsappFloatEnabled ? 'data-[state=checked]:bg-green-500' : ''}`}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Payment Gateway Configuration Section */}
           <Card className="admin-card">

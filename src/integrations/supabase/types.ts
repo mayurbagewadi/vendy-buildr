@@ -2043,6 +2043,7 @@ export type Database = {
           google_reviews_display_type: string | null
           google_reviews_enabled: boolean | null
           google_reviews_last_reset: string | null
+          whatsapp_float_enabled: boolean | null
           google_sheet_connected: boolean | null
           google_sheet_created_at: string | null
           google_sheet_id: string | null
@@ -2118,6 +2119,7 @@ export type Database = {
           google_reviews_display_type?: string | null
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
+          whatsapp_float_enabled?: boolean | null
           google_sheet_connected?: boolean | null
           google_sheet_created_at?: string | null
           google_sheet_id?: string | null
@@ -2193,6 +2195,7 @@ export type Database = {
           google_reviews_display_type?: string | null
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
+          whatsapp_float_enabled?: boolean | null
           google_sheet_connected?: boolean | null
           google_sheet_created_at?: string | null
           google_sheet_id?: string | null
