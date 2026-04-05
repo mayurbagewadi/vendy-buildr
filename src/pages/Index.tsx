@@ -71,6 +71,7 @@ const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
   const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
+  const [gaId, setGaId] = useState<string | null>(null);
 
   // Check for account deleted error and show dialog
   useEffect(() => {
@@ -82,19 +83,22 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch support WhatsApp number from platform settings
+  // Fetch support WhatsApp number and Google Analytics ID from platform settings
   useEffect(() => {
-    const fetchSupportWhatsapp = async () => {
+    const fetchSettings = async () => {
       const { data } = await supabase
         .from('platform_settings')
-        .select('support_whatsapp_number')
+        .select('support_whatsapp_number, google_analytics_id')
         .eq('id', SETTINGS_ID)
         .single();
       if (data?.support_whatsapp_number) {
         setSupportWhatsapp(data.support_whatsapp_number);
       }
+      if ((data as any)?.google_analytics_id) {
+        setGaId((data as any).google_analytics_id);
+      }
     };
-    fetchSupportWhatsapp();
+    fetchSettings();
   }, []);
 
   const features = [
@@ -384,6 +388,17 @@ const Index = () => {
             ]
           })}
         </script>
+        {gaId && (
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+        )}
+        {gaId && (
+          <script>{`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${gaId}');
+          `}</script>
+        )}
       </Helmet>
 
       {/* Header */}

@@ -5,15 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageCircle, Save, Loader2 } from "lucide-react";
+import { MessageCircle, Save, Loader2, BarChart3 } from "lucide-react";
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function Marketing() {
   const { toast } = useToast();
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [gaId, setGaId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingGa, setSavingGa] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -23,7 +25,7 @@ export default function Marketing() {
     setLoading(true);
     const { data, error } = await supabase
       .from('platform_settings')
-      .select('support_whatsapp_number')
+      .select('support_whatsapp_number, google_analytics_id')
       .eq('id', SETTINGS_ID)
       .single();
 
@@ -31,6 +33,7 @@ export default function Marketing() {
       toast({ title: "Error", description: "Failed to load settings.", variant: "destructive" });
     } else if (data) {
       setWhatsappNumber(data.support_whatsapp_number || "");
+      setGaId((data as any).google_analytics_id || "");
     }
     setLoading(false);
   };
@@ -61,6 +64,28 @@ export default function Marketing() {
       setWhatsappNumber(cleaned);
     }
     setSaving(false);
+  };
+
+  const handleSaveGa = async () => {
+    const cleaned = gaId.trim();
+    if (cleaned && !/^G-[A-Z0-9]+$/.test(cleaned)) {
+      toast({ title: "Invalid ID", description: "Enter a valid GA4 Measurement ID (e.g. G-XXXXXXXXXX).", variant: "destructive" });
+      return;
+    }
+
+    setSavingGa(true);
+    const { error } = await supabase
+      .from('platform_settings')
+      .update({ google_analytics_id: cleaned } as any)
+      .eq('id', SETTINGS_ID);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to save Google Analytics ID.", variant: "destructive" });
+    } else {
+      toast({ title: "Saved", description: cleaned ? "Google Analytics ID saved." : "Google Analytics ID removed." });
+      setGaId(cleaned);
+    }
+    setSavingGa(false);
   };
 
   if (loading) {
@@ -116,6 +141,39 @@ export default function Marketing() {
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
             ) : (
               <><Save className="h-4 w-4 mr-2" />Save Number</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-orange-500" />
+            <CardTitle>Google Analytics (GA4)</CardTitle>
+          </div>
+          <CardDescription>
+            Enter your GA4 Measurement ID to track visitors on the main landing page. Leave empty to disable tracking.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="ga-id">GA4 Measurement ID</Label>
+            <Input
+              id="ga-id"
+              placeholder="e.g. G-2MC5M4T5JX"
+              value={gaId}
+              onChange={(e) => setGaId(e.target.value.toUpperCase())}
+            />
+            <p className="text-xs text-muted-foreground">
+              Find this in your Google Analytics account → Admin → Data Streams → your stream → Measurement ID.
+            </p>
+          </div>
+
+          <Button onClick={handleSaveGa} disabled={savingGa}>
+            {savingGa ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+            ) : (
+              <><Save className="h-4 w-4 mr-2" />Save ID</>
             )}
           </Button>
         </CardContent>
