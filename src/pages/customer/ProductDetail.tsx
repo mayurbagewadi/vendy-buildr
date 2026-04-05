@@ -123,6 +123,22 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           if (store?.id) {
             currentStoreId = store.id;
             setStoreId(store.id);
+
+            // Inject AI design CSS early (while loading spinner is still showing)
+            // so user never sees a flash of default design
+            if (!document.getElementById('ai-layer2-styles')) {
+              const { data: designData } = await supabase
+                .from('store_design_state')
+                .select('ai_full_css, mode')
+                .eq('store_id', store.id)
+                .maybeSingle();
+              if (designData?.mode === 'advanced' && designData?.ai_full_css) {
+                const styleEl = document.createElement('style');
+                styleEl.id = 'ai-layer2-styles';
+                styleEl.textContent = designData.ai_full_css;
+                document.head.appendChild(styleEl);
+              }
+            }
           }
         }
 
