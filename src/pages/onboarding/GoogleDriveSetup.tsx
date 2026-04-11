@@ -253,7 +253,7 @@ const GoogleDriveSetup = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className={`flex items-center justify-between p-4 rounded-lg border ${isDriveConnected ? 'border-green-500 bg-green-50 dark:bg-green-950' : 'border-border bg-muted/50'}`}>
+              <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-lg border ${isDriveConnected ? 'border-green-500 bg-green-50 dark:bg-green-950' : 'border-border bg-muted/50'}`}>
                 <div className="space-y-1">
                   <p className={`font-medium text-sm ${isDriveConnected ? 'text-green-700 dark:text-green-400' : ''}`}>
                     {isVerifying ? "Checking..." : isDriveConnected ? "✓ Connected" : "Not Connected"}
@@ -268,6 +268,8 @@ const GoogleDriveSetup = () => {
                   onClick={handleConnectDrive}
                   disabled={isConnectingDrive || isVerifying}
                   variant={isDriveConnected ? "outline" : "default"}
+                  size="lg"
+                  className="w-full sm:w-auto min-h-[48px]"
                 >
                   {isConnectingDrive ? (
                     <>
@@ -294,8 +296,9 @@ const GoogleDriveSetup = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t">
             <Button
               variant="ghost"
+              size="lg"
               onClick={() => navigate("/onboarding/store-setup")}
-              className="order-2 sm:order-1"
+              className="order-2 sm:order-1 w-full sm:w-auto min-h-[48px]"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
@@ -303,7 +306,8 @@ const GoogleDriveSetup = () => {
             <Button
               onClick={handleContinue}
               disabled={isVerifying}
-              className="w-full sm:w-auto order-1 sm:order-2"
+              size="lg"
+              className="w-full sm:w-auto order-1 sm:order-2 min-h-[48px]"
             >
               {isVerifying ? (
                 <>

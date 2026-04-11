@@ -399,7 +399,7 @@ const StoreSetup = () => {
               </Label>
               <div className="flex gap-2">
                 <Select value={formData.countryCode} onValueChange={(value) => setFormData(prev => ({ ...prev, countryCode: value }))}>
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger className="w-28 min-w-[7rem]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -429,11 +429,12 @@ const StoreSetup = () => {
             <Button
               onClick={handleContinue}
               disabled={!isValidForm() || loading}
-              className="w-full sm:w-auto"
+              size="lg"
+              className="w-full sm:w-auto min-h-[48px]"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Creating...
                 </>
               ) : (
@@ -463,7 +464,8 @@ const StoreSetup = () => {
           <div className="flex justify-center pt-4">
             <Button
               onClick={() => setBlockModalOpen(false)}
-              className="w-full sm:w-auto"
+              size="lg"
+              className="w-full sm:w-auto min-h-[48px]"
               variant="default"
             >
               Close
