@@ -62,6 +62,8 @@ import PaymentSuccess from "./pages/customer/PaymentSuccess";
 import Pricing from "./pages/Pricing";
 import Auth from "./pages/Auth";
 import Guide from "./pages/Guide";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import SuperAdminLogin from "./pages/superadmin/Login";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SuperAdminUsers from "./pages/superadmin/Users";
@@ -160,6 +162,8 @@ const App = () => {
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/guide" element={<Guide />} />
+                      <Route path="/blog" element={<Blog />} />
+                      <Route path="/blog/:slug" element={<BlogPost />} />
                       <Route path="/sitemap.xml" element={<Sitemap />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-of-service" element={<TermsOfService />} />

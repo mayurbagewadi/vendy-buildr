@@ -7,9 +7,13 @@ DigitalDukandar is an Indian multi-tenant ecommerce platform. Store owners sign 
 ## Public Pages
 
 - [Home](https://digitaldukandar.in/): Platform landing page — create your free online store
+- [Home (Markdown)](https://digitaldukandar.in/index.md): Full landing page content in Markdown — features, comparisons, how it works, who it's for
+- [About](https://digitaldukandar.in/about.md): Full platform overview in Markdown
 - [Pricing](https://digitaldukandar.in/pricing): Subscription plans — Free, Pro, and Enterprise with feature comparison
+- [Pricing (Markdown)](https://digitaldukandar.in/pricing.md): Pricing page in Markdown with full plan comparison table
 - [Sign Up / Login](https://digitaldukandar.in/auth): Create a new store account or log in
 - [Store Setup Guide](https://digitaldukandar.in/guide): Step-by-step guide to launching your store
+- [Blog](https://digitaldukandar.in/blog): Ecommerce guides and tips for Indian sellers
 - [Become a Helper](https://digitaldukandar.in/become-helper): Apply to the affiliate program and earn commissions by referring sellers
 - [Helper Application Status](https://digitaldukandar.in/application-status): Check your affiliate application status
 
@@ -18,15 +22,28 @@ DigitalDukandar is an Indian multi-tenant ecommerce platform. Store owners sign 
 - [Privacy Policy](https://digitaldukandar.in/privacy-policy): How user data is collected and handled
 - [Terms of Service](https://digitaldukandar.in/terms-of-service): Platform usage terms and conditions
 
-## Optional
+## Sitemap
 
 - [Sitemap](https://digitaldukandar.in/sitemap.xml): XML sitemap listing all platform and store pages
+
+## Blog Posts (Markdown)
+
+Full blog content available as clean Markdown for each article:
+
+- [Which Website Builder Is Best for Ecommerce?](https://digitaldukandar.in/blog/best-ecommerce-website-builder.md): Comparison of Shopify, Wix, WooCommerce, and DigitalDukandar for Indian sellers
+- [Is Wix or WordPress Better for eCommerce?](https://digitaldukandar.in/blog/wix-vs-wordpress-ecommerce.md): Honest breakdown for Indian sellers — pricing, UPI, COD, Shiprocket
+- [Do You Need to Register a Company to Sell Online in India?](https://digitaldukandar.in/blog/do-i-need-llc-ecommerce-india.md): When you need Pvt Ltd, LLP, or sole proprietorship — and when you don't
+- [Cheapest Ecommerce Website Builder in India](https://digitaldukandar.in/blog/cheapest-ecommerce-website-builder.md): Real total cost comparison of all major platforms
+- [Is Wix Really Free Forever?](https://digitaldukandar.in/blog/is-wix-free-forever.md): Honest truth about Wix free plan limitations and free alternatives for India
+- [Is There a Cheaper Option Than Wix?](https://digitaldukandar.in/blog/cheaper-option-than-wix.md): Free Wix alternatives for Indian sellers
+- [Is There a 100% Free Website Builder?](https://digitaldukandar.in/blog/100-percent-free-website-builder.md): What "free" really means and which builder is truly free
+- [How Many Types of E-Commerce Are There?](https://digitaldukandar.in/blog/types-of-ecommerce.md): All 6 ecommerce models explained with India examples
 
 ## Pricing Plans
 
 All plans include 0% transaction fees. DigitalDukandar never takes a cut of sales.
 
-- **Free / Starter**: Free forever. Includes free subdomain, product catalog, cart, checkout, WhatsApp integration, and basic analytics. No credit card required.
+- **Free / Starter**: Free forever. Includes free subdomain, product catalog, cart, checkout, UPI payments, COD, WhatsApp integration, Shiprocket shipping, and basic analytics. No credit card required.
 - **Pro**: Paid monthly or yearly in INR. Includes custom domain, advanced analytics, unlimited products, priority support, and AI Designer access.
 - **Enterprise**: For high-volume stores. All Pro features plus dedicated support and extended limits.
 
@@ -50,10 +67,12 @@ The Helper Program is a separate referral program where helpers earn commissions
 
 **vs WooCommerce**: DigitalDukandar requires no hosting setup, no plugins, and no coding. WooCommerce requires WordPress hosting, setup, and ongoing maintenance. DigitalDukandar goes live in 5 minutes; WooCommerce setup takes hours to days.
 
+**vs Wix**: DigitalDukandar's free plan allows full ecommerce (UPI, COD, cart, checkout). Wix's free plan does not allow any payment processing. DigitalDukandar has native Shiprocket and WhatsApp support; Wix does not.
+
 ## Who Is It For
 
 DigitalDukandar is built for Indian influencers and content creators who want a free store to sell to their audience, small business owners wanting to sell online, resellers and dropshippers, handmade and artisan sellers, grocery and local shops going digital, fashion boutiques, electronics sellers, and anyone who wants to build an online store without hiring a developer.
 
 ## Technical Details
 
-Built with React, TypeScript, and Supabase. Hosted on Indian servers. Supports subdomain routing (storename.digitaldukandar.in) and custom domain routing. Multi-tenant architecture. All storefronts are SEO-optimized with meta tags, structured data, and automatic sitemaps.
+Built with React, TypeScript, and Supabase. Hosted on Indian servers. Supports subdomain routing (storename.digitaldukandar.in) and custom domain routing. Multi-tenant architecture. All storefronts are SEO-optimized with meta tags, structured data, and automatic sitemaps. Language: en-IN. Currency: INR.

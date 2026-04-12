@@ -427,6 +427,9 @@ const Index = () => {
             <Link to="/guide" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Guide
             </Link>
+            <Link to="/blog" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Blog
+            </Link>
           </nav>
           
           <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
@@ -487,6 +490,13 @@ const Index = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Guide
+                  </Link>
+                  <Link
+                    to="/blog"
+                    className="text-lg font-medium text-foreground hover:text-primary transition-colors py-3 border-b"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Blog
                   </Link>
                   <div className="flex flex-col gap-3 mt-6">
                     <Link to="/auth" className="w-full">
@@ -1245,6 +1255,9 @@ const Index = () => {
               </a>
               <Link to="/guide" className="hover:text-foreground transition-colors">
                 Guide
+              </Link>
+              <Link to="/blog" className="hover:text-foreground transition-colors">
+                Blog
               </Link>
               <Link to="/become-helper" className="hover:text-foreground transition-colors">
                 Apply as Helper
