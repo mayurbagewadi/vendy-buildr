@@ -39,7 +39,8 @@ jobs:
             # Build the project
             npm run build
 
-            # Reload Nginx to pick up any changes
+            # Copy nginx config to active location and reload
+            cp /var/www/digitaldukandar/nginx.conf /etc/nginx/sites-available/digitaldukandar.in
             nginx -t && systemctl reload nginx
 
             echo "✅ Deployment completed successfully!"
