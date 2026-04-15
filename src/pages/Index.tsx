@@ -285,7 +285,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-inter overflow-x-hidden">
+    <div className="min-h-screen bg-background dark:bg-black font-inter overflow-x-hidden">
       {/* Account Deleted Dialog */}
       <AlertDialog open={showAccountDeletedDialog} onOpenChange={setShowAccountDeletedDialog}>
         <AlertDialogContent className="max-w-md">

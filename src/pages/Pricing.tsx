@@ -335,7 +335,7 @@ const Pricing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark:bg-black">
       {/* SEO Meta Tags */}
       <Helmet>
         <title>Pricing Plans - Affordable Online Store Builder India | DigitalDukandar</title>
