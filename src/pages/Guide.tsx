@@ -594,7 +594,7 @@ const Guide = () => {
                 "3. Fill in:",
                 "   • Type: CNAME",
                 "   • Name: @ (root domain)",
-                "   • Content: digitaldukandar.in",
+                "   • Content: yourdomain.digitaldukandar.in",
                 "   • Proxy: DNS only (gray cloud, not orange)",
                 "   • TTL: Auto",
                 "4. Click Save"
