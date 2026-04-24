@@ -610,7 +610,7 @@ const Guide = () => {
                 "4. Click 'Add Record' again for www:",
                 "   • Type: CNAME",
                 "   • Name: www",
-                "   • Target: yourdomain.com",
+                "   • Target: yourdomain.com     ( Example: sasumasale.com )",
                 "   • Proxy status: Orange cloud ON (Proxied)",
                 "   • TTL: Auto",
                 "5. Click Save"
