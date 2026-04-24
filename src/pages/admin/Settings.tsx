@@ -1642,39 +1642,41 @@ const AdminSettings = () => {
 
                   {formData.customDomain && (() => {
                     const domain = formData.customDomain.trim();
-                    const parts = domain.split('.');
-                    const isRootDomain = parts.length === 2; // e.g., "sasumasale.com"
-                    const subdomain = isRootDomain ? '@' : parts[0]; // e.g., "www" or "shop"
+                    const rootDomain = domain.replace(/^www\./, '');
 
                     return (
                       <Alert>
                         <Globe className="h-4 w-4" />
                         <AlertDescription>
-                          <div className="space-y-2">
-                            <p className="font-medium">DNS Configuration Required:</p>
-                            <p className="text-sm">
-                              {isRootDomain
-                                ? 'For root domain, add an A record pointing to your server IP:'
-                                : 'For subdomain, add a CNAME record in your domain\'s DNS settings:'}
-                            </p>
-                            <div className="bg-muted p-2 rounded mt-2 font-mono text-xs">
-                              {isRootDomain ? (
-                                <>
-                                  <div>Type: CNAME</div>
-                                  <div>Name: @ (or your subdomain)</div>
-                                  <div>Value: digitaldukandar.in</div>
-                                  <div className="mt-2 text-muted-foreground">Use Cloudflare for free SSL</div>
-                                </>
-                              ) : (
-                                <>
-                                  <div>Type: CNAME</div>
-                                  <div>Name: {subdomain}</div>
-                                  <div>Value: digitaldukandar.in</div>
-                                </>
-                              )}
+                          <div className="space-y-3">
+                            <p className="font-medium">DNS Configuration Required (Cloudflare):</p>
+                            <p className="text-sm">Go to Cloudflare → Your Domain → DNS → Records</p>
+
+                            <p className="text-sm font-medium">1. Add A Record:</p>
+                            <div className="bg-muted p-2 rounded font-mono text-xs space-y-1">
+                              <div>Type: A</div>
+                              <div>Name: @</div>
+                              <div>IPv4 address: 147.79.70.113</div>
+                              <div>Proxy status: Orange cloud ON (Proxied)</div>
+                              <div>TTL: Auto</div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              DNS changes may take up to 48 hours to propagate.
+
+                            <p className="text-sm font-medium">2. Add CNAME Record for www:</p>
+                            <div className="bg-muted p-2 rounded font-mono text-xs space-y-1">
+                              <div>Type: CNAME</div>
+                              <div>Name: www</div>
+                              <div>Target: {rootDomain}</div>
+                              <div>Proxy status: Orange cloud ON (Proxied)</div>
+                              <div>TTL: Auto</div>
+                            </div>
+
+                            <p className="text-sm font-medium">3. Set SSL to Flexible:</p>
+                            <div className="bg-muted p-2 rounded font-mono text-xs">
+                              <div>SSL/TLS → Overview → Configure → Flexible → Save</div>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                              Wait 2–5 minutes after Cloudflare is active, then visit your domain.
                             </p>
                           </div>
                         </AlertDescription>
