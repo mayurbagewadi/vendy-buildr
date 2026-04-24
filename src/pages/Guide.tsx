@@ -558,73 +558,89 @@ const Guide = () => {
               ]
             },
             {
-              heading: "STEP 2: Set Up Cloudflare (Free Account)",
+              heading: "STEP 2: Buy a Domain (if not already bought)",
               content: [
-                "1. Go to cloudflare.com/sign-up",
-                "2. Create account with your email",
-                "3. Click 'Add a Domain'",
-                "4. Enter your domain name",
-                "5. Select Free Plan",
-                "6. Cloudflare will show you new nameservers"
+                "Buy from any registrar:",
+                "  • Hostinger (hostinger.com)",
+                "  • GoDaddy (godaddy.com)",
+                "  • Namecheap (namecheap.com)",
+                "  • BigRock (bigrock.in)"
               ]
             },
             {
-              heading: "STEP 3: Update Nameservers in Your Domain Registrar",
+              heading: "STEP 3: Create Free Cloudflare Account",
               content: [
-                "Go to where you bought your domain (GoDaddy, Namecheap, etc.):",
-                "",
-                "For GoDaddy:",
-                "  • Log in → My Products → Domains",
-                "  • Click your domain → Manage DNS",
-                "  • Replace nameservers with Cloudflare's",
-                "",
-                "For Namecheap:",
-                "  • Log in → Dashboard → Domain List",
-                "  • Click Manage → Nameservers tab",
-                "  • Select Custom DNS and enter Cloudflare nameservers",
-                "",
-                "⏱️ Wait 5-30 minutes for nameservers to propagate"
+                "1. Go to cloudflare.com → Sign Up (free)",
+                "2. Click 'Add a Domain' → Enter your domain → Select Free Plan",
+                "3. Cloudflare will show you 2 nameservers — copy them:",
+                "   crystal.ns.cloudflare.com",
+                "   edward.ns.cloudflare.com",
+                "   (yours may be different — use what Cloudflare shows you)"
               ]
             },
             {
-              heading: "STEP 4: Add CNAME Record in Cloudflare",
+              heading: "STEP 4: Update Nameservers at Your Registrar",
               content: [
-                "1. In Cloudflare dashboard, go to DNS tab",
-                "2. Click 'Add Record'",
-                "3. Fill in:",
-                "   • Type: CNAME",
-                "   • Name: @ (root domain)",
-                "   • Content: yourdomain.digitaldukandar.in",
-                "   • Proxy: DNS only (gray cloud, not orange)",
+                "1. Login to where you bought the domain",
+                "2. Find Nameservers / DNS Settings",
+                "3. Delete old nameservers",
+                "4. Add Cloudflare's nameservers (from Step 3)",
+                "5. Save",
+                "",
+                "For GoDaddy: My Products → Domains → Manage DNS → Nameservers",
+                "For Namecheap: Dashboard → Domain List → Manage → Nameservers tab",
+                "For Hostinger: hPanel → Domains → Manage → Nameservers",
+                "For BigRock: My Domains → Manage → Name Servers",
+                "",
+                "⏱️ Wait for Cloudflare email: 'Your domain is now active' (10-30 min)"
+              ]
+            },
+            {
+              heading: "STEP 5: Add DNS Records in Cloudflare",
+              content: [
+                "1. Go to Cloudflare → Your Domain → DNS → Records",
+                "2. Click 'Add Record' and fill in:",
+                "   • Type: A",
+                "   • Name: @",
+                "   • IPv4 address: 147.79.70.113",
+                "   • Proxy status: Orange cloud ON (Proxied)",
                 "   • TTL: Auto",
+                "3. Click Save",
+                "",
+                "4. Click 'Add Record' again for www:",
+                "   • Type: CNAME",
+                "   • Name: www",
+                "   • Target: yourdomain.com",
+                "   • Proxy status: Orange cloud ON (Proxied)",
+                "   • TTL: Auto",
+                "5. Click Save"
+              ]
+            },
+            {
+              heading: "STEP 6: Set SSL to Flexible in Cloudflare",
+              content: [
+                "1. Go to SSL/TLS → Overview → Configure",
+                "2. Select 'Custom SSL/TLS'",
+                "3. Choose 'Flexible'",
                 "4. Click Save"
               ]
             },
             {
-              heading: "STEP 5: Configure SSL in Cloudflare",
+              heading: "STEP 7: Verify It's Working",
               content: [
-                "1. Go to SSL/TLS → Overview",
-                "2. Change Encryption mode to 'Flexible'",
-                "3. Done! ✅"
-              ]
-            },
-            {
-              heading: "STEP 6: Verify It's Working",
-              content: [
-                "1. Open Command Prompt or Terminal",
-                "2. Run: curl -I https://yourdomain.com",
-                "3. Should see: HTTP/1.1 200 OK",
-                "4. Visit https://yourdomain.com in browser",
-                "5. Your store should load with all products"
+                "1. Wait 2 to 5 minutes",
+                "2. Open browser → visit https://yourdomain.com",
+                "3. Your store should load with all products ✅"
               ]
             },
             {
               heading: "Troubleshooting",
               content: [
-                "DNS Error? → Wait 5-30 minutes for propagation",
-                "404 or JSON error? → Proxy status must be 'DNS only' (gray cloud)",
-                "SSL Error? → Change Cloudflare encryption to 'Flexible'",
-                "Store not found? → Check domain is entered correctly in Settings"
+                "Still showing registrar page? → Nameservers not propagated — wait 30 min",
+                "SSL error / 525 error? → SSL must be Flexible (not Full) in Cloudflare",
+                "Error 1014? → You used CNAME with orange cloud — use A record instead",
+                "Store not found / blank page? → Check domain saved correctly in Settings → Custom Domain",
+                "www not working? → Add CNAME record for www (Step 5)"
               ]
             }
           ]
