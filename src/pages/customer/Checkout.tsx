@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle } from "lucide-react";
+import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +66,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [paymentCancelledModalOpen, setPaymentCancelledModalOpen] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [limitDetails, setLimitDetails] = useState<{
     planName: string;
@@ -285,11 +286,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             setIsProcessingPayment(false);
           },
           onDismiss: () => {
-            toast({
-              title: "Payment not completed",
-              description: "You closed the payment window. Your order has not been placed.",
-              variant: "destructive",
-            });
+            setPaymentCancelledModalOpen(true);
             setIsProcessingPayment(false);
           },
         }
@@ -1683,6 +1680,43 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               className="w-full sm:w-auto"
             >
               Back to Store
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Cancelled Modal */}
+      <Dialog open={paymentCancelledModalOpen} onOpenChange={setPaymentCancelledModalOpen}>
+        <DialogContent className="sm:max-w-sm text-center">
+          <div className="flex flex-col items-center gap-4 pt-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10">
+              <XCircle className="w-9 h-9 text-destructive" />
+            </div>
+            <div className="space-y-1">
+              <DialogTitle className="text-xl font-bold">Payment Not Completed</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                You closed the payment window.<br />
+                Your order has <span className="font-semibold text-foreground">not</span> been placed and no amount has been charged.
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 mt-2">
+            <Button
+              className="w-full"
+              onClick={() => setPaymentCancelledModalOpen(false)}
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setPaymentCancelledModalOpen(false);
+                navigate(storeSlug ? `/${storeSlug}/cart` : '/cart');
+              }}
+            >
+              Go Back to Cart
             </Button>
           </DialogFooter>
         </DialogContent>
