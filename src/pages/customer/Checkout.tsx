@@ -220,6 +220,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             setIsProcessingPayment(false);
           },
           onDismiss: () => {
+            toast({
+              title: "Payment not completed",
+              description: "You closed the payment window. Your order has not been placed.",
+              variant: "destructive",
+            });
             setIsProcessingPayment(false);
           },
         }
@@ -849,9 +854,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
         delivery_charge: orderDeliveryFee,
         total: finalTotal,
-        status: 'new',
+        status: selectedPaymentMethod === 'cod' ? 'new' : 'pending_payment',
         payment_method: selectedPaymentMethod,
-        payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'pending',
+        payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'awaiting_payment',
         payment_gateway: selectedPaymentMethod === 'cod' ? 'cod' : selectedPaymentMethod,
       };
 

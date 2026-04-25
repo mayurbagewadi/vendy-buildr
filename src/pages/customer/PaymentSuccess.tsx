@@ -133,11 +133,13 @@ export default function PaymentSuccess() {
           verified = verifyResult.verified;
           paymentId = razorpayPaymentId;
 
-          // Update order with payment details
+          // Update order with payment details — also promote status to 'new'
+          // so the order becomes visible in the admin Orders page only after payment is confirmed
           if (verified) {
             await supabase
               .from('orders')
               .update({
+                status: 'new',
                 payment_status: 'completed',
                 payment_id: razorpayPaymentId,
                 payment_gateway: 'razorpay',

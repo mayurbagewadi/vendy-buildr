@@ -146,11 +146,12 @@ const Orders = () => {
       setPlanName(subscription?.subscription_plans?.name || "");
       setViewLimit(ordersViewLimit);
 
-      // Get total order count (before applying limit)
+      // Get total order count — exclude orders awaiting payment (not yet confirmed)
       const { count: totalCount } = await supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
-        .eq("store_id", store.id);
+        .eq("store_id", store.id)
+        .neq("payment_status", "awaiting_payment");
 
       setTotalOrderCount(totalCount || 0);
 
@@ -161,6 +162,7 @@ const Orders = () => {
         .from("orders")
         .select("*")
         .eq("store_id", store.id)
+        .neq("payment_status", "awaiting_payment") // Hide unpaid online orders until payment confirmed
         .order("created_at", { ascending: true }); // Get oldest first from DB
 
       // Apply limit if set
