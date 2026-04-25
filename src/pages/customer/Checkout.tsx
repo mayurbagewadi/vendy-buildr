@@ -897,8 +897,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         }
       }
 
-      // Generate order number
-      const orderNumber = `ORD${Date.now().toString().slice(-8)}`;
+      // Generate order number — timestamp (8 digits) + 4 crypto-random hex chars
+      // Prevents collisions when multiple customers submit within the same millisecond
+      const _randBytes = crypto.getRandomValues(new Uint8Array(2));
+      const _randSuffix = Array.from(_randBytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      const orderNumber = `ORD${Date.now().toString().slice(-8)}${_randSuffix}`;
 
       // Calculate final total with discount (coupon takes priority, then auto-discount)
       const appliedDiscountAmount = discountAmount > 0 ? discountAmount : autoDiscountAmount;
