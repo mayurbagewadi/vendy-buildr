@@ -2,7 +2,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, Phone, Mail, Package, Calendar, Clock, Download } from "lucide-react";
+import { MapPin, User, Phone, Mail, Package, Calendar, Clock, Download, Copy, CheckCheck, CreditCard } from "lucide-react";
+import { useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -33,6 +34,9 @@ interface Order {
   total: number;
   status: string;
   payment_method: string;
+  payment_status?: string;
+  payment_id?: string;
+  gateway_order_id?: string;
   notes?: string;
   created_at: string;
   coupon_code?: string;
@@ -46,7 +50,20 @@ interface OrderDetailModalProps {
 }
 
 export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps) {
+  const [copied, setCopied] = useState(false);
+
   if (!order) return null;
+
+  const isOnlinePayment = order.payment_method.toLowerCase() !== "cod" &&
+    order.payment_method.toLowerCase() !== "cash on delivery";
+
+  const handleCopyTxnId = () => {
+    if (!order.payment_id) return;
+    navigator.clipboard.writeText(order.payment_id).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -214,6 +231,9 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
     // Add total and payment method
     summaryData.push([totalLabel, formatCurrencyForPDF(order.total)]);
     summaryData.push(["Payment Method:", order.payment_method.toUpperCase()]);
+    if (isOnlinePayment && order.payment_id) {
+      summaryData.push(["Transaction ID:", order.payment_id]);
+    }
 
     summaryData.forEach((row, index) => {
       // Label
@@ -421,6 +441,34 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
                 <span>Status:</span>
                 <Badge>{order.status}</Badge>
               </div>
+              {isOnlinePayment && order.payment_id && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <span className="text-sm flex items-center gap-1.5 text-muted-foreground shrink-0">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Transaction ID:
+                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-mono text-xs bg-muted px-2 py-1 rounded truncate max-w-[160px]" title={order.payment_id}>
+                        {order.payment_id}
+                      </span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 shrink-0"
+                        onClick={handleCopyTxnId}
+                        title="Copy Transaction ID"
+                      >
+                        {copied
+                          ? <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+                          : <Copy className="h-3.5 w-3.5" />
+                        }
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

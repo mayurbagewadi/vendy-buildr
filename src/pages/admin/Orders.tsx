@@ -40,6 +40,9 @@ interface Order {
   total: number;
   status: string;
   payment_method: string;
+  payment_status?: string;
+  payment_id?: string;
+  gateway_order_id?: string;
   notes?: string;
   created_at: string;
   coupon_code?: string;
