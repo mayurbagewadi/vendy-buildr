@@ -426,7 +426,7 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
                 <span>Delivery Charge:</span>
                 <span>{(order.delivery_charge ?? 0) > 0 ? formatCurrency(order.delivery_charge) : "FREE"}</span>
               </div>
-              {(order.coupon_code || order.discount_amount) && (
+              {Boolean(order.coupon_code || (order.discount_amount && order.discount_amount > 0)) && (
                 <>
                   {order.coupon_code && (
                     <div className="flex justify-between">
