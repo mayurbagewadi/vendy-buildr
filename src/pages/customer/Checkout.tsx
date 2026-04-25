@@ -66,7 +66,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
-  const [paymentCancelledModalOpen, setPaymentCancelledModalOpen] = useState(false);
+  const [notifModal, setNotifModal] = useState<{
+    open: boolean;
+    variant: 'error' | 'success' | 'warning';
+    title: string;
+    description: string;
+    primaryLabel?: string;
+    primaryAction?: () => void;
+    secondaryLabel?: string;
+    secondaryAction?: () => void;
+  }>({ open: false, variant: 'error', title: '', description: '' });
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [limitDetails, setLimitDetails] = useState<{
     planName: string;
@@ -112,6 +121,20 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       deliveryTime: "anytime",
     },
   });
+
+  const showModal = (
+    variant: 'error' | 'success' | 'warning',
+    title: string,
+    description: string,
+    options?: {
+      primaryLabel?: string;
+      primaryAction?: () => void;
+      secondaryLabel?: string;
+      secondaryAction?: () => void;
+    }
+  ) => {
+    setNotifModal({ open: true, variant, title, description, ...options });
+  };
 
   // Load payment settings from store
   const loadPaymentSettings = async () => {
@@ -269,24 +292,33 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             } catch (saveError: any) {
               // Payment went through but DB save failed — critical, show payment ID so customer can contact support
               console.error('Order save after payment failed:', saveError);
-              toast({
-                title: "Payment received — please contact support",
-                description: `Payment of ₹${params.amount} was successful (ID: ${response.razorpay_payment_id}). Your order could not be saved. Please share this ID with the store.`,
-                variant: "destructive",
-              });
+              showModal(
+                'warning',
+                'Payment Received — Contact Support',
+                `Payment of ₹${params.amount} was successful (ID: ${response.razorpay_payment_id}). Your order could not be saved automatically. Please share this Payment ID with the store owner.`
+              );
               setIsProcessingPayment(false);
             }
           },
           onFailure: (error: any) => {
-            toast({
-              title: "Payment failed",
-              description: error.description || "Please try again.",
-              variant: "destructive",
-            });
+            showModal('error', 'Payment Failed', error.description || 'Your payment could not be processed. Please try again.');
             setIsProcessingPayment(false);
           },
           onDismiss: () => {
-            setPaymentCancelledModalOpen(true);
+            showModal(
+              'error',
+              'Payment Not Completed',
+              'You closed the payment window. Your order has not been placed and no amount has been charged.',
+              {
+                primaryLabel: 'Try Again',
+                primaryAction: () => setNotifModal(prev => ({ ...prev, open: false })),
+                secondaryLabel: 'Go Back to Cart',
+                secondaryAction: () => {
+                  setNotifModal(prev => ({ ...prev, open: false }));
+                  navigate(storeSlug ? `/${storeSlug}/cart` : '/cart');
+                },
+              }
+            );
             setIsProcessingPayment(false);
           },
         }
@@ -297,11 +329,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       }
     } catch (error: any) {
       console.error('Razorpay payment error:', error);
-      toast({
-        title: "Payment failed",
-        description: error.message || "Failed to process payment. Please try again.",
-        variant: "destructive",
-      });
+      showModal('error', 'Payment Failed', error.message || 'Failed to process payment. Please try again.');
       setIsProcessingPayment(false);
     }
   };
@@ -344,11 +372,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // The initiatePhonePePayment function handles the redirect
     } catch (error: any) {
       console.error('PhonePe payment error:', error);
-      toast({
-        title: "Payment failed",
-        description: error.message || "Failed to process payment. Please try again.",
-        variant: "destructive",
-      });
+      showModal('error', 'Payment Failed', error.message || 'Failed to process payment. Please try again.');
       setIsProcessingPayment(false);
     }
   };
@@ -685,10 +709,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setAutoDiscountApplied(null);
       setAutoDiscountAmount(0);
 
-      toast({
-        title: 'Coupon Applied',
-        description: `Discount of ₹${data.discount.toFixed(2)} applied successfully!`,
-      });
+      showModal('success', 'Coupon Applied', `Discount of ₹${data.discount.toFixed(2)} applied successfully!`);
     } catch (error: any) {
       setCouponError(error.message || 'Failed to apply coupon');
       setAppliedCoupon(null);
@@ -802,11 +823,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       const storeId = cart[0]?.storeId;
 
       if (!storeId || storeId.trim() === '') {
-        toast({
-          title: "Cart Error",
-          description: "Your cart contains invalid items. Please clear your cart and add products again.",
-          variant: "destructive",
-        });
+        showModal('error', 'Cart Error', 'Your cart contains invalid items. Please clear your cart and add products again.');
         setIsSubmitting(false);
         return;
       }
@@ -1014,11 +1031,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         const result = await openWhatsApp(message, undefined, storeId);
 
         if (!result.success) {
-          toast({
-            title: "WhatsApp Not Configured",
-            description: result.error,
-            variant: "destructive",
-          });
+          showModal('warning', 'WhatsApp Not Configured', result.error || 'This store has not set up WhatsApp ordering yet.');
           setIsSubmitting(false);
           return;
         }
@@ -1030,11 +1043,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setIsSubmitting(false);
     } catch (error: any) {
       console.error('Checkout error:', error);
-      toast({
-        title: "Order failed",
-        description: error.message || "Failed to place order. Please try again.",
-        variant: "destructive",
-      });
+      showModal('error', 'Order Failed', error.message || 'Failed to place order. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -1685,39 +1694,38 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Cancelled Modal */}
-      <Dialog open={paymentCancelledModalOpen} onOpenChange={setPaymentCancelledModalOpen}>
+      {/* Unified Notification Modal — replaces all corner toasts */}
+      <Dialog open={notifModal.open} onOpenChange={(open) => setNotifModal(prev => ({ ...prev, open }))}>
         <DialogContent className="sm:max-w-sm text-center">
           <div className="flex flex-col items-center gap-4 pt-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10">
-              <XCircle className="w-9 h-9 text-destructive" />
+            <div className={`flex items-center justify-center w-16 h-16 rounded-full ${
+              notifModal.variant === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
+              notifModal.variant === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
+              'bg-destructive/10'
+            }`}>
+              {notifModal.variant === 'success' && <CheckCircle className="w-9 h-9 text-green-600" />}
+              {notifModal.variant === 'warning' && <AlertTriangle className="w-9 h-9 text-amber-600" />}
+              {notifModal.variant === 'error' && <XCircle className="w-9 h-9 text-destructive" />}
             </div>
-            <div className="space-y-1">
-              <DialogTitle className="text-xl font-bold">Payment Not Completed</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                You closed the payment window.<br />
-                Your order has <span className="font-semibold text-foreground">not</span> been placed and no amount has been charged.
+            <div className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold">{notifModal.title}</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                {notifModal.description}
               </DialogDescription>
             </div>
           </div>
           <DialogFooter className="flex-col gap-2 mt-2">
             <Button
               className="w-full"
-              onClick={() => setPaymentCancelledModalOpen(false)}
+              onClick={notifModal.primaryAction ?? (() => setNotifModal(prev => ({ ...prev, open: false })))}
             >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Try Again
+              {notifModal.primaryLabel ?? 'OK'}
             </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setPaymentCancelledModalOpen(false);
-                navigate(storeSlug ? `/${storeSlug}/cart` : '/cart');
-              }}
-            >
-              Go Back to Cart
-            </Button>
+            {notifModal.secondaryLabel && notifModal.secondaryAction && (
+              <Button variant="outline" className="w-full" onClick={notifModal.secondaryAction}>
+                {notifModal.secondaryLabel}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
