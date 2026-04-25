@@ -217,7 +217,7 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
 
     const summaryData = [
       ["Subtotal:", formatCurrencyForPDF(order.subtotal)],
-      ["Delivery Charge:", order.delivery_charge > 0 ? formatCurrencyForPDF(order.delivery_charge) : "FREE"],
+      ["Delivery Charge:", (order.delivery_charge ?? 0) > 0 ? formatCurrencyForPDF(order.delivery_charge) : "FREE"],
     ];
 
     // Add coupon and discount if available
@@ -424,7 +424,7 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
               </div>
               <div className="flex justify-between">
                 <span>Delivery Charge:</span>
-                <span>{order.delivery_charge > 0 ? formatCurrency(order.delivery_charge) : "FREE"}</span>
+                <span>{(order.delivery_charge ?? 0) > 0 ? formatCurrency(order.delivery_charge) : "FREE"}</span>
               </div>
               {(order.coupon_code || order.discount_amount) && (
                 <>
