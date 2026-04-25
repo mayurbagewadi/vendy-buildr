@@ -133,25 +133,9 @@ export default function PaymentSuccess() {
           verified = verifyResult.verified;
           paymentId = razorpayPaymentId;
 
-          // Update order with payment details — also promote status to 'new'
-          // so the order becomes visible in the admin Orders page only after payment is confirmed
-          if (verified) {
-            await supabase
-              .from('orders')
-              .update({
-                status: 'new',
-                payment_status: 'completed',
-                payment_id: razorpayPaymentId,
-                payment_gateway: 'razorpay',
-                gateway_order_id: razorpayOrderId,
-                payment_response: {
-                  razorpay_payment_id: razorpayPaymentId,
-                  razorpay_order_id: razorpayOrderId,
-                  razorpay_signature: signature,
-                },
-              })
-              .eq('id', orderId);
-          }
+          // Order was already created with status 'new' + payment_status 'completed'
+          // inside the Razorpay onSuccess callback in Checkout.tsx.
+          // No DB update needed here — just use verified flag to drive the UI.
         }
 
         // Check if payment was verified

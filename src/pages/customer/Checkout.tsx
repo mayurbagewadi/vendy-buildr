@@ -155,61 +155,126 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   };
 
   // Process Razorpay payment
-  const processRazorpayPayment = async (orderDetails: {
-    orderId: string;
+  // Critical: order is written to DB only inside onSuccess — never before.
+  // If customer closes modal or payment fails, zero trace in database.
+  const processRazorpayPayment = async (params: {
     orderNumber: string;
     customerName: string;
     customerEmail?: string;
     customerPhone: string;
     amount: number;
     currency: string;
+    baseOrderRecord: Record<string, any>;
+    appliedCoupon: Coupon | null;
+    discountAmount: number;
+    storeId: string;
   }) => {
     try {
       setIsProcessingPayment(true);
 
-      const storeId = cart[0]?.storeId;
-      if (!storeId || !paymentCredentials.razorpay?.key_id) {
+      if (!paymentCredentials.razorpay?.key_id) {
         throw new Error('Payment configuration error');
       }
 
-      // Create Razorpay order
-      const { orderId: razorpayOrderId, error: orderError } = await createRazorpayOrder(
-        orderDetails.amount,
-        orderDetails.currency,
-        storeId
+      // Step 1: Create Razorpay order server-side (just reserves the amount)
+      const { orderId: razorpayOrderId, error: razorpayOrderError } = await createRazorpayOrder(
+        params.amount,
+        params.currency,
+        params.storeId
       );
 
-      if (orderError) throw new Error(orderError);
+      if (razorpayOrderError) throw new Error(razorpayOrderError);
 
-      // Open Razorpay checkout
+      // Step 2: Open Razorpay modal
       const result = await openRazorpayCheckout(
         {
-          ...orderDetails,
-          orderId: razorpayOrderId
+          orderId: razorpayOrderId,
+          orderNumber: params.orderNumber,
+          customerName: params.customerName,
+          customerEmail: params.customerEmail,
+          customerPhone: params.customerPhone,
+          amount: params.amount,
+          currency: params.currency,
         },
         { key_id: paymentCredentials.razorpay.key_id },
         {
           onSuccess: async (response: any) => {
-            // ✅ ENTERPRISE UX: Redirect to success page with manual WhatsApp button
-            console.log('Razorpay Success Response:', response);
+            try {
+              // Step 3: Payment confirmed — now write order to DB for the first time
+              const { data: insertedOrder, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                  ...params.baseOrderRecord,
+                  status: 'new',
+                  payment_method: 'razorpay',
+                  payment_status: 'completed',
+                  payment_gateway: 'razorpay',
+                  payment_id: response.razorpay_payment_id,
+                  gateway_order_id: response.razorpay_order_id,
+                  payment_response: {
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                  },
+                })
+                .select('id')
+                .single();
 
-            // Build success page URL with payment data
-            const params = new URLSearchParams({
-              gateway: 'razorpay',
-              orderId: orderDetails.orderId,
-              storeId: storeId,
-              paymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              signature: response.razorpay_signature,
-              storeSlug: storeSlug || '',
-            });
+              if (orderError) throw orderError;
 
-            // Clear cart immediately
-            clearCart();
-            setIsProcessingPayment(false);
+              // Step 4: Record coupon usage against the newly created order
+              if (params.appliedCoupon && params.discountAmount > 0) {
+                try {
+                  await fetch(
+                    'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/record-coupon-usage',
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
+                      },
+                      body: JSON.stringify({
+                        couponCode: params.appliedCoupon.code,
+                        storeId: params.storeId,
+                        orderId: insertedOrder.id,
+                        customerPhone: params.baseOrderRecord.customer_phone,
+                        customerEmail: params.baseOrderRecord.customer_email || undefined,
+                        discountApplied: params.discountAmount,
+                      }),
+                    }
+                  );
+                } catch (couponErr) {
+                  // Non-fatal — order is already saved, coupon tracking failed silently
+                  console.error('Coupon usage recording failed:', couponErr);
+                }
+              }
 
-            // Redirect to success page (user will manually click WhatsApp button)
-            window.location.href = `/payment-success?${params.toString()}`;
+              // Step 5: Clear cart and redirect to success page
+              clearCart();
+              setIsProcessingPayment(false);
+
+              const successParams = new URLSearchParams({
+                gateway: 'razorpay',
+                orderId: insertedOrder.id,
+                storeId: params.storeId,
+                paymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                signature: response.razorpay_signature,
+                storeSlug: storeSlug || '',
+              });
+
+              window.location.href = `/payment-success?${successParams.toString()}`;
+
+            } catch (saveError: any) {
+              // Payment went through but DB save failed — critical, show payment ID so customer can contact support
+              console.error('Order save after payment failed:', saveError);
+              toast({
+                title: "Payment received — please contact support",
+                description: `Payment of ₹${params.amount} was successful (ID: ${response.razorpay_payment_id}). Your order could not be saved. Please share this ID with the store.`,
+                variant: "destructive",
+              });
+              setIsProcessingPayment(false);
+            }
           },
           onFailure: (error: any) => {
             toast({
@@ -854,17 +919,36 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
         delivery_charge: orderDeliveryFee,
         total: finalTotal,
-        status: selectedPaymentMethod === 'cod' ? 'new' : 'pending_payment',
+        status: 'new',
         payment_method: selectedPaymentMethod,
         payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'awaiting_payment',
         payment_gateway: selectedPaymentMethod === 'cod' ? 'cod' : selectedPaymentMethod,
       };
 
-      // Save order to Supabase
+      // ── Razorpay: hand off to payment handler — DB insert happens inside onSuccess ──
+      // Nothing is written to the database until Razorpay confirms the payment.
+      if (selectedPaymentMethod === 'razorpay') {
+        await processRazorpayPayment({
+          orderNumber,
+          customerName: data.fullName,
+          customerEmail: data.email,
+          customerPhone: data.phone,
+          amount: finalTotal,
+          currency: 'INR',
+          baseOrderRecord: orderRecord,
+          appliedCoupon,
+          discountAmount,
+          storeId: storeData.id,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ── COD + PhonePe: save order to DB first, then handle payment/whatsapp ──
       const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
         .insert(orderRecord)
-        .select('id') // Only request the ID (primary key)
+        .select('id')
         .single();
 
       if (orderError) throw orderError;
@@ -896,19 +980,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         }
       }
 
-      // Handle different payment methods
-      if (selectedPaymentMethod === 'razorpay') {
-        // Process Razorpay payment
-        await processRazorpayPayment({
-          orderId: insertedOrder.id,
-          orderNumber,
-          customerName: data.fullName,
-          customerEmail: data.email,
-          customerPhone: data.phone,
-          amount: finalTotal,
-          currency: 'INR',
-        });
-      } else if (selectedPaymentMethod === 'phonepe') {
+      // Handle remaining payment methods (PhonePe, COD)
+      if (selectedPaymentMethod === 'phonepe') {
         // Process PhonePe payment
         await processPhonePePayment({
           orderId: insertedOrder.id,
