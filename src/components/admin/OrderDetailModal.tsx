@@ -313,6 +313,20 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Order Timeline */}
+          <div>
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Order Timeline
+            </h3>
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>Placed on {formatDate(order.created_at)} at {formatTime(order.created_at)}</span>
+              </p>
+            </div>
+          </div>
+
           {/* Customer Information */}
           <div>
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -479,20 +493,6 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
               <p className="bg-muted p-3 rounded-lg">{order.notes}</p>
             </div>
           )}
-
-          {/* Order Timeline */}
-          <div>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Order Timeline
-            </h3>
-            <div className="bg-muted p-4 rounded-lg">
-              <p className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>Placed on {formatDate(order.created_at)} at {formatTime(order.created_at)}</span>
-              </p>
-            </div>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
