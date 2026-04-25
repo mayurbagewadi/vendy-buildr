@@ -81,6 +81,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [paymentCredentials, setPaymentCredentials] = useState<PaymentGatewayCredentials>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Delivery fee state
+  const [deliveryMode, setDeliveryMode] = useState<'single' | 'multiple'>('single');
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
+  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
+  const [deliveryTiers, setDeliveryTiers] = useState<{ min: number; max: number | null; fee: number }[]>([]);
+
   // Coupon-related state
   const [couponCode, setCouponCode] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -114,7 +120,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       const storeId = cart[0].storeId;
       const { data: store } = await supabase
         .from('stores')
-        .select('payment_mode, payment_gateway_credentials')
+        .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers')
         .eq('id', storeId)
         .maybeSingle();
 
@@ -133,6 +139,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         if (availableMethods.length > 0) {
           setSelectedPaymentMethod(availableMethods[0].id);
         }
+
+        // Load delivery fee settings
+        setDeliveryMode((store.delivery_mode as 'single' | 'multiple') || 'single');
+        setDeliveryFeeAmount(store.delivery_fee_amount != null ? Number(store.delivery_fee_amount) : 0);
+        setFreeDeliveryAbove(store.free_delivery_above != null ? Number(store.free_delivery_above) : null);
+        setDeliveryTiers((store.delivery_tiers as { min: number; max: number | null; fee: number }[]) || []);
       }
     } catch (error) {
       console.error('Error loading payment settings:', error);
@@ -806,7 +818,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
       // Calculate final total with discount (coupon takes priority, then auto-discount)
       const appliedDiscountAmount = discountAmount > 0 ? discountAmount : autoDiscountAmount;
-      const finalTotal = cartTotal - appliedDiscountAmount;
+      let orderDeliveryFee = 0;
+      if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
+        const matched = deliveryTiers.find(
+          (t) => cartTotal >= t.min && (t.max === null || cartTotal <= t.max)
+        );
+        orderDeliveryFee = matched ? matched.fee : 0;
+      } else if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
+        orderDeliveryFee = deliveryFeeAmount;
+      }
+      const finalTotal = cartTotal - appliedDiscountAmount + orderDeliveryFee;
 
       // Prepare order for database
       const orderRecord = {
@@ -826,7 +847,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         discount_amount: appliedDiscountAmount,
         coupon_code: appliedCoupon?.code || null,
         automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
-        delivery_charge: 0,
+        delivery_charge: orderDeliveryFee,
         total: finalTotal,
         status: 'new',
         payment_method: selectedPaymentMethod,
@@ -909,7 +930,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           cart: cart,
           subtotal: cartTotal,
           discount: discountAmount,
-          deliveryCharge: 0,
+          deliveryCharge: orderDeliveryFee,
           total: finalTotal,
         };
 
@@ -942,6 +963,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setIsSubmitting(false);
     }
   };
+
+  // Compute delivery fee based on cart total and store settings
+  const computedDeliveryFee = (() => {
+    if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
+      const matched = deliveryTiers.find(
+        (t) => cartTotal >= t.min && (t.max === null || cartTotal <= t.max)
+      );
+      return matched ? matched.fee : 0;
+    }
+    // single mode
+    if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
+      return deliveryFeeAmount;
+    }
+    return 0;
+  })();
 
   const homeLink = storeSlug ? `/${storeSlug}` : "/home";
   const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
@@ -1448,13 +1484,31 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Delivery</span>
-                    <span data-ai="price-delivery" className="text-success">FREE</span>
+                    {computedDeliveryFee > 0 ? (
+                      <span data-ai="price-delivery">₹{computedDeliveryFee.toFixed(2)}</span>
+                    ) : (
+                      <span data-ai="price-delivery" className="text-green-600 font-medium">FREE</span>
+                    )}
                   </div>
+
+                  {computedDeliveryFee === 0 && freeDeliveryAbove !== null && deliveryFeeAmount > 0 && (
+                    <p className="text-xs text-green-600">
+                      You saved ₹{deliveryFeeAmount.toFixed(2)} on delivery!
+                    </p>
+                  )}
+
+                  {computedDeliveryFee > 0 && freeDeliveryAbove !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      Add ₹{(freeDeliveryAbove - cartTotal).toFixed(2)} more for free delivery
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold">Total</span>
-                  <span data-ai="price-total" className="text-2xl font-bold text-primary">₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount)).toFixed(2)}</span>
+                  <span data-ai="price-total" className="text-2xl font-bold text-primary">
+                    ₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount) + computedDeliveryFee).toFixed(2)}
+                  </span>
                 </div>
 
                 <div className="bg-accent p-3 rounded-lg">

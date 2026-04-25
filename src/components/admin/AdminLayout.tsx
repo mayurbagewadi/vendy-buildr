@@ -313,9 +313,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     },
     {
       name: "Settings",
-      href: "/admin/settings",
       icon: Settings,
-      current: location.pathname === "/admin/settings",
+      isDropdown: true,
+      current: location.pathname.startsWith("/admin/settings"),
+      subItems: [
+        {
+          name: "General",
+          href: "/admin/settings",
+          icon: Settings,
+          current: location.pathname === "/admin/settings",
+        },
+        {
+          name: "Delivery Charges",
+          href: "/admin/settings/delivery",
+          icon: Truck,
+          current: location.pathname === "/admin/settings/delivery",
+        },
+      ],
     },
     {
       name: "AI Designer",

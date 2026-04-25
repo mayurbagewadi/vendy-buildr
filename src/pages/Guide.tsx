@@ -48,6 +48,7 @@ interface SubOption {
   sections: {
     heading: string;
     content: string | string[];
+    image?: string;
   }[];
 }
 
@@ -61,6 +62,7 @@ interface MenuSection {
     sections: {
       heading: string;
       content: string | string[];
+      image?: string;
     }[];
   };
   subOptions?: SubOption[];
@@ -589,7 +591,7 @@ const Guide = () => {
                 "",
                 "For GoDaddy: My Products → Domains → Manage DNS → Nameservers",
                 "For Namecheap: Dashboard → Domain List → Manage → Nameservers tab",
-                "For Hostinger: hPanel → Domains → Manage → Nameservers",
+                "For Hostinger: hPanel → Domains → DNS/Nameservers → DNS records",
                 "For BigRock: My Domains → Manage → Name Servers",
                 "",
                 "⏱️ Wait for Cloudflare email: 'Your domain is now active' (10-30 min)"
@@ -641,6 +643,91 @@ const Guide = () => {
                 "Error 1014? → You used CNAME with orange cloud — use A record instead",
                 "Store not found / blank page? → Check domain saved correctly in Settings → Custom Domain",
                 "www not working? → Add CNAME record for www (Step 5)"
+              ]
+            }
+          ]
+        },
+        {
+          id: "delivery-charges",
+          label: "Delivery Charges",
+          title: "Set Up Delivery Charges for Your Store",
+          description: "Configure delivery fees that automatically apply at checkout for your customers.",
+          sections: [
+            {
+              heading: "Where to Find It",
+              content: [
+                "1. Log in to your store admin panel",
+                "2. Go to Settings (sidebar menu)",
+                "3. Click 'Delivery Charges' from the dropdown",
+              ]
+            },
+            {
+              heading: "Two Modes Available",
+              content: [
+                "• Single Rule — One flat delivery fee with a free delivery threshold",
+                "• Multiple Rules — Different fees for different order value ranges",
+                "",
+                "Use the toggle at the top to switch between modes.",
+                "⚠️ Switching modes clears your previous settings — save before switching."
+              ]
+            },
+            {
+              heading: "Single Rule — How to Set Up",
+              content: [
+                "Example: Charge ₹50 delivery on all orders. Free delivery above ₹500.",
+                "",
+                "1. Select 'Single Rule' from the toggle",
+                "2. Delivery Fee → Enter ₹50",
+                "3. Free Delivery Above → Enter ₹500",
+                "4. Click Save Changes",
+                "",
+                "Result at checkout:",
+                "  • Cart below ₹500 → ₹50 delivery fee added",
+                "  • Cart ₹500 or above → Free delivery",
+                "",
+                "Leave both fields blank → All orders get free delivery"
+              ]
+            },
+            {
+              heading: "Multiple Rules — How to Set Up",
+              content: [
+                "Example: Different fees for different order ranges.",
+                "",
+                "1. Select 'Multiple Rules' from the toggle",
+                "2. Each row is one tier — fill in Min Order, Max Order, and Delivery Fee",
+                "3. Click 'Add Tier' to add more ranges",
+                "4. Leave Max Order blank on last tier = no upper limit",
+                "5. Set Delivery Fee to 0 = free delivery for that range",
+                "6. Click Save Changes",
+                "",
+                "Example setup:",
+                "  • ₹0 – ₹199 → ₹60 fee",
+                "  • ₹200 – ₹499 → ₹30 fee",
+                "  • ₹500 & above → ₹0 (Free)",
+                "",
+                "Click the trash icon to remove any tier.",
+                "You must keep at least one tier."
+              ]
+            },
+            {
+              heading: "What Customers See",
+              content: [
+                "• Cart page → Delivery fee shown in Order Summary",
+                "• Checkout page → Delivery fee as a separate line item",
+                "• If fee qualifies as free → Shows 'FREE' in green",
+                "• Checkout page also shows: 'Add ₹X more for free delivery' hint",
+                "",
+                "Delivery fee is applied to both Cash on Delivery and Online Payment orders."
+              ]
+            },
+            {
+              heading: "Tips",
+              content: [
+                "✅ If you don't set any delivery charges → all orders get free delivery automatically",
+                "✅ Free delivery encourages customers to add more items to their cart",
+                "✅ Use Multiple Rules for flexible pricing based on order size",
+                "⚠️ Only one mode (Single or Multiple) applies at a time",
+                "⚠️ Always click Save Changes after updating your settings"
               ]
             }
           ]
@@ -990,6 +1077,18 @@ const Guide = () => {
                             {section.content.map((item, i) => {
                               if (item === "") {
                                 return <div key={i} className="h-6" />;
+                              }
+
+                              if (item.startsWith("__image:")) {
+                                const src = item.replace("__image:", "");
+                                return (
+                                  <img
+                                    key={i}
+                                    src={src}
+                                    alt="guide screenshot"
+                                    className="rounded-lg border border-border shadow-sm max-w-full w-full my-2"
+                                  />
+                                );
                               }
 
                               const isIndented = item.startsWith('  ');

@@ -32,6 +32,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminSettings from "./pages/admin/Settings";
+import DeliverySettings from "./pages/admin/DeliverySettings";
 import AdminLayout from "./components/admin/AdminLayout";
 import Products from "./pages/admin/Products";
 import AddProduct from "./pages/admin/AddProduct";
@@ -140,6 +141,7 @@ const App = () => {
                       <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
 
@@ -193,6 +195,7 @@ const App = () => {
                       <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
+                      <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                       <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
 

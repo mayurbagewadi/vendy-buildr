@@ -19,29 +19,52 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const slug = slugProp || slugParam;
   const { cart, cartTotal, updateQuantity, removeItem } = useCart();
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
+  const [deliveryMode, setDeliveryMode] = useState<'single' | 'multiple'>('single');
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
+  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
+  const [deliveryTiers, setDeliveryTiers] = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
 
   useEffect(() => {
-    // If slug from URL, use it. Otherwise, try to get it from cart items
-    if (slug) {
-      setStoreSlug(slug);
-    } else if (cart.length > 0 && cart[0].storeId) {
-      // Get store slug from the first cart item's store
-      const fetchStoreSlug = async () => {
-        const { data } = await supabase
-          .from("stores")
-          .select("slug")
-          .eq("id", cart[0].storeId)
-          .maybeSingle();
-        if (data) {
-          setStoreSlug(data.slug);
-        }
-      };
-      fetchStoreSlug();
-    }
+    if (cart.length === 0) return;
+
+    const storeId = cart[0].storeId;
+
+    const fetchStoreData = async () => {
+      const { data } = await supabase
+        .from("stores")
+        .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers")
+        .eq("id", storeId)
+        .maybeSingle();
+
+      if (data) {
+        if (!slug) setStoreSlug(data.slug);
+        setDeliveryMode((data.delivery_mode as 'single' | 'multiple') || 'single');
+        setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
+        setFreeDeliveryAbove(data.free_delivery_above != null ? Number(data.free_delivery_above) : null);
+        setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
+      }
+    };
+
+    if (slug) setStoreSlug(slug);
+    fetchStoreData();
   }, [slug, cart]);
+
+  // Compute delivery fee
+  const computedDeliveryFee = (() => {
+    if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
+      const matched = deliveryTiers.find(
+        (t) => (t.min === null || cartTotal >= t.min) && (t.max === null || cartTotal <= t.max)
+      );
+      return matched?.fee ?? 0;
+    }
+    if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
+      return deliveryFeeAmount;
+    }
+    return 0;
+  })();
 
   // Generate store-aware links
   // On subdomain: /checkout, on main domain: /:slug/checkout
@@ -191,11 +214,15 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                   </div>
                   <div data-ai="order-summary-labels" className="flex justify-between text-muted-foreground">
                     <span>Delivery</span>
-                    <span className="text-success">FREE</span>
+                    {computedDeliveryFee > 0 ? (
+                      <span>₹{computedDeliveryFee.toFixed(2)}</span>
+                    ) : (
+                      <span className="text-green-600 font-medium">FREE</span>
+                    )}
                   </div>
                   <div className="border-t border-border pt-3 flex justify-between items-center">
                     <span data-ai="order-summary-labels" className="text-lg font-semibold">Total</span>
-                    <span className="text-2xl font-bold text-primary">₹{cartTotal}</span>
+                    <span className="text-2xl font-bold text-primary">₹{(cartTotal + computedDeliveryFee).toFixed(2)}</span>
                   </div>
                 </div>
 

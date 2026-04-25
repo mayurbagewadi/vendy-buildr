@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle, Truck } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -87,6 +87,9 @@ const AdminSettings = () => {
     stripe_secret_key: "",
     // Payment mode
     payment_mode: "online_and_cod" as "online_only" | "online_and_cod",
+    // Delivery fee
+    delivery_fee_amount: "",
+    free_delivery_above: "",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [storageUsed, setStorageUsed] = useState(0);
@@ -206,6 +209,9 @@ const AdminSettings = () => {
         stripe_secret_key: pgCreds?.stripe?.secret_key || "",
         // Payment mode
         payment_mode: (store?.payment_mode as "online_only" | "online_and_cod") || "online_and_cod",
+        // Delivery fee
+        delivery_fee_amount: store?.delivery_fee_amount != null ? String(store.delivery_fee_amount) : "",
+        free_delivery_above: store?.free_delivery_above != null ? String(store.free_delivery_above) : "",
       });
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -434,6 +440,8 @@ const AdminSettings = () => {
           },
         },
         payment_mode: formData.payment_mode,
+        delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
+        free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
       };
 
       if (subscriptionLimits.enableCustomDomain) {
@@ -1066,6 +1074,8 @@ const AdminSettings = () => {
           },
         },
         payment_mode: formData.payment_mode,
+        delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
+        free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
       };
 
       // Only update custom_domain if user has permission
