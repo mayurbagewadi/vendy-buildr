@@ -464,7 +464,7 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
                       Transaction ID:
                     </span>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-xs bg-muted px-2 py-1 rounded truncate max-w-[160px]" title={order.payment_id}>
+                      <span className="font-mono text-sm bg-muted px-2 py-1 rounded truncate max-w-[160px]" title={order.payment_id}>
                         {order.payment_id}
                       </span>
                       <Button
