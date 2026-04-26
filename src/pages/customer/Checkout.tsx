@@ -201,7 +201,20 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setIsProcessingPayment(true);
 
       if (!paymentCredentials.razorpay?.key_id) {
-        throw new Error('Payment configuration error');
+        showModal(
+          'error',
+          'Online Payment Unavailable',
+          'This store has not configured online payment yet. Please use Cash on Delivery to place your order.',
+          {
+            primaryLabel: 'Use Cash on Delivery',
+            primaryAction: () => {
+              setSelectedPaymentMethod('cod');
+              setNotifModal(prev => ({ ...prev, open: false }));
+            },
+          }
+        );
+        setIsProcessingPayment(false);
+        return;
       }
 
       // Step 1: Create Razorpay order server-side.
@@ -830,6 +843,31 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }[data.deliveryTime];
 
     try {
+      // Guard: payment method must be selected
+      if (!selectedPaymentMethod) {
+        showModal('error', 'Select Payment Method', 'Please select a payment method before placing your order.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Guard: selected online gateway must have credentials configured
+      if (selectedPaymentMethod === 'razorpay' && !paymentCredentials.razorpay?.key_id) {
+        showModal(
+          'error',
+          'Online Payment Unavailable',
+          'This store has not configured online payment yet. Please select Cash on Delivery to place your order.',
+          {
+            primaryLabel: 'Use Cash on Delivery',
+            primaryAction: () => {
+              setSelectedPaymentMethod('cod');
+              setNotifModal(prev => ({ ...prev, open: false }));
+            },
+          }
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // Get store ID from cart items
       const storeId = cart[0]?.storeId;
 
