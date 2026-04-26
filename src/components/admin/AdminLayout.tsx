@@ -553,9 +553,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               <ThemeToggle />
               {/* Notifications */}
               <div className="relative" ref={notificationRef}>
-                <button
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 hover:bg-muted rounded-lg transition-all duration-300 hover:scale-110 border border-primary touch-target"
+                  className="relative transition-all duration-300 hover:scale-110 border-primary"
                   aria-label="Notifications"
                 >
                   <Lottie
@@ -565,7 +567,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     autoplay={false}
                     style={{ width: 24, height: 24 }}
                   />
-                </button>
+                </Button>
 
                 {/* Notification Dropdown */}
                 {isNotificationOpen && (
