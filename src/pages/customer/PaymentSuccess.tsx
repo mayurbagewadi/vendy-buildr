@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
 import { generateOrderMessage, getWhatsAppNumber, formatWhatsAppNumber, isWhatsAppConfigured } from "@/lib/whatsappUtils";
+import { detectDomain } from "@/lib/domainUtils";
 import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink, Clock, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -214,8 +215,18 @@ export default function PaymentSuccess() {
   };
 
   // Handler for home navigation
+  // Works for all routing contexts: subdomain, custom domain, and path-based
   const handleGoHome = () => {
-    navigate(storeSlug ? `/${storeSlug}` : "/home");
+    const domainInfo = detectDomain();
+
+    if (domainInfo.isStoreSpecific) {
+      // Subdomain (store.digitaldukandar.in) or custom domain (mycustomdomain.com)
+      // Store root is always "/" — no slug prefix needed
+      navigate('/');
+    } else {
+      // Main platform (digitaldukandar.in) — path-based routing, slug required
+      navigate(storeSlug ? `/${storeSlug}` : '/');
+    }
   };
 
   return (
