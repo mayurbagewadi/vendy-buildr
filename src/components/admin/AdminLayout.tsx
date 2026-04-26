@@ -70,7 +70,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
 
   // Dynamic notifications from existing database tables (orders, products)
-  const { notifications, unreadCount } = useNotifications();
+  const { notifications, unreadCount, markAllSeen } = useNotifications();
 
   const { resolvedTheme } = useTheme();
 
@@ -556,7 +556,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                  onClick={() => {
+                    const opening = !isNotificationOpen;
+                    setIsNotificationOpen(opening);
+                    if (opening) markAllSeen();
+                  }}
                   className="relative transition-all duration-300 hover:scale-110 border-primary"
                   aria-label="Notifications"
                 >

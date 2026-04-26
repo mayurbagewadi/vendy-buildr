@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -12,32 +12,41 @@ export interface Notification {
 }
 
 const LOW_STOCK_THRESHOLD = 5;
-const NOTIFICATION_TIME_WINDOW_HOURS = 48; // Show notifications from last 48 hours
+const NOTIFICATION_TIME_WINDOW_HOURS = 48;
 
-/**
- * Enterprise-grade notification hook
- * Fetches dynamic notifications from existing database tables
- * - New orders from orders table
- * - Low stock alerts from products table
- * - Real-time updates via Supabase subscriptions
- */
+// localStorage key scoped per store — safe for multi-tenant (different owners, same browser)
+const getStorageKey = (storeId: string) => `notif_seen_${storeId}`;
+
+const getLastSeenAt = (storeId: string): Date => {
+  try {
+    const raw = localStorage.getItem(getStorageKey(storeId));
+    return raw ? new Date(raw) : new Date(0); // epoch = first visit, everything is "new"
+  } catch {
+    return new Date(0);
+  }
+};
+
+const saveLastSeenAt = (storeId: string, date: Date): void => {
+  try {
+    localStorage.setItem(getStorageKey(storeId), date.toISOString());
+  } catch {}
+};
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const storeIdRef = useRef<string | null>(null);
 
-  // Calculate time threshold for recent notifications
   const getTimeThreshold = () => {
     const now = new Date();
     now.setHours(now.getHours() - NOTIFICATION_TIME_WINDOW_HOURS);
     return now.toISOString();
   };
 
-  // Format time ago (e.g., "5 minutes ago", "2 hours ago")
   const formatTimeAgo = (date: Date): string => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) {
       const minutes = Math.floor(diffInSeconds / 60);
@@ -51,7 +60,6 @@ export function useNotifications() {
     return `${days} ${days === 1 ? 'day' : 'days'} ago`;
   };
 
-  // Fetch notifications from existing database tables
   const fetchNotifications = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -61,7 +69,6 @@ export function useNotifications() {
         return;
       }
 
-      // Get user's store
       const { data: store } = await supabase
         .from('stores')
         .select('id')
@@ -74,10 +81,14 @@ export function useNotifications() {
         return;
       }
 
+      storeIdRef.current = store.id;
+
+      // Read persisted "last seen" timestamp — anything newer = unread
+      const lastSeenAt = getLastSeenAt(store.id);
       const timeThreshold = getTimeThreshold();
       const allNotifications: Notification[] = [];
 
-      // Fetch recent orders (new orders in last 48 hours)
+      // Recent orders (last 48 hours)
       const { data: recentOrders } = await supabase
         .from('orders')
         .select('id, order_number, customer_name, created_at, status')
@@ -94,21 +105,21 @@ export function useNotifications() {
             title: 'New Order Received',
             description: `Order #${order.order_number} from ${order.customer_name}`,
             time: formatTimeAgo(createdAt),
-            unread: true, // All recent orders are unread
+            unread: createdAt > lastSeenAt,
             type: 'order',
             createdAt,
           });
         });
       }
 
-      // Fetch low stock products
+      // Low stock products
       const { data: lowStockProducts } = await supabase
         .from('products')
         .select('id, name, stock, updated_at')
         .eq('store_id', store.id)
-        .eq('status', 'published') // Only check published products
+        .eq('status', 'published')
         .lte('stock', LOW_STOCK_THRESHOLD)
-        .gt('stock', 0) // Exclude out of stock
+        .gt('stock', 0)
         .order('stock', { ascending: true })
         .limit(5);
 
@@ -120,14 +131,13 @@ export function useNotifications() {
             title: 'Product Stock Low',
             description: `${product.name} is running low (${product.stock} left)`,
             time: formatTimeAgo(updatedAt),
-            unread: true,
+            unread: updatedAt > lastSeenAt,
             type: 'stock',
             createdAt: updatedAt,
           });
         });
       }
 
-      // Sort all notifications by creation time (newest first)
       allNotifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       setNotifications(allNotifications);
@@ -142,62 +152,39 @@ export function useNotifications() {
   useEffect(() => {
     fetchNotifications();
 
-    // Set up real-time subscriptions for new orders
     const ordersChannel = supabase
       .channel('notifications-orders')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-        },
-        () => {
-          // Refresh notifications when new order is inserted
-          fetchNotifications();
-        }
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        fetchNotifications();
+      })
       .subscribe();
 
-    // Set up real-time subscriptions for product updates (stock changes)
     const productsChannel = supabase
       .channel('notifications-products')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'products',
-        },
-        () => {
-          // Refresh notifications when product stock is updated
-          fetchNotifications();
-        }
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, () => {
+        fetchNotifications();
+      })
       .subscribe();
 
-    // Cleanup subscriptions on unmount
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(productsChannel);
     };
   }, []);
 
-  // Mark notification as read (in-memory only, no database table)
   const markAsRead = (notificationId: string) => {
     setNotifications(prev =>
-      prev.map(n =>
-        n.id === notificationId ? { ...n, unread: false } : n
-      )
+      prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
-  // Mark all as read
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, unread: false }))
-    );
+  // Saves current timestamp to localStorage — bell stays silent until a genuinely new event arrives
+  const markAllSeen = () => {
+    if (storeIdRef.current) {
+      saveLastSeenAt(storeIdRef.current, new Date());
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
     setUnreadCount(0);
   };
 
@@ -206,7 +193,7 @@ export function useNotifications() {
     unreadCount,
     isLoading,
     markAsRead,
-    markAllAsRead,
+    markAllSeen,
     refresh: fetchNotifications,
   };
 }
