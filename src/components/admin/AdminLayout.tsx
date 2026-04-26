@@ -74,24 +74,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const { resolvedTheme } = useTheme();
 
-  // Patch animation colors to exactly match CSS variables at render time.
-  // --foreground light: 222.2 84% 4.9%  → [0.008, 0.032, 0.090]
-  // --foreground dark:  210  40% 98%    → [0.972, 0.980, 0.988]
-  // --primary:          217  91% 60%    → [0.236, 0.515, 0.964]
-  // --card light:       0    0%  100%   → [1.000, 1.000, 1.000]
-  // --card dark:        217.2 32.6% 10% → [0.067, 0.092, 0.133]
+  // --primary: 217 91% 60% → [0.236, 0.515, 0.964]
+  // --card light: 0 0% 100% → [1, 1, 1]  |  dark: 217.2 32.6% 10% → [0.067, 0.092, 0.133]
   const themedAnimation = useMemo(() => {
     const isDark = resolvedTheme === "dark";
 
-    // Bell stroke = --foreground (matches Menu, User and all other header icons)
-    const bellStroke = isDark
-      ? [0.972, 0.980, 0.988, 1]
-      : [0.008, 0.032, 0.090, 1];
+    // Bell stroke = --primary (matches Sun/Moon icons in ThemeToggle next to it)
+    const bellStroke = [0.236, 0.515, 0.964, 1];
 
-    // Dot = primary blue (same brand blue used across the admin panel)
+    // Dot fill = --primary (same blue)
     const dotFill = [0.236, 0.515, 0.964, 1];
 
-    // Dot border ring = --card (header background) so dot sits cleanly on header
+    // Dot border ring = --card so it sits flush on the header background
     const dotBorder = isDark
       ? [0.067, 0.092, 0.133, 1]
       : [1.000, 1.000, 1.000, 1];
@@ -561,7 +555,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               <div className="relative" ref={notificationRef}>
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 hover:bg-muted rounded-lg transition-colors touch-target"
+                  className="relative p-2 hover:bg-muted rounded-lg transition-all duration-300 hover:scale-110 border border-primary touch-target"
                   aria-label="Notifications"
                 >
                   <Lottie
