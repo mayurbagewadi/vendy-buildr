@@ -165,6 +165,20 @@ export default function Sitemap() {
     <priority>0.3</priority>
   </url>
 
+  <!-- AI SEO Files -->
+  <url>
+    <loc>https://digitaldukandar.in/llms.txt</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://digitaldukandar.in/index.md</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
   <!-- Blog (${blogPosts.length} posts) -->
   <url>
     <loc>https://digitaldukandar.in/blog</loc>
