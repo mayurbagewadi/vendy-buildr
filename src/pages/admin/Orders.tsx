@@ -73,6 +73,7 @@ const Orders = () => {
   const [orderToShip, setOrderToShip] = useState<Order | null>(null);
   const [shippingPopupEnabled, setShippingPopupEnabled] = useState(false);
   const [doubleDiscountWarningDismissed, setDoubleDiscountWarningDismissed] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -386,13 +387,27 @@ const Orders = () => {
   };
 
   const handleUpdateOrder = async (orderId: string, updates: Partial<Order>) => {
+    if (updatingOrderId === orderId) return; // guard: already in-flight for this order
     try {
-      const { error } = await supabase
+      setUpdatingOrderId(orderId);
+      const { data, error } = await supabase
         .from("orders")
         .update(updates)
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
+
+      if (!data) {
+        toast({
+          title: "Order Not Found",
+          description: "This order no longer exists. It may have been deleted.",
+          variant: "destructive",
+        });
+        loadOrders();
+        return;
+      }
 
       toast({
         title: "Success",
@@ -405,6 +420,8 @@ const Orders = () => {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -781,9 +798,9 @@ const Orders = () => {
                               onClick={() => handleShipClick(order)}
                               title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
                               className="text-blue-600 hover:text-blue-700"
-                              disabled={shippingOrderId === order.id}
+                              disabled={shippingOrderId === order.id || updatingOrderId === order.id}
                             >
-                              {shippingOrderId === order.id ? (
+                              {shippingOrderId === order.id || updatingOrderId === order.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Truck className="h-4 w-4" />
@@ -797,8 +814,13 @@ const Orders = () => {
                               onClick={() => handleCancelOrder(order)}
                               title="Cancel Order"
                               className="text-destructive hover:text-destructive"
+                              disabled={updatingOrderId === order.id}
                             >
-                              <Ban className="h-4 w-4" />
+                              {updatingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
                             </Button>
                           )}
                         </div>
