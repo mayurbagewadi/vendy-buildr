@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import notificationBellAnimation from "@/assets/lottie/notification-bell.json";
+import { useTheme } from "next-themes";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +71,43 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   // Dynamic notifications from existing database tables (orders, products)
   const { notifications, unreadCount } = useNotifications();
+
+  const { resolvedTheme } = useTheme();
+
+  // Patch Lottie animation colors to match current theme + brand primary color.
+  // Bell stroke: near-black in light, near-white in dark (matches --foreground).
+  // Notification dot: primary blue [217 91% 60%] → RGB [0.236, 0.515, 0.964].
+  // Dot border ring: white (light) / dark-bg (dark) for contrast.
+  const themedAnimation = useMemo(() => {
+    const isDark = resolvedTheme === "dark";
+    const bellStroke   = isDark ? [0.972, 0.976, 0.984, 1] : [0.008, 0.032, 0.090, 1];
+    const dotFill      = [0.236, 0.515, 0.964, 1]; // primary blue
+    const dotBorder    = isDark ? [0.086, 0.094, 0.133, 1] : [1, 1, 1, 1];
+
+    const cloned = JSON.parse(JSON.stringify(notificationBellAnimation));
+
+    cloned.layers.forEach((layer: any) => {
+      if (layer.nm === "bell" || layer.nm === "bell ball") {
+        layer.shapes?.forEach((shape: any) => {
+          shape.it?.forEach((item: any) => {
+            if (item.ty === "st") item.c.k = bellStroke;
+          });
+        });
+      }
+      if (layer.nm === "notification point") {
+        layer.shapes?.forEach((shape: any) => {
+          shape.it?.forEach((item: any) => {
+            if (item.ty === "fl") {
+              const isWhite = item.c?.k?.[0] > 0.9 && item.c?.k?.[1] > 0.9;
+              item.c.k = isWhite ? dotBorder : dotFill;
+            }
+          });
+        });
+      }
+    });
+
+    return cloned;
+  }, [resolvedTheme]);
 
   useEffect(() => {
     if (!lottieRef.current) return;
@@ -515,7 +553,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 >
                   <Lottie
                     lottieRef={lottieRef}
-                    animationData={notificationBellAnimation}
+                    animationData={themedAnimation}
                     loop={true}
                     autoplay={false}
                     style={{ width: 24, height: 24 }}
