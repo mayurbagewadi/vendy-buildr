@@ -74,15 +74,27 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const { resolvedTheme } = useTheme();
 
-  // Patch Lottie animation colors to match current theme + brand primary color.
-  // Bell stroke: near-black in light, near-white in dark (matches --foreground).
-  // Notification dot: primary blue [217 91% 60%] → RGB [0.236, 0.515, 0.964].
-  // Dot border ring: white (light) / dark-bg (dark) for contrast.
+  // Patch animation colors to exactly match CSS variables at render time.
+  // --foreground light: 222.2 84% 4.9%  → [0.008, 0.032, 0.090]
+  // --foreground dark:  210  40% 98%    → [0.972, 0.980, 0.988]
+  // --primary:          217  91% 60%    → [0.236, 0.515, 0.964]
+  // --card light:       0    0%  100%   → [1.000, 1.000, 1.000]
+  // --card dark:        217.2 32.6% 10% → [0.067, 0.092, 0.133]
   const themedAnimation = useMemo(() => {
     const isDark = resolvedTheme === "dark";
-    const bellStroke   = isDark ? [0.972, 0.976, 0.984, 1] : [0.008, 0.032, 0.090, 1];
-    const dotFill      = [0.236, 0.515, 0.964, 1]; // primary blue
-    const dotBorder    = isDark ? [0.086, 0.094, 0.133, 1] : [1, 1, 1, 1];
+
+    // Bell stroke = --foreground (matches Menu, User and all other header icons)
+    const bellStroke = isDark
+      ? [0.972, 0.980, 0.988, 1]
+      : [0.008, 0.032, 0.090, 1];
+
+    // Dot = primary blue (same brand blue used across the admin panel)
+    const dotFill = [0.236, 0.515, 0.964, 1];
+
+    // Dot border ring = --card (header background) so dot sits cleanly on header
+    const dotBorder = isDark
+      ? [0.067, 0.092, 0.133, 1]
+      : [1.000, 1.000, 1.000, 1];
 
     const cloned = JSON.parse(JSON.stringify(notificationBellAnimation));
 
@@ -98,8 +110,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         layer.shapes?.forEach((shape: any) => {
           shape.it?.forEach((item: any) => {
             if (item.ty === "fl") {
-              const isWhite = item.c?.k?.[0] > 0.9 && item.c?.k?.[1] > 0.9;
-              item.c.k = isWhite ? dotBorder : dotFill;
+              // white fill = border ring, red fill = dot itself
+              const isWhiteRing = item.c?.k?.[0] > 0.9 && item.c?.k?.[1] > 0.9 && item.c?.k?.[2] > 0.9;
+              item.c.k = isWhiteRing ? dotBorder : dotFill;
             }
           });
         });
