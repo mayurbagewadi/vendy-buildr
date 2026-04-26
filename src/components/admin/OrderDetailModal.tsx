@@ -176,13 +176,15 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
     yPosition += 7;
 
     const itemsData = Array.isArray(order.items)
-      ? order.items.map((item) => [
-          cleanTextForPDF(item.productName),
-          cleanTextForPDF(item.variant || "N/A"),
-          formatCurrencyForPDF(item.price),
-          item.quantity.toString(),
-          formatCurrencyForPDF(item.price * item.quantity),
-        ])
+      ? order.items
+          .filter((item) => item != null && typeof item === 'object')
+          .map((item) => [
+            cleanTextForPDF(item.productName || item.name || 'Unknown Product'),
+            cleanTextForPDF(item.variant || "N/A"),
+            formatCurrencyForPDF(Number(item.price) || 0),
+            (item.quantity ?? 1).toString(),
+            formatCurrencyForPDF((Number(item.price) || 0) * (item.quantity ?? 1)),
+          ])
       : [];
 
     autoTable(doc, {
@@ -391,26 +393,29 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
               Order Items
             </h3>
             <div className="space-y-3">
-              {Array.isArray(order.items) && order.items.map((item, index) => (
-                <div key={index} className="flex gap-3 p-3 bg-muted rounded-lg">
-                  {item.productImage && (
-                    <img
-                      src={item.productImage}
-                      alt={item.productName}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-medium">{item.productName}</p>
-                    {item.variant && (
-                      <p className="text-sm text-muted-foreground">{item.variant}</p>
+              {Array.isArray(order.items) && order.items
+                .filter((item) => item != null && typeof item === 'object')
+                .map((item, index) => (
+                  <div key={index} className="flex gap-3 p-3 bg-muted rounded-lg">
+                    {item.productImage && (
+                      <img
+                        src={item.productImage}
+                        alt={item.productName || item.name || 'Product'}
+                        className="w-16 h-16 object-cover rounded"
+                      />
                     )}
-                    <p className="text-sm">
-                      {formatCurrency(item.price)} × {item.quantity} = {formatCurrency(item.price * item.quantity)}
-                    </p>
+                    <div className="flex-1">
+                      <p className="font-medium">{item.productName || item.name || 'Unknown Product'}</p>
+                      {item.variant && (
+                        <p className="text-sm text-muted-foreground">{item.variant}</p>
+                      )}
+                      <p className="text-sm">
+                        {formatCurrency(Number(item.price) || 0)} × {item.quantity ?? 1} = {formatCurrency((Number(item.price) || 0) * (item.quantity ?? 1))}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </div>
 
