@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import Lottie, { LottieRefCurrentProps } from "lottie-react";
+import notificationBellAnimation from "@/assets/lottie/notification-bell.json";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +50,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [userName, setUserName] = useState<string>("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([]); // All dropdowns collapsed by default
   const [limitWarning, setLimitWarning] = useState<{
     whatsapp: boolean;
@@ -67,6 +70,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   // Dynamic notifications from existing database tables (orders, products)
   const { notifications, unreadCount } = useNotifications();
+
+  useEffect(() => {
+    if (!lottieRef.current) return;
+    if (unreadCount > 0) {
+      lottieRef.current.play();
+    } else {
+      lottieRef.current.stop();
+    }
+  }, [unreadCount]);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -501,10 +513,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   className="relative p-2 hover:bg-muted rounded-lg transition-colors touch-target"
                   aria-label="Notifications"
                 >
-                  <Bell className="w-5 h-5 text-foreground" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-card"></span>
-                  )}
+                  <Lottie
+                    lottieRef={lottieRef}
+                    animationData={notificationBellAnimation}
+                    loop={true}
+                    autoplay={false}
+                    style={{ width: 24, height: 24 }}
+                  />
                 </button>
 
                 {/* Notification Dropdown */}
