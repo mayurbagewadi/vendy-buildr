@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { detectDomain, getStoreIdentifier } from '@/lib/domainUtils';
+import { blogPosts } from '@/data/blogPosts';
 
 export default function Sitemap() {
   const [xml, setXml] = useState('');
@@ -163,6 +164,20 @@ export default function Sitemap() {
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- Blog (${blogPosts.length} posts) -->
+  <url>
+    <loc>https://digitaldukandar.in/blog</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+${blogPosts.map(post => `  <url>
+    <loc>https://digitaldukandar.in/blog/${post.slug}</loc>
+    <lastmod>${post.date || currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('\n')}
 
   <!-- Store Pages (${stores?.length || 0} stores found) -->`;
 
