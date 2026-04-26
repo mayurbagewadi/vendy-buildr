@@ -181,17 +181,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   // Process Razorpay payment
   // Critical: order is written to DB only inside onSuccess — never before.
   // If customer closes modal or payment fails, zero trace in database.
+  // The server is the ONLY source of truth for the amount — client value is
+  // used solely for the fallback warning message display.
   const processRazorpayPayment = async (params: {
     orderNumber: string;
     customerName: string;
     customerEmail?: string;
     customerPhone: string;
-    amount: number;
+    amount: number;           // client estimate — used only for fallback warning display
     currency: string;
     baseOrderRecord: Record<string, any>;
     appliedCoupon: Coupon | null;
     discountAmount: number;
     storeId: string;
+    cartItems: { productId: string; quantity: number }[];
+    autoDiscountId?: string;
   }) => {
     try {
       setIsProcessingPayment(true);
@@ -200,16 +204,20 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         throw new Error('Payment configuration error');
       }
 
-      // Step 1: Create Razorpay order server-side (just reserves the amount)
-      const { orderId: razorpayOrderId, error: razorpayOrderError } = await createRazorpayOrder(
-        params.amount,
+      // Step 1: Create Razorpay order server-side.
+      // Edge function fetches prices from DB, calculates all financials,
+      // and returns the server-verified total. Client amount is never used.
+      const { orderId: razorpayOrderId, verifiedTotal, error: razorpayOrderError } = await createRazorpayOrder(
+        params.cartItems,
         params.currency,
-        params.storeId
+        params.storeId,
+        params.appliedCoupon?.code,
+        params.autoDiscountId
       );
 
       if (razorpayOrderError) throw new Error(razorpayOrderError);
 
-      // Step 2: Open Razorpay modal
+      // Step 2: Open Razorpay modal — amount comes from server, not client
       const result = await openRazorpayCheckout(
         {
           orderId: razorpayOrderId,
@@ -217,18 +225,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: params.customerName,
           customerEmail: params.customerEmail,
           customerPhone: params.customerPhone,
-          amount: params.amount,
+          amount: verifiedTotal,  // ← server-verified, not params.amount
           currency: params.currency,
         },
         { key_id: paymentCredentials.razorpay.key_id },
         {
           onSuccess: async (response: any) => {
             try {
-              // Step 3: Payment confirmed — now write order to DB for the first time
+              // Step 3: Payment confirmed — now write order to DB for the first time.
+              // Override total with the server-verified amount so DB always
+              // reflects what Razorpay actually charged.
               const { data: insertedOrder, error: orderError } = await supabase
                 .from('orders')
                 .insert({
                   ...params.baseOrderRecord,
+                  total: verifiedTotal,  // ← server-verified, overrides client estimate
                   status: 'new',
                   payment_method: 'razorpay',
                   payment_status: 'completed',
@@ -950,12 +961,14 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: finalTotal,
+          amount: finalTotal,   // client estimate — for fallback warning display only
           currency: 'INR',
           baseOrderRecord: orderRecord,
           appliedCoupon,
           discountAmount,
           storeId: storeData.id,
+          cartItems: cart.map(item => ({ productId: item.productId, quantity: item.quantity })),
+          autoDiscountId: appliedCoupon ? undefined : (autoDiscountApplied?.id || undefined),
         });
         setIsSubmitting(false);
         return;

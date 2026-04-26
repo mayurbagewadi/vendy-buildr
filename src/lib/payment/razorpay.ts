@@ -30,35 +30,46 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 };
 
 /**
- * Create Razorpay order via backend
+ * Create Razorpay order via backend.
+ * The edge function fetches prices from DB server-side — the client never
+ * touches the amount. Returns the server-verified total so the caller can
+ * use it for both the Razorpay modal and the DB insert.
  */
 export const createRazorpayOrder = async (
-  amount: number,
+  cartItems: { productId: string; quantity: number }[],
   currency: string,
-  storeId: string
-): Promise<{ orderId: string; error?: string }> => {
+  storeId: string,
+  couponCode?: string,
+  autoDiscountId?: string
+): Promise<{ orderId: string; verifiedTotal: number; error?: string }> => {
   try {
     const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
       body: {
-        amount: Math.round(amount * 100), // Convert to paise
-        currency,
         storeId,
+        cartItems,
+        currency,
+        couponCode: couponCode || undefined,
+        autoDiscountId: autoDiscountId || undefined,
       },
     });
 
     if (error) throw error;
 
-    // ✅ Validate Razorpay order ID format (Gemini's suggestion)
-    if (!data.orderId || !data.orderId.startsWith('order_')) {
-      console.error('Invalid Razorpay order ID:', data.orderId);
-      return { orderId: '', error: 'Invalid order ID format' };
+    if (!data.success) {
+      return { orderId: '', verifiedTotal: 0, error: data.error || 'Failed to create order' };
     }
 
-    console.log('✅ Razorpay order created:', data.orderId);  // Debug log
-    return { orderId: data.orderId };
+    // ✅ Validate Razorpay order ID format
+    if (!data.orderId || !data.orderId.startsWith('order_')) {
+      console.error('Invalid Razorpay order ID:', data.orderId);
+      return { orderId: '', verifiedTotal: 0, error: 'Invalid order ID format' };
+    }
+
+    console.log('✅ Razorpay order created:', data.orderId, '| verified total: ₹' + data.verifiedTotal);
+    return { orderId: data.orderId, verifiedTotal: data.verifiedTotal };
   } catch (error: any) {
     console.error('Error creating Razorpay order:', error);
-    return { orderId: '', error: error.message || 'Failed to create order' };
+    return { orderId: '', verifiedTotal: 0, error: error.message || 'Failed to create order' };
   }
 };
 
