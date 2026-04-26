@@ -6,6 +6,19 @@ import blog5Raw from "../../blogs/blog-5-is-wix-free-forever.md?raw";
 import blog6Raw from "../../blogs/blog-6-cheaper-option-than-wix.md?raw";
 import blog7Raw from "../../blogs/blog-7-100-percent-free-website-builder.md?raw";
 import blog8Raw from "../../blogs/blog-8-types-of-ecommerce.md?raw";
+import blog9Raw from "../../blogs/blog-9-shopify-alternative-india.md?raw";
+import blog10Raw from "../../blogs/blog-10-whatsapp-store-india.md?raw";
+import blog11Raw from "../../blogs/blog-11-how-to-sell-online-india.md?raw";
+import blog12Raw from "../../blogs/blog-12-no-code-ecommerce-builder-india.md?raw";
+import blog13Raw from "../../blogs/blog-13-online-dukan-kaise-banaye.md?raw";
+import blog14Raw from "../../blogs/blog-14-free-ecommerce-website-builder-india.md?raw";
+import blog15Raw from "../../blogs/blog-15-online-store-builder-india.md?raw";
+import blog16Raw from "../../blogs/blog-16-best-ecommerce-platform-india.md?raw";
+import blog17Raw from "../../blogs/blog-17-dropshipping-india.md?raw";
+import blog18Raw from "../../blogs/blog-18-upi-cod-razorpay-ecommerce-india.md?raw";
+import blog19Raw from "../../blogs/blog-19-ecommerce-for-housewife-local-shop-india.md?raw";
+import blog20Raw from "../../blogs/blog-20-ecommerce-affiliate-helper-program-india.md?raw";
+import blog21Raw from "../../blogs/blog-21-ecommerce-india-faq.md?raw";
 
 export interface BlogPost {
   slug: string;
@@ -107,6 +120,97 @@ export const blogPosts: BlogPost[] = [
     "How Many Types of E-Commerce Are There? All 6 Models Explained (2025)",
     "Learn all 6 types of e-commerce — B2C, B2B, C2C, D2C, B2G, C2B — with India examples.",
     "2026-04-06"
+  ),
+  makeBlogPost(
+    "shopify-alternative-india",
+    blog9Raw,
+    "Best Shopify Alternative in India 2026 — Free, No Transaction Fees, UPI & WhatsApp",
+    "Looking for the best Shopify alternative in India? Compare free options with UPI, COD, WhatsApp integration and 0% transaction fees. Save ₹20,000+ per year vs Shopify.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "whatsapp-store-india",
+    blog10Raw,
+    "WhatsApp Store India 2026 — How to Sell on WhatsApp & Receive Orders",
+    "Learn how to create a WhatsApp store in India, receive orders on WhatsApp Business, and automate your ecommerce with WhatsApp integration. Free setup guide.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "how-to-sell-online-india",
+    blog11Raw,
+    "How to Sell Online in India 2026 — Complete Free Guide for Beginners",
+    "Step-by-step guide on how to sell online in India for free in 2026. Sell clothes, jewellery, handmade products, digital products and more. Zero investment needed.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "no-code-ecommerce-builder-india",
+    blog12Raw,
+    "No-Code Ecommerce Website Builder India 2026 — Build a Store Without Coding",
+    "Create a professional ecommerce website in India without any coding in 2026. AI-powered no-code store builder with UPI, WhatsApp, COD and free plan. Launch in 5 minutes.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "online-dukan-kaise-banaye",
+    blog13Raw,
+    "Free Online Dukan Kaise Banaye 2026 — Bina Coding Ke Online Store Banao",
+    "Free online dukan kaise banaye — step-by-step Hindi guide. Bina coding ke apni online dukan khole. UPI, WhatsApp aur COD ke saath free ecommerce website banao India mein.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "free-ecommerce-website-builder-india",
+    blog14Raw,
+    "Free Ecommerce Website Builder India 2026 — Build Your Online Store for Free",
+    "Best free ecommerce website builder in India 2026. Build a professional online store for free with UPI, COD, WhatsApp and AI designer. No credit card required.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "online-store-builder-india",
+    blog15Raw,
+    "Online Store Builder India 2026 — Create Your Online Store in Minutes",
+    "Best online store builder in India 2026. Create your online store for free with UPI, COD, WhatsApp and AI design. No coding. Launch in 5 minutes. Free plan available.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "best-ecommerce-platform-india",
+    blog16Raw,
+    "Best Ecommerce Platform India 2026 — Top Platforms Compared for Indian Sellers",
+    "Which is the best ecommerce platform in India in 2026? Compare Shopify, Dukaan, Instamojo, WooCommerce and DigitalDukandar. Free options with UPI, COD and 0% fees.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "dropshipping-india",
+    blog17Raw,
+    "Dropshipping India 2026 — How to Start Dropshipping Business Free",
+    "How to start dropshipping in India in 2026 for free. Best dropshipping platform India with UPI, COD, Shiprocket and 0% fees. Zero investment dropshipping guide.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "upi-cod-razorpay-ecommerce-india",
+    blog18Raw,
+    "UPI, COD, Razorpay & Shiprocket Ecommerce India 2026 — Complete Payments Guide",
+    "How to accept UPI, Razorpay, COD and Paytm payments on your online store in India. 0% transaction fee ecommerce platform with Shiprocket shipping. Free setup guide.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "ecommerce-for-housewife-local-shop-india",
+    blog19Raw,
+    "Ecommerce for Housewife, Local Shop & Side Income India 2026 — Free Guide",
+    "Start an online store from home in India. Ecommerce guide for housewives, local shop owners, resellers and side income seekers. Free store, no investment, earn from home.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "ecommerce-affiliate-helper-program-india",
+    blog20Raw,
+    "Earn Commission as an Ecommerce Helper in India 2026 — Affiliate & Referral Program",
+    "Earn commission by helping Indian businesses go online. Join DigitalDukandar's helper program — 10% direct commission + 5% network commission. Work from home ecommerce agent India.",
+    "2026-04-26"
+  ),
+  makeBlogPost(
+    "ecommerce-india-faq",
+    blog21Raw,
+    "Ecommerce India FAQ 2026 — 25 Most Asked Questions Answered",
+    "Answers to India's most asked ecommerce questions in 2026. GST, company registration, UPI payments, Shopify cost in India, dropshipping, ranking on Google and more.",
+    "2026-04-26"
   ),
 ];
 
