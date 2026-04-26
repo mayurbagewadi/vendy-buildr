@@ -1432,165 +1432,105 @@ const AdminSettings = () => {
 
                 {/* PhonePe Card */}
                 <div
-                  onClick={() => setOpenGatewayDialog('phonepe')}
-                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-purple-500/50 hover:-translate-y-1"
-                  style={{ borderColor: formData.phonepe_enabled ? '#a855f7' : 'transparent' }}
+                  className="relative border-2 rounded-xl p-6 opacity-60 cursor-not-allowed select-none"
+                  style={{ borderColor: 'transparent' }}
                 >
                   <div className="absolute top-4 right-4">
-                    {formData.phonepe_enabled ? (
-                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
-                        Not configured
-                      </span>
-                    )}
+                    <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
+                    <div className="p-3 rounded-xl bg-purple-500/10">
                       <CreditCard className="w-6 h-6 text-purple-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">PhonePe</h3>
                       <p className="text-sm text-muted-foreground mb-3">UPI & Digital</p>
-                      <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
-                        <SettingsIcon className="w-3.5 h-3.5" />
-                        Click to configure
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Cashfree Card */}
                 <div
-                  onClick={() => setOpenGatewayDialog('cashfree')}
-                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-green-500/50 hover:-translate-y-1"
-                  style={{ borderColor: formData.cashfree_enabled ? '#22c55e' : 'transparent' }}
+                  className="relative border-2 rounded-xl p-6 opacity-60 cursor-not-allowed select-none"
+                  style={{ borderColor: 'transparent' }}
                 >
                   <div className="absolute top-4 right-4">
-                    {formData.cashfree_enabled ? (
-                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
-                        Not configured
-                      </span>
-                    )}
+                    <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+                    <div className="p-3 rounded-xl bg-green-500/10">
                       <CreditCard className="w-6 h-6 text-green-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">Cashfree</h3>
                       <p className="text-sm text-muted-foreground mb-3">Payments & Payouts</p>
-                      <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 font-medium">
-                        <SettingsIcon className="w-3.5 h-3.5" />
-                        Click to configure
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* PayU Card */}
                 <div
-                  onClick={() => setOpenGatewayDialog('payu')}
-                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-orange-500/50 hover:-translate-y-1"
-                  style={{ borderColor: formData.payu_enabled ? '#f97316' : 'transparent' }}
+                  className="relative border-2 rounded-xl p-6 opacity-60 cursor-not-allowed select-none"
+                  style={{ borderColor: 'transparent' }}
                 >
                   <div className="absolute top-4 right-4">
-                    {formData.payu_enabled ? (
-                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
-                        Not configured
-                      </span>
-                    )}
+                    <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 transition-colors">
+                    <div className="p-3 rounded-xl bg-orange-500/10">
                       <CreditCard className="w-6 h-6 text-orange-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">PayU</h3>
                       <p className="text-sm text-muted-foreground mb-3">Leading Solution</p>
-                      <div className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400 font-medium">
-                        <SettingsIcon className="w-3.5 h-3.5" />
-                        Click to configure
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Paytm Card */}
                 <div
-                  onClick={() => setOpenGatewayDialog('paytm')}
-                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-sky-500/50 hover:-translate-y-1"
-                  style={{ borderColor: formData.paytm_enabled ? '#0ea5e9' : 'transparent' }}
+                  className="relative border-2 rounded-xl p-6 opacity-60 cursor-not-allowed select-none"
+                  style={{ borderColor: 'transparent' }}
                 >
                   <div className="absolute top-4 right-4">
-                    {formData.paytm_enabled ? (
-                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
-                        Not configured
-                      </span>
-                    )}
+                    <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-sky-500/10 group-hover:bg-sky-500/20 transition-colors">
+                    <div className="p-3 rounded-xl bg-sky-500/10">
                       <CreditCard className="w-6 h-6 text-sky-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">Paytm</h3>
                       <p className="text-sm text-muted-foreground mb-3">Wallet & Gateway</p>
-                      <div className="flex items-center gap-2 text-xs text-sky-600 dark:text-sky-400 font-medium">
-                        <SettingsIcon className="w-3.5 h-3.5" />
-                        Click to configure
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Stripe Card */}
                 <div
-                  onClick={() => setOpenGatewayDialog('stripe')}
-                  className="relative group cursor-pointer border-2 rounded-xl p-6 transition-all hover:shadow-lg hover:border-indigo-500/50 hover:-translate-y-1"
-                  style={{ borderColor: formData.stripe_enabled ? '#6366f1' : 'transparent' }}
+                  className="relative border-2 rounded-xl p-6 opacity-60 cursor-not-allowed select-none"
+                  style={{ borderColor: 'transparent' }}
                 >
                   <div className="absolute top-4 right-4">
-                    {formData.stripe_enabled ? (
-                      <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full font-medium">
-                        Not configured
-                      </span>
-                    )}
+                    <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+                      Coming Soon
+                    </span>
                   </div>
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-indigo-500/10 group-hover:bg-indigo-500/20 transition-colors">
+                    <div className="p-3 rounded-xl bg-indigo-500/10">
                       <CreditCard className="w-6 h-6 text-indigo-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-1">Stripe</h3>
                       <p className="text-sm text-muted-foreground mb-3">Global Platform</p>
-                      <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                        <SettingsIcon className="w-3.5 h-3.5" />
-                        Click to configure
-                      </div>
                     </div>
                   </div>
                 </div>
