@@ -54,6 +54,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
+import IntroAudio from "@/components/IntroAudio";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
@@ -1281,6 +1282,9 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Intro Audio — first-time visitors only */}
+      <IntroAudio />
 
       {/* WhatsApp Support Float Button */}
       {supportWhatsapp && (
