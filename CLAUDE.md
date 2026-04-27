@@ -320,6 +320,46 @@ TOKEN_SETTINGS_ID = '00000000-0000-0000-0000-000000000001'  // ai_token_settings
 --radius         Border radius (e.g. 0.75rem)
 ```
 
+## Intro Audio Feature (Added Apr 2026)
+
+### Overview
+First-visit female voice intro (Tara — Hindi Reels style) on the main landing page (`/`). Plays automatically after 3s on page + first scroll. Button stays visible on return visits at 50% opacity.
+
+### Files
+```
+public/audio/intro.mp3          ← ElevenLabs Tara voice audio (2.3MB)
+src/components/IntroAudio.tsx   ← Self-contained component
+src/pages/Index.tsx             ← <IntroAudio /> added above WhatsApp float
+```
+
+### Behavior
+| Visit | Autoplay | Button | Card |
+|---|---|---|---|
+| 1st visit | After 3s on page AND scroll | 100% opacity idle, 50% playing | Shown if browser blocks |
+| Return visit | Never | 50% opacity, clickable to replay | Never shown |
+
+### Key Constants
+```typescript
+STORAGE_KEY = 'dd_intro_played_v1'   // localStorage flag
+AUDIO_SRC   = '/audio/intro.mp3'     // served from dist/audio/
+```
+
+### Autoplay Logic
+- Both conditions must be true simultaneously: `has3sElapsed && hasScrolled`
+- 3s timer sets `has3sElapsed`, scroll sets `hasScrolled`, then `attemptAutoplay()` fires
+- If browser blocks → animated permission card: "DigitalDukandar.in want to talk with you"
+
+### Button Positioning (above WhatsApp float)
+```
+bottom-[76px] right-3 / sm:bottom-20 sm:right-4 / md:bottom-[88px] md:right-6
+z-[99], width/height 52px, bg-primary rounded-full
+```
+
+### To Replace Audio
+Upload new MP3 to `public/audio/intro.mp3` and rebuild. No code change needed.
+
+---
+
 ## Code Modification Rules (PERMANENT)
 
 **CRITICAL - Do NOT break existing working code:**
