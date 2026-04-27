@@ -108,13 +108,13 @@ const PushNotificationCard = ({ storeCreatedAt, storeLoaded }: PushNotificationC
       {visible && notif && (
         <motion.div
           key="card"
-          className="fixed bottom-0 left-0 right-0 z-[201] flex justify-center pb-6 px-4 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pb-0 sm:px-0"
+          className="fixed inset-0 z-[201] flex items-center justify-center px-4 pointer-events-none"
           initial={{ y: 80, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 80, opacity: 0, scale: 0.95 }}
           transition={{ type: "spring", stiffness: 320, damping: 28 }}
         >
-          <div className="w-full max-w-sm bg-card border rounded-2xl shadow-2xl p-6 space-y-4">
+          <div className="w-full max-w-sm bg-card border rounded-2xl shadow-2xl p-6 space-y-4 pointer-events-auto">
             {/* Top row */}
             <div className="flex items-center justify-between">
               <Badge
