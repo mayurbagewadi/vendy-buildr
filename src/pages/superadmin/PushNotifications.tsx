@@ -15,6 +15,21 @@ const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
 const CATEGORIES = ['Feature', 'UI Update', 'Fix', 'Announcement'];
 
+const renderBody = (text: string) =>
+  text.split('\n').map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={i} className="h-1" />;
+    if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      return (
+        <div key={i} className="flex items-start gap-2">
+          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+          <span className="text-sm text-muted-foreground leading-relaxed">{trimmed.replace(/^[-•]\s/, '')}</span>
+        </div>
+      );
+    }
+    return <p key={i} className="text-sm text-muted-foreground leading-relaxed">{trimmed}</p>;
+  });
+
 const CATEGORY_COLORS: Record<string, string> = {
   Feature: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   'UI Update': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
@@ -172,6 +187,7 @@ const PushNotificationsPage = () => {
                   onChange={(e) => setBody(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground text-right">{body.length}/200</p>
+                <p className="text-xs text-muted-foreground">Tip: Start a line with <code className="bg-muted px-1 rounded">- </code> to make it a bullet point.</p>
               </div>
 
               <div className="space-y-2">
@@ -228,9 +244,9 @@ const PushNotificationsPage = () => {
                   <h3 className="font-semibold text-lg leading-tight">
                     {title || 'Your notification title will appear here'}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    {body || 'Your message body will appear here. Keep it short and clear.'}
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    {body ? renderBody(body) : <p className="text-sm text-muted-foreground leading-relaxed">Your message body will appear here. Keep it short and clear.</p>}
+                  </div>
                 </div>
 
                 <Button className="w-full" size="sm">

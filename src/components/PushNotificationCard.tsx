@@ -7,6 +7,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
+const renderBody = (text: string) =>
+  text.split('\n').map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={i} className="h-1" />;
+    if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      return (
+        <div key={i} className="flex items-start gap-2">
+          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+          <span className="text-sm text-muted-foreground leading-relaxed">{trimmed.replace(/^[-•]\s/, '')}</span>
+        </div>
+      );
+    }
+    return <p key={i} className="text-sm text-muted-foreground leading-relaxed">{trimmed}</p>;
+  });
+
 const CATEGORY_COLORS: Record<string, string> = {
   Feature: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   'UI Update': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
@@ -121,7 +136,7 @@ const PushNotificationCard = ({ storeCreatedAt, storeLoaded }: PushNotificationC
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">What's New</p>
               <h3 className="font-bold text-lg leading-tight">{notif.title}</h3>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{notif.body}</p>
+              <div className="mt-2 space-y-1">{renderBody(notif.body)}</div>
             </div>
 
             {/* CTA */}
