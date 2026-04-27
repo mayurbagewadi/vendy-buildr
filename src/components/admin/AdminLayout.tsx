@@ -82,8 +82,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     // Bell stroke = --primary (matches Sun/Moon icons in ThemeToggle next to it)
     const bellStroke = [0.236, 0.515, 0.964, 1];
 
-    // Dot fill = --primary (same blue)
-    const dotFill = [0.236, 0.515, 0.964, 1];
+    // Dot fill = red (universal notification indicator)
+    const dotFill = [0.937, 0.215, 0.215, 1];
 
     // Dot border ring = --card so it sits flush on the header background
     const dotBorder = isDark
