@@ -22,7 +22,7 @@ const WhatsAppFloat = ({ storeId }: WhatsAppFloatProps) => {
   return (
     <Button
       onClick={handleClick}
-      className={`fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-none z-50 bg-transparent hover:bg-transparent p-0 border-0${shouldHop ? ' animate-whatsapp-hop' : ''}`}
+      className={`fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-none z-50 bg-transparent hover:bg-transparent p-0 border-0 overflow-hidden${shouldHop ? ' animate-whatsapp-hop' : ''}`}
       title="Chat with us on WhatsApp"
       aria-label="Chat with us on WhatsApp"
     >
