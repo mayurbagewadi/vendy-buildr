@@ -16,9 +16,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 interface PushNotificationCardProps {
   storeCreatedAt: string | null;
+  storeLoaded: boolean;
 }
 
-const PushNotificationCard = ({ storeCreatedAt }: PushNotificationCardProps) => {
+const PushNotificationCard = ({ storeCreatedAt, storeLoaded }: PushNotificationCardProps) => {
   const [visible, setVisible] = useState(false);
   const [notif, setNotif] = useState<{
     title: string;
@@ -28,6 +29,10 @@ const PushNotificationCard = ({ storeCreatedAt }: PushNotificationCardProps) => 
   } | null>(null);
 
   useEffect(() => {
+    // Wait until AdminLayout has finished fetching store data before checking.
+    // This ensures storeCreatedAt is the real resolved value, not the null default.
+    if (!storeLoaded) return;
+
     const check = async () => {
       try {
         const { data, error } = await supabase
@@ -64,7 +69,7 @@ const PushNotificationCard = ({ storeCreatedAt }: PushNotificationCardProps) => 
     };
 
     check();
-  }, [storeCreatedAt]);
+  }, [storeLoaded, storeCreatedAt]);
 
   const dismiss = () => {
     if (notif) {
@@ -76,58 +81,55 @@ const PushNotificationCard = ({ storeCreatedAt }: PushNotificationCardProps) => 
   return (
     <AnimatePresence>
       {visible && notif && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="backdrop"
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={dismiss}
-          />
-
-          {/* Card */}
-          <motion.div
-            key="card"
-            className="fixed bottom-0 left-0 right-0 z-[201] flex justify-center pb-6 px-4 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pb-0 sm:px-0"
-            initial={{ y: 80, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 80, opacity: 0, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
-          >
-            <div className="w-full max-w-sm bg-card border rounded-2xl shadow-2xl p-6 space-y-4">
-              {/* Top row */}
-              <div className="flex items-center justify-between">
-                <Badge
-                  variant="outline"
-                  className={CATEGORY_COLORS[notif.category] || CATEGORY_COLORS['Feature']}
-                >
-                  {notif.category}
-                </Badge>
-                <button
-                  onClick={dismiss}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Dismiss"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">What's New</p>
-                <h3 className="font-bold text-lg leading-tight">{notif.title}</h3>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{notif.body}</p>
-              </div>
-
-              {/* CTA */}
-              <Button className="w-full" onClick={dismiss}>
-                Got it!
-              </Button>
+        <motion.div
+          key="backdrop"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={dismiss}
+        />
+      )}
+      {visible && notif && (
+        <motion.div
+          key="card"
+          className="fixed bottom-0 left-0 right-0 z-[201] flex justify-center pb-6 px-4 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:pb-0 sm:px-0"
+          initial={{ y: 80, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 80, opacity: 0, scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        >
+          <div className="w-full max-w-sm bg-card border rounded-2xl shadow-2xl p-6 space-y-4">
+            {/* Top row */}
+            <div className="flex items-center justify-between">
+              <Badge
+                variant="outline"
+                className={CATEGORY_COLORS[notif.category] || CATEGORY_COLORS['Feature']}
+              >
+                {notif.category}
+              </Badge>
+              <button
+                onClick={dismiss}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </motion.div>
-        </>
+
+            {/* Content */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">What's New</p>
+              <h3 className="font-bold text-lg leading-tight">{notif.title}</h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{notif.body}</p>
+            </div>
+
+            {/* CTA */}
+            <Button className="w-full" onClick={dismiss}>
+              Got it!
+            </Button>
+          </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

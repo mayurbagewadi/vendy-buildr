@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
 import { useNotifications } from "@/hooks/useNotifications";
+import PushNotificationCard from "@/components/PushNotificationCard";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -68,6 +69,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   } | null>(null);
   const [showExpirationWarning, setShowExpirationWarning] = useState(true);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+  const [storeCreatedAt, setStoreCreatedAt] = useState<string | null>(null);
+  const [storeLoaded, setStoreLoaded] = useState(false);
 
   // Dynamic notifications from existing database tables (orders, products)
   const { notifications, unreadCount, markAllSeen } = useNotifications();
@@ -178,6 +181,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             setStoreName(store.name);
           }
 
+          if (store.created_at) {
+            setStoreCreatedAt(store.created_at);
+          }
+
           if (store.enabled_features) {
             setEnabledFeatures(store.enabled_features as string[]);
           }
@@ -230,6 +237,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         }
       } catch (error) {
         console.error('[AdminLayout] Error loading user data:', error);
+      } finally {
+        // Signal that store fetch is complete (success or failure).
+        // PushNotificationCard waits for this before running its check.
+        setStoreLoaded(true);
       }
     };
 
@@ -728,6 +739,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       </div>
     </div>
 
+      <PushNotificationCard storeCreatedAt={storeCreatedAt} storeLoaded={storeLoaded} />
     </>
   );
 };
