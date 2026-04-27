@@ -569,7 +569,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     animationData={themedAnimation}
                     loop={true}
                     autoplay={false}
-                    style={{ width: 24, height: 24 }}
+                    style={{ width: 22, height: 22 }}
                   />
                 </Button>
 
