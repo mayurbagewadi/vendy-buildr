@@ -79,6 +79,7 @@ import SuperAdminCustomDomains from "./pages/superadmin/CustomDomains";
 import SuperAdminPlatformSettings from "./pages/superadmin/PlatformSettings";
 import SuperAdminSitemapManager from "./pages/superadmin/SitemapManager";
 import SuperAdminMarketplace from "./pages/superadmin/Marketplace";
+import SuperAdminPushNotifications from "./pages/superadmin/PushNotifications";
 import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
 import SuperAdminLayout from "./components/superadmin/SuperAdminLayout";
 import { StoreGuard } from "./components/admin/StoreGuard";
@@ -227,6 +228,7 @@ const App = () => {
                         <Route path="ai-token-pricing" element={<SuperAdminLayout><AITokenPricing /></SuperAdminLayout>} />
                         <Route path="ai-designer-analytics" element={<SuperAdminLayout><AIDesignerAnalytics /></SuperAdminLayout>} />
                         <Route path="marketing" element={<SuperAdminLayout><SuperAdminMarketing /></SuperAdminLayout>} />
+                        <Route path="push-notifications" element={<SuperAdminLayout><SuperAdminPushNotifications /></SuperAdminLayout>} />
                       </Route>
 
                       {/* Onboarding Routes */}
