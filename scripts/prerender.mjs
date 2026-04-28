@@ -72,24 +72,39 @@ async function prerender() {
     // Wait for React to mount something real inside #root
     await page.waitForSelector('#root > *', { timeout: 15_000 })
 
-    // Step 4 — reset animated text to initial GSAP state before capturing
-    // Puppeteer captures AFTER GSAP has already run (networkidle0 waits long enough).
-    // Without this reset, prerendered HTML has opacity:1 text → React hydrates →
-    // GSAP resets to opacity:0 → visible flash → animation plays.
-    // With this reset, prerendered HTML matches GSAP "from" state → no flash.
+    // Step 4 — clean up DOM before capturing static HTML
     await page.evaluate(() => {
+      // 4a — Reset animated text to initial GSAP "from" state (prevents hydration flash)
       document.querySelectorAll('.word-inner').forEach((el) => {
         el.style.opacity = '0'
         el.style.transform = 'translateY(110%) rotateX(-40deg)'
       })
+
+      // 4b — Strip third-party scripts injected by React during render.
+      // Without this, they get baked into static HTML as render-blocking scripts.
+      // React will re-inject them asynchronously on hydration via useEffect/Helmet.
+      const blocklist = [
+        'googlesyndication.com',   // AdSense
+        'googletagmanager.com',    // GA4 / GTM
+        'google-analytics.com',    // Legacy GA
+        'clarity.ms',              // Microsoft Clarity
+        'cloudflareinsights.com',  // Cloudflare Analytics
+      ]
+      document.querySelectorAll('script').forEach((s) => {
+        const src = s.src || s.textContent || ''
+        if (blocklist.some((domain) => src.includes(domain))) {
+          s.remove()
+        }
+      })
+      // Also remove inline gtag/dataLayer scripts
+      document.querySelectorAll('script').forEach((s) => {
+        if (!s.src && s.textContent && (s.textContent.includes('dataLayer') || s.textContent.includes('gtag'))) {
+          s.remove()
+        }
+      })
     })
 
-    // Step 5 — capture fully rendered HTML
-    // page.content() returns the live DOM — includes:
-    //   • Full React-rendered landing page HTML
-    //   • react-helmet-async meta tags injected into <head>
-    //   • ClarityAnalytics <script> tag
-    //   • Vite JS bundle <script> tags (React hydrates on top after load)
+    // Step 5 — capture fully rendered HTML (clean of third-party scripts)
     const html = await page.content()
 
     // Step 5 — overwrite dist/index.html with static HTML
