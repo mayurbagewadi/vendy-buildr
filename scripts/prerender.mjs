@@ -72,7 +72,19 @@ async function prerender() {
     // Wait for React to mount something real inside #root
     await page.waitForSelector('#root > *', { timeout: 15_000 })
 
-    // Step 4 — capture fully rendered HTML
+    // Step 4 — reset animated text to initial GSAP state before capturing
+    // Puppeteer captures AFTER GSAP has already run (networkidle0 waits long enough).
+    // Without this reset, prerendered HTML has opacity:1 text → React hydrates →
+    // GSAP resets to opacity:0 → visible flash → animation plays.
+    // With this reset, prerendered HTML matches GSAP "from" state → no flash.
+    await page.evaluate(() => {
+      document.querySelectorAll('.word-inner').forEach((el) => {
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(110%) rotateX(-40deg)'
+      })
+    })
+
+    // Step 5 — capture fully rendered HTML
     // page.content() returns the live DOM — includes:
     //   • Full React-rendered landing page HTML
     //   • react-helmet-async meta tags injected into <head>
