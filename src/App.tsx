@@ -15,12 +15,14 @@ import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import Store from "./pages/customer/Store";
-import CustomerProducts from "./pages/customer/Products";
-import ProductDetail from "./pages/customer/ProductDetail";
-import Cart from "./pages/customer/Cart";
-import Checkout from "./pages/customer/Checkout";
-import PaymentSuccess from "./pages/customer/PaymentSuccess";
+
+// ─── Store frontend — lazy (never needed on main platform landing page) ────────
+const Store           = lazy(() => import("./pages/customer/Store"));
+const CustomerProducts = lazy(() => import("./pages/customer/Products"));
+const ProductDetail   = lazy(() => import("./pages/customer/ProductDetail"));
+const Cart            = lazy(() => import("./pages/customer/Cart"));
+const Checkout        = lazy(() => import("./pages/customer/Checkout"));
+const PaymentSuccess  = lazy(() => import("./pages/customer/PaymentSuccess"));
 
 // Guard + Layout components — always static (they're wrappers, not pages)
 import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
