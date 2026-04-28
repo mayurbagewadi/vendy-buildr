@@ -125,10 +125,8 @@ async function prerender() {
     // 6b — Preconnect to key third-party origins.
     //      Saves ~360ms (Clarity) + ~320ms (AdSense) on first connection.
     const preconnectTags = [
-      '  <link rel="preconnect" href="https://www.clarity.ms">',
-      '  <link rel="dns-prefetch" href="https://scripts.clarity.ms">',
-      '  <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>',
-      '  <link rel="dns-prefetch" href="https://googleads.g.doubleclick.net">',
+      '  <link rel="preconnect" href="https://scripts.clarity.ms">',
+      '  <link rel="dns-prefetch" href="https://www.clarity.ms">',
       '  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>',
     ].join('\n')
     html = html.replace('<head>', '<head>\n' + preconnectTags)

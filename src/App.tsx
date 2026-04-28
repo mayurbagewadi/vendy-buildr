@@ -124,31 +124,6 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
-// Load AdSense only on public-facing pages, not admin/helper routes
-function AdSenseLoader() {
-  const { pathname } = useLocation();
-  const isPrivatePath = /^\/(admin|superadmin|helper|onboarding|checkout|cart|payment-success|auth)/.test(pathname);
-
-  useEffect(() => {
-    if (isPrivatePath) return;
-    const inject = () => {
-      if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) return;
-      const script = document.createElement('script');
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9838772035675365';
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      document.head.appendChild(script);
-    };
-    // Defer until browser idle — keeps AdSense out of LCP critical path
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(inject, { timeout: 6000 });
-    } else {
-      setTimeout(inject, 5000);
-    }
-  }, [isPrivatePath]);
-
-  return null;
-}
 
 // Load Clarity only on public/customer-facing pages — never on admin or superadmin
 function ClarityAnalytics() {
@@ -194,7 +169,6 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <AdSenseLoader />
                 <ClarityAnalytics />
                 <ScrollToTop />
                 <ChunkErrorBoundary>
