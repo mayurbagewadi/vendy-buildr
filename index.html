@@ -40,10 +40,11 @@
     <meta name="twitter:description" content="Launch your professional online store in 5 minutes. No coding required. Trusted by 10,000+ Indian entrepreneurs." />
     <meta name="twitter:image" content="https://digitaldukandar.in/logo.png" />
     
-    <!-- Fonts — only the weights actually used in the UI -->
+    <!-- Fonts — async load to avoid render-blocking (saves ~840ms FCP) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&family=Inter:wght@300;400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&family=Inter:wght@300;400;500;600&display=swap"></noscript>
 
     <!-- Structured Data: Organization -->
     <script type="application/ld+json">
@@ -215,8 +216,7 @@
     }
     </script>
 
-    <!-- Razorpay — defer so it never blocks first paint -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+    <!-- Razorpay removed from global head — loaded on-demand in Checkout via loadRazorpayScript() -->
 
   </head>
 
