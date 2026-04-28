@@ -28,6 +28,27 @@ function AdSenseLoader() {
 
   return null;
 }
+
+// Load Clarity only on public/customer-facing pages — never on admin or superadmin
+function ClarityAnalytics() {
+  const { pathname } = useLocation();
+  const isPrivatePath =
+    /^\/(admin|superadmin|onboarding|home)(\/|$)/.test(pathname) ||
+    /^\/helper\/(dashboard|my-referrals|my-helper-network|commission-history|profile)(\/|$)/.test(pathname);
+
+  useEffect(() => {
+    if (isPrivatePath) return;
+    if ((window as any).clarity) return;
+    (function (c: any, l: any, a: string, r: string, i: string) {
+      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+      const t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+      const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+    })(window, document, 'clarity', 'script', 'wimnj0f7x4');
+  }, [isPrivatePath]);
+
+  return null;
+}
+
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -119,6 +140,7 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <AdSenseLoader />
+                <ClarityAnalytics />
                 <ScrollToTop />
                 <Routes>
                   {domainInfo.isStoreSpecific && storeIdentifier ? (
