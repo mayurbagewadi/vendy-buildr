@@ -19,7 +19,7 @@
 
 import { preview } from 'vite'
 import puppeteer from 'puppeteer'
-import { writeFileSync } from 'fs'
+import { writeFileSync, readdirSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -105,9 +105,35 @@ async function prerender() {
     })
 
     // Step 5 — capture fully rendered HTML (clean of third-party scripts)
-    const html = await page.content()
+    let html = await page.content()
 
-    // Step 5 — overwrite dist/index.html with static HTML
+    // Step 6 — inject performance hints into <head>
+
+    // 6a — WOFF2 font preloads: browser starts downloading fonts immediately,
+    //      before the CSS parser even finds the @font-face declarations.
+    try {
+      const assetsDir = resolve(ROOT, 'dist', 'assets')
+      const woff2Files = readdirSync(assetsDir).filter(f => f.endsWith('.woff2'))
+      if (woff2Files.length > 0) {
+        const preloadTags = woff2Files
+          .map(f => `  <link rel="preload" href="/assets/${f}" as="font" type="font/woff2" crossorigin>`)
+          .join('\n')
+        html = html.replace('<head>', '<head>\n' + preloadTags)
+      }
+    } catch {}
+
+    // 6b — Preconnect to key third-party origins.
+    //      Saves ~360ms (Clarity) + ~320ms (AdSense) on first connection.
+    const preconnectTags = [
+      '  <link rel="preconnect" href="https://www.clarity.ms">',
+      '  <link rel="dns-prefetch" href="https://scripts.clarity.ms">',
+      '  <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>',
+      '  <link rel="dns-prefetch" href="https://googleads.g.doubleclick.net">',
+      '  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>',
+    ].join('\n')
+    html = html.replace('<head>', '<head>\n' + preconnectTags)
+
+    // Step 7 — overwrite dist/index.html with static HTML
     writeFileSync(resolve(ROOT, 'dist/index.html'), html, 'utf-8')
     console.log('✅ [Prerender] dist/index.html → static HTML written successfully')
     console.log('   → SEO bots, Clarity, and social previews will now see full content\n')

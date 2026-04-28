@@ -131,12 +131,20 @@ function AdSenseLoader() {
 
   useEffect(() => {
     if (isPrivatePath) return;
-    if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) return;
-    const script = document.createElement('script');
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9838772035675365';
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    document.head.appendChild(script);
+    const inject = () => {
+      if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) return;
+      const script = document.createElement('script');
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9838772035675365';
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      document.head.appendChild(script);
+    };
+    // Defer until browser idle — keeps AdSense out of LCP critical path
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(inject, { timeout: 6000 });
+    } else {
+      setTimeout(inject, 5000);
+    }
   }, [isPrivatePath]);
 
   return null;
@@ -151,12 +159,20 @@ function ClarityAnalytics() {
 
   useEffect(() => {
     if (isPrivatePath) return;
-    if ((window as any).clarity) return;
-    (function (c: any, l: any, a: string, r: string, i: string) {
-      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-      const t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
-      const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-    })(window, document, 'clarity', 'script', 'wimnj0f7x4');
+    const inject = () => {
+      if ((window as any).clarity) return;
+      (function (c: any, l: any, a: string, r: string, i: string) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        const t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+        const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+      })(window, document, 'clarity', 'script', 'wimnj0f7x4');
+    };
+    // Defer until browser idle — keeps Clarity out of LCP critical path
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(inject, { timeout: 6000 });
+    } else {
+      setTimeout(inject, 5000);
+    }
   }, [isPrivatePath]);
 
   return null;
