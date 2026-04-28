@@ -9,6 +9,7 @@ export const useLandingAnimations = () => {
   const heroRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
   const stepsRef = useRef<HTMLDivElement>(null);
+  const sellersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Smooth scroll for navigation links
@@ -132,6 +133,38 @@ export const useLandingAnimations = () => {
       });
     }
 
+    // Sellers Section - Staggered scroll-triggered card entrance
+    if (sellersRef.current) {
+      const sellerCards = sellersRef.current.querySelectorAll('.seller-card');
+
+      gsap.fromTo(sellerCards,
+        { opacity: 0, y: 50, scale: 0.92 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: 'power3.out',
+          stagger: 0.1,
+          scrollTrigger: {
+            trigger: sellersRef.current,
+            start: 'top 75%',
+            end: 'bottom 20%',
+            toggleActions: 'play none none reverse',
+          }
+        }
+      );
+
+      sellerCards.forEach((card) => {
+        card.addEventListener('mouseenter', () => {
+          gsap.to(card, { y: -8, duration: 0.3, ease: 'power2.out' });
+        });
+        card.addEventListener('mouseleave', () => {
+          gsap.to(card, { y: 0, duration: 0.3, ease: 'power2.out' });
+        });
+      });
+    }
+
     // Steps Section - Sequential reveal animation
     if (stepsRef.current) {
       const stepCards = stepsRef.current.querySelectorAll('.step-card');
@@ -171,6 +204,7 @@ export const useLandingAnimations = () => {
   return {
     heroRef,
     featuresRef,
-    stepsRef
+    stepsRef,
+    sellersRef
   };
 };

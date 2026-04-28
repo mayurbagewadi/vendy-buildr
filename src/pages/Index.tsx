@@ -68,7 +68,7 @@ const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { heroRef, featuresRef, stepsRef } = useLandingAnimations();
+  const { heroRef, featuresRef, stepsRef, sellersRef } = useLandingAnimations();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
   const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
@@ -873,7 +873,7 @@ const Index = () => {
               Whether you're a first-time seller or scaling an existing brand, our <strong>ecommerce platform</strong> has everything you need to <strong>sell online</strong>
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div ref={sellersRef} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
                 emoji: "🛍️",
@@ -912,7 +912,7 @@ const Index = () => {
                 tags: ["Product management", "Payments", "Order automation"]
               }
             ].map((item, i) => (
-              <div key={i} className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+              <div key={i} className="seller-card bg-card border border-border/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow">
                 <div className="text-3xl mb-4">{item.emoji}</div>
                 <h3 className="font-semibold text-lg text-foreground mb-2">{item.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed mb-4">{item.desc}</p>
