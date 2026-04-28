@@ -27,7 +27,6 @@ import {
   Check,
   Crown,
   TrendingUp,
-  Globe,
   Heart,
   Star,
   Menu,
@@ -1222,16 +1221,6 @@ const Index = () => {
                     <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/demo" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto h-11 sm:h-14 bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white text-sm sm:text-base px-6 sm:px-10 font-semibold backdrop-blur-sm"
-                  >
-                    <Globe className="w-4 sm:w-5 h-4 sm:h-5 mr-2" />
-                    View Demo Store
-                  </Button>
-                </Link>
               </div>
               <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium opacity-90">
                 <div className="flex items-center gap-1 sm:gap-2">
@@ -1265,9 +1254,6 @@ const Index = () => {
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-8 text-sm font-medium text-muted-foreground">
-              <Link to="/home" className="hover:text-foreground transition-colors">
-                Demo Store
-              </Link>
               <a href="#features" className="hover:text-foreground transition-colors">
                 Features
               </a>
