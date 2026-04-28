@@ -72,7 +72,6 @@ const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
   const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
-  const [gaId, setGaId] = useState<string | null>(null);
 
   // Check for account deleted error and show dialog
   useEffect(() => {
@@ -84,22 +83,66 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch support WhatsApp number and Google Analytics ID from platform settings
+  // Load platform settings — localStorage cache to avoid blocking LCP with API call
   useEffect(() => {
-    const fetchSettings = async () => {
-      const { data } = await supabase
-        .from('platform_settings')
-        .select('support_whatsapp_number, google_analytics_id')
-        .eq('id', SETTINGS_ID)
-        .single();
-      if (data?.support_whatsapp_number) {
-        setSupportWhatsapp(data.support_whatsapp_number);
-      }
-      if ((data as any)?.google_analytics_id) {
-        setGaId((data as any).google_analytics_id);
-      }
+    const CACHE_KEY = 'dd_platform_settings_v1';
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+    const injectGA = (id: string) => {
+      if (!id || (window as any).__ga_injected) return;
+      (window as any).__ga_injected = true;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
+      document.head.appendChild(script);
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      function gtag(...args: any[]) { (window as any).dataLayer.push(args); }
+      gtag('js', new Date());
+      gtag('config', id);
     };
-    fetchSettings();
+
+    // Try cache first — avoids the 2,100ms API call on repeat visits
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) {
+          if (data.support_whatsapp_number) setSupportWhatsapp(data.support_whatsapp_number);
+          // Defer GA injection until browser is idle — after LCP is measured
+          if (data.google_analytics_id) {
+            if ('requestIdleCallback' in window) {
+              (window as any).requestIdleCallback(() => injectGA(data.google_analytics_id));
+            } else {
+              setTimeout(() => injectGA(data.google_analytics_id), 3000);
+            }
+          }
+          return; // cache hit — skip API call entirely
+        }
+      }
+    } catch {}
+
+    // Cache miss — fetch from API in background (does not block LCP)
+    supabase
+      .from('platform_settings')
+      .select('support_whatsapp_number, google_analytics_id')
+      .eq('id', SETTINGS_ID)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.support_whatsapp_number) setSupportWhatsapp(data.support_whatsapp_number);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+        } catch {}
+        // Defer GA injection until browser is idle
+        const gaId = (data as any).google_analytics_id;
+        if (gaId) {
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(() => injectGA(gaId));
+          } else {
+            setTimeout(() => injectGA(gaId), 3000);
+          }
+        }
+      });
   }, []);
 
   const features = [
@@ -389,17 +432,7 @@ const Index = () => {
             ]
           })}
         </script>
-        {gaId && (
-          <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
-        )}
-        {gaId && (
-          <script>{`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${gaId}');
-          `}</script>
-        )}
+        {/* GA4 injected via requestIdleCallback in useEffect — deferred after LCP */}
       </Helmet>
 
       {/* Header */}
