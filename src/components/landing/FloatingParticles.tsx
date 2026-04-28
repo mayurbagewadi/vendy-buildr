@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
 
 export const FloatingParticles = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -8,9 +7,11 @@ export const FloatingParticles = () => {
     // Skip on mobile — saves CPU and battery
     if (window.innerWidth < 768) return;
 
-    const init = () => {
+    // Dynamic import keeps GSAP out of the main bundle.
+    const init = async () => {
       if (!containerRef.current) return;
 
+      const { gsap } = await import('gsap');
       const particles = containerRef.current.querySelectorAll('.particle');
 
       particles.forEach((particle) => {

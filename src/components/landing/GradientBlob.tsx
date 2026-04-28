@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
 
 interface GradientBlobProps {
   color: 'blue' | 'purple' | 'pink' | 'green';
@@ -28,13 +27,15 @@ export const GradientBlob = ({ color, size = 'md', position }: GradientBlobProps
 
     const el = blobRef.current;
 
-    const init = () => {
+    // Dynamic import keeps GSAP out of the main bundle.
+    // Decorative blob animations are deferred until the browser is idle.
+    const init = async () => {
+      const { gsap } = await import('gsap');
       gsap.to(el, { scale: 1.2, duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut' });
       gsap.to(el, { rotation: 360, duration: 20, repeat: -1, ease: 'none' });
       gsap.to(el, { x: '+=20', y: '+=15', duration: 10, repeat: -1, yoyo: true, ease: 'sine.inOut' });
     };
 
-    // Defer blob animations until browser is idle — decorative only, never critical
     let idleId: number;
     if ('requestIdleCallback' in window) {
       idleId = (window as any).requestIdleCallback(init, { timeout: 3000 });

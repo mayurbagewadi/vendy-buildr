@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
+import { useRef } from 'react';
 
 interface AnimatedTextProps {
   text: string;
@@ -12,44 +11,22 @@ interface AnimatedTextProps {
 export const AnimatedText = ({
   text,
   className = '',
-  delay = 0,
+  delay: _delay = 0,
   as: Component = 'span',
   gradient = false
 }: AnimatedTextProps) => {
   const containerRef = useRef<HTMLElement>(null);
   const words = text.split(' ');
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const wordInners = containerRef.current.querySelectorAll('.word-inner');
-
-    // Premium word-reveal: each word slides up from below its clip boundary
-    gsap.fromTo(
-      wordInners,
-      {
-        y: '110%',
-        opacity: 0,
-        rotationX: -40,
-      },
-      {
-        y: '0%',
-        opacity: 1,
-        rotationX: 0,
-        duration: 0.75,
-        stagger: 0.12,
-        ease: 'back.out(1.4)',
-        delay: delay,
-      }
-    );
-  }, [text, delay]);
-
+  // Words rendered as plain visible spans — no GSAP opacity:0 hiding.
+  // This lets the prerendered hero text be LCP-eligible immediately at FCP time
+  // instead of waiting 3-9 seconds for GSAP to execute.
   return (
     <Component ref={containerRef as any} className={className} aria-label={text}>
       {words.map((word, i) => (
         <span
           key={i}
-          className="word inline-block overflow-hidden"
+          className="word inline-block"
           style={{ marginRight: i < words.length - 1 ? '0.3em' : 0 }}
         >
           <span

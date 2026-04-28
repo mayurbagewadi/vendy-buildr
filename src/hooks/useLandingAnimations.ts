@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-// Register ScrollTrigger plugin
-gsap.registerPlugin(ScrollTrigger);
+// GSAP is loaded via dynamic import after the load event fires.
+// This keeps GSAP entirely out of the main bundle and ensures it never
+// competes with LCP/FCP. Hero text reveal animations are intentionally
+// removed — hero text is now visible in prerendered HTML (good for LCP).
 
 export const useLandingAnimations = () => {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -12,7 +12,7 @@ export const useLandingAnimations = () => {
   const sellersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Smooth scroll for navigation links
+    // Smooth scroll for navigation links (no GSAP needed)
     const handleSmoothScroll = (e: Event) => {
       e.preventDefault();
       const target = e.currentTarget as HTMLAnchorElement;
@@ -22,189 +22,130 @@ export const useLandingAnimations = () => {
         const element = document.querySelector(targetId);
         if (element) {
           const offsetTop = element.getBoundingClientRect().top + window.pageYOffset - 80;
-          window.scrollTo({
-            top: offsetTop,
-            behavior: 'smooth'
-          });
+          window.scrollTo({ top: offsetTop, behavior: 'smooth' });
         }
       }
     };
 
-    // Add smooth scroll to all anchor links
     const anchorLinks = document.querySelectorAll('a[href^="#"]');
-    anchorLinks.forEach(link => {
-      link.addEventListener('click', handleSmoothScroll);
-    });
+    anchorLinks.forEach(link => link.addEventListener('click', handleSmoothScroll));
 
-    // Hero Section Animations
-    if (heroRef.current) {
-      const badge = heroRef.current.querySelector('.hero-badge');
-      const heading = heroRef.current.querySelector('.hero-heading');
-      const subheading = heroRef.current.querySelector('.hero-subheading');
-      const cta = heroRef.current.querySelector('.hero-cta');
-      const trust = heroRef.current.querySelector('.hero-trust');
-      const decorative = heroRef.current.querySelectorAll('.hero-decorative');
+    // Capture refs for use inside async closure (refs may change before async resolves)
+    const heroEl      = heroRef.current;
+    const featuresEl  = featuresRef.current;
+    const sellersEl   = sellersRef.current;
+    const stepsEl     = stepsRef.current;
 
-      // Parallax effect on decorative elements
-      decorative.forEach((el, index) => {
-        gsap.to(el, {
-          yPercent: index % 2 === 0 ? 30 : -30,
-          scrollTrigger: {
-            trigger: heroRef.current,
-            start: 'top top',
-            end: 'bottom top',
-            scrub: 1,
-          }
-        });
-      });
+    let killTriggers: (() => void) | null = null;
 
-      // Hero text reveal animation
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    const initAnimations = async () => {
+      const { gsap }         = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      gsap.registerPlugin(ScrollTrigger);
 
-      tl.fromTo(badge,
-        { opacity: 0, y: -20 },
-        { opacity: 1, y: 0, duration: 0.8 }
-      )
-      .fromTo(heading,
-        { opacity: 0, y: 30, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 1, stagger: 0.1 },
-        '-=0.4'
-      )
-      .fromTo(subheading,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.6'
-      )
-      .fromTo(cta,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.4'
-      )
-      .fromTo(trust,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.8 },
-        '-=0.4'
-      );
-    }
-
-    // Features Section - Scroll-triggered animations
-    if (featuresRef.current) {
-      const featureCards = featuresRef.current.querySelectorAll('.feature-card');
-
-      featureCards.forEach((card, index) => {
-        gsap.fromTo(card,
-          {
-            opacity: 0,
-            y: 60,
-            scale: 0.9
-          },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.3,
-            ease: 'power3.out',
+      // Hero — decorative parallax only (NO text reveal: text is visible in SSG HTML)
+      if (heroEl) {
+        const decorative = heroEl.querySelectorAll('.hero-decorative');
+        decorative.forEach((el, index) => {
+          gsap.to(el, {
+            yPercent: index % 2 === 0 ? 30 : -30,
             scrollTrigger: {
-              trigger: card,
-              start: 'top bottom',
+              trigger: heroEl,
+              start: 'top top',
+              end: 'bottom top',
+              scrub: 1,
+            }
+          });
+        });
+      }
+
+      // Features — scroll-triggered card entrance
+      if (featuresEl) {
+        const featureCards = featuresEl.querySelectorAll('.feature-card');
+
+        featureCards.forEach((card) => {
+          gsap.fromTo(card,
+            { opacity: 0, y: 60, scale: 0.9 },
+            {
+              opacity: 1, y: 0, scale: 1,
+              duration: 0.3,
+              ease: 'power3.out',
+              scrollTrigger: {
+                trigger: card,
+                start: 'top bottom',
+                end: 'bottom 20%',
+                toggleActions: 'play none none reverse',
+              },
+            }
+          );
+
+          card.addEventListener('mouseenter', () => gsap.to(card, { y: -10, duration: 0.3, ease: 'power2.out' }));
+          card.addEventListener('mouseleave', () => gsap.to(card, { y: 0,   duration: 0.3, ease: 'power2.out' }));
+        });
+      }
+
+      // Sellers — staggered scroll-triggered entrance
+      if (sellersEl) {
+        const sellerCards = sellersEl.querySelectorAll('.seller-card');
+
+        gsap.fromTo(sellerCards,
+          { opacity: 0, y: 50, scale: 0.92 },
+          {
+            opacity: 1, y: 0, scale: 1,
+            duration: 0.6,
+            ease: 'power3.out',
+            stagger: 0.1,
+            scrollTrigger: {
+              trigger: sellersEl,
+              start: 'top 75%',
               end: 'bottom 20%',
               toggleActions: 'play none none reverse',
-            },
-            delay: 0
+            }
           }
         );
 
-        // Parallax effect on hover
-        card.addEventListener('mouseenter', () => {
-          gsap.to(card, {
-            y: -10,
-            duration: 0.3,
-            ease: 'power2.out'
-          });
+        sellerCards.forEach((card) => {
+          card.addEventListener('mouseenter', () => gsap.to(card, { y: -8, duration: 0.3, ease: 'power2.out' }));
+          card.addEventListener('mouseleave', () => gsap.to(card, { y: 0,  duration: 0.3, ease: 'power2.out' }));
         });
+      }
 
-        card.addEventListener('mouseleave', () => {
-          gsap.to(card, {
-            y: 0,
-            duration: 0.3,
-            ease: 'power2.out'
-          });
-        });
-      });
-    }
+      // Steps — sequential reveal
+      if (stepsEl) {
+        const stepCards = stepsEl.querySelectorAll('.step-card');
 
-    // Sellers Section - Staggered scroll-triggered card entrance
-    if (sellersRef.current) {
-      const sellerCards = sellersRef.current.querySelectorAll('.seller-card');
-
-      gsap.fromTo(sellerCards,
-        { opacity: 0, y: 50, scale: 0.92 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
-          ease: 'power3.out',
-          stagger: 0.1,
-          scrollTrigger: {
-            trigger: sellersRef.current,
-            start: 'top 75%',
-            end: 'bottom 20%',
-            toggleActions: 'play none none reverse',
+        gsap.fromTo(stepCards,
+          { opacity: 0, x: -50, scale: 0.95 },
+          {
+            opacity: 1, x: 0, scale: 1,
+            duration: 0.8,
+            ease: 'power3.out',
+            stagger: 0.15,
+            scrollTrigger: {
+              trigger: stepsEl,
+              start: 'top 70%',
+              end: 'bottom 20%',
+              toggleActions: 'play none none reverse',
+            }
           }
-        }
-      );
+        );
+      }
 
-      sellerCards.forEach((card) => {
-        card.addEventListener('mouseenter', () => {
-          gsap.to(card, { y: -8, duration: 0.3, ease: 'power2.out' });
-        });
-        card.addEventListener('mouseleave', () => {
-          gsap.to(card, { y: 0, duration: 0.3, ease: 'power2.out' });
-        });
-      });
+      killTriggers = () => ScrollTrigger.getAll().forEach(t => t.kill());
+    };
+
+    // Fire GSAP only after the page load event — never blocks LCP/FCP
+    if (document.readyState === 'complete') {
+      initAnimations();
+    } else {
+      window.addEventListener('load', initAnimations, { once: true });
     }
 
-    // Steps Section - Sequential reveal animation
-    if (stepsRef.current) {
-      const stepCards = stepsRef.current.querySelectorAll('.step-card');
-
-      gsap.fromTo(stepCards,
-        {
-          opacity: 0,
-          x: -50,
-          scale: 0.95
-        },
-        {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.8,
-          ease: 'power3.out',
-          stagger: 0.15,
-          scrollTrigger: {
-            trigger: stepsRef.current,
-            start: 'top 70%',
-            end: 'bottom 20%',
-            toggleActions: 'play none none reverse',
-          }
-        }
-      );
-    }
-
-    // Cleanup function
     return () => {
-      anchorLinks.forEach(link => {
-        link.removeEventListener('click', handleSmoothScroll);
-      });
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      anchorLinks.forEach(link => link.removeEventListener('click', handleSmoothScroll));
+      if (killTriggers) killTriggers();
     };
   }, []);
 
-  return {
-    heroRef,
-    featuresRef,
-    stepsRef,
-    sellersRef
-  };
+  return { heroRef, featuresRef, stepsRef, sellersRef };
 };

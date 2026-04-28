@@ -142,11 +142,20 @@ function ClarityAnalytics() {
         const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
       })(window, document, 'clarity', 'script', 'wimnj0f7x4');
     };
-    // Defer until browser idle — keeps Clarity out of LCP critical path
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(inject, { timeout: 6000 });
+    // Fire AFTER the load event so Clarity never runs before LCP is measured.
+    // requestIdleCallback inside the load handler gives one more level of deferral.
+    const schedule = () => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(inject, { timeout: 4000 });
+      } else {
+        setTimeout(inject, 3000);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      schedule();
     } else {
-      setTimeout(inject, 5000);
+      window.addEventListener('load', schedule, { once: true });
     }
   }, [isPrivatePath]);
 
