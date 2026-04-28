@@ -55,7 +55,7 @@ const IntroAudio = () => {
   // ── Main effect ───────────────────────────────────────────────────────────
   useEffect(() => {
     const audio = new Audio(AUDIO_SRC);
-    audio.preload = 'auto';
+    audio.preload = 'none';
     audio.volume  = 1;
     audioRef.current = audio;
 
