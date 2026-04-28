@@ -54,7 +54,6 @@ export const AnimatedText = ({
         >
           <span
             className={`word-inner inline-block${gradient ? ' bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient' : ''}`}
-            style={{ opacity: 0 }}
           >
             {word}
           </span>

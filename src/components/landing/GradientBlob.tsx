@@ -26,32 +26,29 @@ export const GradientBlob = ({ color, size = 'md', position }: GradientBlobProps
   useEffect(() => {
     if (!blobRef.current) return;
 
-    // Morphing animation
-    gsap.to(blobRef.current, {
-      scale: 1.2,
-      duration: 8,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut',
-    });
+    const el = blobRef.current;
 
-    // Rotation
-    gsap.to(blobRef.current, {
-      rotation: 360,
-      duration: 20,
-      repeat: -1,
-      ease: 'none',
-    });
+    const init = () => {
+      gsap.to(el, { scale: 1.2, duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+      gsap.to(el, { rotation: 360, duration: 20, repeat: -1, ease: 'none' });
+      gsap.to(el, { x: '+=20', y: '+=15', duration: 10, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+    };
 
-    // Position drift - limited to prevent overflow
-    gsap.to(blobRef.current, {
-      x: '+=20',
-      y: '+=15',
-      duration: 10,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut',
-    });
+    // Defer blob animations until browser is idle — decorative only, never critical
+    let idleId: number;
+    if ('requestIdleCallback' in window) {
+      idleId = (window as any).requestIdleCallback(init, { timeout: 3000 });
+    } else {
+      idleId = setTimeout(init, 1000) as unknown as number;
+    }
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        (window as any).cancelIdleCallback(idleId);
+      } else {
+        clearTimeout(idleId);
+      }
+    };
   }, []);
 
   return (

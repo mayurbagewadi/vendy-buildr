@@ -5,58 +5,69 @@ export const FloatingParticles = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    // Skip on mobile — saves CPU and battery
+    if (window.innerWidth < 768) return;
 
-    const particles = containerRef.current.querySelectorAll('.particle');
+    const init = () => {
+      if (!containerRef.current) return;
 
-    particles.forEach((particle, index) => {
-      // Random starting position - constrained within safe bounds
-      const startX = Math.random() * (window.innerWidth - 4);
-      const startY = Math.random() * (window.innerHeight - 4);
+      const particles = containerRef.current.querySelectorAll('.particle');
 
-      gsap.set(particle, {
-        x: startX,
-        y: startY,
-        scale: Math.random() * 0.5 + 0.5,
-        opacity: Math.random() * 0.3 + 0.1
+      particles.forEach((particle) => {
+        const startX = Math.random() * (window.innerWidth - 4);
+        const startY = Math.random() * (window.innerHeight - 4);
+
+        gsap.set(particle, {
+          x: startX,
+          y: startY,
+          scale: Math.random() * 0.5 + 0.5,
+          opacity: Math.random() * 0.3 + 0.1,
+        });
+
+        const driftX = Math.random() * 100 - 50;
+        const driftY = Math.random() * 100 - 50;
+
+        gsap.to(particle, {
+          y: `+=${driftY}`,
+          x: `+=${driftX}`,
+          duration: Math.random() * 10 + 10,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          delay: Math.random() * 2,
+        });
+
+        gsap.to(particle, {
+          scale: `+=${Math.random() * 0.3}`,
+          duration: Math.random() * 3 + 2,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
       });
+    };
 
-      // Floating animation - limited drift to prevent overflow
-      const driftX = Math.random() * 100 - 50;
-      const driftY = Math.random() * 100 - 50;
+    // Defer until browser is idle — never competes with LCP/FID
+    let idleId: number;
+    if ('requestIdleCallback' in window) {
+      idleId = (window as any).requestIdleCallback(init, { timeout: 2500 });
+    } else {
+      idleId = setTimeout(init, 800) as unknown as number;
+    }
 
-      gsap.to(particle, {
-        y: `+=${driftY}`,
-        x: `+=${driftX}`,
-        duration: Math.random() * 10 + 10,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        delay: Math.random() * 2
-      });
-
-      // Rotation animation
-      gsap.to(particle, {
-        rotation: Math.random() * 360,
-        duration: Math.random() * 20 + 10,
-        repeat: -1,
-        ease: 'none'
-      });
-
-      // Scale pulse
-      gsap.to(particle, {
-        scale: `+=${Math.random() * 0.3}`,
-        duration: Math.random() * 3 + 2,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-    });
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        (window as any).cancelIdleCallback(idleId);
+      } else {
+        clearTimeout(idleId);
+      }
+    };
   }, []);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 30 }).map((_, i) => (
+      {/* Reduced from 30 → 8 particles. Same visual effect, 73% less GSAP overhead */}
+      {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
           className="particle absolute w-2 h-2 rounded-full"
@@ -68,7 +79,7 @@ export const FloatingParticles = () => {
                 ? 'rgba(139, 92, 246, 0.4)'
                 : 'rgba(236, 72, 153, 0.4)'
             }, transparent)`,
-            filter: 'blur(1px)'
+            filter: 'blur(1px)',
           }}
         />
       ))}
