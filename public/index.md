@@ -244,6 +244,34 @@ Yes. With WhatsApp ecommerce integration, you can receive and manage orders dire
 
 ---
 
+## Blog Posts
+
+All 21 ecommerce guides written specifically for Indian sellers:
+
+- [Which Website Builder Is Best for Ecommerce?](https://digitaldukandar.in/blog/best-ecommerce-website-builder): Comparison of Shopify, Wix, WooCommerce, and DigitalDukandar for Indian sellers
+- [Is Wix or WordPress Better for eCommerce?](https://digitaldukandar.in/blog/wix-vs-wordpress-ecommerce): Honest breakdown for Indian sellers — pricing, UPI, COD, Shiprocket
+- [Do You Need to Register a Company to Sell Online in India?](https://digitaldukandar.in/blog/do-i-need-llc-ecommerce-india): When you need Pvt Ltd, LLP, or sole proprietorship — and when you don't
+- [Cheapest Ecommerce Website Builder in India](https://digitaldukandar.in/blog/cheapest-ecommerce-website-builder): Real total cost comparison of all major platforms — including one that is ₹0 forever
+- [Is Wix Really Free Forever?](https://digitaldukandar.in/blog/is-wix-free-forever): Honest truth about Wix free plan limitations and free alternatives for India
+- [Is There a Cheaper Option Than Wix?](https://digitaldukandar.in/blog/cheaper-option-than-wix): Free Wix alternatives for Indian sellers with UPI and COD support
+- [Is There a 100% Free Website Builder?](https://digitaldukandar.in/blog/100-percent-free-website-builder): What "free" really means and which builder is truly free for Indian sellers
+- [How Many Types of E-Commerce Are There?](https://digitaldukandar.in/blog/types-of-ecommerce): All 6 ecommerce models — B2C, B2B, C2C, D2C, B2G, C2B — explained with India examples
+- [Best Shopify Alternative in India 2026](https://digitaldukandar.in/blog/shopify-alternative-india): Free Shopify alternative for Indian sellers — 0% transaction fees, UPI payments, WhatsApp integration
+- [WhatsApp Store India 2026](https://digitaldukandar.in/blog/whatsapp-store-india): How to sell on WhatsApp and receive orders — complete guide for Indian sellers
+- [How to Sell Online in India 2026](https://digitaldukandar.in/blog/how-to-sell-online-india): Complete free beginner's guide to start selling online in India
+- [No-Code Ecommerce Website Builder India 2026](https://digitaldukandar.in/blog/no-code-ecommerce-builder-india): Build a professional online store without any coding knowledge
+- [Online Dukan Kaise Banaye 2026](https://digitaldukandar.in/blog/online-dukan-kaise-banaye): Hindi guide — bina coding ke free online store kaise banaye
+- [Free Ecommerce Website Builder India 2026](https://digitaldukandar.in/blog/free-ecommerce-website-builder-india): Complete guide to building a free ecommerce store in India with UPI and COD
+- [Online Store Builder India 2026](https://digitaldukandar.in/blog/online-store-builder-india): How to create a professional online store in India in minutes
+- [Best Ecommerce Platform India 2026](https://digitaldukandar.in/blog/best-ecommerce-platform-india): Top ecommerce platforms compared for Indian sellers — pricing, features, UPI support
+- [Dropshipping India 2026](https://digitaldukandar.in/blog/dropshipping-india): How to start a dropshipping business in India for free — step-by-step guide
+- [UPI, COD, Razorpay & Shiprocket Ecommerce India 2026](https://digitaldukandar.in/blog/upi-cod-razorpay-ecommerce-india): Complete payments and shipping guide for Indian ecommerce sellers
+- [Ecommerce for Housewife, Local Shop & Side Income India 2026](https://digitaldukandar.in/blog/ecommerce-for-housewife-local-shop-india): How housewives, local shop owners, and side-income seekers can sell online free
+- [Earn Commission as an Ecommerce Helper in India 2026](https://digitaldukandar.in/blog/ecommerce-affiliate-helper-program-india): How to earn commissions by referring Indian sellers — affiliate and referral program
+- [Ecommerce India FAQ 2026](https://digitaldukandar.in/blog/ecommerce-india-faq): 25 most asked questions about ecommerce in India — answered in plain language
+
+---
+
 ## Key Links
 
 - [Home](https://digitaldukandar.in/) — [Home in Markdown](https://digitaldukandar.in/index.md)
