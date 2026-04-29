@@ -25,7 +25,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Raise warning threshold — xlsx/recharts are intentionally in their own chunks
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
@@ -34,19 +33,14 @@ export default defineConfig(({ mode }) => ({
           return 'assets/[name]-[hash][extname]';
         },
         // ─── Vendor chunk splitting ────────────────────────────────────────────
-        // Separates heavy, rarely-changing libraries into their own cached chunks.
-        // Each chunk's hash only changes when THAT library's version changes,
-        // so user browsers keep them cached across app deployments.
+        // ONLY libraries that are already in the STATIC import chain (landing page).
+        // Libraries used exclusively in lazy pages (recharts, xlsx) must NOT be
+        // listed here — manualChunks pulls them into the eager load graph,
+        // causing Recharts/D3 (155 KiB) to load on the landing page when it
+        // should only load on the admin Analytics page.
         manualChunks(id) {
-          // Recharts + D3 — 383 KiB raw. Only used in admin Analytics page.
-          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('\\recharts\\') || id.includes('\\d3-')) {
-            return 'vendor-charts';
-          }
-          // xlsx — 429 KiB raw. Only used in admin Orders export.
-          if (id.includes('/xlsx/') || id.includes('\\xlsx\\')) {
-            return 'vendor-xlsx';
-          }
-          // framer-motion — 160 KiB raw. Only used in IntroAudio component.
+          // framer-motion — statically used by IntroAudio → Index.tsx.
+          // Separating it makes it independently cacheable across deploys.
           if (
             id.includes('/framer-motion/') || id.includes('\\framer-motion\\') ||
             id.includes('/motion-dom/')     || id.includes('\\motion-dom\\')    ||
@@ -54,14 +48,16 @@ export default defineConfig(({ mode }) => ({
           ) {
             return 'vendor-motion';
           }
-          // Supabase JS client — large. Shared across auth + data pages.
+          // Supabase JS — statically used by Index.tsx for platform settings fetch.
           if (id.includes('/@supabase/') || id.includes('\\@supabase\\')) {
             return 'vendor-supabase';
           }
-          // TanStack React Query — used everywhere but rarely updates.
+          // TanStack React Query — statically used in App.tsx QueryClientProvider.
           if (id.includes('/@tanstack/') || id.includes('\\@tanstack\\')) {
             return 'vendor-query';
           }
+          // recharts, d3, xlsx — intentionally excluded: they live in lazy page
+          // chunks (Analytics, Orders) and must never load on the landing page.
         },
       },
     },
