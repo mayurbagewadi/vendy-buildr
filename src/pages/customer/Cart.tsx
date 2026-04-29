@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
@@ -23,6 +23,8 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
   const [deliveryTiers, setDeliveryTiers] = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
+  const [footerStore, setFooterStore] = useState<any>(null);
+  const [footerProfile, setFooterProfile] = useState<any>(null);
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
@@ -35,7 +37,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
     const fetchStoreData = async () => {
       const { data } = await supabase
         .from("stores")
-        .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers")
+        .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
         .eq("id", storeId)
         .maybeSingle();
 
@@ -45,6 +47,15 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
         setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
         setFreeDeliveryAbove(data.free_delivery_above != null ? Number(data.free_delivery_above) : null);
         setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
+      setFooterStore(data);
+      if (data.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("phone, email")
+          .eq("user_id", data.user_id)
+          .maybeSingle();
+        if (profile) setFooterProfile(profile);
+      }
       }
     };
 
@@ -88,7 +99,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
             </Link>
           </div>
         </main>
-        <Footer />
+        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
       </div>
     );
   }
@@ -242,7 +253,21 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
         </div>
       </main>
 
-      <Footer />
+      <StoreFooter
+        storeName={footerStore?.name || storeSlug || "Store"}
+        storeDescription={footerStore?.description}
+        whatsappNumber={footerStore?.whatsapp_number}
+        phone={footerProfile?.phone}
+        email={footerProfile?.email}
+        address={footerStore?.address}
+        facebookUrl={footerStore?.facebook_url}
+        instagramUrl={footerStore?.instagram_url}
+        twitterUrl={footerStore?.twitter_url}
+        youtubeUrl={footerStore?.youtube_url}
+        linkedinUrl={footerStore?.linkedin_url}
+        socialLinks={footerStore?.social_links}
+        policies={footerStore?.policies}
+      />
     </div>
   );
 };

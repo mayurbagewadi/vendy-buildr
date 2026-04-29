@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { LoadingPage } from "@/components/customer/LoadingSpinner";
@@ -80,7 +80,7 @@ const Home = () => {
       // Fetch demo store first
       const { data: demoStore } = await supabase
         .from("stores")
-        .select("id, name, description, logo_url, hero_banner_url, hero_banner_urls")
+        .select("id, name, description, logo_url, hero_banner_url, hero_banner_urls, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
         .eq("slug", "demo")
         .eq("is_active", true)
         .maybeSingle();
@@ -94,15 +94,18 @@ const Home = () => {
         };
       }
 
-      // Fetch products and categories in parallel for better performance
-      const [publishedProducts, categoriesData] = await Promise.all([
+      // Fetch products, categories, and profile in parallel for better performance
+      const [publishedProducts, categoriesData, profileResult] = await Promise.all([
         getPublishedProducts(demoStore.id),
         supabase
           .from("categories")
           .select("*")
           .eq("store_id", demoStore.id)
           .order("name")
-          .then(res => res.data)
+          .then(res => res.data),
+        demoStore.user_id
+          ? supabase.from("profiles").select("phone, email").eq("user_id", demoStore.user_id).maybeSingle().then(res => res.data)
+          : Promise.resolve(null),
       ]);
 
       // Process products
@@ -115,14 +118,15 @@ const Home = () => {
         featuredProducts: publishedProducts.slice(0, 4) as any,
         newArrivals: sorted.slice(0, 4) as any,
         categories: (categoriesData && categoriesData.length > 0) ? categoriesData : DEMO_CATEGORIES,
-        store: demoStore
+        store: demoStore,
+        profile: profileResult,
       };
     },
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
   });
 
-  const { allProducts = [], featuredProducts = [], newArrivals = [], categories = DEMO_CATEGORIES, store } = data || {};
+  const { allProducts = [], featuredProducts = [], newArrivals = [], categories = DEMO_CATEGORIES, store, profile } = data || {};
 
   if (isLoading) {
     return <LoadingPage text="Loading store..." />;
@@ -276,7 +280,21 @@ const Home = () => {
 
       </main>
 
-      <Footer />
+      <StoreFooter
+        storeName={(store as any)?.name || "Store"}
+        storeDescription={(store as any)?.description}
+        whatsappNumber={(store as any)?.whatsapp_number}
+        phone={(profile as any)?.phone}
+        email={(profile as any)?.email}
+        address={(store as any)?.address}
+        facebookUrl={(store as any)?.facebook_url}
+        instagramUrl={(store as any)?.instagram_url}
+        twitterUrl={(store as any)?.twitter_url}
+        youtubeUrl={(store as any)?.youtube_url}
+        linkedinUrl={(store as any)?.linkedin_url}
+        socialLinks={(store as any)?.social_links}
+        policies={(store as any)?.policies}
+      />
     </div>
   );
 };

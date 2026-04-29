@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const locationSectionRef = useRef<HTMLDivElement>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
+  const [footerStore, setFooterStore] = useState<any>(null);
+  const [footerProfile, setFooterProfile] = useState<any>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [notifModal, setNotifModal] = useState<{
     open: boolean;
@@ -424,6 +426,31 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
   }, [slug, cart]);
 
+  // Isolated footer data fetch — does not touch any existing logic
+  useEffect(() => {
+    if (cart.length === 0) return;
+    const storeId = cart[0].storeId;
+    const fetchFooterData = async () => {
+      const { data } = await supabase
+        .from("stores")
+        .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+        .eq("id", storeId)
+        .maybeSingle();
+      if (data) {
+        setFooterStore(data);
+        if (data.user_id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("phone, email")
+            .eq("user_id", data.user_id)
+            .maybeSingle();
+          if (profile) setFooterProfile(profile);
+        }
+      }
+    };
+    fetchFooterData();
+  }, [cart]);
+
   // Load auto discount when cart or payment method changes
   useEffect(() => {
     loadAutoDiscount();
@@ -759,7 +786,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             <p className="text-muted-foreground">Checking availability...</p>
           </div>
         </main>
-        <Footer />
+        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
       </div>
     );
   }
@@ -780,7 +807,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             </Link>
           </div>
         </main>
-        <Footer />
+        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
       </div>
     );
   }
@@ -813,7 +840,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             </Button>
           </div>
         </main>
-        <Footer />
+        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
       </div>
     );
   }
@@ -1688,7 +1715,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         </div>
       </main>
 
-      <Footer />
+      <StoreFooter
+        storeName={footerStore?.name || storeSlug || "Store"}
+        storeDescription={footerStore?.description}
+        whatsappNumber={footerStore?.whatsapp_number}
+        phone={footerProfile?.phone}
+        email={footerProfile?.email}
+        address={footerStore?.address}
+        facebookUrl={footerStore?.facebook_url}
+        instagramUrl={footerStore?.instagram_url}
+        twitterUrl={footerStore?.twitter_url}
+        youtubeUrl={footerStore?.youtube_url}
+        linkedinUrl={footerStore?.linkedin_url}
+        socialLinks={footerStore?.social_links}
+        policies={footerStore?.policies}
+      />
 
       {/* Order Limit Modal */}
       <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>

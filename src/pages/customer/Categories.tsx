@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import Footer from "@/components/customer/Footer";
+import StoreFooter from "@/components/customer/StoreFooter";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import { SEOHead } from "@/components/seo/SEOHead";
@@ -68,6 +68,8 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string>("Store");
+  const [storeFullData, setStoreFullData] = useState<any>(null);
+  const [storeProfileData, setStoreProfileData] = useState<any>(null);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -78,7 +80,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
         // Fetch store data if accessing via /:slug/categories
         if (slug) {
-          let storeQuery = supabase.from("stores").select("id, name").eq("is_active", true);
+          let storeQuery = supabase.from("stores").select("id, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id").eq("is_active", true);
           if (slug.includes('.')) {
             storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
           } else {
@@ -90,6 +92,15 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
             storeIdToUse = storeData.id;
             setStoreId(storeData.id);
             setStoreName(storeData.name);
+            setStoreFullData(storeData);
+            if (storeData.user_id) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("phone, email")
+                .eq("user_id", storeData.user_id)
+                .maybeSingle();
+              if (profile) setStoreProfileData(profile);
+            }
           } else {
             // Store not found, use demo categories
             setCategories(DEMO_CATEGORIES);
@@ -102,7 +113,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
           if (user) {
             const { data: storeData } = await supabase
               .from("stores")
-              .select("id, name")
+              .select("id, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
               .eq("user_id", user.id)
               .eq("is_active", true)
               .maybeSingle();
@@ -111,6 +122,15 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
               storeIdToUse = storeData.id;
               setStoreId(storeData.id);
               setStoreName(storeData.name);
+              setStoreFullData(storeData);
+              if (storeData.user_id) {
+                const { data: profile } = await supabase
+                  .from("profiles")
+                  .select("phone, email")
+                  .eq("user_id", storeData.user_id)
+                  .maybeSingle();
+                if (profile) setStoreProfileData(profile);
+              }
             }
           }
         }
@@ -178,7 +198,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
         <div className="min-h-screen flex items-center justify-center">
           <LoadingSpinner size="lg" text="Loading categories..." />
         </div>
-        <Footer />
+        <StoreFooter storeName={storeName} />
       </>
     );
   }
@@ -223,7 +243,21 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
         </section>
       </main>
 
-      <Footer />
+      <StoreFooter
+        storeName={storeName}
+        storeDescription={storeFullData?.description}
+        whatsappNumber={storeFullData?.whatsapp_number}
+        phone={storeProfileData?.phone}
+        email={storeProfileData?.email}
+        address={storeFullData?.address}
+        facebookUrl={storeFullData?.facebook_url}
+        instagramUrl={storeFullData?.instagram_url}
+        twitterUrl={storeFullData?.twitter_url}
+        youtubeUrl={storeFullData?.youtube_url}
+        linkedinUrl={storeFullData?.linkedin_url}
+        socialLinks={storeFullData?.social_links}
+        policies={storeFullData?.policies}
+      />
     </div>
   );
 };
