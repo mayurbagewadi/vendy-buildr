@@ -263,7 +263,7 @@ const StoreFooter = ({
 
         {/* Bottom Bar */}
         <div className="border-t border-border mt-4 pt-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} DigitalDukandar.in. All rights reserved.</p>
         </div>
       </div>
     </footer>
