@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle, Truck } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle, Truck, Palette } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -1252,44 +1252,6 @@ const AdminSettings = () => {
             </Card>
           ))}
 
-          {/* WhatsApp Button Visibility */}
-          <Card className="admin-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <MessageCircle className="w-5 h-5 text-primary" />
-                </div>
-                WhatsApp Button
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="whatsappFloatEnabled" className="text-base font-medium cursor-pointer">
-                      Show WhatsApp Button on Store
-                    </Label>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${formData.whatsappFloatEnabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                      {formData.whatsappFloatEnabled ? 'Visible' : 'Hidden'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formData.whatsappFloatEnabled
-                      ? "WhatsApp floating button is shown on your store homepage"
-                      : "WhatsApp floating button is hidden from your store homepage"}
-                  </p>
-                </div>
-                <Switch
-                  id="whatsappFloatEnabled"
-                  checked={formData.whatsappFloatEnabled}
-                  onCheckedChange={(checked) =>
-                    setFormData(prev => ({ ...prev, whatsappFloatEnabled: checked }))
-                  }
-                  className={`ml-4 ${formData.whatsappFloatEnabled ? 'data-[state=checked]:bg-green-500' : ''}`}
-                />
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Payment Gateway Configuration Section */}
           <Card className="admin-card">

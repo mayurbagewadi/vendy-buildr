@@ -28,6 +28,7 @@ import {
   Star,
   Ticket,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -396,6 +397,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           href: "/admin/settings/delivery",
           icon: Truck,
           current: location.pathname === "/admin/settings/delivery",
+        },
+        {
+          name: "Theme",
+          href: "/admin/settings/theme",
+          icon: Palette,
+          current: location.pathname === "/admin/settings/theme",
         },
       ],
     },
