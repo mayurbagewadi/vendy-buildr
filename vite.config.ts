@@ -25,14 +25,43 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    // Raise warning threshold — xlsx/recharts are intentionally in their own chunks
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
-          // Keep .htaccess file name as is
-          if (assetInfo.name === '.htaccess') {
-            return '.htaccess';
-          }
+          if (assetInfo.name === '.htaccess') return '.htaccess';
           return 'assets/[name]-[hash][extname]';
+        },
+        // ─── Vendor chunk splitting ────────────────────────────────────────────
+        // Separates heavy, rarely-changing libraries into their own cached chunks.
+        // Each chunk's hash only changes when THAT library's version changes,
+        // so user browsers keep them cached across app deployments.
+        manualChunks(id) {
+          // Recharts + D3 — 383 KiB raw. Only used in admin Analytics page.
+          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('\\recharts\\') || id.includes('\\d3-')) {
+            return 'vendor-charts';
+          }
+          // xlsx — 429 KiB raw. Only used in admin Orders export.
+          if (id.includes('/xlsx/') || id.includes('\\xlsx\\')) {
+            return 'vendor-xlsx';
+          }
+          // framer-motion — 160 KiB raw. Only used in IntroAudio component.
+          if (
+            id.includes('/framer-motion/') || id.includes('\\framer-motion\\') ||
+            id.includes('/motion-dom/')     || id.includes('\\motion-dom\\')    ||
+            id.includes('/motion-utils/')   || id.includes('\\motion-utils\\')
+          ) {
+            return 'vendor-motion';
+          }
+          // Supabase JS client — large. Shared across auth + data pages.
+          if (id.includes('/@supabase/') || id.includes('\\@supabase\\')) {
+            return 'vendor-supabase';
+          }
+          // TanStack React Query — used everywhere but rarely updates.
+          if (id.includes('/@tanstack/') || id.includes('\\@tanstack\\')) {
+            return 'vendor-query';
+          }
         },
       },
     },
