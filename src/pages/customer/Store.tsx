@@ -86,6 +86,7 @@ interface StoreData {
   instagram_username: string | null;
   google_reviews_enabled: boolean | null;
   whatsapp_float_enabled: boolean | null;
+  storefront_theme: string | null;
 }
 
 interface ProfileData {
@@ -130,6 +131,29 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   useEffect(() => {
     loadStoreData();
   }, [slug]);
+
+  // Apply store's theme directly on the html element — bypasses next-themes localStorage lock
+  useEffect(() => {
+    if (!store) return;
+    const theme = store.storefront_theme || "dark";
+    const html = document.documentElement;
+
+    html.classList.remove("dark", "light");
+    if (theme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      html.classList.add(prefersDark ? "dark" : "light");
+      html.style.colorScheme = prefersDark ? "dark" : "light";
+    } else {
+      html.classList.add(theme);
+      html.style.colorScheme = theme;
+    }
+
+    return () => {
+      html.classList.remove("light");
+      html.classList.add("dark");
+      html.style.colorScheme = "dark";
+    };
+  }, [store?.storefront_theme]);
 
   // Load and apply AI-generated design from store_design_state
   useEffect(() => {
