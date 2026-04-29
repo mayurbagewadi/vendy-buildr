@@ -166,16 +166,16 @@ Unlike Wix, our ecommerce website builder is purpose-built for selling online �
 Unlike WooCommerce, there's no hosting setup, no plugin management, and no coding. As a no-code ecommerce platform, you launch your online store in 5 minutes — not 5 days.
 
 ### vs Dukaan
-DigitalDukandar has a full-featured free trial. Dukaan's free plan is very limited. DigitalDukandar includes an AI-powered store designer and a helper/affiliate referral program; Dukaan has neither.
+DigitalDukandar has a full-featured free trial. Dukaan's free plan is very limited. DigitalDukandar includes an AI-powered store designer and a BDM/affiliate referral program; Dukaan has neither.
 
 ---
 
-## Helper / Affiliate Program
+## Business Development Manager (BDM) / Affiliate Program
 
-Join the Helper Program and earn generous commissions by helping store owners build their online businesses.
+Join as a Business Development Manager (BDM) and earn generous commissions by helping store owners build their online businesses.
 
 - **Earn Commission** — 10% direct commission + 5% network commission on every successful store signup
-- **Build Your Network** — recruit other helpers and earn from their referrals too. Create passive income streams
+- **Build Your Network** — recruit other BDMs and earn from their referrals too. Create passive income streams
 - **Flexible Work** — work on your own schedule, help businesses online from anywhere
 
 Ideal for: freelancers, digital marketers, business consultants, and anyone with a network of small business owners.

@@ -60,9 +60,9 @@ DigitalDukandar was built from the ground up for India:
 
 ---
 
-## The Helper / Affiliate Program
+## The Business Development Manager (BDM) / Affiliate Program
 
-DigitalDukandar runs a referral program called the Helper Program. Helpers earn commissions by referring new sellers to the platform. When a referred seller subscribes to a paid plan, the helper earns a commission.
+DigitalDukandar runs a referral program called the BDM Program. Business Development Managers (BDMs) earn commissions by referring new sellers to the platform. When a referred seller subscribes to a paid plan, the BDM earns a commission.
 
 Ideal for: freelancers, digital marketers, business consultants, and anyone with a network of small business owners.
 

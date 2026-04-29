@@ -800,10 +800,10 @@ const Guide = () => {
     },
     {
       id: "helper",
-      title: "Helper Program",
+      title: "Business Development Manager",
       icon: "👥",
       content: {
-        title: "Helper Program",
+        title: "Business Development Manager",
         description: "Coming soon: Build your referral and helper network.",
         sections: [
           {

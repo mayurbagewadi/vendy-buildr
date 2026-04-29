@@ -783,7 +783,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Helper Program Section */}
+      {/* BDM Program Section */}
       <section id="helper-program" className="relative bg-gradient-to-b from-background via-green-500/5 to-background py-24 lg:py-32 overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-green-500/10 via-transparent to-transparent pointer-events-none" />
@@ -793,13 +793,13 @@ const Index = () => {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <div className="inline-block mb-4">
-                <span className="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Helper Program</span>
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">BDM Program</span>
               </div>
               <h2 className="font-playfair text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
                 Earn While Helping Others Succeed
               </h2>
               <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Join our helper program and earn generous commissions by helping store owners build their online businesses
+                Join our Business Development Manager program and earn generous commissions by helping store owners build their online businesses
               </p>
             </div>
 
@@ -830,7 +830,7 @@ const Index = () => {
                     Build Your Network
                   </h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Recruit other helpers and earn from their referrals too. Create passive income streams
+                    Recruit other BDMs and earn from their referrals too. Create passive income streams
                   </p>
                 </div>
               </Card>

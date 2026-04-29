@@ -13,15 +13,15 @@ Every day in India, thousands of small business owners need help going online �
 
 You could be that person — and earn a commission every time you help a business get started.
 
-DigitalDukandar's Helper Program is India's most rewarding ecommerce referral program. Earn 10% direct commission on every store subscription you refer, plus 5% network commission on commissions earned by helpers you recruit. Work from anywhere, on your own schedule.
+DigitalDukandar's BDM Program is India's most rewarding ecommerce referral program. Earn 10% direct commission on every store subscription you refer, plus 5% network commission on commissions earned by BDMs you recruit. Work from anywhere, on your own schedule.
 
 ---
 
-## What is the DigitalDukandar Helper Program?
+## What is the DigitalDukandar BDM Program?
 
-The Helper Program is a structured affiliate and referral system that lets individuals earn money by helping Indian businesses create online stores on DigitalDukandar.
+The BDM Program is a structured affiliate and referral system that lets individuals earn money by helping Indian businesses create online stores on DigitalDukandar.
 
-As a Helper, you:
+As a BDM, you:
 1. Learn how DigitalDukandar works (simple — the platform is straightforward)
 2. Reach out to local businesses, friends, and contacts who sell products
 3. Help them set up their free store and show them how to use it
@@ -42,56 +42,56 @@ When someone you refer subscribes to a paid plan, you earn 10% of their subscrip
 
 ### Network Commission: 5%
 
-When you recruit other helpers and they earn commissions, you earn 5% of what they earn.
+When you recruit other BDMs and they earn commissions, you earn 5% of what they earn.
 
 **Example:**
-- You recruit 5 helpers
-- Each helper earns ₹2,000/month in commissions
+- You recruit 5 BDMs
+- Each BDM earns ₹2,000/month in commissions
 - You earn 5% × ₹2,000 × 5 = ₹500/month additional, without doing any extra work
 
 ### Combined Earning Potential
 
-| Your Active Referrals | Network (5 helpers) | Total Monthly Earnings |
+| Your Active Referrals | Network (5 BDMs) | Total Monthly Earnings |
 |---|---|---|
 | 10 stores (₹499/mo plan) | ₹500 network | ≈ ₹1,000/month |
 | 30 stores | ₹1,000 network | ≈ ₹2,500/month |
 | 50 stores | ₹2,000 network | ≈ ₹4,500/month |
 | 100 stores | ₹5,000 network | ≈ ₹10,000/month |
 
-These are realistic numbers for active helpers who consistently reach new businesses. The top helpers in the program earn significantly more.
+These are realistic numbers for active BDMs who consistently reach new businesses. Top BDMs in the program earn significantly more.
 
 ---
 
-## Who Should Apply to Become a Helper?
+## Who Should Apply to Become a BDM?
 
-The Helper Program is ideal for:
+The BDM Program is ideal for:
 
 ### Digital Marketing Freelancers
 If you already help businesses with social media, ads, or digital presence — adding ecommerce store setup to your services is a natural extension. Your existing client base is ready to be introduced to DigitalDukandar.
 
 ### Work From Home Earners
-The Helper Program requires only a smartphone, WhatsApp, and the ability to have conversations with local business owners. No office, no fixed hours, no investment.
+The BDM Program requires only a smartphone, WhatsApp, and the ability to have conversations with local business owners. No office, no fixed hours, no investment.
 
 ### Students and Young Professionals
-Strong interpersonal skills and local business connections are worth more than technical knowledge here. Many of India's most successful helpers are students and young professionals who know their local business community.
+Strong interpersonal skills and local business connections are worth more than technical knowledge here. Many of India's most successful BDMs are students and young professionals who know their local business community.
 
 ### Retired Professionals
-Business experience and a wide professional network are significant advantages in the Helper Program. Retired executives and business owners have credibility with the exact segment that needs DigitalDukandar most.
+Business experience and a wide professional network are significant advantages in the BDM Program. Retired executives and business owners have credibility with the exact segment that needs DigitalDukandar most.
 
 ### Housewives and Home-Based Earners
 If you are already connected with your local community — housing society, neighbourhood shops, WhatsApp groups — you have everything you need to start referring businesses.
 
 ---
 
-## How the Helper Program Works — Step by Step
+## How the BDM Program Works — Step by Step
 
-### Step 1: Apply to Become a Helper
+### Step 1: Apply to Become a BDM
 
-Go to [DigitalDukandar](https://digitaldukandar.in) and click "Apply to Become a Helper." Fill in the application form with your details and a brief description of your background and why you want to join.
+Go to [DigitalDukandar](https://digitaldukandar.in) and click "Apply to Become a BDM." Fill in the application form with your details and a brief description of your background and why you want to join.
 
 ### Step 2: Get Approved
 
-Applications are reviewed and approved within a few working days. Once approved, you receive access to your Helper dashboard with your unique referral link and marketing materials.
+Applications are reviewed and approved within a few working days. Once approved, you receive access to your BDM dashboard with your unique referral link and marketing materials.
 
 ### Step 3: Find Businesses to Help
 
@@ -112,15 +112,15 @@ Walk them through adding their first products, enabling UPI and COD, and sharing
 
 ### Step 6: Earn Your Commission
 
-When the businesses you refer upgrade to a paid plan, your commission is credited to your Helper account. You can track all your referrals and commissions in your Helper dashboard.
+When the businesses you refer upgrade to a paid plan, your commission is credited to your BDM account. You can track all your referrals and commissions in your BDM dashboard.
 
 ---
 
-## What Helpers Do in Practice
+## What BDMs Do in Practice
 
 ### Scenario 1 — Local Shop Approach
 
-Ravi is a 26-year-old from Pune who applied as a Helper. He visits 3–4 local shops per week, introduces them to DigitalDukandar, and helps set up their store on the spot. In his first two months, he helped 22 businesses set up stores. 8 of them upgraded to paid plans. He earns ₹400/month from these 8 stores — and his network keeps growing.
+Ravi is a 26-year-old from Pune who applied as a BDM. He visits 3–4 local shops per week, introduces them to DigitalDukandar, and helps set up their store on the spot. In his first two months, he helped 22 businesses set up stores. 8 of them upgraded to paid plans. He earns ₹400/month from these 8 stores — and his network keeps growing.
 
 ### Scenario 2 — WhatsApp Network Approach
 
@@ -134,44 +134,44 @@ Amit runs a small digital marketing business in Surat. He adds store setup as a 
 
 ## Earn by Helping Online Stores India — The Opportunity
 
-India has over 63 million MSMEs (Micro, Small and Medium Enterprises). The majority do not have a functional online presence. The shift to online selling is accelerating — every business that has not yet gone online represents an opportunity for a Helper.
+India has over 63 million MSMEs (Micro, Small and Medium Enterprises). The majority do not have a functional online presence. The shift to online selling is accelerating — every business that has not yet gone online represents an opportunity for a BDM.
 
-There is no shortage of businesses that need help. The Helper opportunity in India in 2026 is significant for anyone who is willing to reach out and help.
+There is no shortage of businesses that need help. The BDM opportunity in India in 2026 is significant for anyone who is willing to reach out and help.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: How much can I earn as a DigitalDukandar Helper in India?**
+**Q: How much can I earn as a DigitalDukandar BDM in India?**
 
-Earnings depend on how many businesses you refer and help upgrade to paid plans. Active helpers who consistently reach out to businesses earn ₹2,000–₹10,000/month. Top helpers with large networks and consistent activity earn significantly more. There is no upper limit on earnings.
+Earnings depend on how many businesses you refer and help upgrade to paid plans. Active BDMs who consistently reach out to businesses earn ₹2,000–₹10,000/month. Top BDMs with large networks and consistent activity earn significantly more. There is no upper limit on earnings.
 
-**Q: Do I need technical skills to become a Helper?**
+**Q: Do I need technical skills to become a BDM?**
 
 No. The most important skills are communication and the ability to build relationships with local businesses. DigitalDukandar's platform is simple enough that after using it once yourself, you can confidently walk anyone else through it.
 
-**Q: Is there any investment required to join the Helper Program?**
+**Q: Is there any investment required to join the BDM Program?**
 
-No. The Helper Program is free to join. There is no training fee, no kit fee, and no inventory to purchase. Your investment is time and effort.
+No. The BDM Program is free to join. There is no training fee, no kit fee, and no inventory to purchase. Your investment is time and effort.
 
 **Q: How is commission paid?**
 
-Commission is tracked in your Helper dashboard and paid directly to your bank account on a monthly basis once you cross the minimum payout threshold.
+Commission is tracked in your BDM dashboard and paid directly to your bank account on a monthly basis once you cross the minimum payout threshold.
 
-**Q: Can I recruit other helpers and earn from their commissions?**
+**Q: Can I recruit other BDMs and earn from their commissions?**
 
-Yes. The Helper Program includes a 5% network commission on the commissions earned by helpers you recruit. This creates a passive income stream that grows as you build your network of helpers.
+Yes. The BDM Program includes a 5% network commission on the commissions earned by BDMs you recruit. This creates a passive income stream that grows as you build your network of BDMs.
 
 **Q: Can I do this part-time alongside my job or studies?**
 
-Yes. Many of DigitalDukandar's most successful helpers run the program alongside full-time jobs or studies. The flexible schedule — you work when you want, as much as you want — makes it ideal as a supplementary income source.
+Yes. Many of DigitalDukandar's most successful BDMs run the program alongside full-time jobs or studies. The flexible schedule — you work when you want, as much as you want — makes it ideal as a supplementary income source.
 
 ---
 
 ## Conclusion — Start Earning by Helping Indian Businesses Go Online
 
-India's online business revolution is creating an opportunity for helpers, connectors, and digital guides who can bridge the gap between small businesses and the technology that will help them grow.
+India's online business revolution is creating an opportunity for BDMs, connectors, and digital guides who can bridge the gap between small businesses and the technology that will help them grow.
 
-If you can have conversations with local business owners and show them a 5-minute demo, you can earn a meaningful income through the DigitalDukandar Helper Program.
+If you can have conversations with local business owners and show them a 5-minute demo, you can earn a meaningful income through the DigitalDukandar BDM Program.
 
-**[Apply to become a Helper today at DigitalDukandar](https://digitaldukandar.in)** — free to join, earn 10% commission, work on your own schedule.
+**[Apply to become a BDM today at DigitalDukandar](https://digitaldukandar.in)** — free to join, earn 10% commission, work on your own schedule.

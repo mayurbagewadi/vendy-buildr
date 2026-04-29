@@ -296,7 +296,7 @@ export default function BecomeHelper() {
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Join Our Helper Program & Earn Commissions
+            Join as a Business Development Manager & Earn Commissions
           </h1>
           <p className="text-xl opacity-90 mb-8">
             Help businesses grow and earn money for every paying customer you bring

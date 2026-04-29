@@ -66,15 +66,15 @@ Note: The admin dashboard at /admin requires a store owner account. Store owners
 
 Influencers and content creators get a free ecommerce store to sell merchandise, branded products, or any items directly to their audience — no hosting cost, no developer needed. Sign up at [https://digitaldukandar.in/auth](https://digitaldukandar.in/auth) to get started.
 
-## Helper / Affiliate Program
+## Business Development Manager (BDM) / Affiliate Program
 
-The Helper Program is a separate referral program where helpers earn commissions by referring new sellers to DigitalDukandar. Helpers share a referral link — when a seller subscribes, the helper earns a commission. Ideal for freelancers, digital marketers, and anyone with a network of small business owners. Apply at [https://digitaldukandar.in/become-helper](https://digitaldukandar.in/become-helper).
+The BDM Program is a separate referral program where Business Development Managers earn commissions by referring new sellers to DigitalDukandar. BDMs share a referral link — when a seller subscribes, the BDM earns a commission. Ideal for freelancers, digital marketers, and anyone with a network of small business owners. Apply at [https://digitaldukandar.in/become-helper](https://digitaldukandar.in/become-helper).
 
 ## DigitalDukandar vs Competitors
 
 **vs Shopify**: DigitalDukandar charges 0% transaction fees. Shopify charges 0.5%–2% per sale. DigitalDukandar has a free plan; Shopify starts at $29/month (~₹2,400). DigitalDukandar is built for Indian sellers with Razorpay and Shiprocket. AI Designer is included; Shopify requires paid themes and apps.
 
-**vs Dukaan**: DigitalDukandar has a full-featured free plan. Dukaan's free plan is very limited. DigitalDukandar includes an AI-powered store designer; Dukaan has no AI design feature. DigitalDukandar has an affiliate/helper referral program; Dukaan does not.
+**vs Dukaan**: DigitalDukandar has a full-featured free plan. Dukaan's free plan is very limited. DigitalDukandar includes an AI-powered store designer; Dukaan has no AI design feature. DigitalDukandar has an affiliate/BDM referral program; Dukaan does not.
 
 **vs Instamojo**: DigitalDukandar is a full store builder with product pages, cart, checkout, and admin dashboard. Instamojo is primarily a payment link tool. DigitalDukandar charges 0% transaction fees; Instamojo charges per transaction.
 

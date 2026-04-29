@@ -1660,7 +1660,7 @@ export default function SuperAdminCommissionSettings() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Enable Multi-Tier Helper Program</Label>
+                <Label>Enable Multi-Tier BDM Program</Label>
                 <p className="text-xs text-muted-foreground">
                   Allow helpers to recruit other helpers and earn network commissions
                 </p>

@@ -125,7 +125,7 @@ const SuperAdminReportsAnalytics = () => {
   };
 
   const loadOverviewStats = async () => {
-    // Load Helper Program Stats
+    // Load BDM Stats
     const { data: applications } = await supabase
       .from("helper_applications")
       .select("id, application_status");
@@ -509,12 +509,12 @@ const SuperAdminReportsAnalytics = () => {
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Card 1: Helper Program Stats */}
+          {/* Card 1: BDM Stats */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
-                Helper Program Stats
+                BDM Stats
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
