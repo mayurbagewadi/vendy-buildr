@@ -177,6 +177,11 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         }
 
         setProduct(data);
+
+        // Auto-select when only one variant exists — no meaningful choice to make
+        if (data.variants && data.variants.length === 1) {
+          setSelectedVariant(data.variants[0].name);
+        }
         
         // Fetch store data for navigation and footer
         const storeId = data.store_id;
@@ -222,8 +227,6 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           setRelatedProducts(recommended);
         }
 
-        // Don't auto-select variant - user must choose
-        // Force conscious selection to prevent ordering wrong variant
       } catch (error) {
         console.error("Error loading product:", error);
         toast({
