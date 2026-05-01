@@ -1,5 +1,6 @@
 import { Facebook, Instagram, Twitter, Youtube, Linkedin, Mail, Phone, MapPin } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -67,8 +68,13 @@ const StoreFooter = ({
   policies
 }: StoreFooterProps) => {
   const { slug } = useParams<{ slug: string }>();
-  const policiesPath = slug ? `/${slug}/policies` : "/policies";
-  const basePath = slug ? `/${slug}` : '';
+  const isSubdomain = isStoreSpecificDomain();
+  // On subdomain, basePath is always '' — the subdomain itself is the store context.
+  // Never use useParams() slug on subdomain: on product detail pages the :slug param
+  // is the product slug, not the store slug, which would build broken footer links.
+  const routingSlug = isSubdomain ? undefined : slug;
+  const policiesPath = routingSlug ? `/${routingSlug}/policies` : "/policies";
+  const basePath = routingSlug ? `/${routingSlug}` : '';
 
   /**
    * Enterprise Pattern: Fallback Chain for Social URLs
