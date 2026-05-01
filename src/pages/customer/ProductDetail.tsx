@@ -370,7 +370,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
 
   const handleQuantityChange = (delta: number) => {
-    setQuantity(Math.max(0, quantity + delta));
+    setQuantity(Math.max(1, quantity + delta));
   };
 
   const handleAddToCart = () => {
@@ -772,13 +772,6 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   const sp = product.basePrice || product.base_price || 0;
                   const op = product.offerPrice || product.offer_price;
                   const hasOffer = op && op > 0 && op < sp;
-                  if (product.price_range || product.priceRange) {
-                    return (
-                      <p data-ai="product-price" className="text-3xl font-bold text-primary">
-                        {product.price_range || product.priceRange}
-                      </p>
-                    );
-                  }
                   if (hasOffer) {
                     return (
                       <div className="flex items-center gap-3">
@@ -790,9 +783,19 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                       </div>
                     );
                   }
-                  return (
-                    <p data-ai="product-price" className="text-3xl font-bold text-primary">₹{sp}</p>
-                  );
+                  if (sp > 0) {
+                    return (
+                      <p data-ai="product-price" className="text-3xl font-bold text-primary">₹{sp}</p>
+                    );
+                  }
+                  if (product.price_range || product.priceRange) {
+                    return (
+                      <p data-ai="product-price" className="text-3xl font-bold text-primary">
+                        {product.price_range || product.priceRange}
+                      </p>
+                    );
+                  }
+                  return null;
                 })()}
               </div>
             )}
@@ -897,6 +900,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   name={relatedProduct.name}
                   category={relatedProduct.category}
                   priceRange={relatedProduct.price_range}
+                  base_price={relatedProduct.base_price}
+                  offer_price={relatedProduct.offer_price}
+                  variants={(relatedProduct as any).variants}
                   images={relatedProduct.images}
                   status={relatedProduct.status}
                   storeSlug={isSubdomain ? undefined : storeSlug}
@@ -962,11 +968,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
                 {selectedVariant && (
-                  <>
-                    <p className="text-sm text-muted-foreground">Variant: {selectedVariant}</p>
-                    <p className="text-sm font-medium text-primary">₹{currentPrice} × {quantity}</p>
-                  </>
+                  <p className="text-sm text-muted-foreground">Variant: {selectedVariant}</p>
                 )}
+                <p className="text-sm font-medium text-primary">₹{currentPrice} × {quantity}</p>
               </div>
             </div>
 
