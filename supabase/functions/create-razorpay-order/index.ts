@@ -11,6 +11,7 @@ const corsHeaders = {
 interface CartItemInput {
   productId: string;
   quantity: number;
+  variant?: string; // selected variant name for variant-priced products
 }
 
 interface CreateOrderRequest {
@@ -27,7 +28,43 @@ interface DeliveryTier {
   fee: number;
 }
 
+interface VariantJson {
+  name: string;
+  price: number;
+  offer_price?: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Resolve effective price for a product.
+ * Single-price: uses base_price / offer_price columns.
+ * Variant-price: looks up the selected variant in the variants JSON array.
+ * Falls back to first variant if no variant name supplied (defensive).
+ */
+function resolveEffectivePrice(
+  p: { base_price: any; offer_price: any; variants: any },
+  variantName: string | undefined
+): number {
+  // Single-price product — base_price is set
+  if (p.base_price != null && Number(p.base_price) > 0) {
+    return (p.offer_price != null && Number(p.offer_price) > 0)
+      ? Number(p.offer_price)
+      : Number(p.base_price);
+  }
+
+  // Variant-price product — parse variants JSON and find selected variant
+  const variants: VariantJson[] = Array.isArray(p.variants) ? p.variants : [];
+  const matched = variantName
+    ? variants.find((v) => v.name === variantName)
+    : variants[0]; // fallback: first variant (client should always send variant name)
+
+  if (!matched) return 0;
+
+  return (matched.offer_price != null && Number(matched.offer_price) > 0)
+    ? Number(matched.offer_price)
+    : Number(matched.price);
+}
 
 /**
  * Calculate delivery fee server-side.
@@ -261,11 +298,13 @@ serve(async (req) => {
     }
 
     // ── 3. Fetch product prices from DB — server is the only source of truth ──
+    // Fetch variants column too — needed to resolve prices for variant-mode products
+    // (base_price is null for variant products; price lives inside variants JSON array)
     const productIds = cartItems.map((i) => i.productId);
 
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, base_price, offer_price, status, name')
+      .select('id, base_price, offer_price, variants, status, name')
       .in('id', productIds)
       .eq('store_id', storeId) // CRITICAL: scope to this store only
       .eq('status', 'published');
@@ -281,10 +320,8 @@ serve(async (req) => {
     // Every product in the cart must exist, be published, and belong to this store
     const productMap = new Map<string, { price: number; name: string }>();
     for (const p of (products ?? [])) {
-      // Use offer_price if set and > 0, else fall back to base_price
-      const effectivePrice = (p.offer_price != null && Number(p.offer_price) > 0)
-        ? Number(p.offer_price)
-        : Number(p.base_price ?? 0);
+      const cartItem = cartItems.find((i) => i.productId === p.id);
+      const effectivePrice = resolveEffectivePrice(p, cartItem?.variant);
       productMap.set(p.id, { price: effectivePrice, name: p.name });
     }
 

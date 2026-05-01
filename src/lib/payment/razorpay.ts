@@ -36,7 +36,7 @@ export const loadRazorpayScript = (): Promise<boolean> => {
  * use it for both the Razorpay modal and the DB insert.
  */
 export const createRazorpayOrder = async (
-  cartItems: { productId: string; quantity: number }[],
+  cartItems: { productId: string; quantity: number; variant?: string }[],
   currency: string,
   storeId: string,
   couponCode?: string,
@@ -53,11 +53,9 @@ export const createRazorpayOrder = async (
       },
     });
 
-    console.log('[DEBUG] create-razorpay-order raw response:', { data, error });
     if (error) throw error;
 
     if (!data.success) {
-      console.error('[DEBUG] create-razorpay-order failed:', data);
       return { orderId: '', verifiedTotal: 0, error: data.error || 'Failed to create order' };
     }
 
