@@ -301,22 +301,19 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         .select("*")
         .eq("is_active", true);
 
-      // Query by subdomain or custom_domain field based on domain type
-      if (domainInfo && slug) {
-        // If slug looks like a domain (contains dots), query by custom_domain or subdomain
-        if (slug.includes('.')) {
-          storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+      const normalizedSlug = (slug || '').toLowerCase();
+      if (domainInfo && normalizedSlug) {
+        if (normalizedSlug.includes('.')) {
+          storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
         } else {
-          // FIX: When on store-specific domain, query by subdomain OR slug to handle mismatches
-          // This handles cases where subdomain field differs from slug (e.g., subdomain="test" but slug="store")
-          storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+          storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
         }
       } else {
-        // Fallback to slug
-        storeQuery = storeQuery.eq("slug", slug);
+        storeQuery = storeQuery.eq("slug", normalizedSlug);
       }
 
-      const { data: storeData, error: storeError } = await storeQuery.maybeSingle();
+      const { data: storeResults, error: storeError } = await storeQuery.limit(1);
+      const storeData = storeResults?.[0] ?? null;
 
       if (storeError) throw storeError;
       if (!storeData) {

@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/customer/Header";
 import StoreFooter from "@/components/customer/StoreFooter";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface StoreData {
   id: string;
@@ -70,14 +71,15 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
   const loadStoreData = async () => {
     try {
       setLoading(true);
-      
+      const normalizedSlug = (slug ?? '').toLowerCase();
       let storeQuery = supabase.from("stores").select("*").eq("is_active", true);
-      if (slug.includes('.')) {
-        storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+      if (normalizedSlug.includes('.')) {
+        storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
       } else {
-        storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+        storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
       }
-      const { data: store, error: storeError } = await storeQuery.maybeSingle();
+      const { data: storeResults, error: storeError } = await storeQuery.limit(1);
+      const store = storeResults?.[0] ?? null;
 
       if (storeError || !store) {
         toast.error("Store not found");
@@ -125,7 +127,7 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
       <main className="flex-1 container mx-auto px-4 py-8 mt-16">
         <Button
           variant="ghost"
-          onClick={() => navigate(`/${slug}`)}
+          onClick={() => navigate(isStoreSpecificDomain() ? '/' : `/${slug}`)}
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />

@@ -80,13 +80,15 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
         // Fetch store data if accessing via /:slug/categories
         if (slug) {
+          const normalizedSlug = (slug || '').toLowerCase();
           let storeQuery = supabase.from("stores").select("id, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id").eq("is_active", true);
-          if (slug.includes('.')) {
-            storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+          if (normalizedSlug.includes('.')) {
+            storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
           } else {
-            storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+            storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
           }
-          const { data: storeData } = await storeQuery.maybeSingle();
+          const { data: storeResults } = await storeQuery.limit(1);
+          const storeData = storeResults?.[0] ?? null;
 
           if (storeData) {
             storeIdToUse = storeData.id;

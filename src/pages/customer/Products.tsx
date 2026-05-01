@@ -53,13 +53,15 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
         setLoading(true);
         setError(null);
 
+        const normalizedSlug = slug.toLowerCase();
         let storeQuery = supabase.from("stores").select("*").eq("is_active", true);
-        if (slug.includes('.')) {
-          storeQuery = storeQuery.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`);
+        if (normalizedSlug.includes('.')) {
+          storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
         } else {
-          storeQuery = storeQuery.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+          storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
         }
-        const { data: store } = await storeQuery.maybeSingle();
+        const { data: storeResults } = await storeQuery.limit(1);
+        const store = storeResults?.[0] ?? null;
 
         if (store) {
           setStoreId(store.id);

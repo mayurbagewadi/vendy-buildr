@@ -30,23 +30,38 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const isSubdomain = isStoreSpecificDomain();
 
   useEffect(() => {
-    if (cart.length === 0) return;
-
-    const storeId = cart[0].storeId;
-
     const fetchStoreData = async () => {
-      const { data } = await supabase
-        .from("stores")
-        .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
-        .eq("id", storeId)
-        .maybeSingle();
+      let data: any = null;
 
-      if (data) {
-        if (!slug) setStoreSlug(data.slug);
-        setDeliveryMode((data.delivery_mode as 'single' | 'multiple') || 'single');
-        setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
-        setFreeDeliveryAbove(data.free_delivery_above != null ? Number(data.free_delivery_above) : null);
-        setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
+      if (cart.length > 0) {
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        data = storeData;
+      } else if (slug) {
+        const normalizedSlug = slug.toLowerCase();
+        let query = supabase
+          .from("stores")
+          .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("is_active", true);
+        if (normalizedSlug.includes('.')) {
+          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
+        } else {
+          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
+        }
+        const { data: storeResults } = await query.limit(1);
+        data = storeResults?.[0] ?? null;
+      }
+
+      if (!data) return;
+
+      if (!slug) setStoreSlug(data.slug);
+      setDeliveryMode((data.delivery_mode as 'single' | 'multiple') || 'single');
+      setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
+      setFreeDeliveryAbove(data.free_delivery_above != null ? Number(data.free_delivery_above) : null);
+      setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
       setFooterStore(data);
       if (data.user_id) {
         const { data: profile } = await supabase
@@ -55,7 +70,6 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
           .eq("user_id", data.user_id)
           .maybeSingle();
         if (profile) setFooterProfile(profile);
-      }
       }
     };
 
@@ -99,7 +113,21 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
             </Link>
           </div>
         </main>
-        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
       </div>
     );
   }

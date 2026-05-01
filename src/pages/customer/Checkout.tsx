@@ -247,7 +247,24 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         {
           onSuccess: async (response: any) => {
             try {
-              // Step 3: Payment confirmed — now write order to DB for the first time.
+              // Step 3a: Atomically decrement stock before saving order.
+              // Payment already succeeded — if stock is gone, we must refund.
+              const stockCheck = await supabase.rpc('decrement_stock_for_order', {
+                p_store_id: params.storeId,
+                p_items: params.cartItems.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+              });
+
+              if (stockCheck.data?.success === false) {
+                const e = stockCheck.data;
+                throw new Error(
+                  `STOCK_ERROR: ${e.error === 'INSUFFICIENT_STOCK'
+                    ? `"${e.name}" ran out of stock. Your payment will be refunded. Payment ID: ${response.razorpay_payment_id}`
+                    : `Item no longer available. Your payment will be refunded. Payment ID: ${response.razorpay_payment_id}`
+                  }`
+                );
+              }
+
+              // Step 3b: Payment confirmed — now write order to DB for the first time.
               // Override total with the server-verified amount so DB always
               // reflects what Razorpay actually charged.
               const { data: insertedOrder, error: orderError } = await supabase
@@ -275,24 +292,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               // Step 4: Record coupon usage against the newly created order
               if (params.appliedCoupon && params.discountAmount > 0) {
                 try {
-                  await fetch(
-                    'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/record-coupon-usage',
-                    {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
-                      },
-                      body: JSON.stringify({
-                        couponCode: params.appliedCoupon.code,
-                        storeId: params.storeId,
-                        orderId: insertedOrder.id,
-                        customerPhone: params.baseOrderRecord.customer_phone,
-                        customerEmail: params.baseOrderRecord.customer_email || undefined,
-                        discountApplied: params.discountAmount,
-                      }),
-                    }
-                  );
+                  await supabase.functions.invoke('record-coupon-usage', {
+                    body: {
+                      couponCode: params.appliedCoupon.code,
+                      storeId: params.storeId,
+                      orderId: insertedOrder.id,
+                      customerPhone: params.baseOrderRecord.customer_phone,
+                      customerEmail: params.baseOrderRecord.customer_email || undefined,
+                      discountApplied: params.discountAmount,
+                    },
+                  });
                 } catch (couponErr) {
                   // Non-fatal — order is already saved, coupon tracking failed silently
                   console.error('Coupon usage recording failed:', couponErr);
@@ -426,30 +435,46 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
   }, [slug, cart]);
 
-  // Isolated footer data fetch — does not touch any existing logic
+  // Isolated footer data fetch — works for both cart-has-items and empty-cart states
   useEffect(() => {
-    if (cart.length === 0) return;
-    const storeId = cart[0].storeId;
     const fetchFooterData = async () => {
-      const { data } = await supabase
-        .from("stores")
-        .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
-        .eq("id", storeId)
-        .maybeSingle();
-      if (data) {
-        setFooterStore(data);
-        if (data.user_id) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("phone, email")
-            .eq("user_id", data.user_id)
-            .maybeSingle();
-          if (profile) setFooterProfile(profile);
+      let data: any = null;
+
+      if (cart.length > 0) {
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        data = storeData;
+      } else if (slug) {
+        const normalizedSlug = slug.toLowerCase();
+        let query = supabase
+          .from("stores")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("is_active", true);
+        if (normalizedSlug.includes('.')) {
+          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
+        } else {
+          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
         }
+        const { data: storeResults } = await query.limit(1);
+        data = storeResults?.[0] ?? null;
+      }
+
+      if (!data) return;
+      setFooterStore(data);
+      if (data.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("phone, email")
+          .eq("user_id", data.user_id)
+          .maybeSingle();
+        if (profile) setFooterProfile(profile);
       }
     };
     fetchFooterData();
-  }, [cart]);
+  }, [slug, cart]);
 
   // Load auto discount when cart or payment method changes
   useEffect(() => {
@@ -663,26 +688,18 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       }));
 
       // Call Edge Function for server-side validation
-      const response = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/validate-auto-discount',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
-          },
-          body: JSON.stringify({
-            storeId,
-            cartItems,
-            cartTotal,
-            selectedPaymentMethod,
-            customerPhone: phone,
-            customerEmail: email || undefined,
-          }),
-        }
-      );
+      const { data, error: autoDiscountError } = await supabase.functions.invoke('validate-auto-discount', {
+        body: {
+          storeId,
+          cartItems,
+          cartTotal,
+          selectedPaymentMethod,
+          customerPhone: phone,
+          customerEmail: email || undefined,
+        },
+      });
 
-      const data = await response.json();
+      if (autoDiscountError) throw autoDiscountError;
 
       if (data.applicable) {
         setAutoDiscountApplied(data);
@@ -723,25 +740,17 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       const email = form.getValues('email');
 
       // Call Edge Function for server-side validation
-      const response = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/validate-coupon',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
-          },
-          body: JSON.stringify({
-            couponCode,
-            storeId,
-            cartTotal,
-            customerPhone: phone,
-            customerEmail: email || undefined,
-          }),
-        }
-      );
+      const { data, error: couponValidateError } = await supabase.functions.invoke('validate-coupon', {
+        body: {
+          couponCode,
+          storeId,
+          cartTotal,
+          customerPhone: phone,
+          customerEmail: email || undefined,
+        },
+      });
 
-      const data = await response.json();
+      if (couponValidateError) throw couponValidateError;
 
       if (!data.valid) {
         setCouponError(data.error || 'Invalid coupon code');
@@ -786,7 +795,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             <p className="text-muted-foreground">Checking availability...</p>
           </div>
         </main>
-        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
       </div>
     );
   }
@@ -807,7 +830,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             </Link>
           </div>
         </main>
-        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
       </div>
     );
   }
@@ -840,7 +877,21 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             </Button>
           </div>
         </main>
-        <StoreFooter storeName={footerStore?.name || storeSlug || "Store"} />
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
       </div>
     );
   }
@@ -1039,6 +1090,23 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         return;
       }
 
+      // ── Stock decrement — runs atomically before order insert ──
+      // Locks each product row, checks availability, decrements stock.
+      // Prevents two customers buying the same last item simultaneously.
+      const stockCheck = await supabase.rpc('decrement_stock_for_order', {
+        p_store_id: storeData.id,
+        p_items: cart.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+      });
+
+      if (stockCheck.data?.success === false) {
+        const e = stockCheck.data;
+        throw new Error(
+          e.error === 'INSUFFICIENT_STOCK'
+            ? `"${e.name}" is out of stock (only ${e.available ?? 0} left). Please update your cart.`
+            : 'One or more items are no longer available. Please refresh and try again.'
+        );
+      }
+
       // ── COD + PhonePe: save order to DB first, then handle payment/whatsapp ──
       const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
@@ -1051,24 +1119,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Record coupon usage if coupon was applied
       if (appliedCoupon && discountAmount > 0) {
         try {
-          await fetch(
-            'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/record-coupon-usage',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZleGV1eHN2Y2twZnZ1eHFjaHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMjQ3ODAsImV4cCI6MjA3MzgwMDc4MH0.QxgG18mgyBiB-JnKa3FLUXU_4slv1RQxTX9ruFLVf_c',
-              },
-              body: JSON.stringify({
-                couponCode: appliedCoupon.code,
-                storeId: storeId,
-                orderId: insertedOrder.id,
-                customerPhone: data.phone,
-                customerEmail: data.email || undefined,
-                discountApplied: discountAmount,
-              }),
-            }
-          );
+          await supabase.functions.invoke('record-coupon-usage', {
+            body: {
+              couponCode: appliedCoupon.code,
+              storeId: storeId,
+              orderId: insertedOrder.id,
+              customerPhone: data.phone,
+              customerEmail: data.email || undefined,
+              discountApplied: discountAmount,
+            },
+          });
         } catch (couponUsageError) {
           console.error('Error recording coupon usage:', couponUsageError);
           // Don't fail the order, just log the error
