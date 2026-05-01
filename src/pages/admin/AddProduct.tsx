@@ -341,6 +341,18 @@ category: "",
       return;
     }
 
+    const isDuplicate = variants.some(
+      v => v.name.trim().toLowerCase() === newVariant.name.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      toast({
+        title: "Duplicate variant name",
+        description: `A variant named "${newVariant.name.trim()}" already exists. Each variant must have a unique name.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const variant: Variant = {
       id: Date.now().toString(),
       name: newVariant.name.trim(),
@@ -367,6 +379,19 @@ category: "",
       toast({
         title: "Invalid variant",
         description: "Please provide variant name and price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isDuplicate = variants.some(
+      v => v.id !== editingVariantId &&
+        v.name.trim().toLowerCase() === editingVariant.name.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      toast({
+        title: "Duplicate variant name",
+        description: `A variant named "${editingVariant.name.trim()}" already exists. Each variant must have a unique name.`,
         variant: "destructive",
       });
       return;
