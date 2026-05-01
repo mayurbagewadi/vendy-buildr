@@ -222,6 +222,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Step 1: Create Razorpay order server-side.
       // Edge function fetches prices from DB, calculates all financials,
       // and returns the server-verified total. Client amount is never used.
+      console.log('[DEBUG] createRazorpayOrder payload:', {
+        storeId: params.storeId,
+        cartItems: params.cartItems,
+        couponCode: params.appliedCoupon?.code,
+        autoDiscountId: params.autoDiscountId,
+      });
       const { orderId: razorpayOrderId, verifiedTotal, error: razorpayOrderError } = await createRazorpayOrder(
         params.cartItems,
         params.currency,
@@ -229,6 +235,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         params.appliedCoupon?.code,
         params.autoDiscountId
       );
+      console.log('[DEBUG] createRazorpayOrder result:', { razorpayOrderId, verifiedTotal, error: razorpayOrderError });
 
       if (razorpayOrderError) throw new Error(razorpayOrderError);
 
@@ -1093,10 +1100,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // ── Stock decrement — runs atomically before order insert ──
       // Locks each product row, checks availability, decrements stock.
       // Prevents two customers buying the same last item simultaneously.
-      const stockCheck = await supabase.rpc('decrement_stock_for_order', {
+      const stockRpcPayload = {
         p_store_id: storeData.id,
         p_items: cart.map(i => ({ product_id: i.productId, quantity: i.quantity })),
-      });
+      };
+      console.log('[DEBUG] decrement_stock_for_order payload:', JSON.stringify(stockRpcPayload, null, 2));
+      const stockCheck = await supabase.rpc('decrement_stock_for_order', stockRpcPayload);
+      console.log('[DEBUG] decrement_stock_for_order result:', JSON.stringify({ data: stockCheck.data, error: stockCheck.error }, null, 2));
 
       if (stockCheck.data?.success === false) {
         const e = stockCheck.data;

@@ -53,9 +53,11 @@ export const createRazorpayOrder = async (
       },
     });
 
+    console.log('[DEBUG] create-razorpay-order raw response:', { data, error });
     if (error) throw error;
 
     if (!data.success) {
+      console.error('[DEBUG] create-razorpay-order failed:', data);
       return { orderId: '', verifiedTotal: 0, error: data.error || 'Failed to create order' };
     }
 
