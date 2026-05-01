@@ -15,6 +15,7 @@ import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import StorefrontLayout from "./components/customer/StorefrontLayout";
 
 // ─── Store frontend — lazy (never needed on main platform landing page) ────────
 const Store           = lazy(() => import("./pages/customer/Store"));
@@ -212,15 +213,18 @@ const App = () => {
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
 
-                          {/* Customer Routes */}
-                          <Route path="/" element={<Store slug={storeIdentifier} />} />
-                          <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
-                          <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
-                          <Route path="/products" element={<CustomerProducts slug={storeIdentifier} />} />
-                          <Route path="/products/:slug" element={<ProductDetail slug={storeIdentifier} />} />
-                          <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
-                          <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
-                          <Route path="/payment-success" element={<PaymentSuccess />} />
+                          {/* Customer Routes — wrapped in StorefrontLayout so theme + store context
+                              are shared across all pages without per-page re-fetching */}
+                          <Route element={<StorefrontLayout slug={storeIdentifier} />}>
+                            <Route path="/" element={<Store slug={storeIdentifier} />} />
+                            <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
+                            <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
+                            <Route path="/products" element={<CustomerProducts slug={storeIdentifier} />} />
+                            <Route path="/products/:slug" element={<ProductDetail slug={storeIdentifier} />} />
+                            <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
+                            <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
+                            <Route path="/payment-success" element={<PaymentSuccess />} />
+                          </Route>
                           <Route path="/sitemap.xml" element={<Sitemap />} />
                           <Route path="*" element={<NotFound />} />
                         </>
@@ -303,15 +307,18 @@ const App = () => {
                           <Route path="/onboarding/google-drive" element={<OnboardingGoogleDrive />} />
 
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                          {/* Dynamic Store Route - must be last before 404 */}
-                          <Route path="/:slug" element={<Store />} />
-                          <Route path="/:slug/policies" element={<Policies />} />
-                          <Route path="/:slug/categories" element={<CustomerCategories />} />
-                          <Route path="/:slug/products" element={<CustomerProducts />} />
-                          <Route path="/:slug/products/:productSlug" element={<ProductDetail />} />
-                          <Route path="/:slug/cart" element={<Cart />} />
-                          <Route path="/:slug/checkout" element={<Checkout />} />
-                          <Route path="/:slug/payment-success" element={<PaymentSuccess />} />
+                          {/* Dynamic store routes — nested under /:slug so StorefrontLayout
+                              mounts once per store visit and persists theme across page navigation */}
+                          <Route path="/:slug" element={<StorefrontLayout />}>
+                            <Route index element={<Store />} />
+                            <Route path="policies" element={<Policies />} />
+                            <Route path="categories" element={<CustomerCategories />} />
+                            <Route path="products" element={<CustomerProducts />} />
+                            <Route path="products/:productSlug" element={<ProductDetail />} />
+                            <Route path="cart" element={<Cart />} />
+                            <Route path="checkout" element={<Checkout />} />
+                            <Route path="payment-success" element={<PaymentSuccess />} />
+                          </Route>
                           <Route path="*" element={<NotFound />} />
                         </>
                       )}

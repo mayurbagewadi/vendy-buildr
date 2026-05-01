@@ -12,22 +12,40 @@ import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
 import { supabase } from "@/integrations/supabase/client";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import { useStorefront } from "@/contexts/StoreContext";
 
 interface HeaderProps {
   storeSlug?: string;
   storeId?: string;
 }
 
-const Header = ({ storeSlug, storeId }: HeaderProps) => {
-  const [storeName, setStoreName] = useState<string>("");
-  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(null);
+const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
+  const { store, storeId: ctxStoreId, storeSlug: ctxStoreSlug } = useStorefront();
 
+  // Context data takes priority over props (available on all customer pages).
+  // Props remain as fallback for any call-sites not yet inside StoreProvider.
+  const storeId = ctxStoreId ?? idProp ?? null;
+  const storeSlug = ctxStoreSlug ?? slugProp ?? null;
+
+  const [storeName, setStoreName] = useState<string>(store?.name ?? "");
+  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(store?.logo_url ?? null);
+
+  // Sync name/logo from context (covers all customer pages without a DB call).
   useEffect(() => {
-    if (!storeId) return;
+    if (store) {
+      setStoreName(store.name ?? "");
+      setStoreLogoUrl(store.logo_url ?? null);
+    }
+  }, [store?.id]);
+
+  // Fallback DB fetch — only fires when Header is rendered outside StoreProvider
+  // (e.g. future use-cases). Skipped whenever context already has the data.
+  useEffect(() => {
+    if (store || !idProp) return;
     supabase
       .from('stores')
       .select('name, logo_url')
-      .eq('id', storeId)
+      .eq('id', idProp)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
@@ -35,7 +53,7 @@ const Header = ({ storeSlug, storeId }: HeaderProps) => {
           setStoreLogoUrl(data.logo_url || null);
         }
       });
-  }, [storeId]);
+  }, [idProp, store]);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

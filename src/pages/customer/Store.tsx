@@ -132,28 +132,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     loadStoreData();
   }, [slug]);
 
-  // Apply store's theme directly on the html element — bypasses next-themes localStorage lock
-  useEffect(() => {
-    if (!store) return;
-    const theme = store.storefront_theme || "dark";
-    const html = document.documentElement;
-
-    html.classList.remove("dark", "light");
-    if (theme === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      html.classList.add(prefersDark ? "dark" : "light");
-      html.style.colorScheme = prefersDark ? "dark" : "light";
-    } else {
-      html.classList.add(theme);
-      html.style.colorScheme = theme;
-    }
-
-    return () => {
-      html.classList.remove("light");
-      html.classList.add("dark");
-      html.style.colorScheme = "dark";
-    };
-  }, [store?.storefront_theme]);
+  // Theme is now applied by StoreContext (via StorefrontLayout) so it persists
+  // across all customer pages. No per-page theme logic needed here.
 
   // Load and apply AI-generated design from store_design_state
   useEffect(() => {
@@ -380,7 +360,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       }
 
       // Fetch published products for this store
-      const publishedProducts = await getPublishedProducts(storeData.id);
+      const publishedProducts = await getPublishedProducts(storeData.id, 8);
       setProducts(publishedProducts as any);
       
       // Featured products (first 16)
