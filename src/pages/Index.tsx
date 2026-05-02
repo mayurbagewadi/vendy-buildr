@@ -364,6 +364,13 @@ const Index = () => {
         <meta name="description" content="Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments & analytics. Trusted by 10,000+ store owners. No coding needed. Start free — no credit card required." />
         <meta name="keywords" content="ecommerce website builder, create online store, build ecommerce website, sell online, best ecommerce platform, free online store, online store builder, ecommerce platform, AI ecommerce website builder, no code online store, whatsapp ecommerce, free ecommerce platform, shopify alternative, start selling online, ecommerce platform for small business, ecommerce website builder free, whatsapp store builder, free shopify alternative, cheap ecommerce platform, ecommerce platform for beginners, build online store free, no transaction fee ecommerce, sell online free, AI online store builder, woocommerce alternative, bigcommerce alternative, squarespace alternative, ecommerce platform comparison, small business online store, dropshipping website builder, mobile ecommerce platform, custom domain online store, sell products online, online selling platform, ecommerce store builder, website builder with ecommerce, free website with online store, sell online without fees, ecommerce website free, start online store, ecommerce builder, no code ecommerce builder, online shop builder, ecommerce site builder, create ecommerce website, ecommerce website for small business, free online shop, sell online for free, best free online store builder, ecommerce platform with whatsapp, whatsapp order management, AI store designer, ecommerce analytics, inventory management ecommerce, coupon code ecommerce, discount management online store" />
         <link rel="canonical" href="https://digitaldukandar.in" />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-2MC5M4T5JX"></script>
+        <script>{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-2MC5M4T5JX');
+        `}</script>
 
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
