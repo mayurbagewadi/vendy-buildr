@@ -272,12 +272,14 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         {
           onSuccess: async (response: any) => {
             try {
+              console.log('[DEBUG-1] onSuccess fired', { paymentId: response.razorpay_payment_id, storeId: params.storeId, draftOrderId });
+
               // Step 3a: Atomically decrement stock before saving order.
-              // Payment already succeeded — if stock is gone, we must refund.
               const stockCheck = await supabase.rpc('decrement_stock_for_order', {
                 p_store_id: params.storeId,
                 p_items: params.cartItems.map(i => ({ product_id: i.productId, quantity: i.quantity })),
               });
+              console.log('[DEBUG-2] stockCheck', JSON.stringify({ data: stockCheck.data, error: stockCheck.error }));
 
               if (stockCheck.data?.success === false) {
                 const e = stockCheck.data;
@@ -289,12 +291,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 );
               }
 
-              // Step 3b: Payment confirmed — promote the draft order to completed.
-              // If the draft insert succeeded earlier, UPDATE it in-place so we
-              // don't create a duplicate record. Fall back to INSERT only if the
-              // draft was never saved (e.g. transient DB error before modal opened).
               const paymentFields = {
-                total: verifiedTotal,  // ← server-verified, overrides client estimate
+                total: verifiedTotal,
                 status: 'new',
                 payment_method: 'razorpay',
                 payment_status: 'completed',
@@ -312,27 +310,31 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               let orderError: any = null;
 
               if (draftOrderId) {
+                console.log('[DEBUG-3] trying UPDATE draft order', draftOrderId);
                 const { data, error } = await supabase
                   .from('orders')
                   .update(paymentFields)
                   .eq('id', draftOrderId)
                   .select('id')
                   .single();
+                console.log('[DEBUG-4] UPDATE result', JSON.stringify({ data, error }));
                 insertedOrder = data;
                 orderError = error;
               }
 
               if (!insertedOrder) {
-                // Draft didn't exist or update failed — insert a fresh record.
+                console.log('[DEBUG-5] trying fresh INSERT');
                 const { data, error } = await supabase
                   .from('orders')
                   .insert({ ...params.baseOrderRecord, ...paymentFields })
                   .select('id')
                   .single();
+                console.log('[DEBUG-6] INSERT result', JSON.stringify({ data, error }));
                 insertedOrder = data;
                 orderError = error;
               }
 
+              console.log('[DEBUG-7] final state', JSON.stringify({ insertedOrder, orderError: orderError?.message }));
               if (orderError) throw orderError;
               if (!insertedOrder) throw new Error('Failed to save order after payment');
 
