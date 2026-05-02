@@ -272,23 +272,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         {
           onSuccess: async (response: any) => {
             try {
-              console.log('[DEBUG-1] onSuccess fired', { paymentId: response.razorpay_payment_id, storeId: params.storeId, draftOrderId });
-
-              // Step 3a: Atomically decrement stock before saving order.
-              const stockCheck = await supabase.rpc('decrement_stock_for_order', {
-                p_store_id: params.storeId,
-                p_items: params.cartItems.map(i => ({ product_id: i.productId, quantity: i.quantity })),
-              });
-              console.log('[DEBUG-2] stockCheck', JSON.stringify({ data: stockCheck.data, error: stockCheck.error }));
-
-              if (stockCheck.data?.success === false) {
-                const e = stockCheck.data;
-                throw new Error(
-                  `STOCK_ERROR: ${e.error === 'INSUFFICIENT_STOCK'
-                    ? `"${e.name}" ran out of stock. Your payment will be refunded. Payment ID: ${response.razorpay_payment_id}`
-                    : `Item no longer available. Your payment will be refunded. Payment ID: ${response.razorpay_payment_id}`
-                  }`
-                );
+              // Step 3a: Best-effort stock decrement — non-fatal for Razorpay.
+              // Payment already succeeded; order must be saved regardless of stock level.
+              // Store owner is responsible for managing stock.
+              try {
+                await supabase.rpc('decrement_stock_for_order', {
+                  p_store_id: params.storeId,
+                  p_items: params.cartItems.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+                });
+              } catch {
+                // Non-fatal — proceed with order save
               }
 
               const paymentFields = {
@@ -310,31 +303,26 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               let orderError: any = null;
 
               if (draftOrderId) {
-                console.log('[DEBUG-3] trying UPDATE draft order', draftOrderId);
                 const { data, error } = await supabase
                   .from('orders')
                   .update(paymentFields)
                   .eq('id', draftOrderId)
                   .select('id')
                   .single();
-                console.log('[DEBUG-4] UPDATE result', JSON.stringify({ data, error }));
                 insertedOrder = data;
                 orderError = error;
               }
 
               if (!insertedOrder) {
-                console.log('[DEBUG-5] trying fresh INSERT');
                 const { data, error } = await supabase
                   .from('orders')
                   .insert({ ...params.baseOrderRecord, ...paymentFields })
                   .select('id')
                   .single();
-                console.log('[DEBUG-6] INSERT result', JSON.stringify({ data, error }));
                 insertedOrder = data;
                 orderError = error;
               }
 
-              console.log('[DEBUG-7] final state', JSON.stringify({ insertedOrder, orderError: orderError?.message }));
               if (orderError) throw orderError;
               if (!insertedOrder) throw new Error('Failed to save order after payment');
 
