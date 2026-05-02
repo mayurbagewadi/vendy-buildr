@@ -18,19 +18,21 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the cleanup configuration from the request body
-    const { 
+    const {
       ordersMonths = 6,
       activeLogsMonths = 6,
       inactiveLogsMonths = 6,
       cleanupOrders = true,
       cleanupActiveLogs = false,
-      cleanupInactiveLogs = false
+      cleanupInactiveLogs = false,
+      failedOrdersDays = 7,
     } = await req.json().catch(() => ({}));
     
     const results = {
       orders: null as any,
+      failedOrders: null as any,
       activeLogs: null as any,
-      inactiveLogs: null as any
+      inactiveLogs: null as any,
     };
 
     // Delete old orders
@@ -61,6 +63,27 @@ Deno.serve(async (req) => {
         console.log(`Successfully deleted ${ordersCount} orders older than ${ordersMonths} months`);
         results.orders = { success: true, deleted: ordersCount, cutoffDate: ordersCutoff.toISOString() };
       }
+    }
+
+    // Delete failed-payment orders older than failedOrdersDays (default 7).
+    // These are draft records saved when a customer opened Razorpay but did not pay.
+    // They are only useful for a short recovery window; after that they are noise.
+    const failedCutoff = new Date();
+    failedCutoff.setDate(failedCutoff.getDate() - failedOrdersDays);
+    console.log(`Cleaning up failed payment orders older than: ${failedCutoff.toISOString()}`);
+    const { data: failedData, error: failedError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('payment_status', 'failed')
+      .lt('created_at', failedCutoff.toISOString())
+      .select('id');
+    if (failedError) {
+      console.error('Error deleting failed payment orders:', failedError);
+      results.failedOrders = { error: failedError.message };
+    } else {
+      const failedCount = failedData?.length || 0;
+      console.log(`Successfully deleted ${failedCount} failed payment orders`);
+      results.failedOrders = { success: true, deleted: failedCount, cutoffDate: failedCutoff.toISOString() };
     }
 
     // Delete old active logs

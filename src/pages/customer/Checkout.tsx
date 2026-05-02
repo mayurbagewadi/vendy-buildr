@@ -232,7 +232,32 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
       if (razorpayOrderError) throw new Error(razorpayOrderError);
 
-      // Step 2: Open Razorpay modal — amount comes from server, not client
+      // Step 2a: Save a draft order before the modal opens.
+      // If the customer abandons payment or it fails, this record stays as
+      // payment_status='failed' so the store owner can see who attempted to buy.
+      // Non-fatal: if this insert fails we still open the modal and fall back
+      // to a fresh insert inside onSuccess.
+      let draftOrderId: string | null = null;
+      try {
+        const { data: draftOrder } = await supabase
+          .from('orders')
+          .insert({
+            ...params.baseOrderRecord,
+            total: verifiedTotal,
+            status: 'new',
+            payment_method: 'razorpay',
+            payment_status: 'failed',
+            payment_gateway: 'razorpay',
+            gateway_order_id: razorpayOrderId,
+          })
+          .select('id')
+          .single();
+        draftOrderId = draftOrder?.id ?? null;
+      } catch {
+        // Non-fatal — proceed with payment regardless.
+      }
+
+      // Step 2b: Open Razorpay modal — amount comes from server, not client
       const result = await openRazorpayCheckout(
         {
           orderId: razorpayOrderId,
@@ -264,30 +289,52 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 );
               }
 
-              // Step 3b: Payment confirmed — now write order to DB for the first time.
-              // Override total with the server-verified amount so DB always
-              // reflects what Razorpay actually charged.
-              const { data: insertedOrder, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                  ...params.baseOrderRecord,
-                  total: verifiedTotal,  // ← server-verified, overrides client estimate
-                  status: 'new',
-                  payment_method: 'razorpay',
-                  payment_status: 'completed',
-                  payment_gateway: 'razorpay',
-                  payment_id: response.razorpay_payment_id,
-                  gateway_order_id: response.razorpay_order_id,
-                  payment_response: {
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_signature: response.razorpay_signature,
-                  },
-                })
-                .select('id')
-                .single();
+              // Step 3b: Payment confirmed — promote the draft order to completed.
+              // If the draft insert succeeded earlier, UPDATE it in-place so we
+              // don't create a duplicate record. Fall back to INSERT only if the
+              // draft was never saved (e.g. transient DB error before modal opened).
+              const paymentFields = {
+                total: verifiedTotal,  // ← server-verified, overrides client estimate
+                status: 'new',
+                payment_method: 'razorpay',
+                payment_status: 'completed',
+                payment_gateway: 'razorpay',
+                payment_id: response.razorpay_payment_id,
+                gateway_order_id: response.razorpay_order_id,
+                payment_response: {
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                },
+              };
+
+              let insertedOrder: { id: string } | null = null;
+              let orderError: any = null;
+
+              if (draftOrderId) {
+                const { data, error } = await supabase
+                  .from('orders')
+                  .update(paymentFields)
+                  .eq('id', draftOrderId)
+                  .select('id')
+                  .single();
+                insertedOrder = data;
+                orderError = error;
+              }
+
+              if (!insertedOrder) {
+                // Draft didn't exist or update failed — insert a fresh record.
+                const { data, error } = await supabase
+                  .from('orders')
+                  .insert({ ...params.baseOrderRecord, ...paymentFields })
+                  .select('id')
+                  .single();
+                insertedOrder = data;
+                orderError = error;
+              }
 
               if (orderError) throw orderError;
+              if (!insertedOrder) throw new Error('Failed to save order after payment');
 
               // Step 4: Record coupon usage against the newly created order
               if (params.appliedCoupon && params.discountAmount > 0) {

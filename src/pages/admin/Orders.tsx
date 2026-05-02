@@ -74,6 +74,7 @@ const Orders = () => {
   const [shippingPopupEnabled, setShippingPopupEnabled] = useState(false);
   const [doubleDiscountWarningDismissed, setDoubleDiscountWarningDismissed] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [failedOrders, setFailedOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -183,6 +184,20 @@ const Orders = () => {
       // Pro Plan: Fetches all → Displays newest to oldest
       const reversedData = (data || []).reverse();
       setOrders(reversedData);
+
+      // Fetch failed payment attempts (last 7 days only — auto-cleaned after that).
+      // Kept separate so they never pollute the main orders list or counts.
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { data: failedData } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', store.id)
+        .eq('payment_status', 'failed')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
+      setFailedOrders((failedData || []) as Order[]);
+
       setLastSync(new Date());
     } catch (error: any) {
       toast({
@@ -196,7 +211,9 @@ const Orders = () => {
   };
 
   const getFilteredOrders = () => {
-    let filtered = orders;
+    // Failed payment orders live in a separate state and are shown exclusively
+    // when the payment_failed filter is active.
+    let filtered = statusFilter === "payment_failed" ? failedOrders : orders;
 
     // Search filter
     if (searchTerm) {
@@ -208,8 +225,8 @@ const Orders = () => {
       );
     }
 
-    // Status filter
-    if (statusFilter !== "all") {
+    // Status filter — skip for payment_failed (already sourced from failedOrders)
+    if (statusFilter !== "all" && statusFilter !== "payment_failed") {
       filtered = filtered.filter((order) => order.status === statusFilter);
     }
 
@@ -715,6 +732,7 @@ const Orders = () => {
                 <SelectItem value="processing">Processing</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="payment_failed">Payment Failed {failedOrders.length > 0 ? `(${failedOrders.length})` : ''}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -769,10 +787,17 @@ const Orders = () => {
                           {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''}
                         </div>
                       </TableCell>
-                      <TableCell className={`font-medium ${getPaymentStatusColor(order.payment_method)}`}>
+                      <TableCell className={`font-medium ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
                         {formatCurrency(order.total)}
                       </TableCell>
-                      <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        {order.status === 'cancelled' || order.status === 'delivered'
+                          ? getStatusBadge(order.status)
+                          : order.payment_status === 'failed'
+                            ? <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Failed</Badge>
+                            : getStatusBadge(order.status)
+                        }
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
                           <Button
