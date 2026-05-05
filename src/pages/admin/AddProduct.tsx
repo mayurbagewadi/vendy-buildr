@@ -600,6 +600,15 @@ category: "",
         ? uploadedImageUrls
         : getRandomDefaultImages(3);
 
+      // For variant mode: derive base_price/offer_price from the cheapest-offer variant
+      // so DB columns stay consistent regardless of how the product was created.
+      const cheapestOfferVariant = pricingMode === "variants"
+        ? variants
+            .filter(v => v.offerPrice && parseFloat(v.offerPrice) > 0 && parseFloat(v.offerPrice) < parseFloat(v.price))
+            .reduce<typeof variants[0] | null>((best, v) =>
+              !best || parseFloat(v.offerPrice!) < parseFloat(best.offerPrice!) ? v : best, null)
+        : null;
+
       // Create product using shared utility with auto-generated unique ID
       const productData: SharedProduct = {
         id: generatedProductId,
@@ -610,8 +619,18 @@ category: "",
         status: data.status as 'published' | 'draft' | 'inactive',
         images: allImages,
         videoUrl: videoUrl.trim() || undefined,
-        basePrice: pricingMode === "single" && basePrice ? parseFloat(basePrice) : undefined,
-        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0 ? parseFloat(offerPrice) : undefined,
+        basePrice: pricingMode === "single" && basePrice
+          ? parseFloat(basePrice)
+          : cheapestOfferVariant
+            ? parseFloat(cheapestOfferVariant.price)
+            : pricingMode === "variants" && variants.length > 0
+              ? Math.min(...variants.map(v => parseFloat(v.price)))
+              : undefined,
+        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0
+          ? parseFloat(offerPrice)
+          : cheapestOfferVariant
+            ? parseFloat(cheapestOfferVariant.offerPrice!)
+            : undefined,
         stock: pricingMode === "single" && baseStock ? parseInt(baseStock) : 0,
         variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,

@@ -537,6 +537,15 @@ category: "",
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // For variant mode: derive base_price/offer_price from the cheapest-offer variant
+      // so DB columns stay consistent and the product card always shows the correct price.
+      const cheapestOfferVariant = pricingMode === "variants"
+        ? variants
+            .filter(v => v.offerPrice && parseFloat(v.offerPrice) > 0 && parseFloat(v.offerPrice) < parseFloat(v.price))
+            .reduce<typeof variants[0] | null>((best, v) =>
+              !best || parseFloat(v.offerPrice!) < parseFloat(best.offerPrice!) ? v : best, null)
+        : null;
+
       // Update product using shared utility
       const productData: SharedProduct = {
         id,
@@ -546,8 +555,18 @@ category: "",
         status: data.status as 'published' | 'draft' | 'inactive',
         images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
         videoUrl: videoUrl.trim() || undefined,
-        basePrice: pricingMode === "single" && basePrice ? parseFloat(basePrice) : undefined,
-        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0 ? parseFloat(offerPrice) : undefined,
+        basePrice: pricingMode === "single" && basePrice
+          ? parseFloat(basePrice)
+          : cheapestOfferVariant
+            ? parseFloat(cheapestOfferVariant.price)
+            : pricingMode === "variants" && variants.length > 0
+              ? Math.min(...variants.map(v => parseFloat(v.price)))
+              : undefined,
+        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0
+          ? parseFloat(offerPrice)
+          : cheapestOfferVariant
+            ? parseFloat(cheapestOfferVariant.offerPrice!)
+            : undefined,
         stock: pricingMode === "single" && baseStock ? parseInt(baseStock) : 0,
         variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,

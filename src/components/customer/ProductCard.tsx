@@ -57,6 +57,16 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
   const discountPct = singleDiscount || variantMaxDiscount;
   const isVariantMode = variants && variants.length > 0;
 
+  // Fallback for variant products where base_price/offer_price columns are null in DB.
+  // Picks the variant with the lowest offer_price and uses its price pair for display.
+  const variantDisplayPrices = (() => {
+    if (!isVariantMode || singleDiscount > 0) return null;
+    const withOffer = (variants || []).filter(v => v.offer_price && v.offer_price > 0 && v.offer_price < v.price);
+    if (withOffer.length === 0) return null;
+    const cheapest = withOffer.reduce((min, v) => v.offer_price! < min.offer_price! ? v : min);
+    return { offer: cheapest.offer_price!, selling: cheapest.price };
+  })();
+
   // Use slug for SEO-friendly URLs, fallback to id if slug doesn't exist
   const productIdentifier = slug || id;
 
@@ -126,6 +136,11 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
             <div className="flex items-center gap-2">
               <p className="text-lg font-bold text-primary">₹{activeOfferPrice.toFixed(2)}</p>
               <p className="text-sm text-muted-foreground line-through">₹{sellingPrice.toFixed(2)}</p>
+            </div>
+          ) : variantDisplayPrices ? (
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-bold text-primary">₹{variantDisplayPrices.offer.toFixed(2)}</p>
+              <p className="text-sm text-muted-foreground line-through">₹{variantDisplayPrices.selling.toFixed(2)}</p>
             </div>
           ) : (
             <p className="text-lg font-bold text-primary">{displayPrice}</p>
