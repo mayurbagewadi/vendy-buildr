@@ -147,12 +147,12 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
             </h3>
             <ul className="space-y-3">
               <li>
-                <a
-                  href="#about"
+                <Link
+                  to={`${basePath}/about`}
                   className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
                 >
                   About Us
-                </a>
+                </Link>
               </li>
               <li>
                 <a

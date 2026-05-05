@@ -72,6 +72,7 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
   const homeLink = isSubdomain ? "/" : (storeSlug ? `/${storeSlug}` : "/home");
   const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
   const categoriesLink = isSubdomain ? "/categories" : (storeSlug ? `/${storeSlug}/categories` : "/categories");
+  const aboutLink = isSubdomain ? "/about" : (storeSlug ? `/${storeSlug}/about` : "/about");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +137,7 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
             <Link to={categoriesLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               Categories
             </Link>
-            <Link to={`${homeLink}#about`} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+            <Link to={aboutLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               About
             </Link>
           </nav>
@@ -237,7 +238,7 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
               Categories
             </Link>
             <Link
-              to={`${homeLink}#about`}
+              to={aboutLink}
               className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200"
               onClick={() => setMobileMenuOpen(false)}
             >

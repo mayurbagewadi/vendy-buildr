@@ -48,6 +48,7 @@ const AdminSettings = () => {
   const subscriptionLimits = useSubscriptionLimits();
   const [formData, setFormData] = useState({
     storeName: "",
+    description: "",
     logoUrl: "",
     heroBannerUrls: [] as string[],
     phone: "",
@@ -170,6 +171,7 @@ const AdminSettings = () => {
 
       setFormData({
         storeName: store?.name || "",
+        description: store?.description || "",
         logoUrl: store?.logo_url || "",
         heroBannerUrls: (store?.hero_banner_urls || []) as string[],
         phone: profile?.phone || "",
@@ -395,6 +397,7 @@ const AdminSettings = () => {
       // Build update data
       const updateData: any = {
         name: formData.storeName,
+        description: formData.description || null,
         logo_url: formData.logoUrl || null,
         hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
@@ -1028,6 +1031,7 @@ const AdminSettings = () => {
       // Update stores table
       const updateData: any = {
         name: formData.storeName,
+        description: formData.description || null,
         logo_url: formData.logoUrl || null,
         hero_banner_urls: formData.heroBannerUrls.length > 0 ? formData.heroBannerUrls : null,
         whatsapp_number: formData.whatsappNumber,
@@ -1141,6 +1145,7 @@ const AdminSettings = () => {
       icon: Store,
       fields: [
         { key: "storeName", label: "Store Name", placeholder: "My Awesome Store", required: true },
+        { key: "description", label: "About Us Description", placeholder: "Tell customers about your store, your story, what makes you unique...", multiline: true },
         { key: "logoUrl", label: "Logo URL (Google Drive Link)", placeholder: "https://drive.google.com/..." },
       ]
     },

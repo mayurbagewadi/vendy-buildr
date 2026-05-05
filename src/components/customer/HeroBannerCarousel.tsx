@@ -50,11 +50,6 @@ const HeroBannerCarousel = ({
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
               {storeName}
             </h1>
-            {storeDescription && (
-              <p className="text-xl text-muted-foreground">
-                {storeDescription}
-              </p>
-            )}
           </div>
         </div>
       </section>

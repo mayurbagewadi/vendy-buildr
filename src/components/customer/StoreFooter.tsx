@@ -97,9 +97,26 @@ const StoreFooter = ({
           {/* About Store */}
           <div>
             <h3 className="font-bold text-foreground mb-4">About {storeName}</h3>
-            <p className="text-muted-foreground text-sm">
-              {storeDescription || "Your trusted online store for quality products at great prices."}
-            </p>
+            {(() => {
+              const text = storeDescription || "Your trusted online store for quality products at great prices.";
+              const LIMIT = 120;
+              const isTruncated = storeDescription && storeDescription.length > LIMIT;
+              return (
+                <>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {isTruncated ? text.slice(0, LIMIT).trimEnd() + "…" : text}
+                  </p>
+                  {isTruncated && (
+                    <Link
+                      to={`${basePath}/about`}
+                      className="text-primary text-sm hover:underline mt-2 inline-block"
+                    >
+                      Read more
+                    </Link>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Shop Links */}

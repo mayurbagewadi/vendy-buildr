@@ -75,6 +75,7 @@ const SuperAdminMarketing       = lazy(() => import("./pages/superadmin/Marketin
 const Home                      = lazy(() => import("./pages/customer/Home"));
 const CustomerCategories        = lazy(() => import("./pages/customer/Categories"));
 const Policies                  = lazy(() => import("./pages/customer/Policies"));
+const About                     = lazy(() => import("./pages/customer/About"));
 
 const Pricing                   = lazy(() => import("./pages/Pricing"));
 const Guide                     = lazy(() => import("./pages/Guide"));
@@ -218,6 +219,7 @@ const App = () => {
                           <Route element={<StorefrontLayout slug={storeIdentifier} />}>
                             <Route path="/" element={<Store slug={storeIdentifier} />} />
                             <Route path="/policies" element={<Policies slug={storeIdentifier} />} />
+                            <Route path="/about" element={<About />} />
                             <Route path="/categories" element={<CustomerCategories slug={storeIdentifier} />} />
                             <Route path="/products" element={<CustomerProducts slug={storeIdentifier} />} />
                             <Route path="/products/:slug" element={<ProductDetail slug={storeIdentifier} />} />
@@ -312,6 +314,7 @@ const App = () => {
                           <Route path="/:slug" element={<StorefrontLayout />}>
                             <Route index element={<Store />} />
                             <Route path="policies" element={<Policies />} />
+                            <Route path="about" element={<About />} />
                             <Route path="categories" element={<CustomerCategories />} />
                             <Route path="products" element={<CustomerProducts />} />
                             <Route path="products/:productSlug" element={<ProductDetail />} />
