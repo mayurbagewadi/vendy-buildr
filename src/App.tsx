@@ -52,6 +52,7 @@ const AdminShipping             = lazy(() => import("./pages/admin/Shipping"));
 const AdminAIDesigner           = lazy(() => import("./pages/admin/AIDesigner"));
 const BuyTokens                 = lazy(() => import("./pages/admin/BuyTokens"));
 const AdminGoogleReviews        = lazy(() => import("./pages/admin/GoogleReviews"));
+const AdminCustomerCare         = lazy(() => import("./pages/admin/CustomerCare"));
 
 const SuperAdminLogin           = lazy(() => import("./pages/superadmin/Login"));
 const SuperAdminDashboard       = lazy(() => import("./pages/superadmin/Dashboard"));
@@ -213,6 +214,7 @@ const App = () => {
                           <Route path="/admin/settings/theme" element={<StoreGuard><AdminLayout><ThemeSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />
 
                           {/* Customer Routes — wrapped in StorefrontLayout so theme + store context
                               are shared across all pages without per-page re-fetching */}
@@ -272,6 +274,7 @@ const App = () => {
                           <Route path="/admin/settings/theme" element={<StoreGuard><AdminLayout><ThemeSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />
 
                           {/* Customer Routes */}
                           <Route path="/home" element={<Home />} />
