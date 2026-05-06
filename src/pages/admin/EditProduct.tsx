@@ -17,6 +17,8 @@ import { getProductById, updateProduct, getProducts, type Product as SharedProdu
 import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { compressImage } from "@/lib/imageCompression";
+import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 const variantSchema = z.object({
   id: z.string(),
@@ -60,6 +62,10 @@ const EditProduct = () => {
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{name: string; progress: number}[]>([]);
+  const [uploadDestination, setUploadDestination] = useState<'drive' | 'vps'>('vps');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [editingVariant, setEditingVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
   const subscriptionLimits = useSubscriptionLimits();
@@ -112,13 +118,14 @@ category: "",
 
       const { data: store, error } = await supabase
         .from("stores")
-        .select("id, google_access_token, google_refresh_token")
+        .select("id, slug, google_access_token, google_refresh_token")
         .eq("user_id", user.id)
         .single();
 
       if (error) throw error;
       if (store) {
         setStoreId(store.id);
+        setStoreSlug(store.slug || null);
 
         // If we have new Google tokens and a store, save them
         if (providerToken && !store.google_access_token) {
@@ -260,13 +267,10 @@ category: "",
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-
     if (files.length === 0) return;
 
-    // Validate all files first
     const validFiles = files.filter(file => {
       const isValidType = file.type.startsWith('image/');
-
       if (!isValidType) {
         toast({
           title: "Invalid file type",
@@ -275,126 +279,49 @@ category: "",
         });
         return false;
       }
-
       return true;
     });
 
     if (validFiles.length === 0) return;
 
-    setIsUploadingToDrive(true);
-    setUploadingFiles(validFiles.map(f => ({ name: f.name, progress: 0 })));
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
-
-        setUploadingFiles(prev => prev.map((f, idx) =>
-          idx === i ? { ...f, progress: 10 } : f
-        ));
-
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', file);
-
-        const progressInterval = setInterval(() => {
-          setUploadingFiles(prev => prev.map((f, idx) =>
-            idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
-          ));
-        }, 200);
-
-        try {
-          const response = await supabase.functions.invoke('upload-to-drive', {
-            body: uploadFormData,
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          });
-
-          clearInterval(progressInterval);
-
-          if (response.error) {
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
-            throw new Error(response.error.message || 'Failed to upload image');
+      const processedFiles: File[] = [];
+      for (const file of validFiles) {
+        if (uploadDestination === 'vps') {
+          try {
+            const compressed = await compressImage(file, 5);
+            processedFiles.push(compressed);
+          } catch {
+            processedFiles.push(file);
           }
-
-          if (response.data?.imageUrl) {
-            setUploadingFiles(prev => prev.map((f, idx) =>
-              idx === i ? { ...f, progress: 100 } : f
-            ));
-
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            setUploadingFiles(prev => prev.filter((_, idx) => idx !== i));
-            setImageUrls(prev => [...prev, response.data.imageUrl]);
-
-            toast({
-              title: "Image uploaded",
-              description: `${file.name} uploaded successfully`,
-            });
-          }
-        } catch (fileError) {
-          clearInterval(progressInterval);
-          throw fileError;
+        } else {
+          processedFiles.push(file);
         }
       }
+
+      setPendingFiles(prev => [...prev, ...processedFiles]);
+      const newPreviews = processedFiles.map(f => URL.createObjectURL(f));
+      setPreviewUrls(prev => [...prev, ...newPreviews]);
+
+      toast({
+        title: "Images ready",
+        description: `${processedFiles.length} image(s) will be uploaded when you save`,
+      });
     } catch (error: any) {
-      console.error('Upload error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      
-      // Extract error message from edge function response
-      let errorMessage = error.message || '';
-      if (error.context?.body) {
-        try {
-          const errorBody = JSON.parse(error.context.body);
-          errorMessage = errorBody.error || errorBody.message || errorMessage;
-        } catch (e) {
-          console.error('Could not parse error body:', e);
-        }
-      }
-      
-      console.log('Extracted error message:', errorMessage);
-      
-      // Check if it's a Google Drive connection issue
-      if (errorMessage.toLowerCase().includes('drive') && 
-          errorMessage.toLowerCase().includes('not connected')) {
-        toast({
-          title: "Google Drive Not Connected",
-          description: "Please connect your Google Drive account in Store Settings first, or use the Google Drive URL option instead.",
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('authenticated')) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in again to upload images.",
-          variant: "destructive",
-        });
-      } else if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('expired')) {
-        toast({
-          title: "Google Drive Connection Expired",
-          description: "Your Google Drive connection has expired. Please reconnect in Store Settings.",
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else {
-        // Show the actual error message from the edge function
-        const description = errorMessage || 'Failed to upload to Google Drive. Try using the Google Drive URL option instead.';
-        toast({
-          title: "Upload Failed",
-          description: description,
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to process images",
+        variant: "destructive",
+      });
     } finally {
-      setIsUploadingToDrive(false);
-      setUploadingFiles([]);
       event.target.value = '';
     }
+  };
+
+  const removePendingFile = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const removeImageUrl = (index: number) => {
@@ -532,11 +459,129 @@ category: "",
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      let uploadedImageUrls: string[] = [...imageUrls];
+
+      if (pendingFiles.length > 0) {
+        setIsUploadingToDrive(true);
+        setUploadingFiles(pendingFiles.map(f => ({ name: f.name, progress: 0 })));
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not found');
+
+        const { data: store, error: storeError } = await supabase
+          .from('stores')
+          .select('id, storage_used_mb, storage_limit_mb')
+          .eq('user_id', user.id)
+          .single();
+
+        if (storeError || !store) throw new Error('Store not found');
+
+        if (uploadDestination === 'vps') {
+          const totalPendingSize = pendingFiles.reduce((sum, f) => sum + f.size / 1024 / 1024, 0);
+          let currentUsage = store.storage_used_mb || 0;
+          const storageLimit = store.storage_limit_mb || 100;
+
+          if (currentUsage + totalPendingSize > storageLimit) {
+            throw new Error(`Storage limit reached. You have ${(storageLimit - currentUsage).toFixed(2)}MB remaining.`);
+          }
+
+          for (let i = 0; i < pendingFiles.length; i++) {
+            const file = pendingFiles[i];
+            const fileSizeMB = file.size / 1024 / 1024;
+
+            setUploadingFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 10 } : f));
+
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', file);
+            uploadFormData.append('type', 'products');
+            if (storeSlug) uploadFormData.append('store_slug', storeSlug);
+
+            const progressInterval = setInterval(() => {
+              setUploadingFiles(prev => prev.map((f, idx) =>
+                idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
+              ));
+            }, 200);
+
+            try {
+              const uploadResponse = await fetch('https://digitaldukandar.in/api/upload.php', {
+                method: 'POST',
+                body: uploadFormData,
+              });
+              const responseData = await uploadResponse.json();
+              clearInterval(progressInterval);
+
+              if (!uploadResponse.ok || !responseData.success) {
+                throw new Error(responseData.error || 'Failed to upload image');
+              }
+
+              uploadedImageUrls.push(responseData.imageUrl);
+
+              await supabase.from('media_library').insert({
+                store_id: store.id,
+                file_url: responseData.imageUrl,
+                file_name: responseData.fileId || file.name,
+                file_size_mb: fileSizeMB,
+                file_type: 'products',
+              });
+
+              currentUsage += fileSizeMB;
+              await supabase.from('stores').update({ storage_used_mb: currentUsage }).eq('id', store.id);
+
+              setUploadingFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 100 } : f));
+            } catch (fileError) {
+              clearInterval(progressInterval);
+              throw fileError;
+            }
+          }
+        } else {
+          for (let i = 0; i < pendingFiles.length; i++) {
+            const file = pendingFiles[i];
+            setUploadingFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 10 } : f));
+
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', file);
+
+            const progressInterval = setInterval(() => {
+              setUploadingFiles(prev => prev.map((f, idx) =>
+                idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f
+              ));
+            }, 200);
+
+            try {
+              const response = await supabase.functions.invoke('upload-to-drive', {
+                body: uploadFormData,
+                headers: { 'Authorization': `Bearer ${session.access_token}` },
+              });
+              clearInterval(progressInterval);
+
+              if (response.error) throw new Error(response.error.message || 'Failed to upload image');
+
+              if (response.data?.imageUrl) {
+                const productImageUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
+                uploadedImageUrls.push(productImageUrl);
+              }
+
+              setUploadingFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 100 } : f));
+            } catch (fileError) {
+              clearInterval(progressInterval);
+              throw fileError;
+            }
+          }
+        }
+
+        setIsUploadingToDrive(false);
+        setUploadingFiles([]);
+        previewUrls.forEach(url => URL.revokeObjectURL(url));
+        setPendingFiles([]);
+        setPreviewUrls([]);
+        setImageUrls(uploadedImageUrls);
+      }
+
       // For variant mode: derive base_price/offer_price from the cheapest-offer variant
       // so DB columns stay consistent and the product card always shows the correct price.
       const cheapestOfferVariant = pricingMode === "variants"
@@ -553,7 +598,7 @@ category: "",
         description: data.description,
         category: data.category,
         status: data.status as 'published' | 'draft' | 'inactive',
-        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
+        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'],
         videoUrl: videoUrl.trim() || undefined,
         basePrice: pricingMode === "single" && basePrice
           ? parseFloat(basePrice)
@@ -587,14 +632,16 @@ category: "",
 
       // Navigate to products page with highlighted product
       navigate("/admin/products", { state: { highlightedProductId: id } });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error updating product",
-        description: "Please try again later",
+        description: error.message || "Please try again later",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
+      setIsUploadingToDrive(false);
+      setUploadingFiles([]);
     }
   };
 
@@ -949,7 +996,7 @@ category: "",
                   <CardHeader>
                     <CardTitle>Product Images</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Add images from Google Drive
+                      Upload from device or add via Google Drive URL
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -1031,6 +1078,43 @@ category: "",
                       </p>
                     </div>
 
+                    {/* Upload Destination Selector */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">Upload Destination</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="uploadDestinationEdit"
+                            value="vps"
+                            checked={uploadDestination === 'vps'}
+                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                            className="w-4 h-4 text-primary"
+                          />
+                          <span className="text-sm">VPS Server</span>
+                        </label>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="uploadDestinationEdit"
+                            value="drive"
+                            checked={uploadDestination === 'drive'}
+                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
+                            className="w-4 h-4 text-primary"
+                            disabled={!isDriveConnected}
+                          />
+                          <span className="text-sm">
+                            Google Drive <span className="text-xs text-green-600 font-medium">(Recommended - Safe & Reliable)</span> {!isDriveConnected && <span className="text-xs text-red-500 font-medium">(Not Connected)</span>}
+                          </span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {uploadDestination === 'vps'
+                          ? 'Images will be compressed to max 5MB and stored on your server'
+                          : 'Images will be uploaded to your connected Google Drive'}
+                      </p>
+                    </div>
+
                     {/* File Upload */}
                     <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
                       <input
@@ -1067,7 +1151,9 @@ category: "",
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
                                       <p className="text-xs text-muted-foreground">
-                                        {file.progress < 100 ? 'Uploading to Google Drive...' : 'Complete!'}
+                                        {file.progress < 100
+                                          ? `Uploading to ${uploadDestination === 'vps' ? 'VPS Server' : 'Google Drive'}...`
+                                          : 'Complete!'}
                                       </p>
                                     </div>
                                     <span className="text-sm font-medium text-primary">{file.progress}%</span>
@@ -1083,13 +1169,23 @@ category: "",
                               ))}
                             </div>
                           </div>
+                        ) : pendingFiles.length > 0 ? (
+                          <div className="space-y-2 py-2">
+                            <p className="text-sm font-medium text-foreground">{pendingFiles.length} image{pendingFiles.length > 1 ? 's' : ''} ready to upload</p>
+                            <p className="text-xs text-muted-foreground">Will upload to {uploadDestination === 'vps' ? 'VPS Server' : 'Google Drive'} when you save</p>
+                            <span className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1">
+                              Add More
+                            </span>
+                          </div>
                         ) : (
                           <div className="space-y-4">
                             <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
                             <div className="space-y-2">
-                              <p className="text-sm font-medium">Or upload from device</p>
+                              <p className="text-sm font-medium">Upload from device</p>
                               <p className="text-xs text-muted-foreground">
-                                PNG, JPG images. Will be uploaded to your Google Drive.
+                                {uploadDestination === 'vps'
+                                  ? 'PNG, JPG images — compressed and stored on VPS'
+                                  : 'PNG, JPG images — uploaded to your Google Drive'}
                               </p>
                             </div>
                             <span className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
@@ -1100,7 +1196,37 @@ category: "",
                       </label>
                     </div>
 
-                    {/* Image Previews */}
+                    {/* Pending File Previews (staged, not yet uploaded) */}
+                    {previewUrls.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2 font-medium">Pending upload ({previewUrls.length})</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {previewUrls.map((url, index) => (
+                            <div key={`pending-${index}`} className="relative group">
+                              <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden ring-2 ring-primary/40">
+                                <img
+                                  src={url}
+                                  alt={`Pending ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removePendingFile(index)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                              <span className="absolute bottom-2 left-2 text-xs bg-primary text-primary-foreground rounded px-1">New</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Saved Image Previews */}
                     {imageUrls.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {imageUrls.map((url, index) => (
