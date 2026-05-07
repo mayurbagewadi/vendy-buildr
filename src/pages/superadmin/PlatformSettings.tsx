@@ -202,19 +202,13 @@ const PlatformSettingsPage = () => {
   const handleConnectGoogle = async () => {
     setIsConnectingSheets(true);
     try {
-      // 1. Fetch Google client_id from edge function (public, no auth needed)
-      const configRes = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_oauth_config' }),
-        }
+      // 1. Fetch Google client_id — invoke attaches anon key automatically
+      const { data: configData, error: configError } = await supabase.functions.invoke(
+        'superadmin-sync-to-sheets',
+        { body: { action: 'get_oauth_config' } }
       );
-      const configData = await configRes.json();
-      if (!configData.client_id) {
-        throw new Error('GOOGLE_CLIENT_ID not set in Supabase secrets');
-      }
+      if (configError) throw new Error(configError.message);
+      if (!configData?.client_id) throw new Error('GOOGLE_CLIENT_ID not set in Supabase secrets');
 
       // 2. Load Google Identity Services script if not already loaded
       await loadGISScript();
@@ -226,30 +220,22 @@ const PlatformSettingsPage = () => {
       const adminId = getAdminId();
       if (!adminId) throw new Error('Admin session not found — please log in again');
 
-      const exchangeRes = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'exchange_code', code, admin_id: adminId }),
-        }
+      const { data: exchangeData, error: exchangeError } = await supabase.functions.invoke(
+        'superadmin-sync-to-sheets',
+        { body: { action: 'exchange_code', code, admin_id: adminId } }
       );
-      const exchangeData = await exchangeRes.json();
-      if (!exchangeData.success) throw new Error(exchangeData.error ?? 'Token exchange failed');
+      if (exchangeError) throw new Error(exchangeError.message);
+      if (!exchangeData?.success) throw new Error(exchangeData?.error ?? 'Token exchange failed');
 
       // 5. Create master sheet + backfill all existing stores
       toast({ title: 'Connected!', description: 'Creating master sheet and syncing existing stores…' });
 
-      const setupRes = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setup', admin_id: adminId }),
-        }
+      const { data: setupData, error: setupError } = await supabase.functions.invoke(
+        'superadmin-sync-to-sheets',
+        { body: { action: 'setup', admin_id: adminId } }
       );
-      const setupData = await setupRes.json();
-      if (!setupData.success) throw new Error(setupData.error ?? 'Sheet setup failed');
+      if (setupError) throw new Error(setupError.message);
+      if (!setupData?.success) throw new Error(setupData?.error ?? 'Sheet setup failed');
 
       await loadGoogleSheetsStatus();
 
@@ -271,16 +257,12 @@ const PlatformSettingsPage = () => {
       const adminId = getAdminId();
       if (!adminId) throw new Error('Admin session not found');
 
-      const res = await fetch(
-        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'disconnect', admin_id: adminId }),
-        }
+      const { data, error } = await supabase.functions.invoke(
+        'superadmin-sync-to-sheets',
+        { body: { action: 'disconnect', admin_id: adminId } }
       );
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? 'Disconnect failed');
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error ?? 'Disconnect failed');
 
       setSheetsConnected(false);
       setSheetsSheetUrl('');
