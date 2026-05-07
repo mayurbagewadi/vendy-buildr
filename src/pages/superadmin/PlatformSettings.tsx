@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Save, Trash2, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, Trash2, Lock, ChevronDown, ChevronUp, Sheet, CheckCircle2, ExternalLink, Unlink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -73,11 +73,17 @@ const PlatformSettingsPage = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isCleanupOpen, setIsCleanupOpen] = useState(false);
 
+  // ── Google Sheets state ────────────────────────────────────────────────
+  const [sheetsConnected, setSheetsConnected] = useState(false);
+  const [sheetsSheetUrl, setSheetsSheetUrl] = useState<string>("");
+  const [isConnectingSheets, setIsConnectingSheets] = useState(false);
+  const [isDisconnectingSheets, setIsDisconnectingSheets] = useState(false);
+
   useEffect(() => {
     const checkAuth = async () => {
       const superAdminSession = sessionStorage.getItem('superadmin_session');
       if (superAdminSession) {
-        await Promise.all([loadPlans(), loadSettings()]);
+        await Promise.all([loadPlans(), loadSettings(), loadGoogleSheetsStatus()]);
         return;
       }
 
@@ -97,7 +103,7 @@ const PlatformSettingsPage = () => {
       if (!roles || roles.length === 0) {
         navigate('/superadmin/login');
       } else {
-        await Promise.all([loadPlans(), loadSettings()]);
+        await Promise.all([loadPlans(), loadSettings(), loadGoogleSheetsStatus()]);
       }
     };
 
@@ -160,6 +166,176 @@ const PlatformSettingsPage = () => {
 
     checkAuth();
   }, [navigate, toast]);
+
+  // ── Google Sheets helpers ──────────────────────────────────────────────
+  const loadGoogleSheetsStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('superadmin_google_sheet_id, superadmin_google_sheet_url')
+        .eq('id', SETTINGS_ID)
+        .single();
+
+      if (data?.superadmin_google_sheet_id) {
+        setSheetsConnected(true);
+        setSheetsSheetUrl((data as any).superadmin_google_sheet_url ?? '');
+      } else {
+        setSheetsConnected(false);
+        setSheetsSheetUrl('');
+      }
+    } catch {
+      // Non-critical — settings page still loads
+    }
+  };
+
+  const getAdminId = (): string | null => {
+    try {
+      const raw = sessionStorage.getItem('superadmin_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed.id ?? parsed.admin_id ?? null;
+      }
+    } catch {}
+    return null;
+  };
+
+  const handleConnectGoogle = async () => {
+    setIsConnectingSheets(true);
+    try {
+      // 1. Fetch Google client_id from edge function (public, no auth needed)
+      const configRes = await fetch(
+        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_oauth_config' }),
+        }
+      );
+      const configData = await configRes.json();
+      if (!configData.client_id) {
+        throw new Error('GOOGLE_CLIENT_ID not set in Supabase secrets');
+      }
+
+      // 2. Load Google Identity Services script if not already loaded
+      await loadGISScript();
+
+      // 3. Open OAuth popup — request Sheets + Drive scopes
+      const code = await requestGoogleCode(configData.client_id);
+
+      // 4. Exchange code for tokens (server-side — secret never leaves server)
+      const adminId = getAdminId();
+      if (!adminId) throw new Error('Admin session not found — please log in again');
+
+      const exchangeRes = await fetch(
+        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'exchange_code', code, admin_id: adminId }),
+        }
+      );
+      const exchangeData = await exchangeRes.json();
+      if (!exchangeData.success) throw new Error(exchangeData.error ?? 'Token exchange failed');
+
+      // 5. Create master sheet + backfill all existing stores
+      toast({ title: 'Connected!', description: 'Creating master sheet and syncing existing stores…' });
+
+      const setupRes = await fetch(
+        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'setup', admin_id: adminId }),
+        }
+      );
+      const setupData = await setupRes.json();
+      if (!setupData.success) throw new Error(setupData.error ?? 'Sheet setup failed');
+
+      await loadGoogleSheetsStatus();
+
+      toast({
+        title: 'Google Sheets connected',
+        description: setupData.storeCount + ' existing stores exported. New stores will auto-sync.',
+      });
+    } catch (error: any) {
+      toast({ title: 'Connection failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsConnectingSheets(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    if (!confirm('Disconnect Google Sheets? The sheet itself will not be deleted.')) return;
+    setIsDisconnectingSheets(true);
+    try {
+      const adminId = getAdminId();
+      if (!adminId) throw new Error('Admin session not found');
+
+      const res = await fetch(
+        'https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/superadmin-sync-to-sheets',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'disconnect', admin_id: adminId }),
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Disconnect failed');
+
+      setSheetsConnected(false);
+      setSheetsSheetUrl('');
+      toast({ title: 'Disconnected', description: 'Google Sheets disconnected. Your sheet data is untouched.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDisconnectingSheets(false);
+    }
+  };
+
+  // ── Google Identity Services (GIS) utilities ──────────────────────────
+  const loadGISScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).google?.accounts?.oauth2) {
+        resolve();
+        return;
+      }
+      const existing = document.getElementById('google-gis-script');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'google-gis-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const requestGoogleCode = (clientId: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const client = (window as any).google.accounts.oauth2.initCodeClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+          ux_mode: 'popup',
+          callback: (response: any) => {
+            if (response.code) {
+              resolve(response.code);
+            } else {
+              reject(new Error(response.error ?? 'Google OAuth cancelled'));
+            }
+          },
+        });
+        client.requestCode();
+      } catch (err: any) {
+        reject(err);
+      }
+    });
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -627,6 +803,90 @@ const PlatformSettingsPage = () => {
                   Fallback model if primary fails (e.g. <span className="font-mono">openai/gpt-4o</span>). Leave blank for no fallback.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Sheets — Store Tracker */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sheet className="h-5 w-5 text-green-600" />
+                Google Sheets — Store Tracker
+              </CardTitle>
+              <CardDescription>
+                Auto-exports every new store to a master Google Sheet. Data persists even after stores are deleted — your permanent marketing record.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {sheetsConnected ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">Connected to Google Sheets</p>
+                      <p className="text-xs text-muted-foreground">New stores auto-sync on creation</p>
+                    </div>
+                  </div>
+
+                  {sheetsSheetUrl && (
+                    <a
+                      href={sheetsSheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                      Open Master Sheet
+                    </a>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectGoogle}
+                    disabled={isDisconnectingSheets}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    {isDisconnectingSheets ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Unlink className="h-4 w-4 mr-2" />
+                    )}
+                    Disconnect
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground space-y-1">
+                    <p>On connect:</p>
+                    <ul className="list-disc list-inside space-y-0.5 pl-1">
+                      <li>Creates a master sheet in your Google Drive</li>
+                      <li>Backfills all existing stores immediately</li>
+                      <li>Every new store auto-appends a row going forward</li>
+                    </ul>
+                  </div>
+                  <Button
+                    onClick={handleConnectGoogle}
+                    disabled={isConnectingSheets}
+                    className="w-full"
+                  >
+                    {isConnectingSheets ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Connecting…
+                      </>
+                    ) : (
+                      <>
+                        <Sheet className="h-4 w-4 mr-2" />
+                        Connect Google Sheets
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    You'll be prompted to select a Google account and grant Sheets access. No other permissions requested.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
