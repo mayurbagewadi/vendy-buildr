@@ -76,8 +76,7 @@ serve(async (req) => {
     }
 
     // ── All other actions require super_admin verification ─────────────────
-    // We verify via the super_admins table using an admin_id passed from the UI
-    // (Superadmin uses custom session auth, not Supabase JWT)
+    // Project uses user_roles table (role = 'super_admin'), not a super_admins table
     const { admin_id } = body;
     if (!admin_id) {
       return new Response(
@@ -87,10 +86,11 @@ serve(async (req) => {
     }
 
     const { data: adminRow } = await supabaseAdmin
-      .from('super_admins')
-      .select('id')
-      .eq('id', admin_id)
-      .single();
+      .from('user_roles')
+      .select('user_id')
+      .eq('user_id', admin_id)
+      .eq('role', 'super_admin')
+      .maybeSingle();
 
     if (!adminRow) {
       return new Response(

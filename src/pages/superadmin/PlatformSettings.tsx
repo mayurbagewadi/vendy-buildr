@@ -190,7 +190,7 @@ const PlatformSettingsPage = () => {
 
   const getAdminId = (): string | null => {
     try {
-      const raw = sessionStorage.getItem('superadmin_session');
+      const raw = sessionStorage.getItem('superadmin_session') ?? localStorage.getItem('superadmin_session');
       if (raw) {
         const parsed = JSON.parse(raw);
         return parsed.id ?? parsed.admin_id ?? null;
