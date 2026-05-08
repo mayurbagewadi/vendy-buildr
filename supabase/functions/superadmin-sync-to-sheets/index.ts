@@ -178,7 +178,7 @@ serve(async (req) => {
       const rows = await getAllStoreRows(supabaseAdmin);
 
       if (rows.length > 0) {
-        await fetch(
+        const putRes = await fetch(
           'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A2?valueInputOption=RAW',
           {
             method: 'PUT',
@@ -186,6 +186,10 @@ serve(async (req) => {
             body: JSON.stringify({ values: rows }),
           }
         );
+        if (!putRes.ok) {
+          const putErr = await putRes.json();
+          throw new Error('Google Sheets write failed (' + putRes.status + '): ' + (putErr.error?.message ?? JSON.stringify(putErr)));
+        }
       }
 
       return new Response(
