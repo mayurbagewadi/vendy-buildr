@@ -182,8 +182,19 @@ serve(async (req) => {
           .eq('id', SETTINGS_ID);
       } else {
         console.log('[setup] using existing sheet_id:', sheetId);
-        // Write headers to row 1 for existing sheets (in case they're missing)
-        await fetch(
+
+        // Step 1: Clear all existing data (A1:Z10000) so we start fresh
+        const clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1:Z10000:clear';
+        const clearRes = await fetch(clearUrl, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const clearBody = await clearRes.json();
+        console.log('[setup] clear status:', clearRes.status, '| clearedRange:', clearBody.clearedRange ?? 'none');
+
+        // Step 2: Write headers to A1
+        const hdrsRes = await fetch(
           'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1?valueInputOption=RAW',
           {
             method: 'PUT',
@@ -191,7 +202,8 @@ serve(async (req) => {
             body: JSON.stringify({ values: [SHEET_HEADERS] }),
           }
         );
-        console.log('[setup] headers written to row 1');
+        const hdrsBody = await hdrsRes.json();
+        console.log('[setup] headers write status:', hdrsRes.status, '| updatedCells:', hdrsBody.updatedCells ?? 0);
       }
 
       // Backfill all existing stores
@@ -206,13 +218,13 @@ serve(async (req) => {
           headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
           body: JSON.stringify({ values: rows }),
         });
-        console.log('[setup] Google Sheets PUT status:', putRes.status);
+        const putBody = await putRes.json();
+        console.log('[setup] PUT status:', putRes.status, '| updatedRows:', putBody.updatedRows ?? 0, '| updatedCells:', putBody.updatedCells ?? 0);
         if (!putRes.ok) {
-          const putErr = await putRes.json();
-          console.error('[setup] PUT error body:', JSON.stringify(putErr));
-          throw new Error('Google Sheets write failed (' + putRes.status + '): ' + (putErr.error?.message ?? JSON.stringify(putErr)));
+          console.error('[setup] PUT error:', JSON.stringify(putBody));
+          throw new Error('Google Sheets write failed (' + putRes.status + '): ' + (putBody.error?.message ?? JSON.stringify(putBody)));
         }
-        console.log('[setup] PUT succeeded');
+        console.log('[setup] PUT succeeded — updatedRows:', putBody.updatedRows);
       }
 
       return new Response(
