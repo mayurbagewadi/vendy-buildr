@@ -354,7 +354,7 @@ async function getAllStoreRows(supabaseAdmin: ReturnType<typeof createClient>): 
   const userIds = (stores as any[]).map((s) => s.user_id);
   const storeIds = (stores as any[]).map((s) => s.id);
 
-  const [profilesRes, subsRes, ordersRes] = await Promise.all([
+  const [profilesRes, subsRes, ordersRes, authUsersRes] = await Promise.all([
     supabaseAdmin
       .from('profiles')
       .select('user_id, email, full_name, phone, created_at')
@@ -368,11 +368,18 @@ async function getAllStoreRows(supabaseAdmin: ReturnType<typeof createClient>): 
       .from('orders')
       .select('store_id, total')
       .in('store_id', storeIds),
+    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
   // Build lookup maps
   const profileMap = new Map<string, any>();
   ((profilesRes.data ?? []) as any[]).forEach((p) => profileMap.set(p.user_id, p));
+
+  // Auth email fallback — covers users who never completed registration
+  const authEmailMap = new Map<string, string>();
+  ((authUsersRes.data?.users ?? []) as any[]).forEach((u) => {
+    if (u.id && u.email) authEmailMap.set(u.id, u.email);
+  });
 
   // Best subscription per user (first in desc order = most recent active)
   const subMap = new Map<string, any>();
@@ -393,7 +400,8 @@ async function getAllStoreRows(supabaseAdmin: ReturnType<typeof createClient>): 
     const profile = profileMap.get(store.user_id);
     const sub = subMap.get(store.user_id);
     const orders = orderMap.get(store.id) ?? { count: 0, total: 0 };
-    return buildRow(store, profile, sub, orders);
+    const authEmail = authEmailMap.get(store.user_id) ?? '';
+    return buildRow(store, profile, sub, orders, authEmail);
   });
 }
 
@@ -409,7 +417,7 @@ async function getStoreRow(
 
   if (!store) return null;
 
-  const [profileRes, subRes] = await Promise.all([
+  const [profileRes, subRes, authUserRes] = await Promise.all([
     supabaseAdmin
       .from('profiles')
       .select('user_id, email, full_name, phone, created_at')
@@ -422,9 +430,11 @@ async function getStoreRow(
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabaseAdmin.auth.admin.getUserById((store as any).user_id),
   ]);
 
-  return buildRow(store as any, profileRes.data, subRes.data, { count: 0, total: 0 });
+  const authEmail = authUserRes.data?.user?.email ?? '';
+  return buildRow(store as any, profileRes.data, subRes.data, { count: 0, total: 0 }, authEmail);
 }
 
 async function appendRow(accessToken: string, sheetId: string, row: unknown[]): Promise<void> {
@@ -447,8 +457,11 @@ function buildRow(
   store: any,
   profile: any,
   sub: any,
-  orders: { count: number; total: number }
+  orders: { count: number; total: number },
+  authEmail = ''
 ): unknown[] {
+  const email = profile?.email || authEmail;
+  const name = profile?.full_name || emailToName(authEmail);
   const storeUrl = 'https://yesgive.shop/' + (store.slug ?? '');
   const planName = sub?.subscription_plans?.name ?? 'Free';
   const planStatus = sub?.status ?? 'None';
@@ -462,8 +475,8 @@ function buildRow(
   return [
     store.name ?? '',
     storeUrl,
-    profile?.email ?? '',
-    profile?.full_name ?? '',
+    email,
+    name,
     profile?.phone ?? '',
     store.whatsapp_number ?? '',
     store.custom_domain ?? '',
@@ -474,4 +487,16 @@ function buildRow(
     storeCreatedDate,
     ownerSignupDate,
   ];
+}
+
+function emailToName(email: string): string {
+  if (!email) return '';
+  const prefix = email.split('@')[0];
+  return prefix
+    .replace(/[._\-]/g, ' ')
+    .trim()
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .filter((w) => w.length > 0)
+    .join(' ') || prefix;
 }
