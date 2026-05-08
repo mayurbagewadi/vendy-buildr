@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Save, Trash2, Lock, ChevronDown, ChevronUp, Sheet, CheckCircle2, ExternalLink, Unlink, Loader2 } from "lucide-react";
+import { Save, Trash2, Lock, ChevronDown, ChevronUp, Sheet, CheckCircle2, ExternalLink, Unlink, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -80,6 +80,7 @@ const PlatformSettingsPage = () => {
   const [isSavingSheetUrl, setIsSavingSheetUrl] = useState(false);
   const [isConnectingSheets, setIsConnectingSheets] = useState(false);
   const [isDisconnectingSheets, setIsDisconnectingSheets] = useState(false);
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -304,6 +305,29 @@ const PlatformSettingsPage = () => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsDisconnectingSheets(false);
+    }
+  };
+
+  const handleForceSyncSheets = async () => {
+    setIsSyncingSheets(true);
+    try {
+      const adminId = getAdminId();
+      if (!adminId) throw new Error('Admin session not found');
+
+      toast({ title: 'Syncing…', description: 'Writing all stores to Google Sheet.' });
+
+      const { data, error } = await supabase.functions.invoke(
+        'superadmin-sync-to-sheets',
+        { body: { action: 'setup', admin_id: adminId } }
+      );
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error ?? 'Sync failed');
+
+      toast({ title: 'Sync complete', description: data.storeCount + ' stores written to sheet.' });
+    } catch (error: any) {
+      toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSyncingSheets(false);
     }
   };
 
@@ -877,20 +901,35 @@ const PlatformSettingsPage = () => {
                     </a>
                   )}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDisconnectGoogle}
-                    disabled={isDisconnectingSheets}
-                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                  >
-                    {isDisconnectingSheets ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Unlink className="h-4 w-4 mr-2" />
-                    )}
-                    Disconnect
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleForceSyncSheets}
+                      disabled={isSyncingSheets || isDisconnectingSheets}
+                    >
+                      {isSyncingSheets ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Sync All Stores
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDisconnectGoogle}
+                      disabled={isDisconnectingSheets || isSyncingSheets}
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                    >
+                      {isDisconnectingSheets ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Unlink className="h-4 w-4 mr-2" />
+                      )}
+                      Disconnect
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
