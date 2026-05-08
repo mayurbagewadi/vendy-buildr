@@ -262,12 +262,12 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 top-16 z-50 w-64 bg-card border-r min-h-screen p-4
+            fixed inset-y-0 left-0 top-16 z-50 w-64 bg-card border-r h-[calc(100vh-4rem)] overflow-hidden
             transform transition-transform duration-300 ease-out shadow-xl
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           `}
         >
-          <nav className="space-y-2">
+          <nav className="space-y-2 overflow-y-auto h-full p-4">
             {navigationItems.map((item) => (
               <Button
                 key={item.name}
