@@ -76,6 +76,8 @@ const PlatformSettingsPage = () => {
   // ── Google Sheets state ────────────────────────────────────────────────
   const [sheetsConnected, setSheetsConnected] = useState(false);
   const [sheetsSheetUrl, setSheetsSheetUrl] = useState<string>("");
+  const [sheetUrlInput, setSheetUrlInput] = useState<string>("");
+  const [isSavingSheetUrl, setIsSavingSheetUrl] = useState(false);
   const [isConnectingSheets, setIsConnectingSheets] = useState(false);
   const [isDisconnectingSheets, setIsDisconnectingSheets] = useState(false);
 
@@ -172,19 +174,50 @@ const PlatformSettingsPage = () => {
     try {
       const { data } = await supabase
         .from('platform_settings')
-        .select('superadmin_google_sheet_id, superadmin_google_sheet_url')
+        .select('superadmin_google_access_token, superadmin_google_sheet_id, superadmin_google_sheet_url')
         .eq('id', SETTINGS_ID)
         .single();
 
-      if (data?.superadmin_google_sheet_id) {
+      const url = (data as any)?.superadmin_google_sheet_url ?? '';
+      if (url) setSheetUrlInput(url);
+
+      if ((data as any)?.superadmin_google_access_token && (data as any)?.superadmin_google_sheet_id) {
         setSheetsConnected(true);
-        setSheetsSheetUrl((data as any).superadmin_google_sheet_url ?? '');
+        setSheetsSheetUrl(url);
       } else {
         setSheetsConnected(false);
         setSheetsSheetUrl('');
       }
     } catch {
       // Non-critical — settings page still loads
+    }
+  };
+
+  const handleSaveSheetUrl = async () => {
+    const url = sheetUrlInput.trim();
+    if (!url) {
+      toast({ title: 'Enter a sheet URL', variant: 'destructive' });
+      return;
+    }
+    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) {
+      toast({ title: 'Invalid URL', description: 'Paste a valid Google Sheets URL', variant: 'destructive' });
+      return;
+    }
+    const sheetId = match[1];
+    setIsSavingSheetUrl(true);
+    try {
+      const { error } = await supabase
+        .from('platform_settings')
+        .update({ superadmin_google_sheet_id: sheetId, superadmin_google_sheet_url: url })
+        .eq('id', SETTINGS_ID);
+      if (error) throw error;
+      setSheetsSheetUrl(url);
+      toast({ title: 'Sheet URL saved', description: 'Connect Google to sync data to this sheet.' });
+    } catch (err: any) {
+      toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSavingSheetUrl(false);
     }
   };
 
@@ -800,6 +833,28 @@ const PlatformSettingsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Sheet URL input — always visible */}
+              <div className="space-y-2">
+                <Label className="text-sm">Google Sheet URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={sheetUrlInput}
+                    onChange={(e) => setSheetUrlInput(e.target.value)}
+                    className="flex-1 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSaveSheetUrl}
+                    disabled={isSavingSheetUrl}
+                  >
+                    {isSavingSheetUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Paste your existing sheet URL. On connect, data syncs to this sheet instead of creating a new one.</p>
+              </div>
+
               {sheetsConnected ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
@@ -839,14 +894,6 @@ const PlatformSettingsPage = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground space-y-1">
-                    <p>On connect:</p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1">
-                      <li>Creates a master sheet in your Google Drive</li>
-                      <li>Backfills all existing stores immediately</li>
-                      <li>Every new store auto-appends a row going forward</li>
-                    </ul>
-                  </div>
                   <Button
                     onClick={handleConnectGoogle}
                     disabled={isConnectingSheets}
@@ -865,7 +912,7 @@ const PlatformSettingsPage = () => {
                     )}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    You'll be prompted to select a Google account and grant Sheets access. No other permissions requested.
+                    You'll be prompted to select a Google account and grant Sheets access.
                   </p>
                 </div>
               )}

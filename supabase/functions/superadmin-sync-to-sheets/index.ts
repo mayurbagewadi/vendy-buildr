@@ -196,14 +196,13 @@ serve(async (req) => {
 
     // ── disconnect: clear all Google tokens and sheet reference ──────────
     if (action === 'disconnect') {
+      // Only clear auth tokens — keep sheet_id and sheet_url so reconnect reuses same sheet
       await supabaseAdmin
         .from('platform_settings')
         .update({
           superadmin_google_access_token: null,
           superadmin_google_refresh_token: null,
           superadmin_google_token_expiry: null,
-          superadmin_google_sheet_id: null,
-          superadmin_google_sheet_url: null,
         })
         .eq('id', SETTINGS_ID);
 
