@@ -150,7 +150,11 @@ serve(async (req) => {
 
     // ── setup: create master sheet + backfill all existing stores ─────────
     if (action === 'setup') {
+      console.log('[setup] starting');
       const settings = await getSettings(supabaseAdmin);
+      console.log('[setup] access_token exists:', !!settings?.superadmin_google_access_token);
+      console.log('[setup] sheet_id:', settings?.superadmin_google_sheet_id ?? 'null');
+
       if (!settings?.superadmin_google_access_token) {
         return new Response(
           JSON.stringify({ error: 'Google not connected — run exchange_code first' }),
@@ -159,37 +163,46 @@ serve(async (req) => {
       }
 
       const accessToken = await getValidAccessToken(supabaseAdmin, settings);
+      console.log('[setup] access token refreshed/valid, length:', accessToken?.length ?? 0);
+
       let sheetId = settings.superadmin_google_sheet_id;
       let sheetUrl = settings.superadmin_google_sheet_url;
 
       // Create sheet only if it doesn't exist yet
       if (!sheetId) {
+        console.log('[setup] no sheet_id — creating new sheet');
         const created = await createMasterSheet(accessToken);
         sheetId = created.sheetId;
         sheetUrl = created.sheetUrl;
+        console.log('[setup] new sheet created:', sheetId);
 
         await supabaseAdmin
           .from('platform_settings')
           .update({ superadmin_google_sheet_id: sheetId, superadmin_google_sheet_url: sheetUrl })
           .eq('id', SETTINGS_ID);
+      } else {
+        console.log('[setup] using existing sheet_id:', sheetId);
       }
 
       // Backfill all existing stores
       const rows = await getAllStoreRows(supabaseAdmin);
+      console.log('[setup] rows to write:', rows.length);
 
       if (rows.length > 0) {
-        const putRes = await fetch(
-          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A2?valueInputOption=RAW',
-          {
-            method: 'PUT',
-            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: rows }),
-          }
-        );
+        const putUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A2?valueInputOption=RAW';
+        console.log('[setup] PUT url:', putUrl);
+        const putRes = await fetch(putUrl, {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: rows }),
+        });
+        console.log('[setup] Google Sheets PUT status:', putRes.status);
         if (!putRes.ok) {
           const putErr = await putRes.json();
+          console.error('[setup] PUT error body:', JSON.stringify(putErr));
           throw new Error('Google Sheets write failed (' + putRes.status + '): ' + (putErr.error?.message ?? JSON.stringify(putErr)));
         }
+        console.log('[setup] PUT succeeded');
       }
 
       return new Response(
