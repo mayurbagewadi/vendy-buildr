@@ -182,6 +182,16 @@ serve(async (req) => {
           .eq('id', SETTINGS_ID);
       } else {
         console.log('[setup] using existing sheet_id:', sheetId);
+        // Write headers to row 1 for existing sheets (in case they're missing)
+        await fetch(
+          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1?valueInputOption=RAW',
+          {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [SHEET_HEADERS] }),
+          }
+        );
+        console.log('[setup] headers written to row 1');
       }
 
       // Backfill all existing stores
