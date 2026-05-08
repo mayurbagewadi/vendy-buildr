@@ -148,12 +148,9 @@ serve(async (req) => {
       );
     }
 
-    // ── setup: create master sheet + backfill all existing stores ─────────
+    // ── setup: backfill only stores not already in the sheet (append-only, never overwrites) ──
     if (action === 'setup') {
-      console.log('[setup] starting');
       const settings = await getSettings(supabaseAdmin);
-      console.log('[setup] access_token exists:', !!settings?.superadmin_google_access_token);
-      console.log('[setup] sheet_id:', settings?.superadmin_google_sheet_id ?? 'null');
 
       if (!settings?.superadmin_google_access_token) {
         return new Response(
@@ -163,72 +160,75 @@ serve(async (req) => {
       }
 
       const accessToken = await getValidAccessToken(supabaseAdmin, settings);
-      console.log('[setup] access token refreshed/valid, length:', accessToken?.length ?? 0);
 
       let sheetId = settings.superadmin_google_sheet_id;
       let sheetUrl = settings.superadmin_google_sheet_url;
 
-      // Create sheet only if it doesn't exist yet
       if (!sheetId) {
-        console.log('[setup] no sheet_id — creating new sheet');
+        // First time: create sheet (headers written inside createMasterSheet)
         const created = await createMasterSheet(accessToken);
         sheetId = created.sheetId;
         sheetUrl = created.sheetUrl;
-        console.log('[setup] new sheet created:', sheetId);
-
         await supabaseAdmin
           .from('platform_settings')
           .update({ superadmin_google_sheet_id: sheetId, superadmin_google_sheet_url: sheetUrl })
           .eq('id', SETTINGS_ID);
       } else {
-        console.log('[setup] using existing sheet_id:', sheetId);
-
-        // Step 1: Clear all existing data (A1:Z10000) so we start fresh
-        const clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1:Z10000:clear';
-        const clearRes = await fetch(clearUrl, {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-        const clearBody = await clearRes.json();
-        console.log('[setup] clear status:', clearRes.status, '| clearedRange:', clearBody.clearedRange ?? 'none');
-
-        // Step 2: Write headers to A1
-        const hdrsRes = await fetch(
-          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1?valueInputOption=RAW',
-          {
-            method: 'PUT',
-            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: [SHEET_HEADERS] }),
-          }
+        // Existing sheet: write headers only if row 1 is empty
+        const hdrsCheckRes = await fetch(
+          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1',
+          { headers: { Authorization: 'Bearer ' + accessToken } }
         );
-        const hdrsBody = await hdrsRes.json();
-        console.log('[setup] headers write status:', hdrsRes.status, '| updatedCells:', hdrsBody.updatedCells ?? 0);
+        const hdrsCheck = await hdrsCheckRes.json();
+        const hasHeaders = ((hdrsCheck.values ?? [])[0]?.[0] ?? '') === 'Store Name';
+        if (!hasHeaders) {
+          await fetch(
+            'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1?valueInputOption=RAW',
+            {
+              method: 'PUT',
+              headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ values: [SHEET_HEADERS] }),
+            }
+          );
+        }
       }
 
-      // Backfill all existing stores
-      const rows = await getAllStoreRows(supabaseAdmin);
-      console.log('[setup] rows to write:', rows.length);
+      // Read existing store URLs already in sheet (column B = Store URL)
+      const existingRes = await fetch(
+        'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!B2:B',
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const existingData = await existingRes.json();
+      const existingUrls = new Set<string>(
+        ((existingData.values ?? []) as string[][]).flat().filter(Boolean).map((v: string) => v.trim())
+      );
+      console.log('[setup] rows already in sheet:', existingUrls.size);
 
-      if (rows.length > 0) {
-        const putUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A2?valueInputOption=RAW';
-        console.log('[setup] PUT url:', putUrl);
-        const putRes = await fetch(putUrl, {
-          method: 'PUT',
-          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values: rows }),
-        });
-        const putBody = await putRes.json();
-        console.log('[setup] PUT status:', putRes.status, '| updatedRows:', putBody.updatedRows ?? 0, '| updatedCells:', putBody.updatedCells ?? 0);
-        if (!putRes.ok) {
-          console.error('[setup] PUT error:', JSON.stringify(putBody));
-          throw new Error('Google Sheets write failed (' + putRes.status + '): ' + (putBody.error?.message ?? JSON.stringify(putBody)));
+      // Get all current stores from DB
+      const allRows = await getAllStoreRows(supabaseAdmin);
+
+      // Only append stores NOT already tracked (append-only — deleted stores stay in sheet)
+      const newRows = allRows.filter((row) => !existingUrls.has(((row as any[])[1] as string).trim()));
+      console.log('[setup] new rows to append:', newRows.length);
+
+      if (newRows.length > 0) {
+        const appendRes = await fetch(
+          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+          {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: newRows }),
+          }
+        );
+        const appendBody = await appendRes.json();
+        console.log('[setup] append status:', appendRes.status, '| updatedRows:', appendBody.updates?.updatedRows ?? 0);
+        if (!appendRes.ok) {
+          throw new Error('Google Sheets append failed (' + appendRes.status + '): ' + (appendBody.error?.message ?? JSON.stringify(appendBody)));
         }
-        console.log('[setup] PUT succeeded — updatedRows:', putBody.updatedRows);
       }
 
       return new Response(
-        JSON.stringify({ success: true, sheetId, sheetUrl, storeCount: rows.length }),
+        JSON.stringify({ success: true, sheetId, sheetUrl, storeCount: newRows.length }),
         { headers: corsHeaders }
       );
     }
