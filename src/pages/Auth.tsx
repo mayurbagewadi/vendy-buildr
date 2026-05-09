@@ -263,12 +263,13 @@ export default function Auth() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      sessionStorage.clear();
+
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
       });
-      
-      // Reload to clear state
+
       window.location.reload();
     } catch (error: any) {
       toast({
