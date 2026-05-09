@@ -422,15 +422,15 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { icon: "📺", text: "Video Tutorials", color: "text-red-500" },
-                { icon: "📖", text: "Help Documentation", color: "text-blue-500" },
-                { icon: "💬", text: "Contact Support", color: "text-green-500" },
-                { icon: "🎓", text: "Best Practices Guide", color: "text-purple-500" }
+                { icon: "📺", text: "Video Tutorials", color: "text-red-500", dim: true },
+                { icon: "📖", text: "Help Documentation", color: "text-blue-500", dim: false },
+                { icon: "💬", text: "Contact Support", color: "text-green-500", dim: false },
+                { icon: "🎓", text: "Best Practices Guide", color: "text-purple-500", dim: true }
               ].map((item, i) => (
                 <Button
                   key={i}
                   variant="ghost"
-                  className="w-full justify-start hover:bg-muted"
+                  className={`w-full justify-start hover:bg-muted ${item.dim ? "opacity-20" : ""}`}
                   size="sm"
                 >
                   <span className="text-lg mr-3">{item.icon}</span>
