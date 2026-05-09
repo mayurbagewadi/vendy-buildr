@@ -9,7 +9,6 @@ import {
   TrendingUp,
   ShoppingCart,
   Users,
-  Star,
   Clock
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -382,42 +381,6 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             ))}
-          </CardContent>
-        </Card>
-
-        {/* Getting Started Checklist */}
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Star className="w-5 h-5 text-primary" />
-                Getting Started
-              </CardTitle>
-              <span className="text-sm text-muted-foreground">2/4 complete</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2 mt-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: '50%' }} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { done: true, text: "Create account" },
-              { done: true, text: "Set up store" },
-              { done: false, text: "Add first product" },
-              { done: false, text: "Customize store appearance" }
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  item.done ? 'bg-success text-success-foreground' : 'bg-muted border-2 border-border'
-                }`}>
-                  {item.done && <span className="text-xs">✓</span>}
-                </div>
-                <span className={`text-sm ${item.done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                  {item.text}
-                </span>
-              </div>
-            ))}
-            <Button className="w-full mt-4" size="sm">Complete Setup</Button>
           </CardContent>
         </Card>
 
