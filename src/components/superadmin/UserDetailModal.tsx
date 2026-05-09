@@ -68,6 +68,17 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
     });
   };
 
+  const copyContactDetails = () => {
+    const lines = [
+      'Name: ' + (user.full_name || 'Not provided'),
+      'Email: ' + user.email,
+      'Phone: ' + (user.phone || 'Not provided'),
+      'WhatsApp: ' + (user.store?.whatsapp_number || 'Not provided'),
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
+    toast({ title: 'Copied', description: 'Contact details copied to clipboard' });
+  };
+
   const handleImpersonate = async () => {
     try {
       console.log('Attempting to login as user:', user.id, user.email);
@@ -217,7 +228,13 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
           <TabsContent value="overview" className="space-y-6">
             {/* Account Information */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Account Information</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">Account Information</h3>
+                <Button variant="outline" size="sm" onClick={copyContactDetails}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Details
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">User ID</p>
