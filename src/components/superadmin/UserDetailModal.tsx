@@ -231,8 +231,7 @@ export function UserDetailModal({ user, open, onClose, onRefresh }: UserDetailMo
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-lg">Account Information</h3>
                 <Button variant="outline" size="sm" onClick={copyContactDetails}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Details
+                  <Copy className="w-4 h-4" />
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-4">
