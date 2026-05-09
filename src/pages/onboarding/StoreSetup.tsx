@@ -29,6 +29,7 @@ const StoreSetup = () => {
   });
 
   const [slugStatus, setSlugStatus] = useState<"idle" | "available" | "taken">("idle");
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -324,10 +325,13 @@ const StoreSetup = () => {
                 value={formData.storeName}
                 onChange={(e) => handleStoreNameChange(e.target.value)}
                 maxLength={50}
+                className={showErrors && formData.storeName.length < 2 ? "border-destructive focus-visible:ring-destructive" : ""}
               />
-              <p className="text-xs text-muted-foreground">
-                This will be displayed to your customers
-              </p>
+              {showErrors && formData.storeName.length < 2 ? (
+                <p className="text-xs text-destructive">Store name must be at least 2 characters</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">This will be displayed to your customers</p>
+              )}
             </div>
 
             {/* Store Domain */}
@@ -415,17 +419,20 @@ const StoreSetup = () => {
                   placeholder="9876543210"
                   value={formData.whatsappNumber}
                   onChange={(e) => setFormData(prev => ({ ...prev, whatsappNumber: e.target.value.replace(/\D/g, "") }))}
-                  className="flex-1"
+                  className={`flex-1 ${showErrors && formData.whatsappNumber.length < 10 ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Customers will place orders via WhatsApp to this number
-              </p>
+              {showErrors && formData.whatsappNumber.length < 10 ? (
+                <p className="text-xs text-destructive">Enter a valid 10-digit WhatsApp number</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Customers will place orders via WhatsApp to this number</p>
+              )}
             </div>
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-center gap-4 mt-8 pt-6 border-t">
+            <div className="w-full sm:w-auto" onClick={() => { if (!isValidForm() && !loading) setShowErrors(true); }}>
             <Button
               onClick={handleContinue}
               disabled={!isValidForm() || loading}
@@ -441,6 +448,7 @@ const StoreSetup = () => {
                 "Continue"
               )}
             </Button>
+            </div>
           </div>
         </div>
       </div>
