@@ -323,7 +323,11 @@ const PlatformSettingsPage = () => {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error ?? 'Sync failed');
 
-      toast({ title: 'Sync complete', description: data.storeCount + ' stores written to sheet.' });
+      const parts = [];
+      if (data.appended > 0) parts.push(data.appended + ' new added');
+      if (data.updated > 0) parts.push(data.updated + ' blank rows updated');
+      if (parts.length === 0) parts.push('Sheet already up to date');
+      toast({ title: 'Sync complete', description: parts.join(', ') + '.' });
     } catch (error: any) {
       toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
     } finally {

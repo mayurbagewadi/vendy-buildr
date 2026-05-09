@@ -193,31 +193,51 @@ serve(async (req) => {
         }
       }
 
-      // Read existing store URLs already in sheet (column B = Store URL)
+      // Read all existing sheet data (columns A-M from row 2) to check URL + email
       const existingRes = await fetch(
-        'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!B2:B',
+        'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A2:M',
         { headers: { Authorization: 'Bearer ' + accessToken } }
       );
       const existingData = await existingRes.json();
-      const existingUrls = new Set<string>(
-        ((existingData.values ?? []) as string[][]).flat().filter(Boolean).map((v: string) => v.trim())
-      );
-      console.log('[setup] rows already in sheet:', existingUrls.size);
+      const existingRows: string[][] = ((existingData.values ?? []) as string[][]);
+
+      // Map: storeUrl → { sheetRowNumber (1-based, row 2 = index 0), hasEmail }
+      const urlToRow = new Map<string, { sheetRowNumber: number; hasEmail: boolean }>();
+      existingRows.forEach((row, idx) => {
+        const url = (row[1] ?? '').trim();   // column B
+        const email = (row[2] ?? '').trim(); // column C
+        if (url) urlToRow.set(url, { sheetRowNumber: idx + 2, hasEmail: !!email });
+      });
+      console.log('[setup] rows already in sheet:', urlToRow.size);
 
       // Get all current stores from DB
       const allRows = await getAllStoreRows(supabaseAdmin);
 
-      // Only append stores NOT already tracked (append-only — deleted stores stay in sheet)
-      const newRows = allRows.filter((row) => !existingUrls.has(((row as any[])[1] as string).trim()));
-      console.log('[setup] new rows to append:', newRows.length);
+      const toAppend: unknown[][] = [];
+      const toUpdate: Array<{ range: string; values: unknown[][] }> = [];
 
-      if (newRows.length > 0) {
+      for (const row of allRows) {
+        const storeUrl = ((row as any[])[1] as string).trim();
+        const entry = urlToRow.get(storeUrl);
+        if (!entry) {
+          // URL not in sheet → append as new row
+          toAppend.push(row);
+        } else if (!entry.hasEmail) {
+          // URL exists but email blank → update that specific row
+          toUpdate.push({ range: 'Stores!A' + entry.sheetRowNumber, values: [row as any[]] });
+        }
+        // else: URL exists and has email → skip
+      }
+      console.log('[setup] to append:', toAppend.length, '| to update (blank email):', toUpdate.length);
+
+      // Append new rows
+      if (toAppend.length > 0) {
         const appendRes = await fetch(
           'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/Stores!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
           {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: newRows }),
+            body: JSON.stringify({ values: toAppend }),
           }
         );
         const appendBody = await appendRes.json();
@@ -227,8 +247,25 @@ serve(async (req) => {
         }
       }
 
+      // Update rows that had blank email (batchUpdate — one API call for all)
+      if (toUpdate.length > 0) {
+        const batchRes = await fetch(
+          'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values:batchUpdate',
+          {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valueInputOption: 'RAW', data: toUpdate }),
+          }
+        );
+        const batchBody = await batchRes.json();
+        console.log('[setup] batchUpdate status:', batchRes.status, '| totalUpdatedRows:', batchBody.totalUpdatedRows ?? 0);
+        if (!batchRes.ok) {
+          throw new Error('Google Sheets batchUpdate failed (' + batchRes.status + '): ' + (batchBody.error?.message ?? JSON.stringify(batchBody)));
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: true, sheetId, sheetUrl, storeCount: newRows.length }),
+        JSON.stringify({ success: true, sheetId, sheetUrl, storeCount: toAppend.length + toUpdate.length, appended: toAppend.length, updated: toUpdate.length }),
         { headers: corsHeaders }
       );
     }
