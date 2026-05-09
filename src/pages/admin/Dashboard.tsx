@@ -422,17 +422,17 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { icon: "📺", text: "Video Tutorials", dim: true, href: null },
-                { icon: "📖", text: "Help Documentation", dim: false, href: "https://digitaldukandar.in/guide" },
-                { icon: "💬", text: "Contact Support", dim: false, href: null },
-                { icon: "🎓", text: "Best Practices Guide", dim: true, href: null }
+                { icon: "📺", text: "Video Tutorials", dim: true, action: null },
+                { icon: "📖", text: "Help Documentation", dim: false, action: () => window.open("https://digitaldukandar.in/guide", "_blank", "noopener,noreferrer") },
+                { icon: "💬", text: "Contact Support", dim: false, action: () => navigate("/admin/customer-care") },
+                { icon: "🎓", text: "Best Practices Guide", dim: true, action: null }
               ].map((item, i) => (
                 <Button
                   key={i}
                   variant="ghost"
                   className={`w-full justify-start hover:bg-muted ${item.dim ? "opacity-20" : ""}`}
                   size="sm"
-                  onClick={item.href ? () => window.open(item.href!, "_blank", "noopener,noreferrer") : undefined}
+                  onClick={item.action ?? undefined}
                 >
                   <span className="text-lg mr-3">{item.icon}</span>
                   <span className="text-sm">{item.text}</span>
