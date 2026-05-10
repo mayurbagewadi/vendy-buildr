@@ -138,7 +138,7 @@ const StoreSetup = () => {
 
   const isValidForm = () => {
     return (
-      formData.storeName.length >= 2 &&
+      formData.storeName.length >= 3 &&
       formData.storeName.length <= 50 &&
       formData.storeSlug.length >= 3 &&
       formData.storeSlug.length <= 30 &&
@@ -327,8 +327,8 @@ const StoreSetup = () => {
                 maxLength={50}
                 className={showErrors && formData.storeName.length < 2 ? "border-destructive focus-visible:ring-destructive" : ""}
               />
-              {showErrors && formData.storeName.length < 2 ? (
-                <p className="text-xs text-destructive">Store name must be at least 2 characters</p>
+              {showErrors && formData.storeName.length < 3 ? (
+                <p className="text-xs text-destructive">Store name must be at least 3 characters</p>
               ) : (
                 <p className="text-xs text-muted-foreground">This will be displayed to your customers</p>
               )}
