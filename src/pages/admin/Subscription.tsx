@@ -45,6 +45,7 @@ const SubscriptionPage = () => {
   const [loading, setLoading] = useState(true);
   const [actualOrderCount, setActualOrderCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [countdown, setCountdown] = useState<{
     days: number;
     hours: number;
@@ -549,6 +550,30 @@ const SubscriptionPage = () => {
       {/* Available Plans */}
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-4">Available Plans</h2>
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex items-center gap-3 bg-muted p-1.5 rounded-lg">
+            <button
+              onClick={() => setBillingCycle("monthly")}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                billingCycle === "monthly"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle("yearly")}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                billingCycle === "yearly"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Yearly
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {availablePlans.map((plan) => {
             const isCurrentPlan = currentSubscription?.plan_id === plan.id;
@@ -568,10 +593,28 @@ const SubscriptionPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-3xl font-bold text-foreground">
-                    {formatPrice(plan.monthly_price)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">/month</p>
+                  {billingCycle === "yearly" && plan.yearly_price ? (
+                    <>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-3xl font-bold text-foreground">
+                          {formatPrice(plan.yearly_price)}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        /year ·{" "}
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                          {formatPrice(Math.round(plan.yearly_price / 12))}/mo equivalent
+                        </span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold text-foreground">
+                        {formatPrice(plan.monthly_price)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">/month</p>
+                    </>
+                  )}
                 </div>
 
                 {/* Plan Features */}
