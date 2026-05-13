@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 // Utility function to generate URL-friendly slugs from product names
@@ -79,6 +79,8 @@ const AddProduct = () => {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); // Preview URLs for display
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [editingVariant, setEditingVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
+  const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
   const subscriptionLimits = useSubscriptionLimits();
 
   const form = useForm<ProductFormData>({
@@ -193,12 +195,13 @@ category: "",
 
     // Validate all files first
     const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
+      const isValidType = ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase()) ||
+        ALLOWED_IMAGE_TYPES.includes('image/' + file.name.split('.').pop()?.toLowerCase());
 
       if (!isValidType) {
         toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a valid image file`,
+          title: "Unsupported image format",
+          description: `${file.name} — please use JPG, PNG, WebP, or HEIC`,
           variant: "destructive",
         });
         return false;
@@ -209,36 +212,48 @@ category: "",
 
     if (validFiles.length === 0) return;
 
+    setIsProcessingImages(true);
+    setProcessingProgress({ current: 0, total: validFiles.length });
+
     try {
-      // Compress images if uploading to VPS
       const processedFiles: File[] = [];
 
-      for (const file of validFiles) {
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        setProcessingProgress({ current: i + 1, total: validFiles.length });
+
+        let normalized: File;
+        try {
+          normalized = await normalizeImageFormat(file);
+        } catch (convertError: any) {
+          toast({
+            title: "Cannot process image",
+            description: convertError.message || `Could not process ${file.name}. Please export as JPG from your camera app.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
         if (uploadDestination === 'vps') {
           try {
-            const originalSize = (file.size / 1024 / 1024).toFixed(2);
-            const compressed = await compressImage(file, 5);
+            const originalSize = (normalized.size / 1024 / 1024).toFixed(2);
+            const compressed = await compressImage(normalized, 5);
             const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
             console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
             processedFiles.push(compressed);
-          } catch (compressError) {
-            console.error('Compression failed:', compressError);
-            toast({
-              title: "Compression failed",
-              description: `Failed to compress ${file.name}, using original`,
-              variant: "destructive",
-            });
-            processedFiles.push(file);
+          } catch {
+            // Safe fallback: normalized is already JPEG, not raw HEIC
+            processedFiles.push(normalized);
           }
         } else {
-          processedFiles.push(file);
+          processedFiles.push(normalized);
         }
       }
 
-      // Store files and create preview URLs
-      setPendingFiles(prev => [...prev, ...processedFiles]);
+      if (processedFiles.length === 0) return;
 
-      const newPreviewUrls = processedFiles.map(file => URL.createObjectURL(file));
+      setPendingFiles(prev => [...prev, ...processedFiles]);
+      const newPreviewUrls = processedFiles.map(f => URL.createObjectURL(f));
       setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
 
       toast({
@@ -254,6 +269,8 @@ category: "",
         variant: "destructive",
       });
     } finally {
+      setIsProcessingImages(false);
+      setProcessingProgress(null);
       event.target.value = '';
     }
   };
@@ -1187,21 +1204,30 @@ category: "",
                     </div>
 
                     {/* File Upload */}
-                    <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
+                    <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive || isProcessingImages ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
                       <input
                         type="file"
                         multiple
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
                         onChange={handleImageUpload}
                         className="hidden"
                         id="image-upload"
-                        disabled={isUploadingToDrive}
+                        disabled={isUploadingToDrive || isProcessingImages}
                       />
                       <label
                         htmlFor="image-upload"
-                        className={`block p-6 text-center ${isUploadingToDrive ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                        className={`block p-6 text-center ${isUploadingToDrive || isProcessingImages ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
-                        {isUploadingToDrive && uploadingFiles.length > 0 ? (
+                        {isProcessingImages ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                            <span className="text-sm font-medium text-foreground">
+                              {processingProgress && processingProgress.total > 1
+                                ? `Processing image ${processingProgress.current} of ${processingProgress.total}…`
+                                : 'Processing image…'}
+                            </span>
+                          </div>
+                        ) : isUploadingToDrive && uploadingFiles.length > 0 ? (
                           <div className="space-y-4">
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 text-primary animate-spin" />

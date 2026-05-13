@@ -14,7 +14,7 @@ import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { generateStoreTXT } from "@/lib/generateStoreTXT";
 import { DeleteMyAccountModal } from "@/components/admin/DeleteMyAccountModal";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -581,11 +581,12 @@ const AdminSettings = () => {
 
     // Validate all files first
     const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
+      const isValidType = ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase()) ||
+        ALLOWED_IMAGE_TYPES.includes('image/' + file.name.split('.').pop()?.toLowerCase());
       if (!isValidType) {
         toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a valid image file`,
+          title: "Unsupported image format",
+          description: `${file.name} — please use JPG, PNG, WebP, or HEIC`,
           variant: "destructive",
         });
         return false;
@@ -629,14 +630,25 @@ const AdminSettings = () => {
         let totalUploadedSize = 0;
 
         for (const file of validFiles) {
-          // Compress
-          let processedFile = file;
+          // Normalize format first (converts HEIC → JPEG), then compress
+          let processedFile: File;
           try {
-            const compressed = await compressImage(file, 5);
+            processedFile = await normalizeImageFormat(file);
+          } catch (convertError: any) {
+            toast({
+              title: "Cannot process image",
+              description: convertError.message || `Could not process ${file.name}. Please export as JPG from your camera app.`,
+              variant: "destructive",
+            });
+            continue;
+          }
+
+          try {
+            const compressed = await compressImage(processedFile, 5);
             console.log(`Banner compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB`);
             processedFile = compressed;
           } catch (compressError) {
-            console.error('Compression failed, using original:', compressError);
+            console.error('Compression failed, using normalized:', compressError);
           }
 
           const fileSizeMB = processedFile.size / 1024 / 1024;
@@ -721,6 +733,18 @@ const AdminSettings = () => {
 
       for (let i = 0; i < validFiles.length; i++) {
         let file = validFiles[i];
+
+        // Normalize HEIC/HEIF to JPEG before any processing (canvas cannot decode HEIC)
+        try {
+          file = await normalizeImageFormat(file);
+        } catch (convertError: any) {
+          toast({
+            title: "Cannot process image",
+            description: convertError.message || `Could not process ${file.name}. Please export as JPG from your camera app.`,
+            variant: "destructive",
+          });
+          continue;
+        }
 
         setUploadingFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 10 } : f

@@ -3,6 +3,31 @@
  * Compresses images to a maximum file size while maintaining quality
  */
 
+const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const HEIC_MIME_TYPES = ['image/heic', 'image/heif'];
+const HEIC_EXTENSIONS = ['.heic', '.heif'];
+
+export const ALLOWED_IMAGE_TYPES = [...SUPPORTED_MIME_TYPES, ...HEIC_MIME_TYPES];
+
+const isHeic = (file: File): boolean => {
+  if (HEIC_MIME_TYPES.includes(file.type.toLowerCase())) return true;
+  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+  return HEIC_EXTENSIONS.includes(ext);
+};
+
+export async function normalizeImageFormat(file: File): Promise<File> {
+  if (!isHeic(file)) return file;
+
+  try {
+    const heic2any = (await import('heic2any')).default;
+    const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob;
+    const jpegName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+    return new File([blob], jpegName, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch {
+    throw new Error('Could not convert HEIC image. Please export the photo as JPG from your camera app and try again.');
+  }
+}
+
 export interface CompressionOptions {
   maxSizeMB?: number;
   maxWidthOrHeight?: number;

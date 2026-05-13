@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { DEMO_CATEGORIES } from "@/lib/demoProducts";
 import { getRandomDefaultImage } from "@/lib/defaultImages";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -499,16 +499,30 @@ export function CategoryManager() {
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    const isValidType = ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase()) ||
+      ALLOWED_IMAGE_TYPES.includes('image/' + file.name.split('.').pop()?.toLowerCase());
+    if (!isValidType) {
       toast({
-        title: "Invalid file type",
-        description: `${file.name} is not a valid image file`,
+        title: "Unsupported image format",
+        description: `${file.name} — please use JPG, PNG, WebP, or HEIC`,
         variant: "destructive",
       });
       return;
     }
 
     try {
+      // Normalize format first (converts HEIC/HEIF to JPEG for all destinations)
+      try {
+        file = await normalizeImageFormat(file);
+      } catch (convertError: any) {
+        toast({
+          title: "Cannot process image",
+          description: convertError.message || `Could not process ${file.name}. Please export as JPG from your camera app.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // For VPS: Compress and store locally (defer upload until save)
       if (uploadDestination === 'vps') {
         try {
@@ -520,8 +534,8 @@ export function CategoryManager() {
         } catch (compressError) {
           console.error('Compression failed:', compressError);
           toast({
-            title: "Compression failed",
-            description: `Failed to compress ${file.name}, using original`,
+            title: "Image too large",
+            description: "Could not compress the image. Please try a smaller file.",
             variant: "destructive",
           });
         }
