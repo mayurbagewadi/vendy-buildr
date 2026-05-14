@@ -1198,8 +1198,8 @@ category: "",
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {uploadDestination === 'vps'
-                          ? 'Images will be compressed to max 5MB and stored on your server'
-                          : 'Images will be uploaded to your connected Google Drive'}
+                          ? 'Supports JPG, PNG, WebP, HEIC. Optimized automatically.'
+                          : 'Supports JPG, PNG, WebP, HEIC. Uploaded to your Google Drive.'}
                       </p>
                     </div>
 
@@ -1273,8 +1273,8 @@ category: "",
                               <p className="text-sm font-medium">Or upload from device</p>
                               <p className="text-xs text-muted-foreground">
                                 {uploadDestination === 'vps'
-                                  ? 'PNG, JPG images. Auto-compressed to max 5MB and stored on VPS.'
-                                  : 'PNG, JPG images. Will be uploaded to your Google Drive.'}
+                                  ? 'Supports JPG, PNG, WebP, HEIC. Optimized automatically.'
+                                  : 'Supports JPG, PNG, WebP, HEIC. Uploaded to your Google Drive.'}
                               </p>
                             </div>
                             <span className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
