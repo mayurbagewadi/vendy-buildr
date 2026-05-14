@@ -644,8 +644,8 @@ const AdminSettings = () => {
           }
 
           try {
-            const compressed = await compressImage(processedFile, 5);
-            console.log(`Banner compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB`);
+            const compressed = await compressImage(processedFile, 1, 1600);
+            console.log(`Banner optimized: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB WebP`);
             processedFile = compressed;
           } catch (compressError) {
             console.error('Compression failed, using normalized:', compressError);

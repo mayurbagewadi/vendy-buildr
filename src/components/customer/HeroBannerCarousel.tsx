@@ -74,16 +74,31 @@ const HeroBannerCarousel = ({
           {convertedBanners.map((bannerUrl, index) => (
             <CarouselItem key={index}>
               <div className="relative h-[300px] md:h-[380px] lg:h-[450px]">
-                {/* Banner Image */}
-                <LazyImage
-                  src={bannerUrl}
-                  alt={generateStoreImageAlt({
-                    storeName,
-                    imageType: 'banner',
-                    description: storeDescription || undefined
-                  })}
-                  className="absolute inset-0 w-full h-full object-fill"
-                />
+                {index === 0 ? (
+                  // First banner is LCP element — load eagerly with high priority
+                  <img
+                    src={bannerUrl}
+                    alt={generateStoreImageAlt({
+                      storeName,
+                      imageType: 'banner',
+                      description: storeDescription || undefined
+                    })}
+                    className="absolute inset-0 w-full h-full object-fill"
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                  />
+                ) : (
+                  <LazyImage
+                    src={bannerUrl}
+                    alt={generateStoreImageAlt({
+                      storeName,
+                      imageType: 'banner',
+                      description: storeDescription || undefined
+                    })}
+                    className="absolute inset-0 w-full h-full object-fill"
+                  />
+                )}
               </div>
             </CarouselItem>
           ))}

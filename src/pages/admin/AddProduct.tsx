@@ -237,9 +237,9 @@ category: "",
         if (uploadDestination === 'vps') {
           try {
             const originalSize = (normalized.size / 1024 / 1024).toFixed(2);
-            const compressed = await compressImage(normalized, 5);
+            const compressed = await compressImage(normalized, 1, 1200);
             const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
-            console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+            console.log(`Image optimized: ${originalSize}MB → ${compressedSize}MB WebP`);
             processedFiles.push(compressed);
           } catch {
             // Safe fallback: normalized is already JPEG, not raw HEIC

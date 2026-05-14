@@ -312,7 +312,7 @@ category: "",
 
         if (uploadDestination === 'vps') {
           try {
-            const compressed = await compressImage(normalized, 5);
+            const compressed = await compressImage(normalized, 1, 1200);
             processedFiles.push(compressed);
           } catch {
             processedFiles.push(normalized);

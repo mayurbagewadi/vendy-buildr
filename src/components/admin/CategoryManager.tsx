@@ -527,9 +527,9 @@ export function CategoryManager() {
       if (uploadDestination === 'vps') {
         try {
           const originalSize = (file.size / 1024 / 1024).toFixed(2);
-          const compressed = await compressImage(file, 5);
+          const compressed = await compressImage(file, 0.5, 800);
           const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
-          console.log(`Image compressed: ${originalSize}MB → ${compressedSize}MB`);
+          console.log(`Image optimized: ${originalSize}MB → ${compressedSize}MB WebP`);
           file = compressed;
         } catch (compressError) {
           console.error('Compression failed:', compressError);

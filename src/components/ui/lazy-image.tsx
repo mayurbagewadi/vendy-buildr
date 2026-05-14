@@ -70,6 +70,7 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
         className
       )}
       loading="lazy"
+      decoding="async"
       {...props}
     />
   );

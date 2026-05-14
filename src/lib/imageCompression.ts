@@ -44,58 +44,34 @@ export interface CompressionOptions {
  */
 export async function compressImage(
   file: File,
-  maxSizeMB: number = 5
+  maxSizeMB: number = 5,
+  maxWidthOrHeight: number = 1200
 ): Promise<File> {
-  const options: CompressionOptions = {
-    maxSizeMB,
-    maxWidthOrHeight: 2048,
-    initialQuality: 0.9,
-    minQuality: 0.6,
-    step: 0.05,
-  };
-
-  // Check if file is already under the size limit
   const fileSizeMB = file.size / 1024 / 1024;
-  if (fileSizeMB <= maxSizeMB) {
-    console.log(`Image already under ${maxSizeMB}MB:`, fileSizeMB.toFixed(2) + 'MB');
+
+  // Skip only if already WebP and within both size and dimension limits
+  if (file.type === 'image/webp' && fileSizeMB <= maxSizeMB) {
     return file;
   }
 
-  console.log(`Compressing image from ${fileSizeMB.toFixed(2)}MB to max ${maxSizeMB}MB`);
+  const options: CompressionOptions = {
+    maxSizeMB,
+    maxWidthOrHeight,
+    initialQuality: 0.85,
+    minQuality: 0.55,
+    step: 0.05,
+  };
 
   try {
-    // Read file as data URL
     const dataUrl = await readFileAsDataURL(file);
-
-    // Load image
     const img = await loadImage(dataUrl);
-
-    // Calculate target dimensions (maintain aspect ratio)
-    const { width, height } = calculateDimensions(
-      img.width,
-      img.height,
-      options.maxWidthOrHeight!
-    );
-
-    // Compress with iterative quality reduction
-    const compressedFile = await compressWithQuality(
-      img,
-      width,
-      height,
-      file.name,
-      file.type,
-      options
-    );
-
+    const { width, height } = calculateDimensions(img.width, img.height, options.maxWidthOrHeight!);
+    const compressedFile = await compressWithQuality(img, width, height, file.name, options);
     const compressedSizeMB = compressedFile.size / 1024 / 1024;
-    console.log(
-      `Compression complete: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB`
-    );
-
+    console.log(`Image optimized: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB WebP`);
     return compressedFile;
   } catch (error) {
     console.error('Image compression failed:', error);
-    // Return original file if compression fails
     return file;
   }
 }
@@ -159,7 +135,6 @@ async function compressWithQuality(
   width: number,
   height: number,
   fileName: string,
-  fileType: string,
   options: CompressionOptions
 ): Promise<File> {
   const canvas = document.createElement('canvas');
@@ -171,40 +146,29 @@ async function compressWithQuality(
     throw new Error('Failed to get canvas context');
   }
 
-  // Draw image on canvas
   ctx.drawImage(img, 0, 0, width, height);
 
-  // Determine output format (default to JPEG for better compression)
-  let mimeType = fileType;
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(fileType)) {
-    mimeType = 'image/jpeg';
-  }
+  // Always output WebP — 40-60% smaller than JPEG at equivalent visual quality
+  const mimeType = 'image/webp';
+  const webpFileName = fileName.replace(/\.[^.]+$/, '.webp');
+  const maxSizeBytes = options.maxSizeMB! * 1024 * 1024;
 
-  // Iteratively reduce quality until size requirement is met
   let quality = options.initialQuality!;
-  const maxSizeBytes = (options.maxSizeMB! * 1024 * 1024);
   let blob: Blob | null = null;
 
   while (quality >= options.minQuality!) {
     blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(
-        (b) => resolve(b),
-        mimeType,
-        quality
-      );
+      canvas.toBlob((b) => resolve(b), mimeType, quality);
     });
 
     if (!blob) {
       throw new Error('Failed to create blob from canvas');
     }
 
-    // Check if size requirement is met
     if (blob.size <= maxSizeBytes) {
-      console.log(`Compression successful at quality ${quality.toFixed(2)}`);
       break;
     }
 
-    // Reduce quality for next iteration
     quality -= options.step!;
   }
 
@@ -212,13 +176,10 @@ async function compressWithQuality(
     throw new Error('Failed to compress image');
   }
 
-  // Convert blob to File
-  const compressedFile = new File([blob], fileName, {
+  return new File([blob], webpFileName, {
     type: mimeType,
     lastModified: Date.now(),
   });
-
-  return compressedFile;
 }
 
 /**
