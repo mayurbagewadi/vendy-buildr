@@ -1784,7 +1784,7 @@ const AdminSettings = () => {
                   <input
                     type="file"
                     id="bannerUpload"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                     multiple
                     onChange={handleBannerUpload}
                     className="hidden"

@@ -82,6 +82,7 @@ const HeroBannerCarousel = ({
                     loading="eager"
                     decoding="async"
                     fetchPriority="high"
+                    onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
                   />
                 ) : (
                   <LazyImage

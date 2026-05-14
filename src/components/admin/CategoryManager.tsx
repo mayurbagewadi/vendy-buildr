@@ -762,7 +762,7 @@ export function CategoryManager() {
                 <input
                   type="file"
                   id="categoryImageUpload"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                   onChange={(e) => handleImageUpload(e, false)}
                   className="hidden"
                   disabled={isUploadingImage || !isDriveConnected}
@@ -1099,7 +1099,7 @@ export function CategoryManager() {
                     <input
                       type="file"
                       id="editCategoryImageUpload"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                       onChange={(e) => handleImageUpload(e, true)}
                       className="hidden"
                       disabled={isUploadingImage || !isDriveConnected}
