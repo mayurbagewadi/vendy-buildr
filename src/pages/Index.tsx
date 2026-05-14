@@ -692,10 +692,7 @@ const Index = () => {
               Turn your Instagram shop into a real website — free for the first 50 sellers. We'll set it up personally for you.
             </p>
             <p className="text-white/80 text-base">
-              To claim your spot,{" "}
-              <Link to="/auth" className="underline underline-offset-4 font-semibold text-white hover:text-white/80 transition-colors">
-                sign up for free →
-              </Link>
+              To claim your spot, <span className="font-semibold text-white">sign up for free →</span>
             </p>
           </div>
         </div>
