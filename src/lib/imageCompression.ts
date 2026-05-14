@@ -3,7 +3,7 @@
  * Compresses images to a maximum file size while maintaining quality
  */
 
-const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const HEIC_MIME_TYPES = ['image/heic', 'image/heif'];
 const HEIC_EXTENSIONS = ['.heic', '.heif'];
 

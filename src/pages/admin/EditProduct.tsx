@@ -1147,7 +1147,7 @@ category: "",
                       <input
                         type="file"
                         multiple
-                        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                         onChange={handleImageUpload}
                         className="hidden"
                         id="image-upload-edit"

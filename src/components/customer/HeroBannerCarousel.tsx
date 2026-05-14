@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { generateStoreImageAlt } from "@/lib/seo/altTags";
 import LazyImage from "@/components/ui/lazy-image";
@@ -24,15 +23,11 @@ const HeroBannerCarousel = ({
   logoUrl, 
   storeDescription 
 }: HeroBannerCarouselProps) => {
-  const [convertedBanners, setConvertedBanners] = useState<string[]>([]);
-
-  useEffect(() => {
-    // Convert all banner URLs on mount
-    const converted = bannerUrls
-      .map(url => convertToDirectImageUrl(url) || url)
-      .filter(Boolean);
-    setConvertedBanners(converted);
-  }, [bannerUrls]);
+  // Compute synchronously so the first render already has banner URLs —
+  // this lets the browser preload scanner see fetchPriority="high" immediately
+  const convertedBanners = bannerUrls
+    .map(url => convertToDirectImageUrl(url) || url)
+    .filter(Boolean);
 
   // If no banners, show gradient fallback
   if (!convertedBanners.length) {
