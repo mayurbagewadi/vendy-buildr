@@ -9,15 +9,20 @@ import {
   TrendingUp,
   ShoppingCart,
   Users,
-  Clock
+  Clock,
+  Instagram,
+  ArrowRight
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getProducts, initializeProducts } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { buildStoreUrl } from "@/lib/domainUtils";
 
+const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeProducts: 0,
@@ -178,6 +183,15 @@ const AdminDashboard = () => {
     };
 
     initializeDashboard();
+
+    supabase
+      .from('platform_settings')
+      .select('support_whatsapp_number')
+      .eq('id', SETTINGS_ID)
+      .single()
+      .then(({ data }) => {
+        if (data?.support_whatsapp_number) setSupportWhatsapp(data.support_whatsapp_number);
+      });
   }, []);
 
   // Real-time countdown timer
@@ -269,6 +283,39 @@ const AdminDashboard = () => {
             </p>
           </div>
         </div>
+
+        {/* Instagram Free Website Offer Banner */}
+        {supportWhatsapp && (
+          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6" style={{ background: 'linear-gradient(135deg, #5B21B6 0%, #7C3AED 35%, #DB2777 70%, #EA580C 100%)' }}>
+            <div className="absolute inset-0 bg-black/20 rounded-2xl" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Instagram className="w-5 h-5 text-white" />
+                </div>
+                <div className="sm:hidden">
+                  <p className="text-xs font-semibold text-white/70 uppercase tracking-wider">Limited · 50 Spots</p>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-0.5 hidden sm:block">Limited Offer · Only 50 Spots</p>
+                <p className="text-white font-bold text-base sm:text-lg leading-snug">
+                  Sell on Instagram? Claim your free website now.
+                </p>
+                <p className="text-white/75 text-sm mt-0.5">We'll set it up personally for you — free for first 50 sellers.</p>
+              </div>
+              <a
+                href={`https://wa.me/${supportWhatsapp}?text=${encodeURIComponent("Hi, I want to claim my free website for my Instagram business")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 inline-flex items-center gap-2 bg-white text-purple-700 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors shadow-lg"
+              >
+                Claim Your Spot
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

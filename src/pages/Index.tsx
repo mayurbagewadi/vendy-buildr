@@ -664,6 +664,44 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Instagram Sellers Offer Section */}
+      <section className="relative overflow-hidden py-16 lg:py-24" style={{ background: 'linear-gradient(135deg, #5B21B6 0%, #7C3AED 30%, #DB2777 65%, #EA580C 100%)' }}>
+        <div className="absolute inset-0 bg-black/25" />
+        <div className="container relative mx-auto px-4 lg:px-8">
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+            {/* Left - Text */}
+            <div className="text-white">
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                <Instagram className="w-4 h-4" />
+                Limited Offer · Only 50 Spots
+              </div>
+              <h2 className="font-playfair text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                Sell on Instagram?<br />
+                Get Your Free<br />
+                Website.
+              </h2>
+              <p className="text-lg md:text-xl text-white/85 mb-8 leading-relaxed max-w-lg">
+                Turn your Instagram shop into a real website free for the first 50 Instagram sellers. We'll set it up personally for you.
+              </p>
+              <p className="text-white/85 text-base">
+                To claim your spot, sign up for free 
+              </p>
+            </div>
+            {/* Right - Image */}
+            <div className="flex justify-center lg:justify-end">
+              <img
+                src="/instagram-offer.webp"
+                alt="Instagram seller with her online store"
+                className="w-full max-w-md lg:max-w-lg rounded-2xl shadow-2xl"
+                loading="lazy"
+                width={1000}
+                height={667}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section ref={featuresRef} id="features" className="container mx-auto px-4 lg:px-8 py-24 lg:py-32">
         <div className="max-w-7xl mx-auto">
