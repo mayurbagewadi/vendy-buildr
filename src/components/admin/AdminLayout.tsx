@@ -743,7 +743,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         )}
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto smooth-scroll">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden smooth-scroll">
           <div className="p-4 lg:p-6">
             <div className="max-w-7xl mx-auto">
               {children}
