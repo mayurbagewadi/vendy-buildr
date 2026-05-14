@@ -121,6 +121,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     return cloned;
   }, [resolvedTheme]);
 
+  // Lock body scroll while admin layout is mounted — prevents double scroll on mobile
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   useEffect(() => {
     if (!lottieRef.current) return;
     if (unreadCount > 0) {
