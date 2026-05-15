@@ -1027,113 +1027,37 @@ category: "",
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Google Drive Connection Alert */}
-                    <Alert
-                      style={!isDriveConnected ? {
-                        animation: 'popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                      } : {}}
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="flex items-center justify-between gap-4">
-                        {isDriveConnected ? (
-                          <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                            ✓ Google Drive Connected - You can now upload images from your device
-                          </span>
-                        ) : (
-                          <>
-                            <span className="text-sm font-bold text-red-600 dark:text-red-500">
-                              Connect Google Drive to upload images from your device
-                            </span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                setIsConnectingDrive(true);
-                                try {
-                                  const { error } = await supabase.auth.signInWithOAuth({
-                                    provider: 'google',
-                                    options: {
-                                      scopes: 'https://www.googleapis.com/auth/drive.file',
-                                      redirectTo: window.location.href,
-                                      queryParams: {
-                                        access_type: 'offline',
-                                        prompt: 'consent',
-                                      },
-                                    },
-                                  });
-                                  if (error) throw error;
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Connection Failed",
-                                    description: error.message,
-                                    variant: "destructive",
-                                  });
-                                  setIsConnectingDrive(false);
-                                }
-                              }}
-                              disabled={isConnectingDrive}
-                            >
-                              {isConnectingDrive ? "Connecting..." : "Connect Drive"}
-                            </Button>
-                          </>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-
-                    {/* Google Drive URL Input */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium">Google Drive Image URL</label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Paste Google Drive shareable link"
-                          value={newImageUrl}
-                          onChange={(e) => setNewImageUrl(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addImageUrl();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={addImageUrl} size="sm">
-                          Add URL
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Make sure the link is set to "Anyone with the link can view"
-                      </p>
-                    </div>
-
-                    {/* Upload Destination Selector */}
-                    <div className="space-y-3">
+                    {/* Upload Destination Toggle */}
+                    <div className="space-y-2">
                       <label className="text-sm font-medium">Upload Destination</label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="uploadDestinationEdit"
-                            value="vps"
-                            checked={uploadDestination === 'vps'}
-                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
-                            className="w-4 h-4 text-primary"
-                          />
-                          <span className="text-sm">VPS Server</span>
-                        </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="uploadDestinationEdit"
-                            value="drive"
-                            checked={uploadDestination === 'drive'}
-                            onChange={(e) => setUploadDestination(e.target.value as 'drive' | 'vps')}
-                            className="w-4 h-4 text-primary"
-                            disabled={!isDriveConnected}
-                          />
-                          <span className="text-sm">
-                            Google Drive <span className="text-xs text-green-600 font-medium">(Recommended - Safe & Reliable)</span> {!isDriveConnected && <span className="text-xs text-red-500 font-medium">(Not Connected)</span>}
-                          </span>
-                        </label>
+                      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setUploadDestination('vps')}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                            uploadDestination === 'vps'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          VPS Server
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => isDriveConnected && setUploadDestination('drive')}
+                          disabled={!isDriveConnected}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                            uploadDestination === 'drive'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Google Drive
+                          {isDriveConnected
+                            ? <span className="ml-1 text-xs text-green-600 font-medium">(Recommended)</span>
+                            : <span className="ml-1 text-xs text-muted-foreground">(Not Connected)</span>
+                          }
+                        </button>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {uploadDestination === 'vps'
@@ -1141,6 +1065,88 @@ category: "",
                           : 'Supports JPG, PNG, WebP, HEIC. Uploaded to your Google Drive.'}
                       </p>
                     </div>
+
+                    {/* Google Drive Connection Alert — only shown when Drive is selected */}
+                    {uploadDestination === 'drive' && (
+                      <Alert
+                        style={!isDriveConnected ? {
+                          animation: 'popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        } : {}}
+                      >
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="flex items-center justify-between gap-4">
+                          {isDriveConnected ? (
+                            <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                              ✓ Google Drive Connected - You can now upload images from your device
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-sm font-bold text-red-600 dark:text-red-500">
+                                Connect Google Drive to upload images from your device
+                              </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  setIsConnectingDrive(true);
+                                  try {
+                                    const { error } = await supabase.auth.signInWithOAuth({
+                                      provider: 'google',
+                                      options: {
+                                        scopes: 'https://www.googleapis.com/auth/drive.file',
+                                        redirectTo: window.location.href,
+                                        queryParams: {
+                                          access_type: 'offline',
+                                          prompt: 'consent',
+                                        },
+                                      },
+                                    });
+                                    if (error) throw error;
+                                  } catch (error: any) {
+                                    toast({
+                                      title: "Connection Failed",
+                                      description: error.message,
+                                      variant: "destructive",
+                                    });
+                                    setIsConnectingDrive(false);
+                                  }
+                                }}
+                                disabled={isConnectingDrive}
+                              >
+                                {isConnectingDrive ? "Connecting..." : "Connect Drive"}
+                              </Button>
+                            </>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Google Drive URL Input — only shown when Drive is selected */}
+                    {uploadDestination === 'drive' && (
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium">Google Drive Image URL</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Paste Google Drive shareable link"
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addImageUrl();
+                              }
+                            }}
+                          />
+                          <Button type="button" onClick={addImageUrl} size="sm">
+                            Add URL
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Make sure the link is set to "Anyone with the link can view"
+                        </p>
+                      </div>
+                    )}
 
                     {/* File Upload */}
                     <div className={`relative border-2 border-dashed rounded-lg overflow-hidden transition-colors ${isUploadingToDrive || isProcessingImages ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
