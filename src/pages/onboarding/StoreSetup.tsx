@@ -30,6 +30,7 @@ const StoreSetup = () => {
 
   const [slugStatus, setSlugStatus] = useState<"idle" | "available" | "taken">("idle");
   const [showErrors, setShowErrors] = useState(false);
+  const [existingStoreId, setExistingStoreId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -94,6 +95,28 @@ const StoreSetup = () => {
       .maybeSingle();
 
     setUserName(profile?.full_name || user.email || "Guest");
+
+    // Check if store already exists (user came back from step 2)
+    const { data: existingStore } = await supabase
+      .from("stores")
+      .select("id, name, slug, description, whatsapp_number")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingStore) {
+      setExistingStoreId(existingStore.id);
+      const rawPhone = existingStore.whatsapp_number || "";
+      const countryCode = ["+971", "+44", "+1"].find(c => rawPhone.startsWith(c)) || "+91";
+      const whatsappNumber = rawPhone.replace(countryCode, "");
+      setFormData({
+        storeName: existingStore.name || "",
+        storeSlug: existingStore.slug || "",
+        description: existingStore.description || "",
+        whatsappNumber,
+        countryCode,
+      });
+      setSlugStatus("available");
+    }
   };
 
   const generateSlug = (name: string) => {
@@ -124,15 +147,20 @@ const StoreSetup = () => {
       setSlugStatus("idle");
       return;
     }
-    
+
     setCheckingSlug(true);
     const { data } = await supabase
       .from("stores")
-      .select("slug")
+      .select("id, slug")
       .eq("slug", slug)
       .maybeSingle();
-    
-    setSlugStatus(data ? "taken" : "available");
+
+    // Slug belongs to this user's own store — treat as available
+    if (data && existingStoreId && data.id === existingStoreId) {
+      setSlugStatus("available");
+    } else {
+      setSlugStatus(data ? "taken" : "available");
+    }
     setCheckingSlug(false);
   };
 
@@ -155,112 +183,126 @@ const StoreSetup = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      // Get Google Drive tokens from session
-      const { data: { session } } = await supabase.auth.getSession();
-      const providerToken = session?.provider_token;
-      const providerRefreshToken = session?.provider_refresh_token;
-      const tokenExpiry = providerToken ? new Date(Date.now() + 3600 * 1000).toISOString() : null;
+      if (existingStoreId) {
+        // UPDATE path — store already exists (user came back from step 2)
+        // Skip demo seeding, referral, and subscription (already done on first creation)
+        const { error } = await supabase
+          .from("stores")
+          .update({
+            name: formData.storeName,
+            slug: formData.storeSlug,
+            subdomain: formData.storeSlug,
+            description: formData.description || null,
+            whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`,
+          })
+          .eq("id", existingStoreId);
 
-      const { data: storeData, error } = await supabase.from("stores").insert({
-        user_id: user.id,
-        name: formData.storeName,
-        slug: formData.storeSlug,
-        subdomain: formData.storeSlug,
-        description: formData.description || null,
-        whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`,
-        google_access_token: providerToken || null,
-        google_refresh_token: providerRefreshToken || null,
-        google_token_expiry: tokenExpiry,
-      }).select();
+        if (error) throw error;
 
-      if (error) throw error;
+        toast({
+          title: "Store updated!",
+          description: "Your store details have been saved."
+        });
+      } else {
+        // INSERT path — new store creation
+        const { data: { session } } = await supabase.auth.getSession();
+        const providerToken = session?.provider_token;
+        const providerRefreshToken = session?.provider_refresh_token;
+        const tokenExpiry = providerToken ? new Date(Date.now() + 3600 * 1000).toISOString() : null;
 
-      // Get the new store ID (needed for both demo data and referral tracking)
-      const newStoreId = storeData && storeData.length > 0 ? storeData[0].id : null;
+        const { data: storeData, error } = await supabase.from("stores").insert({
+          user_id: user.id,
+          name: formData.storeName,
+          slug: formData.storeSlug,
+          subdomain: formData.storeSlug,
+          description: formData.description || null,
+          whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`,
+          google_access_token: providerToken || null,
+          google_refresh_token: providerRefreshToken || null,
+          google_token_expiry: tokenExpiry,
+        }).select();
 
-      // Seed demo products and categories for the new store
-      if (newStoreId) {
-        await seedDemoDataForStore(newStoreId);
-      }
+        if (error) throw error;
 
-      // Check for referral code and create store_referrals record
-      const referralCode = sessionStorage.getItem('referral_code');
-      if (referralCode && newStoreId) {
-        console.log('[StoreSetup] Processing referral code:', referralCode);
+        const newStoreId = storeData && storeData.length > 0 ? storeData[0].id : null;
 
-        // Find the helper by referral code
-        const { data: helper } = await supabase
-          .from('helpers')
-          .select('id')
-          .eq('referral_code', referralCode)
-          .eq('status', 'Active')
-          .maybeSingle();
+        if (newStoreId) {
+          await seedDemoDataForStore(newStoreId);
+        }
 
-        if (helper) {
-          // Get user profile for store owner info
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone')
-            .eq('user_id', user.id)
+        const referralCode = sessionStorage.getItem('referral_code');
+        if (referralCode && newStoreId) {
+          console.log('[StoreSetup] Processing referral code:', referralCode);
+
+          const { data: helper } = await supabase
+            .from('helpers')
+            .select('id')
+            .eq('referral_code', referralCode)
+            .eq('status', 'Active')
             .maybeSingle();
 
-          // Create store_referrals record
-          const trialEndDate = new Date();
-          trialEndDate.setDate(trialEndDate.getDate() + 14); // 14-day trial
+          if (helper) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, email, phone')
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-          const { error: referralError } = await supabase
-            .from('store_referrals')
-            .insert({
-              helper_id: helper.id,
-              store_id: newStoreId, // FIX: Link referral to the created store
-              store_owner_name: profile?.full_name || formData.storeName,
-              store_owner_email: profile?.email || user.email || '',
-              store_owner_phone: formData.whatsappNumber,
-              trial_start_date: new Date().toISOString().split('T')[0],
-              trial_end_date: trialEndDate.toISOString().split('T')[0],
-              trial_status: 'Active',
-              subscription_purchased: false,
-              commission_status: 'Not Applicable'
-            });
+            const trialEndDate = new Date();
+            trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-          if (referralError) {
-            console.error('[StoreSetup] Error creating referral record:', referralError);
+            const { error: referralError } = await supabase
+              .from('store_referrals')
+              .insert({
+                helper_id: helper.id,
+                store_id: newStoreId,
+                store_owner_name: profile?.full_name || formData.storeName,
+                store_owner_email: profile?.email || user.email || '',
+                store_owner_phone: formData.whatsappNumber,
+                trial_start_date: new Date().toISOString().split('T')[0],
+                trial_end_date: trialEndDate.toISOString().split('T')[0],
+                trial_status: 'Active',
+                subscription_purchased: false,
+                commission_status: 'Not Applicable'
+              });
+
+            if (referralError) {
+              console.error('[StoreSetup] Error creating referral record:', referralError);
+            } else {
+              console.log('[StoreSetup] Referral record created successfully');
+            }
+
+            sessionStorage.removeItem('referral_code');
           } else {
-            console.log('[StoreSetup] Referral record created successfully');
+            console.log('[StoreSetup] No active helper found for referral code:', referralCode);
           }
-
-          // Clear the referral code from sessionStorage
-          sessionStorage.removeItem('referral_code');
-        } else {
-          console.log('[StoreSetup] No active helper found for referral code:', referralCode);
         }
-      }
 
-      // Auto-assign default subscription plan
-      const { data: defaultPlan } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("is_default_plan", true)
-        .maybeSingle();
+        const { data: defaultPlan } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("is_default_plan", true)
+          .maybeSingle();
 
-      if (defaultPlan) {
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + (defaultPlan.trial_days || 14));
+        if (defaultPlan) {
+          const trialEndDate = new Date();
+          trialEndDate.setDate(trialEndDate.getDate() + (defaultPlan.trial_days || 14));
 
-        await supabase.from("subscriptions").insert({
-          user_id: user.id,
-          plan_id: defaultPlan.id,
-          status: "trial",
-          trial_ends_at: trialEndDate.toISOString(),
-          current_period_start: new Date().toISOString(),
-          current_period_end: trialEndDate.toISOString()
+          await supabase.from("subscriptions").insert({
+            user_id: user.id,
+            plan_id: defaultPlan.id,
+            status: "trial",
+            trial_ends_at: trialEndDate.toISOString(),
+            current_period_start: new Date().toISOString(),
+            current_period_end: trialEndDate.toISOString()
+          });
+        }
+
+        toast({
+          title: "Store created!",
+          description: "Your store is ready with demo products."
         });
       }
-
-      toast({
-        title: "Store created!",
-        description: "Your store is ready with demo products."
-      });
 
       navigate("/onboarding/google-drive");
     } catch (error: any) {
@@ -325,7 +367,7 @@ const StoreSetup = () => {
                 value={formData.storeName}
                 onChange={(e) => handleStoreNameChange(e.target.value)}
                 maxLength={50}
-                className={showErrors && formData.storeName.length < 2 ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={showErrors && formData.storeName.length < 3 ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {showErrors && formData.storeName.length < 3 ? (
                 <p className="text-xs text-destructive">Store name must be at least 3 characters</p>
