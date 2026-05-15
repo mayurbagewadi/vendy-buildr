@@ -559,21 +559,21 @@ const Orders = () => {
 
   return (
     <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-xl sm:text-3xl font-bold">
               Orders Management
               {viewLimit !== null && totalOrderCount > 0 && (
-                <span className="text-muted-foreground text-xl ml-2">
+                <span className="text-muted-foreground text-base sm:text-xl ml-2">
                   (Showing {Math.min(orders.length, viewLimit)} of {totalOrderCount})
                 </span>
               )}
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm">
               Track and manage customer orders (Auto-cleanup: Orders older than 2 months)
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <Button
               onClick={() => {
                 const prev = getPreviousMonthYear();
@@ -582,8 +582,8 @@ const Orders = () => {
               variant="outline"
               size="sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export Previous Month
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export Previous Month</span>
             </Button>
             <Button
               onClick={() => {
@@ -593,12 +593,12 @@ const Orders = () => {
               variant="outline"
               size="sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export Current Month
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export Current Month</span>
             </Button>
             <Button onClick={loadOrders} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
           </div>
         </div>
@@ -747,17 +747,123 @@ const Orders = () => {
               <p className="text-muted-foreground">No orders found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile Cards — visible only on mobile */}
+            <div className="sm:hidden space-y-3">
+              {filteredOrders.map((order) => {
+                const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
+                const hasAutoDiscount = order.automatic_discount_id && order.automatic_discount_id.trim() !== "";
+                const bothApplied = hasCoupon && hasAutoDiscount;
+                return (
+                  <div
+                    key={order.id}
+                    className={`rounded-xl border border-border bg-card p-4 space-y-3 ${bothApplied ? "border-red-400 bg-red-50 dark:bg-red-950" : ""}`}
+                  >
+                    {/* Row 1: Order # + Amount */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-0.5">
+                        {getDiscountBadges(order)}
+                        <span className="font-semibold text-sm text-foreground">{order.order_number}</span>
+                      </div>
+                      <span className={`font-bold text-base ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
+                        {formatCurrency(order.total)}
+                      </span>
+                    </div>
+
+                    {/* Row 2: Customer + Date */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-foreground">{order.customer_name}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(order.created_at)}</span>
+                    </div>
+
+                    {/* Row 3: Items + Payment + Status */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Package className="h-3.5 w-3.5" />
+                        <span>
+                          {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''} • {order.payment_method.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="ml-auto">
+                        {order.status === 'cancelled' || order.status === 'delivered'
+                          ? getStatusBadge(order.status)
+                          : order.payment_status === 'failed'
+                            ? <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Failed</Badge>
+                            : getStatusBadge(order.status)
+                        }
+                      </div>
+                    </div>
+
+                    {/* Row 4: Action Buttons */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-border">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewOrder(order)}
+                        className="h-10 w-10 p-0"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditOrder(order)}
+                        className="h-10 w-10 p-0"
+                        title="Edit Order"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {order.status !== "delivered" && order.status !== "cancelled" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleShipClick(order)}
+                          className="h-10 flex-1 gap-2"
+                          disabled={shippingOrderId === order.id || updatingOrderId === order.id}
+                          title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
+                        >
+                          {shippingOrderId === order.id || updatingOrderId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Truck className="h-4 w-4" />
+                          )}
+                          Ship
+                        </Button>
+                      )}
+                      {order.status !== "cancelled" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancelOrder(order)}
+                          className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                          disabled={updatingOrderId === order.id}
+                          title="Cancel Order"
+                        >
+                          {updatingOrderId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Ban className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table — hidden on mobile */}
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Order #</TableHead>
-                    <TableHead>Date & Time</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date & Time</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Items</TableHead>
+                    <TableHead className="hidden md:table-cell">Phone</TableHead>
+                    <TableHead className="hidden md:table-cell">Items</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -771,26 +877,36 @@ const Orders = () => {
                       <TableCell className="font-medium">
                         <div className="flex flex-col gap-0.5">
                           {getDiscountBadges(order)}
-                          <span>{order.order_number}</span>
+                          <span className="text-sm">{order.order_number}</span>
+                          <span className="sm:hidden mt-1">
+                            {order.status === 'cancelled' || order.status === 'delivered'
+                              ? getStatusBadge(order.status)
+                              : order.payment_status === 'failed'
+                                ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
+                                : getStatusBadge(order.status)
+                            }
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="text-sm">
                           <div>{formatDate(order.created_at)}</div>
                           <div className="text-muted-foreground">{formatTime(order.created_at)}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{order.customer_name}</TableCell>
-                      <TableCell>{order.customer_phone}</TableCell>
                       <TableCell>
+                        <span className="text-sm">{order.customer_name}</span>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{order.customer_phone}</TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="text-sm">
                           {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''}
                         </div>
                       </TableCell>
-                      <TableCell className={`font-medium ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
+                      <TableCell className={`font-medium text-sm ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
                         {formatCurrency(order.total)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {order.status === 'cancelled' || order.status === 'delivered'
                           ? getStatusBadge(order.status)
                           : order.payment_status === 'failed'
@@ -805,6 +921,7 @@ const Orders = () => {
                             size="sm"
                             onClick={() => handleViewOrder(order)}
                             title="View Details"
+                            className="h-10 w-10 p-0"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -813,6 +930,7 @@ const Orders = () => {
                             size="sm"
                             onClick={() => handleEditOrder(order)}
                             title="Edit Order"
+                            className="h-10 w-10 p-0"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -822,7 +940,7 @@ const Orders = () => {
                               size="sm"
                               onClick={() => handleShipClick(order)}
                               title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
-                              className="text-blue-600 hover:text-blue-700"
+                              className="h-10 w-10 p-0 text-blue-600 hover:text-blue-700"
                               disabled={shippingOrderId === order.id || updatingOrderId === order.id}
                             >
                               {shippingOrderId === order.id || updatingOrderId === order.id ? (
@@ -838,7 +956,7 @@ const Orders = () => {
                               size="sm"
                               onClick={() => handleCancelOrder(order)}
                               title="Cancel Order"
-                              className="text-destructive hover:text-destructive"
+                              className="h-10 w-10 p-0 text-destructive hover:text-destructive"
                               disabled={updatingOrderId === order.id}
                             >
                               {updatingOrderId === order.id ? (
@@ -856,6 +974,7 @@ const Orders = () => {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
 
           {filteredOrders.length > 0 && (

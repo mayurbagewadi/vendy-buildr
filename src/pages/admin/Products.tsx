@@ -390,11 +390,11 @@ const Products = () => {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0">
+              <div className="overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="min-w-[200px]">Product</TableHead>
+                      <TableHead className="min-w-[150px]">Product</TableHead>
                       <TableHead className="hidden sm:table-cell">Category</TableHead>
                       <TableHead className="hidden md:table-cell">Variants</TableHead>
                       <TableHead>Price</TableHead>
@@ -414,7 +414,7 @@ const Products = () => {
                         }`}
                         onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                       >
-                        <TableCell className="min-w-[200px]">
+                        <TableCell className="min-w-[150px]">
                           <div className="flex items-center space-x-2 lg:space-x-3">
                             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
                               <Package className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground" />
@@ -459,7 +459,7 @@ const Products = () => {
                                   : `/products/${product.slug || product.id}`;
                                 window.open(productUrl, '_blank');
                               }}
-                              className="h-8 w-8 p-0"
+                              className="h-10 w-10 p-0"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -471,7 +471,7 @@ const Products = () => {
                                 e.stopPropagation();
                                 navigate(`/admin/products/edit/${product.id}`);
                               }}
-                              className="h-8 w-8 p-0"
+                              className="h-10 w-10 p-0"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
