@@ -325,13 +325,13 @@ const Products = () => {
                   placeholder="Search products by name, SKU, or category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 border-primary"
                 />
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px] border-primary">
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
@@ -346,7 +346,7 @@ const Products = () => {
                 </Select>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[150px] border-primary">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
