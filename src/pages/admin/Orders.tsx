@@ -1015,7 +1015,7 @@ const Orders = () => {
               {shiprocketConnected && (
                 <Button
                   onClick={handleShipViaShiprocket}
-                  className="w-full h-14 justify-start gap-4"
+                  className="w-full h-14 justify-start gap-4 border-primary"
                   variant="outline"
                 >
                   <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
@@ -1029,7 +1029,7 @@ const Orders = () => {
               )}
               <Button
                 onClick={handleManualDelivery}
-                className="w-full h-14 justify-start gap-4"
+                className="w-full h-14 justify-start gap-4 border-primary"
                 variant="outline"
               >
                 <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
