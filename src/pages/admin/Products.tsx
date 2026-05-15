@@ -390,7 +390,83 @@ const Products = () => {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+              <>
+              {/* Mobile Cards — visible only on mobile */}
+              <div className="sm:hidden space-y-3">
+                {paginatedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    data-product-id={product.id}
+                    className={`rounded-xl border border-border bg-card p-4 space-y-3 transition-all duration-500 ${
+                      highlightedProductId === product.id
+                        ? 'border-success bg-success/5'
+                        : ''
+                    }`}
+                  >
+                    {/* Row 1: Icon + Name + Price */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Package className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono truncate">{product.sku}</p>
+                      </div>
+                      <span className="font-bold text-sm text-foreground whitespace-nowrap">
+                        {product.priceRange || (product.basePrice ? formatPrice(product.basePrice) : '—')}
+                      </span>
+                    </div>
+
+                    {/* Row 2: Category + Status */}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                      <Badge className={`${getStatusColor(product.status)} text-xs ml-auto`} variant="outline">
+                        {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                      </Badge>
+                    </div>
+
+                    {/* Row 3: Actions */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-border">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-10 p-0"
+                        title="View in Store"
+                        onClick={() => {
+                          const productUrl = storeSlug
+                            ? `/${storeSlug}/products/${product.slug || product.id}`
+                            : `/products/${product.slug || product.id}`;
+                          window.open(productUrl, '_blank');
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 flex-1 gap-2"
+                        title="Edit Product"
+                        onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                        title="Delete Product"
+                        onClick={() => setProductToDelete(product.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table — hidden on mobile */}
+              <div className="hidden sm:block overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -478,7 +554,7 @@ const Products = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                              className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setProductToDelete(product.id);
@@ -494,6 +570,7 @@ const Products = () => {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
 
             {/* Pagination */}
