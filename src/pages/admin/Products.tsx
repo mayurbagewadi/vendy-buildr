@@ -397,16 +397,16 @@ const Products = () => {
                   <div
                     key={product.id}
                     data-product-id={product.id}
-                    className={`rounded-xl border border-border bg-card p-4 space-y-3 transition-all duration-500 ${
+                    className={`rounded-xl border border-border bg-card p-4 space-y-3 transition-all duration-500 border-l-4 border-l-primary ${
                       highlightedProductId === product.id
-                        ? 'border-success bg-success/5'
+                        ? 'border-success border-l-success bg-success/5'
                         : ''
                     }`}
                   >
                     {/* Row 1: Icon + Name + Price */}
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Package className="w-5 h-5 text-muted-foreground" />
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Package className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm text-foreground truncate">{product.name}</p>
