@@ -430,7 +430,7 @@ const Products = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-10 w-10 p-0"
+                        className="h-10 w-10 p-0 border-border"
                         title="View in Store"
                         onClick={() => {
                           const productUrl = storeSlug
@@ -444,7 +444,7 @@ const Products = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-10 flex-1 gap-2"
+                        className="h-10 flex-1 gap-2 border-border"
                         title="Edit Product"
                         onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                       >
