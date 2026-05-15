@@ -1030,13 +1030,13 @@ category: "",
                     {/* Upload Destination Toggle */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Upload Destination</label>
-                      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
+                      <div className="flex items-center gap-1 p-1 bg-muted border border-border rounded-lg w-fit">
                         <button
                           type="button"
                           onClick={() => setUploadDestination('vps')}
                           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                             uploadDestination === 'vps'
-                              ? 'bg-background text-foreground shadow-sm'
+                              ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
@@ -1048,7 +1048,7 @@ category: "",
                           disabled={!isDriveConnected}
                           className={`px-4 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             uploadDestination === 'drive'
-                              ? 'bg-background text-foreground shadow-sm'
+                              ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
