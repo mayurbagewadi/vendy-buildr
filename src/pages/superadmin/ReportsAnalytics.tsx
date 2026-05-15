@@ -97,8 +97,8 @@ const SuperAdminReportsAnalytics = () => {
   }, []);
 
   const checkSuperAdmin = async () => {
-    const isSuperAdmin = sessionStorage.getItem("isSuperAdmin") === "true";
-    if (!isSuperAdmin) {
+    const session = localStorage.getItem("superadmin_session");
+    if (!session) {
       toast.error("Access denied. Super Admin only.");
       navigate("/superadmin/login");
       return;

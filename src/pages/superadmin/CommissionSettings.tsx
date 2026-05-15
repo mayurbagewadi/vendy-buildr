@@ -246,7 +246,7 @@ export default function SuperAdminCommissionSettings() {
 
   const checkSuperAdminAccess = async () => {
     try {
-      const session = sessionStorage.getItem('superadmin_session');
+      const session = localStorage.getItem('superadmin_session');
       if (!session) {
         navigate('/superadmin/login');
         return;

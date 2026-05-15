@@ -44,7 +44,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   useEffect(() => {
     const initializeAuth = async () => {
       // First check for superadmin session
-      const session = sessionStorage.getItem('superadmin_session');
+      const session = localStorage.getItem('superadmin_session');
       if (session) {
         const sessionData = JSON.parse(session);
         setAdminName(sessionData.fullName);
@@ -89,7 +89,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   }, [navigate]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('superadmin_session');
+    localStorage.removeItem('superadmin_session');
     localStorage.removeItem('superadmin_remember');
     toast({
       title: "Logged Out",

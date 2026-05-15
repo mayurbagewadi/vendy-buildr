@@ -84,7 +84,7 @@ const PlatformSettingsPage = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const superAdminSession = sessionStorage.getItem('superadmin_session');
+      const superAdminSession = localStorage.getItem('superadmin_session');
       if (superAdminSession) {
         await Promise.all([loadPlans(), loadSettings(), loadGoogleSheetsStatus()]);
         return;
@@ -224,7 +224,7 @@ const PlatformSettingsPage = () => {
 
   const getAdminId = (): string | null => {
     try {
-      const raw = sessionStorage.getItem('superadmin_session') ?? localStorage.getItem('superadmin_session');
+      const raw = localStorage.getItem('superadmin_session');
       if (raw) {
         const parsed = JSON.parse(raw);
         return parsed.id ?? parsed.admin_id ?? null;

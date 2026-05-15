@@ -114,7 +114,7 @@ const SuperadminMarketplace = () => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        const superAdminSession = sessionStorage.getItem('superadmin_session');
+        const superAdminSession = localStorage.getItem('superadmin_session');
         if (!superAdminSession) {
           navigate('/superadmin/login');
           return;

@@ -27,7 +27,7 @@ const CustomDomainsPage = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const superAdminSession = sessionStorage.getItem('superadmin_session');
+      const superAdminSession = localStorage.getItem('superadmin_session');
       if (superAdminSession) {
         fetchStoresWithDomains();
         return;

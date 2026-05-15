@@ -120,7 +120,7 @@ export default function Users() {
   useEffect(() => {
     const checkAuth = async () => {
       // Check for superadmin session first
-      const session = sessionStorage.getItem('superadmin_session');
+      const session = localStorage.getItem('superadmin_session');
       if (session) {
         fetchUsers();
         fetchQuickStats();

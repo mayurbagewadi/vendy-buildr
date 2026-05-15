@@ -113,7 +113,7 @@ export default function Billing() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const session = sessionStorage.getItem('superadmin_session');
+      const session = localStorage.getItem('superadmin_session');
       if (session) {
         loadBillingData();
         return;
