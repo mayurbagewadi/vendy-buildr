@@ -316,7 +316,7 @@ const Products = () => {
         </div>
 
         {/* Search and Filters */}
-        <Card>
+        <Card className="border-primary">
           <CardContent className="p-4 lg:p-6">
             <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
               <div className="relative flex-1">
