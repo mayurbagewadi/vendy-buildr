@@ -46,8 +46,8 @@ const GoogleDriveSetup = () => {
 
       setStoreId(store.id);
 
-      // ✓ If OAuth returned new tokens, save them to database
-      if (providerToken && !store.google_access_token) {
+      // ✓ If OAuth returned new tokens, save them to database (always update — covers reconnect)
+      if (providerToken) {
         const updates: any = {
           google_access_token: providerToken,
         };
@@ -96,6 +96,11 @@ const GoogleDriveSetup = () => {
         console.error('Drive verification error:', error);
         setIsDriveConnected(false);
         setIsVerifying(false);
+        toast({
+          title: "Verification Failed",
+          description: "Could not verify Google Drive connection. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
