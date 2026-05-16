@@ -611,7 +611,7 @@ const SEOSettingsPage = () => {
             <div className="px-6 py-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <img src="/search-console.svg" alt="Google Search Console" className="w-4 h-4" />
                   <span className="font-medium text-sm">Google Search Console</span>
                   <Badge variant="secondary" className="text-xs">Recommended</Badge>
                 </div>
