@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { getProducts, initializeProducts } from "@/lib/productData";
 import { supabase } from "@/integrations/supabase/client";
 import { buildStoreUrl } from "@/lib/domainUtils";
+import { InstagramPromoTermsModal } from "@/components/InstagramPromoTermsModal";
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -303,6 +304,9 @@ const AdminDashboard = () => {
                   Sell on Instagram? Claim your free website now.
                 </p>
                 <p className="text-white/75 text-sm mt-0.5">We'll set it up personally for you — free for first 50 sellers.</p>
+                <div className="mt-1.5">
+                  <InstagramPromoTermsModal />
+                </div>
               </div>
               <a
                 href={`https://wa.me/${supportWhatsapp}?text=${encodeURIComponent("Hi, I want to claim my free website for my Instagram business")}`}

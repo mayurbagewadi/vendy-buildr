@@ -54,6 +54,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
 import IntroAudio from "@/components/IntroAudio";
+import { InstagramPromoTermsModal } from "@/components/InstagramPromoTermsModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
@@ -694,6 +695,9 @@ const Index = () => {
             <p className="text-white/80 text-base">
               To claim your spot, <span className="font-semibold text-white">sign up for free →</span>
             </p>
+            <div className="mt-4">
+              <InstagramPromoTermsModal />
+            </div>
           </div>
         </div>
       </section>
