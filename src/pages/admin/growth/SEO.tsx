@@ -599,7 +599,7 @@ const SEOSettingsPage = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
+              <img src="/google-analytics.svg" alt="Google" className="w-5 h-5" />
               Google Integrations
             </CardTitle>
             <CardDescription>Connect Google tools to verify ownership, boost indexing, and track visitors</CardDescription>
