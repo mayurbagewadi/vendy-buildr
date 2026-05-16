@@ -114,6 +114,32 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     };
   }, []);
 
+  // Inject per-store Google Analytics — deferred to idle to protect LCP.
+  // Guard key is per-store-id so multi-store navigation injects each store's GA correctly.
+  useEffect(() => {
+    if (!store?.id) return;
+    const gaId = store['ga_measurement_id'] as string | undefined;
+    if (!gaId || !/^G-[A-Z0-9]+$/.test(gaId)) return;
+    const guardKey = '__ga_injected_' + store.id;
+    if ((window as any)[guardKey]) return;
+    (window as any)[guardKey] = true;
+    const inject = () => {
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+      document.head.appendChild(script);
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      const gtag = (...args: any[]) => { (window as any).dataLayer.push(args); };
+      gtag('js', new Date());
+      gtag('config', gaId);
+    };
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(inject, { timeout: 3000 });
+    } else {
+      setTimeout(inject, 100);
+    }
+  }, [store?.id]);
+
   // Fetch store data. Runs once per slug. Background re-fetch keeps cache warm.
   useEffect(() => {
     if (!slug) { setLoading(false); return; }

@@ -24,7 +24,10 @@ import {
   RefreshCw,
   Zap,
   CheckCircle,
-  XCircle
+  XCircle,
+  Link2,
+  Link2Off,
+  BarChart3
 } from "lucide-react";
 import {
   Tooltip,
@@ -58,6 +61,12 @@ const SEOSettingsPage = () => {
   const [isIndexing, setIsIndexing] = useState(false);
   const [sitemapResult, setSitemapResult] = useState<any>(null);
   const [indexingResult, setIndexingResult] = useState<any>(null);
+  const [gscConnected, setGscConnected] = useState(false);
+  const [gscEmail, setGscEmail] = useState("");
+  const [gscSites, setGscSites] = useState<string[]>([]);
+  const [isConnectingGsc, setIsConnectingGsc] = useState(false);
+  const [isVerifyingGsc, setIsVerifyingGsc] = useState(false);
+  const [gaMeasurementId, setGaMeasurementId] = useState("");
 
   const [settings, setSettings] = useState<SEOSettings>({
     alternate_names: "",
@@ -116,6 +125,10 @@ const SEOSettingsPage = () => {
       setStoreId(store.id);
       setStoreName(store.name || "");
       setStoreSlug(store.slug || "");
+      setGaMeasurementId((store as any).ga_measurement_id || "");
+      if ((store as any).gsc_access_token) {
+        verifyGsc();
+      }
 
       /**
        * Auto-fill Logic (Fallback Chain):
@@ -159,6 +172,10 @@ const SEOSettingsPage = () => {
 
   const handleSave = async () => {
     if (!storeId) return;
+    if (gaMeasurementId && !/^G-[A-Z0-9]+$/.test(gaMeasurementId)) {
+      toast({ variant: "destructive", title: "Invalid GA Measurement ID", description: "Must be in format G-XXXXXXXXXX (e.g. G-ABC123DEF4)" });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -176,6 +193,7 @@ const SEOSettingsPage = () => {
           country: settings.country,
           opening_hours: settings.opening_hours,
           price_range: settings.price_range,
+          ga_measurement_id: gaMeasurementId || null,
         })
         .eq("id", storeId);
 
@@ -340,6 +358,127 @@ const SEOSettingsPage = () => {
       });
     } finally {
       setIsIndexing(false);
+    }
+  };
+
+  // ── GIS utilities ─────────────────────────────────────────────────────
+  const loadGISScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).google?.accounts?.oauth2) { resolve(); return; }
+      const existing = document.getElementById('google-gis-script');
+      if (existing) { existing.addEventListener('load', () => resolve()); return; }
+      const script = document.createElement('script');
+      script.id = 'google-gis-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const requestGoogleCode = (clientId: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const client = (window as any).google.accounts.oauth2.initCodeClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification',
+          ux_mode: 'popup',
+          callback: (response: any) => {
+            if (response.code) resolve(response.code);
+            else reject(new Error(response.error ?? 'Google OAuth cancelled'));
+          },
+        });
+        client.requestCode();
+      } catch (err: any) {
+        reject(err);
+      }
+    });
+  };
+
+  const verifyGsc = async () => {
+    setIsVerifyingGsc(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'verify' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error || !data) { setGscConnected(false); return; }
+      setGscConnected(data.connected ?? false);
+      setGscEmail(data.email ?? '');
+      setGscSites(data.sites ?? []);
+    } catch {
+      setGscConnected(false);
+    } finally {
+      setIsVerifyingGsc(false);
+    }
+  };
+
+  const handleConnectGsc = async () => {
+    setIsConnectingGsc(true);
+    try {
+      const { data: configData, error: configError } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'get_client_id' },
+      });
+      if (configError || !configData?.client_id) throw new Error('Failed to get OAuth config');
+
+      await loadGISScript();
+      const code = await requestGoogleCode(configData.client_id);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { data: exchangeData, error: exchangeError } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'exchange_code', code },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (exchangeError || !exchangeData?.success) throw new Error('Failed to save Google credentials');
+
+      // Verify ownership via Google Site Verification API (0-friction — Nginx serves the file)
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'setup_verification' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (verifyError || !verifyData?.success) {
+        toast({
+          variant: 'destructive',
+          title: 'Verification Failed',
+          description: verifyData?.error ?? 'Google could not verify your store. Make sure your store is live and try again.',
+        });
+        setIsConnectingGsc(false);
+        return;
+      }
+
+      await verifyGsc();
+
+      toast({ title: 'Google Search Console Connected', description: 'Your store is now verified and registered in Google Search Console.' });
+    } catch (err: any) {
+      if (err.message !== 'Google OAuth cancelled') {
+        toast({ variant: 'destructive', title: 'Connection Failed', description: err.message });
+      }
+    } finally {
+      setIsConnectingGsc(false);
+    }
+  };
+
+  const handleDisconnectGsc = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'disconnect' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      setGscConnected(false);
+      setGscEmail('');
+      setGscSites([]);
+      toast({ title: 'Disconnected', description: 'Google Search Console has been disconnected.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
   };
 
@@ -802,6 +941,107 @@ const SEOSettingsPage = () => {
                   <li>Use "Request Indexing" when you make important changes and need Google to re-crawl quickly</li>
                   <li>You can use both methods - they complement each other</li>
                 </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Search Console */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                Google Search Console
+                <Badge variant="secondary" className="text-xs">Recommended</Badge>
+              </CardTitle>
+              <CardDescription>
+                Connect your Google account so sitemap submissions use your verified GSC property
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isVerifyingGsc ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying connection...
+                </div>
+              ) : gscConnected ? (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-green-500 bg-green-50 dark:bg-green-950/20">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-green-700 dark:text-green-400">Connected</p>
+                        <p className="text-xs text-green-600 dark:text-green-500">{gscEmail}</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleDisconnectGsc}>
+                      <Link2Off className="w-3.5 h-3.5 mr-1.5" />
+                      Disconnect
+                    </Button>
+                  </div>
+                  {gscSites.length > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium">Verified properties ({gscSites.length}):</p>
+                      <ul className="space-y-0.5">
+                        {gscSites.slice(0, 3).map((site) => (
+                          <li key={site} className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                            {site}
+                          </li>
+                        ))}
+                        {gscSites.length > 3 && (
+                          <li>+{gscSites.length - 3} more</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Without connecting, sitemap submissions require your service account to be manually added as a verified owner in each GSC property.
+                  </p>
+                  <Button onClick={handleConnectGsc} disabled={isConnectingGsc} variant="outline">
+                    {isConnectingGsc ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-4 h-4 mr-2" />
+                        Connect Google Search Console
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Google Analytics */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Google Analytics
+              </CardTitle>
+              <CardDescription>
+                Track visitors and behavior on your storefront — injected automatically on all store pages
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="gaMeasurementId">GA4 Measurement ID</Label>
+                <Input
+                  id="gaMeasurementId"
+                  placeholder="G-XXXXXXXXXX"
+                  value={gaMeasurementId}
+                  onChange={(e) => setGaMeasurementId(e.target.value.toUpperCase())}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Find this in Google Analytics → Admin → Data Streams → your stream. Leave empty to disable.
+                </p>
               </div>
             </CardContent>
           </Card>
