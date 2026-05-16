@@ -683,10 +683,24 @@ const SEOSettingsPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Verify store ownership, submit sitemaps, and request indexing — all using your own Google account.
+                    Connect your Google account to unlock search tools for your store.
                   </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span><span className="font-medium text-foreground">Submit Sitemap</span> — tell Google all your pages (3–7 days)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span><span className="font-medium text-foreground">Request Indexing</span> — fast crawl within hours</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span><span className="font-medium text-foreground">Verify Ownership</span> — prove your store to Google automatically</span>
+                    </div>
+                  </div>
                   <Button onClick={handleConnectGsc} disabled={isConnectingGsc} variant="outline" size="sm">
                     {isConnectingGsc
                       ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting...</>
