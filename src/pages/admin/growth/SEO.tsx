@@ -53,7 +53,7 @@ interface SEOSettings {
 const SEOSettingsPage = () => {
   const navigate = useNavigate();
   const [googleAnim, setGoogleAnim] = useState<any>(null);
-  const lottieRef = useRef<any>(null);
+  const [shouldPlayAnim, setShouldPlayAnim] = useState(false);
   const animContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,11 +95,11 @@ const SEOSettingsPage = () => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          lottieRef.current?.play();
+          setShouldPlayAnim(true);
           observer.disconnect();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.3 }
     );
     observer.observe(animContainerRef.current);
     return () => observer.disconnect();
@@ -621,13 +621,14 @@ const SEOSettingsPage = () => {
             <CardTitle className="flex items-center gap-1">
               {googleAnim && (
                 <div ref={animContainerRef} style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
-                  <Lottie
-                    lottieRef={lottieRef}
-                    animationData={googleAnim}
-                    loop={false}
-                    autoplay={false}
-                    style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
-                  />
+                  {shouldPlayAnim && (
+                    <Lottie
+                      animationData={googleAnim}
+                      loop={false}
+                      autoplay={true}
+                      style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
+                    />
+                  )}
                 </div>
               )}
               Integrations
