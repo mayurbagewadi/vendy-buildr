@@ -606,7 +606,7 @@ const SEOSettingsPage = () => {
                 <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
                   <Lottie
                     animationData={googleAnim}
-                    loop={true}
+                    loop={false}
                     autoplay={true}
                     style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
                   />
