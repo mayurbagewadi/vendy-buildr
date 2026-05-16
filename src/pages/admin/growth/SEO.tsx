@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,8 @@ interface SEOSettings {
 const SEOSettingsPage = () => {
   const navigate = useNavigate();
   const [googleAnim, setGoogleAnim] = useState<any>(null);
+  const lottieRef = useRef<any>(null);
+  const animContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
@@ -87,6 +89,21 @@ const SEOSettingsPage = () => {
     loadStoreData();
     fetch('/google-animation.json').then(r => r.json()).then(setGoogleAnim).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!animContainerRef.current || !googleAnim) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          lottieRef.current?.play();
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(animContainerRef.current);
+    return () => observer.disconnect();
+  }, [googleAnim]);
 
   /**
    * Enterprise Pattern: Auto-fill with Fallback Chain
@@ -603,11 +620,12 @@ const SEOSettingsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-1">
               {googleAnim && (
-                <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
+                <div ref={animContainerRef} style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
                   <Lottie
+                    lottieRef={lottieRef}
                     animationData={googleAnim}
                     loop={false}
-                    autoplay={true}
+                    autoplay={false}
                     style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
                   />
                 </div>
