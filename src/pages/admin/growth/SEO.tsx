@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,8 @@ interface SEOSettings {
 
 const SEOSettingsPage = () => {
   const navigate = useNavigate();
+  const [googleAnim, setGoogleAnim] = useState<any>(null);
+  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
@@ -83,6 +86,7 @@ const SEOSettingsPage = () => {
 
   useEffect(() => {
     loadStoreData();
+    fetch('/google-animation.json').then(r => r.json()).then(setGoogleAnim).catch(() => {});
   }, []);
 
   /**
@@ -598,9 +602,17 @@ const SEOSettingsPage = () => {
         {/* Google Integrations — single grouped card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <img src="/google-logo.svg" alt="Google" className="w-5 h-5" />
-              Google Integrations
+            <CardTitle className="flex items-center gap-1">
+              {googleAnim && (
+                <Lottie
+                  lottieRef={lottieRef}
+                  animationData={googleAnim}
+                  loop
+                  autoplay
+                  style={{ width: 32, height: 32 }}
+                />
+              )}
+              Integrations
             </CardTitle>
             <CardDescription>Connect Google tools to verify ownership, boost indexing, and track visitors</CardDescription>
           </CardHeader>
