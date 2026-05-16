@@ -604,13 +604,15 @@ const SEOSettingsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-1">
               {googleAnim && (
-                <Lottie
-                  lottieRef={lottieRef}
-                  animationData={googleAnim}
-                  loop
-                  autoplay
-                  style={{ width: 336, height: 336 }}
-                />
+                <div style={{ width: 80, height: 80, overflow: 'hidden', flexShrink: 0 }}>
+                  <Lottie
+                    lottieRef={lottieRef}
+                    animationData={googleAnim}
+                    loop
+                    autoplay
+                    style={{ width: 336, height: 336, margin: '-128px', display: 'block' }}
+                  />
+                </div>
               )}
               Integrations
             </CardTitle>
