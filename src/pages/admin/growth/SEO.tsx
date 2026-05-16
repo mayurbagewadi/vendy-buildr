@@ -609,7 +609,7 @@ const SEOSettingsPage = () => {
                   animationData={googleAnim}
                   loop
                   autoplay
-                  style={{ width: 56, height: 56 }}
+                  style={{ width: 112, height: 112 }}
                 />
               )}
               Integrations
