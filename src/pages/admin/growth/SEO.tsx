@@ -616,11 +616,12 @@ const SEOSettingsPage = () => {
         </div>
 
         {/* Google Integrations — single grouped card */}
+        <div ref={animContainerRef}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-1">
               {googleAnim && (
-                <div ref={animContainerRef} style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
                   {shouldPlayAnim && (
                     <Lottie
                       animationData={googleAnim}
@@ -763,6 +764,7 @@ const SEOSettingsPage = () => {
 
           </CardContent>
         </Card>
+        </div>
 
         {/* Save */}
         <div className="flex justify-end">
