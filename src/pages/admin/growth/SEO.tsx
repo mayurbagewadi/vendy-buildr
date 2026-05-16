@@ -26,8 +26,7 @@ import {
   CheckCircle,
   XCircle,
   Link2,
-  Link2Off,
-  BarChart3
+  Link2Off
 } from "lucide-react";
 import {
   Tooltip,
@@ -713,7 +712,7 @@ const SEOSettingsPage = () => {
             {/* — Google Analytics — */}
             <div className="px-6 py-5 space-y-3">
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                <img src="/google-analytics.svg" alt="Google Analytics" className="w-4 h-4" />
                 <span className="font-medium text-sm">Google Analytics</span>
               </div>
               <div className="space-y-2">
