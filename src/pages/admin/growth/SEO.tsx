@@ -1,9 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Lottie from "lottie-react";
-import googleAnimData from "/public/google-animation.json";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-gsap.registerPlugin(ScrollTrigger);
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,8 +52,7 @@ interface SEOSettings {
 
 const SEOSettingsPage = () => {
   const navigate = useNavigate();
-  const lottieRef = useRef<any>(null);
-  const googleCardRef = useRef<HTMLDivElement>(null);
+  const [googleAnim, setGoogleAnim] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
@@ -90,17 +85,7 @@ const SEOSettingsPage = () => {
 
   useEffect(() => {
     loadStoreData();
-  }, []);
-
-  useEffect(() => {
-    if (!googleCardRef.current) return;
-    const trigger = ScrollTrigger.create({
-      trigger: googleCardRef.current,
-      start: 'top 80%',
-      once: true,
-      onEnter: () => lottieRef.current?.play(),
-    });
-    return () => trigger.kill();
+    fetch('/google-animation.json').then(r => r.json()).then(setGoogleAnim).catch(() => {});
   }, []);
 
 
@@ -615,19 +600,19 @@ const SEOSettingsPage = () => {
         </div>
 
         {/* Google Integrations — single grouped card */}
-        <div ref={googleCardRef}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-1">
-              <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
-                <Lottie
-                  lottieRef={lottieRef}
-                  animationData={googleAnimData}
-                  loop={false}
-                  autoplay={false}
-                  style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
-                />
-              </div>
+              {googleAnim && (
+                <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
+                  <Lottie
+                    animationData={googleAnim}
+                    loop={true}
+                    autoplay={true}
+                    style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
+                  />
+                </div>
+              )}
               Integrations
             </CardTitle>
             <CardDescription>Connect Google tools to verify ownership, boost indexing, and track visitors</CardDescription>
@@ -760,7 +745,6 @@ const SEOSettingsPage = () => {
 
           </CardContent>
         </Card>
-        </div>
 
         {/* Save */}
         <div className="flex justify-end">
