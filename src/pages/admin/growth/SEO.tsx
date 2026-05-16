@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
+import { useState, useEffect } from "react";
+import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,6 @@ interface SEOSettings {
 const SEOSettingsPage = () => {
   const navigate = useNavigate();
   const [googleAnim, setGoogleAnim] = useState<any>(null);
-  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
@@ -606,10 +605,9 @@ const SEOSettingsPage = () => {
               {googleAnim && (
                 <div style={{ width: 160, height: 56, overflow: 'hidden', flexShrink: 0 }}>
                   <Lottie
-                    lottieRef={lottieRef}
                     animationData={googleAnim}
-                    loop
-                    autoplay
+                    loop={true}
+                    autoplay={true}
                     style={{ width: 336, height: 336, marginTop: '-140px', marginBottom: '-140px', marginLeft: '-88px', marginRight: '-88px', display: 'block' }}
                   />
                 </div>
