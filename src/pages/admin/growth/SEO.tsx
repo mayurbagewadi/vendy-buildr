@@ -434,280 +434,150 @@ const SEOSettingsPage = () => {
 
   return (
     <TooltipProvider>
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <Search className="w-6 h-6" />
-                SEO Settings
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Optimize your store for search engines like Google
-              </p>
-            </div>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Settings
-                </>
-              )}
-            </Button>
-          </div>
+      <div className="space-y-6">
 
-          {/* Info Banner */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex items-start gap-3 pt-4">
-              <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-foreground">How SEO helps your store</p>
-                <p className="text-muted-foreground mt-1">
-                  These settings help Google understand your business better. When someone searches for "{storeName}" or similar terms,
-                  Google will show rich information about your store including address, phone, and hours.
-                </p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Search className="w-6 h-6" />
+              SEO Settings
+            </h1>
+            <p className="text-muted-foreground mt-1">Optimize your store for search engines like Google</p>
+          </div>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-2" />Save Settings</>}
+          </Button>
+        </div>
+
+        {/* Store Details — 2×2 grid */}
+        <div className="grid gap-6 lg:grid-cols-2">
+
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Globe className="w-5 h-5" />Basic Information</CardTitle>
+              <CardDescription>Help customers find your store with different search terms</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Store Name</Label>
+                <Input value={storeName} disabled className="bg-muted" />
+                <p className="text-xs text-muted-foreground">Change this in Settings → Store Details</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    Also Known As
+                    <Tooltip>
+                      <TooltipTrigger><Info className="w-3.5 h-3.5 text-muted-foreground" /></TooltipTrigger>
+                      <TooltipContent className="max-w-xs"><p>Add variations of your store name customers might search for. Separate with commas.</p></TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={generateAlternateNames} className="h-7 text-xs">
+                    <Sparkles className="w-3 h-3 mr-1" />Auto Generate
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Sasu Masale, Sasu Masaale, SasuMasaale"
+                  value={settings.alternate_names}
+                  onChange={(e) => setSettings(prev => ({ ...prev, alternate_names: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  SEO Description
+                  <Badge variant="secondary" className="text-xs">Important</Badge>
+                </Label>
+                <Textarea
+                  placeholder="Fresh Indian spices store offering premium quality masale..."
+                  value={settings.seo_description}
+                  onChange={(e) => setSettings(prev => ({ ...prev, seo_description: e.target.value }))}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">{settings.seo_description.length}/160 characters (recommended)</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Price Range</Label>
+                <select
+                  value={settings.price_range}
+                  onChange={(e) => setSettings(prev => ({ ...prev, price_range: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="₹">₹ - Budget Friendly</option>
+                  <option value="₹₹">₹₹ - Moderate</option>
+                  <option value="₹₹₹">₹₹₹ - Premium</option>
+                  <option value="₹₹₹₹">₹₹₹₹ - Luxury</option>
+                </select>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Basic SEO */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
-                  Basic Information
-                </CardTitle>
-                <CardDescription>
-                  Help customers find your store with different search terms
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="storeName">Store Name</Label>
-                  <Input
-                    id="storeName"
-                    value={storeName}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Change this in Settings → Store Details
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="alternateNames" className="flex items-center gap-2">
-                      Also Known As
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p>Add variations of your store name that customers might search for. Separate with commas.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={generateAlternateNames}
-                      className="h-7 text-xs"
-                    >
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      Auto Generate
-                    </Button>
-                  </div>
-                  <Input
-                    id="alternateNames"
-                    placeholder="Sasu Masale, Sasu Masaale, SasuMasaale"
-                    value={settings.alternate_names}
-                    onChange={(e) => setSettings(prev => ({ ...prev, alternate_names: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Example: If store is "SasuMasale", add "Sasu Masale, Sasu Masaale"
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="seoDescription">
-                    SEO Description
-                    <Badge variant="secondary" className="ml-2 text-xs">Important</Badge>
-                  </Label>
-                  <Textarea
-                    id="seoDescription"
-                    placeholder="Fresh Indian spices store offering premium quality masale. Buy garam masala, turmeric, and more..."
-                    value={settings.seo_description}
-                    onChange={(e) => setSettings(prev => ({ ...prev, seo_description: e.target.value }))}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {settings.seo_description.length}/160 characters (recommended)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="priceRange">Price Range</Label>
-                  <select
-                    id="priceRange"
-                    value={settings.price_range}
-                    onChange={(e) => setSettings(prev => ({ ...prev, price_range: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
-                  >
-                    <option value="₹">₹ - Budget Friendly</option>
-                    <option value="₹₹">₹₹ - Moderate</option>
-                    <option value="₹₹₹">₹₹₹ - Premium</option>
-                    <option value="₹₹₹₹">₹₹₹₹ - Luxury</option>
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contact Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Phone className="w-5 h-5" />
-                  Contact Information
-                </CardTitle>
-                <CardDescription>
-                  Help customers reach you directly from Google search
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessPhone" className="flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    Business Phone
-                  </Label>
-                  <Input
-                    id="businessPhone"
-                    placeholder="+91-9876543210"
-                    value={settings.business_phone}
-                    onChange={(e) => setSettings(prev => ({ ...prev, business_phone: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="businessEmail" className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    Business Email
-                  </Label>
-                  <Input
-                    id="businessEmail"
-                    type="email"
-                    placeholder="contact@yourstore.com"
-                    value={settings.business_email}
-                    onChange={(e) => setSettings(prev => ({ ...prev, business_email: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="openingHours" className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Opening Hours
-                  </Label>
-                  <Input
-                    id="openingHours"
-                    placeholder="Mon-Sat: 9AM-9PM, Sun: 10AM-6PM"
-                    value={settings.opening_hours}
-                    onChange={(e) => setSettings(prev => ({ ...prev, opening_hours: e.target.value }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Address */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Business Address
-                </CardTitle>
-                <CardDescription>
-                  Appears on Google Maps and local search results
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Street Address</Label>
-                  <Input
-                    id="streetAddress"
-                    placeholder="123 Spice Market, Main Road"
-                    value={settings.street_address}
-                    onChange={(e) => setSettings(prev => ({ ...prev, street_address: e.target.value }))}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      placeholder="Mumbai"
-                      value={settings.city}
-                      onChange={(e) => setSettings(prev => ({ ...prev, city: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      placeholder="Maharashtra"
-                      value={settings.state}
-                      onChange={(e) => setSettings(prev => ({ ...prev, state: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode">Postal Code</Label>
-                    <Input
-                      id="postalCode"
-                      placeholder="400001"
-                      value={settings.postal_code}
-                      onChange={(e) => setSettings(prev => ({ ...prev, postal_code: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
-                      placeholder="IN"
-                      value={settings.country}
-                      onChange={(e) => setSettings(prev => ({ ...prev, country: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-          </div>
-
-          {/* Preview Section */}
+          {/* Contact Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                Google Search Preview
-              </CardTitle>
-              <CardDescription>
-                How your store might appear in Google search results
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2"><Phone className="w-5 h-5" />Contact Information</CardTitle>
+              <CardDescription>Help customers reach you directly from Google search</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Business Phone</Label>
+                <Input placeholder="+91-9876543210" value={settings.business_phone} onChange={(e) => setSettings(prev => ({ ...prev, business_phone: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Mail className="w-4 h-4" />Business Email</Label>
+                <Input type="email" placeholder="contact@yourstore.com" value={settings.business_email} onChange={(e) => setSettings(prev => ({ ...prev, business_email: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Clock className="w-4 h-4" />Opening Hours</Label>
+                <Input placeholder="Mon-Sat: 9AM-9PM, Sun: 10AM-6PM" value={settings.opening_hours} onChange={(e) => setSettings(prev => ({ ...prev, opening_hours: e.target.value }))} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Business Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><MapPin className="w-5 h-5" />Business Address</CardTitle>
+              <CardDescription>Appears on Google Maps and local search results</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Street Address</Label>
+                <Input placeholder="123 Spice Market, Main Road" value={settings.street_address} onChange={(e) => setSettings(prev => ({ ...prev, street_address: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input placeholder="Mumbai" value={settings.city} onChange={(e) => setSettings(prev => ({ ...prev, city: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <Input placeholder="Maharashtra" value={settings.state} onChange={(e) => setSettings(prev => ({ ...prev, state: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Postal Code</Label>
+                  <Input placeholder="400001" value={settings.postal_code} onChange={(e) => setSettings(prev => ({ ...prev, postal_code: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input placeholder="IN" value={settings.country} onChange={(e) => setSettings(prev => ({ ...prev, country: e.target.value }))} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Search Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5" />Google Search Preview</CardTitle>
+              <CardDescription>How your store might appear in Google search results</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-white dark:bg-zinc-900 border rounded-lg p-4 max-w-xl">
-                <div className="text-sm text-muted-foreground mb-1">
-                  {storeSlug}.digitaldukandar.in
-                </div>
+              <div className="bg-white dark:bg-zinc-900 border rounded-lg p-4">
+                <div className="text-sm text-muted-foreground mb-1">{storeSlug}.digitaldukandar.in</div>
                 <div className="text-lg text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
                   {storeName}{settings.alternate_names ? ` (${settings.alternate_names.split(',')[0]?.trim()})` : ''} - Online Store
                 </div>
@@ -716,302 +586,149 @@ const SEOSettingsPage = () => {
                 </div>
                 {(settings.business_phone || settings.city) && (
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    {settings.business_phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {settings.business_phone}
-                      </span>
-                    )}
-                    {settings.city && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {settings.city}, {settings.state}
-                      </span>
-                    )}
+                    {settings.business_phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{settings.business_phone}</span>}
+                    {settings.city && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{settings.city}, {settings.state}</span>}
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Google Indexing */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="w-5 h-5" />
-                Google Indexing
-              </CardTitle>
-              <CardDescription>
-                Submit your store to Google for faster indexing
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Info */}
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-900 dark:text-blue-100">Two ways to get indexed:</p>
-                    <ul className="mt-2 space-y-1 text-blue-800 dark:text-blue-200">
-                      <li className="flex items-start gap-2">
-                        <span className="text-blue-600 dark:text-blue-400">•</span>
-                        <span><strong>Submit Sitemap:</strong> Traditional method, takes 3-7 days</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-blue-600 dark:text-blue-400">•</span>
-                        <span><strong>Request Indexing:</strong> Faster method using Google Indexing API, appears within hours</span>
-                      </li>
-                    </ul>
-                    {!gscConnected && (
-                      <p className="mt-2 text-yellow-700 dark:text-yellow-400 font-medium flex items-center gap-1">
-                        <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                        Connect Google Search Console below to enable these buttons.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+        </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Sitemap Submission */}
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="font-medium text-sm mb-1">Submit Sitemap</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Submit your sitemap to Google Search Console (slower but comprehensive)
-                    </p>
-                  </div>
-                  <Button
-                    onClick={submitSitemap}
-                    disabled={isSubmittingSitemap || !gscConnected}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    {isSubmittingSitemap ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Submit Sitemap
-                      </>
-                    )}
+        {/* Google Integrations — single grouped card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              Google Integrations
+            </CardTitle>
+            <CardDescription>Connect Google tools to verify ownership, boost indexing, and track visitors</CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y divide-border p-0">
+
+            {/* — Google Search Console — */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium text-sm">Google Search Console</span>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+                {gscConnected && (
+                  <Button variant="outline" size="sm" onClick={handleDisconnectGsc}>
+                    <Link2Off className="w-3.5 h-3.5 mr-1.5" />Disconnect
                   </Button>
-                  {sitemapResult && (
-                    <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
-                      sitemapResult.success
-                        ? 'bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
-                    }`}>
-                      {sitemapResult.success ? (
-                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {sitemapResult.success ? (
-                          <p className="font-medium">Submitted successfully!</p>
-                        ) : (
-                          <>
-                            <p className="font-medium">Submission failed</p>
-                            {sitemapResult.error && (
-                              <p className="text-xs mt-1 opacity-90">{sitemapResult.error}</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Immediate Indexing */}
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="font-medium text-sm mb-1 flex items-center gap-1">
-                      Request Indexing
-                      <Badge variant="secondary" className="text-xs">Faster</Badge>
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Request immediate indexing via Google Indexing API (appears within hours)
-                    </p>
-                  </div>
-                  <Button
-                    onClick={requestIndexing}
-                    disabled={isIndexing || !gscConnected}
-                    className="w-full"
-                  >
-                    {isIndexing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Requesting...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 mr-2" />
-                        Request Indexing
-                      </>
-                    )}
-                  </Button>
-                  {indexingResult && (
-                    <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
-                      indexingResult.success
-                        ? 'bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
-                    }`}>
-                      {indexingResult.success ? (
-                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {indexingResult.success ? (
-                          <p className="font-medium">Indexing requested!</p>
-                        ) : (
-                          <>
-                            <p className="font-medium">Request failed</p>
-                            {indexingResult.error && (
-                              <p className="text-xs mt-1 opacity-90">{indexingResult.error}</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
-              <div className="bg-muted/50 rounded-lg p-4 text-xs text-muted-foreground">
-                <p className="font-medium mb-2">Note:</p>
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>Sitemap is automatically submitted when you create/update your store</li>
-                  <li>Use "Request Indexing" when you make important changes and need Google to re-crawl quickly</li>
-                  <li>You can use both methods - they complement each other</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Google Search Console */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="w-5 h-5" />
-                Google Search Console
-                <Badge variant="secondary" className="text-xs">Recommended</Badge>
-              </CardTitle>
-              <CardDescription>
-                Connect your Google account so sitemap submissions use your verified GSC property
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
               {isVerifyingGsc ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Verifying connection...
+                  <Loader2 className="w-4 h-4 animate-spin" />Verifying connection...
                 </div>
               ) : gscConnected ? (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-green-500 bg-green-50 dark:bg-green-950/20">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-green-700 dark:text-green-400">Connected</p>
-                        <p className="text-xs text-green-600 dark:text-green-500">{gscEmail}</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={handleDisconnectGsc}>
-                      <Link2Off className="w-3.5 h-3.5 mr-1.5" />
-                      Disconnect
-                    </Button>
+                <div className="space-y-4">
+                  {/* Connected badge */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="font-medium text-green-700 dark:text-green-400">Connected</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground text-xs">{gscEmail}</span>
                   </div>
                   {gscSites.length > 0 && (
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p className="font-medium">Verified properties ({gscSites.length}):</p>
-                      <ul className="space-y-0.5">
-                        {gscSites.slice(0, 3).map((site) => (
-                          <li key={site} className="flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
-                            {site}
-                          </li>
-                        ))}
-                        {gscSites.length > 3 && (
-                          <li>+{gscSites.length - 3} more</li>
-                        )}
-                      </ul>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-foreground">Verified properties ({gscSites.length})</p>
+                      {gscSites.slice(0, 3).map((site) => (
+                        <div key={site} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />{site}
+                        </div>
+                      ))}
+                      {gscSites.length > 3 && <p className="text-xs text-muted-foreground">+{gscSites.length - 3} more</p>}
                     </div>
                   )}
+
+                  {/* Indexing actions — only visible when connected */}
+                  <div className="pt-3 border-t border-border/60 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Indexing</span> — Submit sitemap (3–7 days) or request immediate crawl (within hours)
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Button onClick={submitSitemap} disabled={isSubmittingSitemap} variant="outline" size="sm" className="w-full">
+                          {isSubmittingSitemap
+                            ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Submitting...</>
+                            : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" />Submit Sitemap</>}
+                        </Button>
+                        {sitemapResult && (
+                          <div className={`flex items-center gap-1.5 text-xs p-2 rounded-md ${sitemapResult.success ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'}`}>
+                            {sitemapResult.success ? <CheckCircle className="w-3 h-3 flex-shrink-0" /> : <XCircle className="w-3 h-3 flex-shrink-0" />}
+                            <span className="truncate">{sitemapResult.success ? 'Submitted!' : sitemapResult.error}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Button onClick={requestIndexing} disabled={isIndexing} size="sm" className="w-full">
+                          {isIndexing
+                            ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Requesting...</>
+                            : <><Zap className="w-3.5 h-3.5 mr-1.5" />Request Indexing</>}
+                        </Button>
+                        {indexingResult && (
+                          <div className={`flex items-center gap-1.5 text-xs p-2 rounded-md ${indexingResult.success ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'}`}>
+                            {indexingResult.success ? <CheckCircle className="w-3 h-3 flex-shrink-0" /> : <XCircle className="w-3 h-3 flex-shrink-0" />}
+                            <span className="truncate">{indexingResult.success ? 'Requested!' : indexingResult.error}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Without connecting, sitemap submissions require your service account to be manually added as a verified owner in each GSC property.
+                    Verify store ownership, submit sitemaps, and request indexing — all using your own Google account.
                   </p>
-                  <Button onClick={handleConnectGsc} disabled={isConnectingGsc} variant="outline">
-                    {isConnectingGsc ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className="w-4 h-4 mr-2" />
-                        Connect Google Search Console
-                      </>
-                    )}
+                  <Button onClick={handleConnectGsc} disabled={isConnectingGsc} variant="outline" size="sm">
+                    {isConnectingGsc
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting...</>
+                      : <><Link2 className="w-4 h-4 mr-2" />Connect Google Search Console</>}
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Google Analytics */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Google Analytics
-              </CardTitle>
-              <CardDescription>
-                Track visitors and behavior on your storefront — injected automatically on all store pages
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* — Google Analytics — */}
+            <div className="px-6 py-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium text-sm">Google Analytics</span>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="gaMeasurementId">GA4 Measurement ID</Label>
+                <Label htmlFor="gaMeasurementId" className="text-xs text-muted-foreground">GA4 Measurement ID</Label>
                 <Input
                   id="gaMeasurementId"
                   placeholder="G-XXXXXXXXXX"
                   value={gaMeasurementId}
                   onChange={(e) => setGaMeasurementId(e.target.value.toUpperCase())}
-                  className="font-mono"
+                  className="font-mono max-w-xs"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Find this in Google Analytics → Admin → Data Streams → your stream. Leave empty to disable.
+                  Find this in Google Analytics → Admin → Data Streams. Leave empty to disable.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Save Button (bottom) */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={isSaving} size="lg">
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save SEO Settings
-                </>
-              )}
-            </Button>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* Save */}
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving} size="lg">
+            {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-2" />Save SEO Settings</>}
+          </Button>
         </div>
-      </TooltipProvider>
+
+      </div>
+    </TooltipProvider>
   );
 };
 
