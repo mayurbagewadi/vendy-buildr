@@ -248,114 +248,56 @@ const SEOSettingsPage = () => {
   };
 
   const submitSitemap = async () => {
-    if (!storeId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Store ID not found. Please refresh the page.",
-      });
+    if (!gscConnected) {
+      toast({ variant: 'destructive', title: 'Not Connected', description: 'Please connect Google Search Console first.' });
       return;
     }
-
+    setIsSubmittingSitemap(true);
+    setSitemapResult(null);
     try {
-      setIsSubmittingSitemap(true);
-      setSitemapResult(null);
-
-      toast({
-        title: "Submitting Sitemap",
-        description: "Submitting your sitemap to Google Search Console...",
-      });
-
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated. Please login again.');
-      }
+      if (!session) throw new Error('Not authenticated. Please login again.');
 
-      const response = await fetch('https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/submit-sitemap-to-google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ storeId }),
+      const { data, error } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'submit_sitemap' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      const data = await response.json();
+      if (error || !data?.success) throw new Error(data?.error ?? 'Failed to submit sitemap');
 
-      if (data.success) {
-        setSitemapResult(data.results?.[0] || { success: true });
-        toast({
-          title: "Sitemap Submitted!",
-          description: "Your sitemap has been submitted to Google. It may take a few days to appear in search results.",
-        });
-      } else {
-        throw new Error(data.error || 'Failed to submit sitemap');
-      }
+      setSitemapResult({ success: true });
+      toast({ title: 'Sitemap Submitted!', description: 'Your sitemap has been submitted via your Google Search Console account.' });
     } catch (error: any) {
-      console.error('Error submitting sitemap:', error);
       setSitemapResult({ success: false, error: error.message });
-      toast({
-        variant: "destructive",
-        title: "Submission Failed",
-        description: error.message || "Failed to submit sitemap to Google",
-      });
+      toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
     } finally {
       setIsSubmittingSitemap(false);
     }
   };
 
   const requestIndexing = async () => {
-    if (!storeId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Store ID not found. Please refresh the page.",
-      });
+    if (!gscConnected) {
+      toast({ variant: 'destructive', title: 'Not Connected', description: 'Please connect Google Search Console first.' });
       return;
     }
-
+    setIsIndexing(true);
+    setIndexingResult(null);
     try {
-      setIsIndexing(true);
-      setIndexingResult(null);
-
-      toast({
-        title: "Requesting Indexing",
-        description: "Requesting immediate indexing from Google. This is faster than sitemap submission.",
-      });
-
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated. Please login again.');
-      }
+      if (!session) throw new Error('Not authenticated. Please login again.');
 
-      const response = await fetch('https://vexeuxsvckpfvuxqchqu.supabase.co/functions/v1/index-urls-to-google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ storeId }),
+      const { data, error } = await supabase.functions.invoke('gsc-oauth', {
+        body: { action: 'request_indexing' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      const data = await response.json();
+      if (error || !data?.success) throw new Error(data?.error ?? 'Failed to request indexing');
 
-      if (data.success) {
-        setIndexingResult(data.results?.[0] || { success: true });
-        toast({
-          title: "Indexing Requested!",
-          description: `Successfully requested indexing. Your store should appear in Google within hours.`,
-        });
-      } else {
-        throw new Error(data.error || 'Failed to request indexing');
-      }
+      setIndexingResult({ success: true });
+      toast({ title: 'Indexing Requested!', description: 'Google has been notified to index your store.' });
     } catch (error: any) {
-      console.error('Error requesting indexing:', error);
       setIndexingResult({ success: false, error: error.message });
-      toast({
-        variant: "destructive",
-        title: "Indexing Failed",
-        description: error.message || "Failed to request indexing from Google",
-      });
+      toast({ variant: 'destructive', title: 'Indexing Failed', description: error.message });
     } finally {
       setIsIndexing(false);
     }
@@ -383,7 +325,7 @@ const SEOSettingsPage = () => {
       try {
         const client = (window as any).google.accounts.oauth2.initCodeClient({
           client_id: clientId,
-          scope: 'https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification',
+          scope: 'https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification https://www.googleapis.com/auth/indexing',
           ux_mode: 'popup',
           callback: (response: any) => {
             if (response.code) resolve(response.code);
@@ -820,6 +762,12 @@ const SEOSettingsPage = () => {
                         <span><strong>Request Indexing:</strong> Faster method using Google Indexing API, appears within hours</span>
                       </li>
                     </ul>
+                    {!gscConnected && (
+                      <p className="mt-2 text-yellow-700 dark:text-yellow-400 font-medium flex items-center gap-1">
+                        <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                        Connect Google Search Console below to enable these buttons.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -835,7 +783,7 @@ const SEOSettingsPage = () => {
                   </div>
                   <Button
                     onClick={submitSitemap}
-                    disabled={isSubmittingSitemap}
+                    disabled={isSubmittingSitemap || !gscConnected}
                     variant="outline"
                     className="w-full"
                   >
@@ -891,7 +839,7 @@ const SEOSettingsPage = () => {
                   </div>
                   <Button
                     onClick={requestIndexing}
-                    disabled={isIndexing}
+                    disabled={isIndexing || !gscConnected}
                     className="w-full"
                   >
                     {isIndexing ? (

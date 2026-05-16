@@ -298,6 +298,80 @@ serve(async (req) => {
       );
     }
 
+    // ── submit_sitemap ───────────────────────────────────────────────────
+    if (action === 'submit_sitemap') {
+      const accessToken = await getValidToken(store, supabaseClient);
+      if (!accessToken) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'GSC not connected or token expired. Please reconnect.' }),
+          { headers: corsHeaders }
+        );
+      }
+
+      const storeHost = store.custom_domain
+        ? store.custom_domain
+        : (store.subdomain || store.slug) + '.digitaldukandar.in';
+      const siteUrl = 'https://' + storeHost + '/';
+      const sitemapUrl = siteUrl + 'sitemap.xml';
+
+      const res = await fetch(
+        'https://www.googleapis.com/webmasters/v3/sites/' + encodeURIComponent(siteUrl) + '/sitemaps/' + encodeURIComponent(sitemapUrl),
+        { method: 'PUT', headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+
+      if (res.ok || res.status === 204) {
+        return new Response(JSON.stringify({ success: true, sitemapUrl }), { headers: corsHeaders });
+      }
+
+      const err = await res.json().catch(() => ({}));
+      return new Response(
+        JSON.stringify({ success: false, error: err?.error?.message ?? 'Failed to submit sitemap' }),
+        { headers: corsHeaders }
+      );
+    }
+
+    // ── request_indexing ─────────────────────────────────────────────────
+    if (action === 'request_indexing') {
+      const accessToken = await getValidToken(store, supabaseClient);
+      if (!accessToken) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'GSC not connected or token expired. Please reconnect.' }),
+          { headers: corsHeaders }
+        );
+      }
+
+      const storeHost = store.custom_domain
+        ? store.custom_domain
+        : (store.subdomain || store.slug) + '.digitaldukandar.in';
+      const storeUrl = 'https://' + storeHost + '/';
+
+      const res = await fetch(
+        'https://indexing.googleapis.com/v3/urlNotifications:publish',
+        {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: storeUrl, type: 'URL_UPDATED' }),
+        }
+      );
+
+      if (res.ok) {
+        return new Response(JSON.stringify({ success: true, url: storeUrl }), { headers: corsHeaders });
+      }
+
+      const err = await res.json().catch(() => ({}));
+      const needsReconnect = res.status === 403;
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: needsReconnect
+            ? 'Permission denied. Please reconnect Google Search Console to enable indexing.'
+            : (err?.error?.message ?? 'Failed to request indexing'),
+          needsReconnect,
+        }),
+        { headers: corsHeaders }
+      );
+    }
+
     // ── disconnect ───────────────────────────────────────────────────────
     if (action === 'disconnect') {
       await supabaseClient
@@ -326,3 +400,40 @@ serve(async (req) => {
     );
   }
 });
+
+// ── Shared helper: get a valid (auto-refreshed) access token ─────────────
+async function getValidToken(store: any, supabaseClient: any): Promise<string | null> {
+  let accessToken: string | null = store.gsc_access_token;
+  if (!accessToken) return null;
+
+  const tokenExpiry = store.gsc_token_expiry ? new Date(store.gsc_token_expiry) : null;
+  const now = new Date();
+
+  if (tokenExpiry && now >= tokenExpiry) {
+    if (!store.gsc_refresh_token) return null;
+
+    const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+        refresh_token: store.gsc_refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!refreshRes.ok) return null;
+
+    const refreshData = await refreshRes.json();
+    accessToken = refreshData.access_token;
+    const newExpiry = new Date(now.getTime() + refreshData.expires_in * 1000);
+
+    await supabaseClient
+      .from('stores')
+      .update({ gsc_access_token: accessToken, gsc_token_expiry: newExpiry.toISOString() })
+      .eq('id', store.id);
+  }
+
+  return accessToken;
+}
