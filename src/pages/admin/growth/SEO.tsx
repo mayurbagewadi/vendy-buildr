@@ -57,6 +57,7 @@ const SEOSettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
+  const [storeCustomDomain, setStoreCustomDomain] = useState("");
   const [storeId, setStoreId] = useState<string | null>(null);
   const [isSubmittingSitemap, setIsSubmittingSitemap] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
@@ -128,6 +129,7 @@ const SEOSettingsPage = () => {
       setStoreId(store.id);
       setStoreName(store.name || "");
       setStoreSlug(store.slug || "");
+      setStoreCustomDomain((store as any).custom_domain || "");
       setGaMeasurementId((store as any).ga_measurement_id || "");
       if ((store as any).gsc_access_token) {
         verifyGsc();
@@ -389,6 +391,16 @@ const SEOSettingsPage = () => {
       });
 
       if (verifyError || !verifyData?.success) {
+        // Roll back: token was saved in exchange_code — clear it so no partial state remains
+        try {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          if (s) {
+            await supabase.functions.invoke('gsc-oauth', {
+              body: { action: 'disconnect' },
+              headers: { Authorization: `Bearer ${s.access_token}` },
+            });
+          }
+        } catch {}
         toast({
           variant: 'destructive',
           title: 'Verification Failed',
@@ -648,7 +660,8 @@ const SEOSettingsPage = () => {
                     <span className="text-muted-foreground text-xs">{gscEmail}</span>
                   </div>
                   {(() => {
-                    const storeUrl = 'https://' + storeSlug + '.digitaldukandar.in/';
+                    const storeHost = storeCustomDomain || (storeSlug + '.digitaldukandar.in');
+                    const storeUrl = 'https://' + storeHost + '/';
                     const isVerified = gscSites.some(s => s === storeUrl || s === storeUrl.slice(0, -1));
                     return (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
