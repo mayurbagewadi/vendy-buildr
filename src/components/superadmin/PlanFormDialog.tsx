@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,7 @@ const planFormSchema = z.object({
   enable_discounts_coupons: z.boolean().default(false),
   google_reviews_calls_limit: z.coerce.number().min(0).default(15),
   google_reviews_period: z.enum(["monthly", "yearly"]).default("monthly"),
+  features: z.array(z.string()).default([]),
 });
 
 type PlanFormValues = z.infer<typeof planFormSchema>;
@@ -102,11 +103,15 @@ export const PlanFormDialog = ({
       enable_discounts_coupons: false,
       google_reviews_calls_limit: 15,
       google_reviews_period: "monthly",
+      features: [],
     },
   });
 
+  const [featureInput, setFeatureInput] = useState("");
+
   // Reset form with new values when dialog opens or defaultValues change
   useEffect(() => {
+    setFeatureInput("");
     if (open && defaultValues) {
       form.reset(defaultValues);
     } else if (open && !defaultValues) {
@@ -135,6 +140,7 @@ export const PlanFormDialog = ({
         enable_discounts_coupons: false,
         google_reviews_calls_limit: 15,
         google_reviews_period: "monthly",
+        features: [],
       });
     }
   }, [open, defaultValues, form]);
@@ -142,6 +148,19 @@ export const PlanFormDialog = ({
   const handleSubmit = async (values: PlanFormValues) => {
     await onSubmit(values);
     form.reset();
+  };
+
+  const currentFeatures = form.watch("features") || [];
+
+  const handleAddFeature = () => {
+    const trimmed = featureInput.trim();
+    if (!trimmed) return;
+    form.setValue("features", [...currentFeatures, trimmed]);
+    setFeatureInput("");
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    form.setValue("features", currentFeatures.filter((_, i) => i !== index));
   };
 
   return (
@@ -212,7 +231,7 @@ export const PlanFormDialog = ({
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Brief description of the plan"
                         {...field}
                         value={field.value || ""}
@@ -222,6 +241,50 @@ export const PlanFormDialog = ({
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium leading-none">Feature Points</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Bullet points shown on the pricing page below auto-generated features.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. Priority Support"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddFeature();
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={handleAddFeature}>
+                    Add
+                  </Button>
+                </div>
+                {currentFeatures.length > 0 && (
+                  <div className="space-y-2">
+                    {currentFeatures.map((feature, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                      >
+                        <span>{feature}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeature(index)}
+                          className="text-muted-foreground hover:text-destructive transition-colors ml-2 flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <Separator />

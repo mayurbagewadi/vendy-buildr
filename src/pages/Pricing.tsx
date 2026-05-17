@@ -27,6 +27,7 @@ interface SubscriptionPlan {
   badge_color: string | null;
   is_popular: boolean;
   trial_days: number;
+  features: string[] | null;
 }
 
 // Declare Razorpay types
@@ -127,6 +128,13 @@ const Pricing = () => {
     // Trial period
     if (plan.trial_days > 0) {
       features.push(`${plan.trial_days}-day free trial`);
+    }
+
+    // Custom feature points added by superadmin
+    if (plan.features && plan.features.length > 0) {
+      plan.features.forEach((f) => {
+        if (f && f.trim()) features.push(f.trim());
+      });
     }
 
     return features;

@@ -37,6 +37,7 @@ interface SubscriptionPlan {
   enable_analytics: boolean;
   enable_custom_domain: boolean;
   enable_ai_voice: boolean;
+  features: string[];
 }
 
 const SubscriptionPlansPage = () => {
