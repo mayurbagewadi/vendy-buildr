@@ -647,17 +647,16 @@ const SEOSettingsPage = () => {
                     <span className="text-muted-foreground">·</span>
                     <span className="text-muted-foreground text-xs">{gscEmail}</span>
                   </div>
-                  {gscSites.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-foreground">Verified properties ({gscSites.length})</p>
-                      {gscSites.slice(0, 3).map((site) => (
-                        <div key={site} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />{site}
-                        </div>
-                      ))}
-                      {gscSites.length > 3 && <p className="text-xs text-muted-foreground">+{gscSites.length - 3} more</p>}
-                    </div>
-                  )}
+                  {(() => {
+                    const storeUrl = 'https://' + storeSlug + '.digitaldukandar.in/';
+                    const isVerified = gscSites.some(s => s === storeUrl || s === storeUrl.slice(0, -1));
+                    return (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        {isVerified ? 'Your store is verified in Google Search Console' : 'Store ownership confirmed'}
+                      </div>
+                    );
+                  })()}
 
                   {/* Indexing actions — only visible when connected */}
                   <div className="pt-3 border-t border-border/60 space-y-3">

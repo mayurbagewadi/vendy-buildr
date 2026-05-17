@@ -30,10 +30,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ client_id: clientId }), { headers: corsHeaders });
     }
 
-    // ── JWT Pattern A auth (all other actions) ──────────────────────────
+    // ── Auth client (anon key — only for auth.getUser + read queries) ───
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // ── Service client (service role key — bypasses RLS for DB writes) ──
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
@@ -113,7 +120,7 @@ serve(async (req) => {
         updates.gsc_refresh_token = tokens.refresh_token;
       }
 
-      const { error: updateErr } = await supabaseClient
+      const { error: updateErr } = await supabaseService
         .from('stores')
         .update(updates)
         .eq('id', store.id);
@@ -174,7 +181,7 @@ serve(async (req) => {
         accessToken = refreshData.access_token;
         const newExpiry = new Date(now.getTime() + refreshData.expires_in * 1000);
 
-        await supabaseClient
+        await supabaseService
           .from('stores')
           .update({ gsc_access_token: accessToken, gsc_token_expiry: newExpiry.toISOString() })
           .eq('id', store.id);
@@ -242,7 +249,7 @@ serve(async (req) => {
       const verificationToken: string = tokenData.token;
       console.log('[gsc-oauth] setup_verification — verificationToken:', verificationToken);
 
-      await supabaseClient.from('stores').update({ gsc_verification_token: verificationToken }).eq('id', store.id);
+      await supabaseService.from('stores').update({ gsc_verification_token: verificationToken }).eq('id', store.id);
 
       const verifyRes = await fetch(
         'https://www.googleapis.com/siteVerification/v1/webResource?verificationMethod=FILE',
@@ -281,7 +288,7 @@ serve(async (req) => {
 
     // ── submit_sitemap ───────────────────────────────────────────────────
     if (action === 'submit_sitemap') {
-      const accessToken = await getValidToken(store, supabaseClient);
+      const accessToken = await getValidToken(store, supabaseService);
       console.log('[gsc-oauth] submit_sitemap — accessToken present:', !!accessToken);
       if (!accessToken) {
         return new Response(
@@ -315,7 +322,7 @@ serve(async (req) => {
 
     // ── request_indexing ─────────────────────────────────────────────────
     if (action === 'request_indexing') {
-      const accessToken = await getValidToken(store, supabaseClient);
+      const accessToken = await getValidToken(store, supabaseService);
       console.log('[gsc-oauth] request_indexing — accessToken present:', !!accessToken);
       if (!accessToken) {
         return new Response(
@@ -360,7 +367,7 @@ serve(async (req) => {
     // ── disconnect ───────────────────────────────────────────────────────
     if (action === 'disconnect') {
       console.log('[gsc-oauth] disconnect — store:', store.id);
-      await supabaseClient
+      await supabaseService
         .from('stores')
         .update({
           gsc_access_token: null,
@@ -389,7 +396,7 @@ serve(async (req) => {
 });
 
 // ── Shared helper: get a valid (auto-refreshed) access token ─────────────
-async function getValidToken(store: any, supabaseClient: any): Promise<string | null> {
+async function getValidToken(store: any, supabaseService: any): Promise<string | null> {
   let accessToken: string | null = store.gsc_access_token;
   if (!accessToken) return null;
 
@@ -416,7 +423,7 @@ async function getValidToken(store: any, supabaseClient: any): Promise<string | 
     accessToken = refreshData.access_token;
     const newExpiry = new Date(now.getTime() + refreshData.expires_in * 1000);
 
-    await supabaseClient
+    await supabaseService
       .from('stores')
       .update({ gsc_access_token: accessToken, gsc_token_expiry: newExpiry.toISOString() })
       .eq('id', store.id);
