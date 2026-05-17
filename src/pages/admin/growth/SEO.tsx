@@ -67,6 +67,7 @@ const SEOSettingsPage = () => {
   const [gscEmail, setGscEmail] = useState("");
   const [gscSites, setGscSites] = useState<string[]>([]);
   const [isConnectingGsc, setIsConnectingGsc] = useState(false);
+  const [isDisconnectingGsc, setIsDisconnectingGsc] = useState(false);
   const [isVerifyingGsc, setIsVerifyingGsc] = useState(false);
   const [gaMeasurementId, setGaMeasurementId] = useState("");
 
@@ -425,6 +426,7 @@ const SEOSettingsPage = () => {
   };
 
   const handleDisconnectGsc = async () => {
+    setIsDisconnectingGsc(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -438,6 +440,8 @@ const SEOSettingsPage = () => {
       toast({ title: 'Disconnected', description: 'Google Search Console has been disconnected.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsDisconnectingGsc(false);
     }
   };
 
@@ -642,8 +646,10 @@ const SEOSettingsPage = () => {
                   <Badge variant="secondary" className="text-xs">Recommended</Badge>
                 </div>
                 {gscConnected && (
-                  <Button variant="outline" size="sm" onClick={handleDisconnectGsc}>
-                    <Link2Off className="w-3.5 h-3.5 mr-1.5" />Disconnect
+                  <Button variant="outline" size="sm" onClick={handleDisconnectGsc} disabled={isDisconnectingGsc}>
+                    {isDisconnectingGsc
+                      ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Disconnecting...</>
+                      : <><Link2Off className="w-3.5 h-3.5 mr-1.5" />Disconnect</>}
                   </Button>
                 )}
               </div>
