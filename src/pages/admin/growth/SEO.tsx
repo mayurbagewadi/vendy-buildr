@@ -653,11 +653,11 @@ const SEOSettingsPage = () => {
               ) : gscConnected ? (
                 <div className="space-y-4">
                   {/* Connected badge */}
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm min-w-0">
                     <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="font-medium text-green-700 dark:text-green-400">Connected</span>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="text-muted-foreground text-xs">{gscEmail}</span>
+                    <span className="font-medium text-green-700 dark:text-green-400 flex-shrink-0">Connected</span>
+                    <span className="text-muted-foreground flex-shrink-0">·</span>
+                    <span className="text-muted-foreground text-xs truncate">{gscEmail}</span>
                   </div>
                   {(() => {
                     const storeHost = storeCustomDomain || (storeSlug + '.digitaldukandar.in');
