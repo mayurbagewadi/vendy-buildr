@@ -177,7 +177,9 @@ const SEOSettingsPage = () => {
 
   const handleSave = async () => {
     if (!storeId) return;
-    if (gaMeasurementId && !/^G-[A-Z0-9]+$/.test(gaMeasurementId)) {
+    const trimmedGaId = gaMeasurementId.trim().toUpperCase();
+    if (trimmedGaId !== gaMeasurementId) setGaMeasurementId(trimmedGaId);
+    if (trimmedGaId && !/^G-[A-Z0-9]+$/.test(trimmedGaId)) {
       toast({ variant: "destructive", title: "Invalid GA Measurement ID", description: "Must be in format G-XXXXXXXXXX (e.g. G-ABC123DEF4)" });
       return;
     }
@@ -198,7 +200,7 @@ const SEOSettingsPage = () => {
           country: settings.country,
           opening_hours: settings.opening_hours,
           price_range: settings.price_range,
-          ga_measurement_id: gaMeasurementId || null,
+          ga_measurement_id: trimmedGaId || null,
         })
         .eq("id", storeId);
 
