@@ -21,6 +21,8 @@ interface SubscriptionPlan {
   website_orders_limit: number | null;
   enable_location_sharing: boolean;
   enable_analytics: boolean;
+  enable_custom_domain: boolean;
+  enable_ai_voice: boolean;
   enable_order_emails: boolean;
   enable_discounts_coupons: boolean;
   badge_text: string | null;
@@ -115,6 +117,14 @@ const Pricing = () => {
 
     if (plan.enable_analytics) {
       features.push('Advanced analytics dashboard');
+    }
+
+    if (plan.enable_custom_domain) {
+      features.push('Custom domain support');
+    }
+
+    if (plan.enable_ai_voice) {
+      features.push('AI Voice Assistant');
     }
 
     if (plan.enable_order_emails) {
