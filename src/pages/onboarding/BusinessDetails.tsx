@@ -498,7 +498,7 @@ const BusinessDetails = () => {
               </Label>
               <Input
                 id="street"
-                placeholder="123 Main Road, Near Market"
+                placeholder="Street, area, landmark"
                 value={form.streetAddress}
                 onChange={e => set("streetAddress", e.target.value)}
                 className={inputClass("streetAddress", err.streetAddress)}
@@ -521,7 +521,7 @@ const BusinessDetails = () => {
                 </Label>
                 <Input
                   id="city"
-                  placeholder="Mumbai"
+                  placeholder="Enter city"
                   value={form.city}
                   onChange={e => set("city", e.target.value)}
                   className={inputClass("city", err.city)}
@@ -541,7 +541,7 @@ const BusinessDetails = () => {
                 </Label>
                 <Input
                   id="state"
-                  placeholder="Maharashtra"
+                  placeholder="State or region"
                   value={form.state}
                   onChange={e => set("state", e.target.value)}
                   className={inputClass("state", err.state)}
@@ -562,15 +562,13 @@ const BusinessDetails = () => {
               <Label htmlFor="pincode">Pincode / Postal Code</Label>
               <Input
                 id="pincode"
-                placeholder="400001"
+                placeholder="Postal / ZIP code"
                 value={form.postalCode}
                 onChange={e => set("postalCode", e.target.value.replace(/\D/g, ""))}
                 className={inputClass("postalCode", false)}
                 maxLength={10}
               />
-              <p className="text-xs text-muted-foreground">
-                Auto-filled if detected — you can correct it
-              </p>
+
             </motion.div>
 
             {/* Divider */}
@@ -600,7 +598,7 @@ const BusinessDetails = () => {
                 <Input
                   id="contact"
                   type="tel"
-                  placeholder="9876543210"
+                  placeholder="Phone number"
                   value={form.contactNumber}
                   onChange={e => set("contactNumber", e.target.value.replace(/\D/g, ""))}
                   className="flex-1"
@@ -626,7 +624,7 @@ const BusinessDetails = () => {
                 <Input
                   id="whatsapp"
                   type="tel"
-                  placeholder="9876543210"
+                  placeholder="Phone number"
                   value={form.whatsappNumber}
                   onChange={e => set("whatsappNumber", e.target.value.replace(/\D/g, ""))}
                   className={`flex-1 ${inputClass("whatsappNumber", err.whatsappNumber)}`}
