@@ -60,7 +60,7 @@ All plans include 0% transaction fees. DigitalDukandar never takes a cut of sale
 - **Pro**: Paid monthly or yearly in INR. Includes custom domain, advanced analytics, unlimited products, priority support, and AI Designer access.
 - **Enterprise**: For high-volume stores. All Pro features plus dedicated support and extended limits.
 
-Note: The admin dashboard at /admin requires a store owner account. Store owners manage products, orders, shipping, SEO, and store design after logging in.
+Note: The admin dashboard at /admin requires a store owner account. Store owners manage products, orders, shipping, SEO, and store design after logging in. Google Search Console and Google Analytics integrations are available to connect stores for indexing insights and visitor tracking.
 
 ## Free Store for Influencers
 

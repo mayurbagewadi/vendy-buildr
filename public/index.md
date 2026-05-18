@@ -46,6 +46,8 @@ No credit card required. Setup in 5 minutes. Cancel anytime.
 - **Stock management** — real-time inventory tracking with low-stock alerts
 - **Order management** — process orders from checkout to delivery in one dashboard
 - **Instagram Videos** — embed Instagram videos directly on your store (coming soon)
+- **Google Search Console** — connect your store to Google Search Console for indexing and search performance insights
+- **Google Analytics** — track visitors, traffic sources, and conversions with Google Analytics integration
 
 ---
 
