@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Phone, MessageCircle, Loader2, ArrowLeft, Sparkles, ChevronsUpDown, Check } from "lucide-react";
+import { Building2, Phone, MessageCircle, Loader2, ArrowLeft, Sparkles, Check } from "lucide-react";
 
 const COUNTRIES = [
   { iso: "IN", flag: "🇮🇳", name: "India",              dialCode: "+91"  },
@@ -128,29 +126,160 @@ const errorVariants = {
   exit:   { opacity: 0, y: -4, transition: { duration: 0.12 } },
 };
 
+// Inline searchable combobox — the input IS the search box, zero extra clicks
+const SearchableCountry = ({
+  value,
+  onChange,
+  mode,
+  className = "",
+  dropdownClassName = "w-full",
+  inputClassName = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  mode: "country" | "dialcode";
+  className?: string;
+  dropdownClassName?: string;
+  inputClassName?: string;
+}) => {
+  const [open, setOpen]               = useState(false);
+  const [query, setQuery]             = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef  = useRef<HTMLUListElement>(null);
+
+  const selectedEntry = useMemo(
+    () => mode === "country"
+      ? COUNTRIES.find(c => c.iso      === value)
+      : COUNTRIES.find(c => c.dialCode === value),
+    [value, mode]
+  );
+
+  const displayAtRest = selectedEntry
+    ? mode === "country"
+      ? `${selectedEntry.flag} ${selectedEntry.name}`
+      : `${selectedEntry.flag} ${selectedEntry.dialCode}`
+    : "";
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return COUNTRIES;
+    const q = query.toLowerCase().replace("+", "");
+    return COUNTRIES.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.iso.toLowerCase().includes(q)  ||
+      c.dialCode.replace("+", "").includes(q)
+    );
+  }, [query]);
+
+  // Scroll highlighted item into view on keyboard navigation
+  useEffect(() => {
+    if (!open || !listRef.current) return;
+    const el = listRef.current.children[highlightedIdx] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlightedIdx, open]);
+
+  // When dropdown opens, pre-scroll to the currently selected entry
+  useEffect(() => {
+    if (!open) return;
+    const idx = COUNTRIES.findIndex(c =>
+      mode === "country" ? c.iso === value : c.dialCode === value
+    );
+    setHighlightedIdx(Math.max(0, idx));
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset highlight to top whenever user types
+  useEffect(() => { setHighlightedIdx(0); }, [query]);
+
+  const handleSelect = (c: typeof COUNTRIES[0]) => {
+    onChange(mode === "country" ? c.iso : c.dialCode);
+    setOpen(false);
+    setQuery("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      setHighlightedIdx(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (open && filtered[highlightedIdx]) handleSelect(filtered[highlightedIdx]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={open ? query : displayAtRest}
+        onChange={e => { setQuery(e.target.value); if (!open) setOpen(true); }}
+        onFocus={() => { setQuery(""); setOpen(true); }}
+        onBlur={() => { setOpen(false); setQuery(""); }}
+        onKeyDown={handleKeyDown}
+        placeholder={mode === "country" ? "Type to search country…" : "Search…"}
+        autoComplete="off"
+        spellCheck={false}
+        className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer focus:cursor-text ${inputClassName}`}
+      />
+      {open && filtered.length > 0 && (
+        <ul
+          ref={listRef}
+          onMouseDown={e => e.preventDefault()} // keeps input focused so onClick fires
+          className={`absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-md shadow-lg overflow-y-auto max-h-60 py-1 ${dropdownClassName}`}
+        >
+          {filtered.map((c, i) => {
+            const isSelected = mode === "country" ? c.iso === value : c.dialCode === value;
+            return (
+              <li
+                key={c.iso}
+                onClick={() => handleSelect(c)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none transition-colors ${
+                  i === highlightedIdx ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                }`}
+              >
+                <span className="text-base leading-none">{c.flag}</span>
+                <span className="flex-1 truncate">{c.name}</span>
+                {mode === "dialcode" && (
+                  <span className="text-xs text-muted-foreground font-mono">{c.dialCode}</span>
+                )}
+                {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const BusinessDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [loading, setLoading]               = useState(false);
-  const [geoLoading, setGeoLoading]         = useState(false);
-  const [showErrors, setShowErrors]         = useState(false);
-  const [storeId, setStoreId]               = useState<string | null>(null);
-  const [highlighted, setHighlighted]       = useState<Set<string>>(new Set());
-  const [countryOpen, setCountryOpen]       = useState(false);
-  const [contactOpen, setContactOpen]       = useState(false);
-  const [whatsappOpen, setWhatsappOpen]     = useState(false);
+  const [loading, setLoading]         = useState(false);
+  const [geoLoading, setGeoLoading]   = useState(false);
+  const [showErrors, setShowErrors]   = useState(false);
+  const [storeId, setStoreId]         = useState<string | null>(null);
+  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
-    country:       "IN",
-    streetAddress: "",
-    city:          "",
-    state:         "",
-    postalCode:    "",
-    contactCode:   "+91",
-    contactNumber: "",
-    whatsappCode:  "+91",
-    whatsappNumber:"",
+    country:        "IN",
+    streetAddress:  "",
+    city:           "",
+    state:          "",
+    postalCode:     "",
+    contactCode:    "+91",
+    contactNumber:  "",
+    whatsappCode:   "+91",
+    whatsappNumber: "",
   });
 
   useEffect(() => { init(); }, []);
@@ -219,8 +348,8 @@ const BusinessDetails = () => {
       const toFlash: string[] = [];
 
       if (geo.country)     { updates.country = geo.country; updates.contactCode = dialCode; updates.whatsappCode = dialCode; toFlash.push("country"); }
-      if (geo.city)        { updates.city        = geo.city;        toFlash.push("city");        }
-      if (geo.region)      { updates.state       = geo.region;      toFlash.push("state");       }
+      if (geo.city)        { updates.city        = geo.city;        toFlash.push("city");       }
+      if (geo.region)      { updates.state       = geo.region;      toFlash.push("state");      }
       if (geo.postal_code) { updates.postalCode  = geo.postal_code; toFlash.push("postalCode"); }
 
       setForm(prev => ({ ...prev, ...updates }));
@@ -243,10 +372,10 @@ const BusinessDetails = () => {
   };
 
   const isValid = () =>
-    form.country.length === 2 &&
+    form.country.length === 2         &&
     form.streetAddress.trim().length >= 5 &&
-    form.city.trim().length >= 2 &&
-    form.state.trim().length >= 2 &&
+    form.city.trim().length  >= 2     &&
+    form.state.trim().length >= 2     &&
     form.whatsappNumber.length >= 7;
 
   const handleSubmit = async () => {
@@ -258,12 +387,12 @@ const BusinessDetails = () => {
       const { error } = await supabase
         .from("stores")
         .update({
-          country:        form.country,
-          street_address: form.streetAddress  || null,
-          city:           form.city           || null,
-          state:          form.state          || null,
-          postal_code:    form.postalCode     || null,
-          business_phone: form.contactNumber
+          country:         form.country,
+          street_address:  form.streetAddress  || null,
+          city:            form.city           || null,
+          state:           form.state          || null,
+          postal_code:     form.postalCode     || null,
+          business_phone:  form.contactNumber
             ? `${form.contactCode}${form.contactNumber}`
             : null,
           whatsapp_number: `${form.whatsappCode}${form.whatsappNumber}`,
@@ -286,10 +415,6 @@ const BusinessDetails = () => {
       return "border-destructive focus-visible:ring-destructive";
     return "";
   };
-
-  const selectedCountry = COUNTRIES.find(c => c.iso   === form.country)      ?? COUNTRIES[0];
-  const contactEntry    = COUNTRIES.find(c => c.dialCode === form.contactCode) ?? COUNTRIES[0];
-  const whatsappEntry   = COUNTRIES.find(c => c.dialCode === form.whatsappCode) ?? COUNTRIES[0];
 
   const err = {
     streetAddress:  showErrors && form.streetAddress.trim().length < 5,
@@ -358,41 +483,12 @@ const BusinessDetails = () => {
               <Label className="flex items-center gap-1.5">
                 Country <span className="text-destructive">*</span>
               </Label>
-              <Popover open={countryOpen} onOpenChange={setCountryOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${inputClass("country", false)}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>{selectedCountry.flag}</span>
-                      <span>{selectedCountry.name}</span>
-                    </span>
-                    <ChevronsUpDown className="w-4 h-4 opacity-50 shrink-0" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search country…" />
-                    <CommandList>
-                      <CommandEmpty>No country found.</CommandEmpty>
-                      <CommandGroup>
-                        {COUNTRIES.map(c => (
-                          <CommandItem
-                            key={c.iso}
-                            value={`${c.name} ${c.iso}`}
-                            onSelect={() => { handleCountryChange(c.iso); setCountryOpen(false); }}
-                          >
-                            <span className="mr-2">{c.flag}</span>
-                            {c.name}
-                            {form.country === c.iso && <Check className="ml-auto w-4 h-4 text-primary" />}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <SearchableCountry
+                value={form.country}
+                onChange={handleCountryChange}
+                mode="country"
+                inputClassName={inputClass("country", false)}
+              />
             </motion.div>
 
             {/* Street Address */}
@@ -494,42 +590,13 @@ const BusinessDetails = () => {
                 <span className="text-xs text-muted-foreground font-normal">(optional)</span>
               </Label>
               <div className="flex gap-2">
-                <Popover open={contactOpen} onOpenChange={setContactOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-10 w-28 min-w-[7rem] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0"
-                    >
-                      <span className="flex items-center gap-1">
-                        <span>{contactEntry.flag}</span>
-                        <span>{form.contactCode}</span>
-                      </span>
-                      <ChevronsUpDown className="w-3 h-3 opacity-50 shrink-0" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search country or code…" />
-                      <CommandList>
-                        <CommandEmpty>No country found.</CommandEmpty>
-                        <CommandGroup>
-                          {COUNTRIES.map(c => (
-                            <CommandItem
-                              key={c.iso}
-                              value={`${c.name} ${c.dialCode}`}
-                              onSelect={() => { set("contactCode", c.dialCode); setContactOpen(false); }}
-                            >
-                              <span className="mr-2">{c.flag}</span>
-                              <span className="flex-1">{c.name}</span>
-                              <span className="text-muted-foreground text-xs ml-2">{c.dialCode}</span>
-                              {form.contactCode === c.dialCode && <Check className="ml-2 w-4 h-4 text-primary" />}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <SearchableCountry
+                  value={form.contactCode}
+                  onChange={v => set("contactCode", v)}
+                  mode="dialcode"
+                  className="w-28 min-w-[7rem] shrink-0"
+                  dropdownClassName="min-w-[17rem]"
+                />
                 <Input
                   id="contact"
                   type="tel"
@@ -549,42 +616,13 @@ const BusinessDetails = () => {
                 WhatsApp Business Number <span className="text-destructive">*</span>
               </Label>
               <div className="flex gap-2">
-                <Popover open={whatsappOpen} onOpenChange={setWhatsappOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-10 w-28 min-w-[7rem] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0"
-                    >
-                      <span className="flex items-center gap-1">
-                        <span>{whatsappEntry.flag}</span>
-                        <span>{form.whatsappCode}</span>
-                      </span>
-                      <ChevronsUpDown className="w-3 h-3 opacity-50 shrink-0" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search country or code…" />
-                      <CommandList>
-                        <CommandEmpty>No country found.</CommandEmpty>
-                        <CommandGroup>
-                          {COUNTRIES.map(c => (
-                            <CommandItem
-                              key={c.iso}
-                              value={`${c.name} ${c.dialCode}`}
-                              onSelect={() => { set("whatsappCode", c.dialCode); setWhatsappOpen(false); }}
-                            >
-                              <span className="mr-2">{c.flag}</span>
-                              <span className="flex-1">{c.name}</span>
-                              <span className="text-muted-foreground text-xs ml-2">{c.dialCode}</span>
-                              {form.whatsappCode === c.dialCode && <Check className="ml-2 w-4 h-4 text-primary" />}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <SearchableCountry
+                  value={form.whatsappCode}
+                  onChange={v => set("whatsappCode", v)}
+                  mode="dialcode"
+                  className="w-28 min-w-[7rem] shrink-0"
+                  dropdownClassName="min-w-[17rem]"
+                />
                 <Input
                   id="whatsapp"
                   type="tel"
