@@ -265,7 +265,8 @@ const Index = () => {
       title: "Google Analytics",
       description: "Track every visitor, page, and conversion with Google Analytics 4. Understand your audience and grow smarter.",
       gradient: "from-orange-500 to-amber-500",
-      size: "normal"
+      size: "normal",
+      customIconSrc: "/icons/google-analytics.svg"
     }
   ];
 
