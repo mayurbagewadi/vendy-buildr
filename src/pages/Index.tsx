@@ -172,7 +172,8 @@ const Index = () => {
       title: "WhatsApp Integration",
       description: "Receive orders directly on WhatsApp. Chat with customers in real-time instantly.",
       gradient: "from-green-500 to-emerald-500",
-      size: "normal"
+      size: "normal",
+      customIconSrc: "/icons/whatsapp.svg"
     },
     {
       icon: CreditCard,
