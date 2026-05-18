@@ -94,6 +94,7 @@ const CommissionHistory         = lazy(() => import("./pages/CommissionHistory")
 const HelperProfile             = lazy(() => import("./pages/HelperProfile"));
 const Sitemap                   = lazy(() => import("./pages/Sitemap"));
 const OnboardingStoreSetup      = lazy(() => import("./pages/onboarding/StoreSetup"));
+const OnboardingBusinessDetails = lazy(() => import("./pages/onboarding/BusinessDetails"));
 const OnboardingGoogleDrive     = lazy(() => import("./pages/onboarding/GoogleDriveSetup"));
 
 // ─── Minimal page loader (matches dark theme, no white flash) ─────────────────
@@ -309,6 +310,7 @@ const App = () => {
 
                           {/* Onboarding Routes */}
                           <Route path="/onboarding/store-setup" element={<OnboardingStoreSetup />} />
+                          <Route path="/onboarding/business-details" element={<OnboardingBusinessDetails />} />
                           <Route path="/onboarding/google-drive" element={<OnboardingGoogleDrive />} />
 
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

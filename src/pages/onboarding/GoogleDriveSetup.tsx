@@ -197,24 +197,24 @@ const GoogleDriveSetup = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-muted z-50">
-        <div className="h-full bg-primary w-2/4 transition-all duration-300" />
+        <div className="h-full bg-primary w-full transition-all duration-300" />
       </div>
 
       {/* Progress Indicator */}
       <div className="container max-w-4xl mx-auto pt-8 pb-4 px-4">
         <div className="flex items-center justify-center gap-2 md:gap-4">
-          {[1, 2].map((step) => (
+          {[1, 2, 3].map((step) => (
             <div key={step} className="flex items-center">
               <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                step <= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                step <= 3 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}>
                 {step}
               </div>
-              {step < 2 && <div className={`w-8 md:w-16 h-0.5 ${step < 2 ? "bg-primary" : "bg-muted"}`} />}
+              {step < 3 && <div className={`w-8 md:w-16 h-0.5 bg-primary`} />}
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-2">Step 2 of 2</p>
+        <p className="text-center text-sm text-muted-foreground mt-2">Step 3 of 3</p>
       </div>
 
       {/* Main Content */}
@@ -302,7 +302,7 @@ const GoogleDriveSetup = () => {
             <Button
               variant="ghost"
               size="lg"
-              onClick={() => navigate("/onboarding/store-setup")}
+              onClick={() => navigate("/onboarding/business-details")}
               className="order-2 sm:order-1 w-full sm:w-auto min-h-[48px]"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />

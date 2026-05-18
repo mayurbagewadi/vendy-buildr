@@ -8,100 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Store, Check, X, Loader2, XCircle } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { seedDemoDataForStore } from "@/lib/seedDemoData";
-
-const COUNTRY_CODES = [
-  { flag: "🇮🇳", code: "+91", name: "India" },
-  { flag: "🇦🇫", code: "+93", name: "Afghanistan" },
-  { flag: "🇩🇿", code: "+213", name: "Algeria" },
-  { flag: "🇦🇴", code: "+244", name: "Angola" },
-  { flag: "🇦🇷", code: "+54", name: "Argentina" },
-  { flag: "🇦🇺", code: "+61", name: "Australia" },
-  { flag: "🇦🇹", code: "+43", name: "Austria" },
-  { flag: "🇧🇭", code: "+973", name: "Bahrain" },
-  { flag: "🇧🇩", code: "+880", name: "Bangladesh" },
-  { flag: "🇧🇪", code: "+32", name: "Belgium" },
-  { flag: "🇧🇹", code: "+975", name: "Bhutan" },
-  { flag: "🇧🇷", code: "+55", name: "Brazil" },
-  { flag: "🇧🇬", code: "+359", name: "Bulgaria" },
-  { flag: "🇰🇭", code: "+855", name: "Cambodia" },
-  { flag: "🇨🇲", code: "+237", name: "Cameroon" },
-  { flag: "🇨🇱", code: "+56", name: "Chile" },
-  { flag: "🇨🇳", code: "+86", name: "China" },
-  { flag: "🇨🇴", code: "+57", name: "Colombia" },
-  { flag: "🇭🇷", code: "+385", name: "Croatia" },
-  { flag: "🇨🇿", code: "+420", name: "Czech Republic" },
-  { flag: "🇩🇰", code: "+45", name: "Denmark" },
-  { flag: "🇪🇨", code: "+593", name: "Ecuador" },
-  { flag: "🇪🇬", code: "+20", name: "Egypt" },
-  { flag: "🇪🇹", code: "+251", name: "Ethiopia" },
-  { flag: "🇫🇮", code: "+358", name: "Finland" },
-  { flag: "🇫🇷", code: "+33", name: "France" },
-  { flag: "🇬🇭", code: "+233", name: "Ghana" },
-  { flag: "🇬🇷", code: "+30", name: "Greece" },
-  { flag: "🇬🇹", code: "+502", name: "Guatemala" },
-  { flag: "🇭🇰", code: "+852", name: "Hong Kong" },
-  { flag: "🇭🇺", code: "+36", name: "Hungary" },
-  { flag: "🇮🇩", code: "+62", name: "Indonesia" },
-  { flag: "🇮🇷", code: "+98", name: "Iran" },
-  { flag: "🇮🇶", code: "+964", name: "Iraq" },
-  { flag: "🇮🇪", code: "+353", name: "Ireland" },
-  { flag: "🇮🇱", code: "+972", name: "Israel" },
-  { flag: "🇮🇹", code: "+39", name: "Italy" },
-  { flag: "🇯🇵", code: "+81", name: "Japan" },
-  { flag: "🇯🇴", code: "+962", name: "Jordan" },
-  { flag: "🇰🇪", code: "+254", name: "Kenya" },
-  { flag: "🇰🇼", code: "+965", name: "Kuwait" },
-  { flag: "🇱🇦", code: "+856", name: "Laos" },
-  { flag: "🇱🇧", code: "+961", name: "Lebanon" },
-  { flag: "🇱🇾", code: "+218", name: "Libya" },
-  { flag: "🇲🇾", code: "+60", name: "Malaysia" },
-  { flag: "🇲🇻", code: "+960", name: "Maldives" },
-  { flag: "🇲🇦", code: "+212", name: "Morocco" },
-  { flag: "🇲🇿", code: "+258", name: "Mozambique" },
-  { flag: "🇲🇲", code: "+95", name: "Myanmar" },
-  { flag: "🇳🇵", code: "+977", name: "Nepal" },
-  { flag: "🇳🇱", code: "+31", name: "Netherlands" },
-  { flag: "🇳🇿", code: "+64", name: "New Zealand" },
-  { flag: "🇳🇬", code: "+234", name: "Nigeria" },
-  { flag: "🇳🇴", code: "+47", name: "Norway" },
-  { flag: "🇴🇲", code: "+968", name: "Oman" },
-  { flag: "🇵🇰", code: "+92", name: "Pakistan" },
-  { flag: "🇵🇦", code: "+507", name: "Panama" },
-  { flag: "🇵🇪", code: "+51", name: "Peru" },
-  { flag: "🇵🇭", code: "+63", name: "Philippines" },
-  { flag: "🇵🇱", code: "+48", name: "Poland" },
-  { flag: "🇵🇹", code: "+351", name: "Portugal" },
-  { flag: "🇶🇦", code: "+974", name: "Qatar" },
-  { flag: "🇷🇴", code: "+40", name: "Romania" },
-  { flag: "🇷🇺", code: "+7", name: "Russia / Kazakhstan" },
-  { flag: "🇸🇦", code: "+966", name: "Saudi Arabia" },
-  { flag: "🇸🇳", code: "+221", name: "Senegal" },
-  { flag: "🇷🇸", code: "+381", name: "Serbia" },
-  { flag: "🇸🇬", code: "+65", name: "Singapore" },
-  { flag: "🇿🇦", code: "+27", name: "South Africa" },
-  { flag: "🇰🇷", code: "+82", name: "South Korea" },
-  { flag: "🇪🇸", code: "+34", name: "Spain" },
-  { flag: "🇱🇰", code: "+94", name: "Sri Lanka" },
-  { flag: "🇸🇩", code: "+249", name: "Sudan" },
-  { flag: "🇸🇪", code: "+46", name: "Sweden" },
-  { flag: "🇨🇭", code: "+41", name: "Switzerland" },
-  { flag: "🇹🇼", code: "+886", name: "Taiwan" },
-  { flag: "🇹🇿", code: "+255", name: "Tanzania" },
-  { flag: "🇹🇭", code: "+66", name: "Thailand" },
-  { flag: "🇹🇳", code: "+216", name: "Tunisia" },
-  { flag: "🇹🇷", code: "+90", name: "Turkey" },
-  { flag: "🇦🇪", code: "+971", name: "UAE" },
-  { flag: "🇺🇬", code: "+256", name: "Uganda" },
-  { flag: "🇺🇦", code: "+380", name: "Ukraine" },
-  { flag: "🇬🇧", code: "+44", name: "UK" },
-  { flag: "🇺🇸", code: "+1", name: "USA / Canada" },
-  { flag: "🇻🇳", code: "+84", name: "Vietnam" },
-  { flag: "🇾🇪", code: "+967", name: "Yemen" },
-  { flag: "🇿🇲", code: "+260", name: "Zambia" },
-  { flag: "🇿🇼", code: "+263", name: "Zimbabwe" },
-];
 
 const StoreSetup = () => {
   const navigate = useNavigate();
@@ -116,8 +23,6 @@ const StoreSetup = () => {
     storeName: "",
     storeSlug: "",
     description: "",
-    whatsappNumber: "",
-    countryCode: "+91"
   });
 
   const [slugStatus, setSlugStatus] = useState<"idle" | "available" | "taken">("idle");
@@ -188,25 +93,19 @@ const StoreSetup = () => {
 
     setUserName(profile?.full_name || user.email || "Guest");
 
-    // Check if store already exists (user came back from step 2)
+    // Check if store already exists (user came back from step 2 or 3)
     const { data: existingStore } = await supabase
       .from("stores")
-      .select("id, name, slug, description, whatsapp_number")
+      .select("id, name, slug, description")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (existingStore) {
       setExistingStoreId(existingStore.id);
-      const rawPhone = existingStore.whatsapp_number || "";
-      const sortedCodes = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
-      const countryCode = sortedCodes.find(c => rawPhone.startsWith(c.code))?.code || "+91";
-      const whatsappNumber = rawPhone.replace(countryCode, "");
       setFormData({
         storeName: existingStore.name || "",
         storeSlug: existingStore.slug || "",
         description: existingStore.description || "",
-        whatsappNumber,
-        countryCode,
       });
       setSlugStatus("available");
     }
@@ -263,8 +162,7 @@ const StoreSetup = () => {
       formData.storeName.length <= 50 &&
       formData.storeSlug.length >= 3 &&
       formData.storeSlug.length <= 30 &&
-      slugStatus === "available" &&
-      formData.whatsappNumber.length >= 10
+      slugStatus === "available"
     );
   };
 
@@ -286,7 +184,6 @@ const StoreSetup = () => {
             slug: formData.storeSlug,
             subdomain: formData.storeSlug,
             description: formData.description || null,
-            whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`,
           })
           .eq("id", existingStoreId);
 
@@ -309,7 +206,6 @@ const StoreSetup = () => {
           slug: formData.storeSlug,
           subdomain: formData.storeSlug,
           description: formData.description || null,
-          whatsapp_number: `${formData.countryCode}${formData.whatsappNumber}`,
           google_access_token: providerToken || null,
           google_refresh_token: providerRefreshToken || null,
           google_token_expiry: tokenExpiry,
@@ -397,7 +293,7 @@ const StoreSetup = () => {
         });
       }
 
-      navigate("/onboarding/google-drive");
+      navigate("/onboarding/business-details");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -413,24 +309,24 @@ const StoreSetup = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-muted z-50">
-        <div className="h-full bg-primary w-1/4 transition-all duration-300" />
+        <div className="h-full bg-primary w-1/3 transition-all duration-300" />
       </div>
 
       {/* Progress Indicator */}
       <div className="container max-w-4xl mx-auto pt-8 pb-4 px-4">
         <div className="flex items-center justify-center gap-2 md:gap-4">
-          {[1, 2].map((step) => (
+          {[1, 2, 3].map((step) => (
             <div key={step} className="flex items-center">
               <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                 step === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}>
                 {step}
               </div>
-              {step < 2 && <div className={`w-8 md:w-16 h-0.5 ${step < 1 ? "bg-primary" : "bg-muted"}`} />}
+              {step < 3 && <div className={`w-8 md:w-16 h-0.5 bg-muted`} />}
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-2">Step 1 of 2</p>
+        <p className="text-center text-sm text-muted-foreground mt-2">Step 1 of 3</p>
       </div>
 
       {/* Main Content */}
@@ -531,42 +427,6 @@ const StoreSetup = () => {
               </p>
             </div>
 
-            {/* WhatsApp Number */}
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">
-                WhatsApp Business Number <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Select value={formData.countryCode} onValueChange={(value) => setFormData(prev => ({ ...prev, countryCode: value }))}>
-                  <SelectTrigger className="w-28 min-w-[7rem]">
-                    <span className="flex items-center gap-1">
-                      <span>{COUNTRY_CODES.find(c => c.code === formData.countryCode)?.flag}</span>
-                      <span>{formData.countryCode}</span>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRY_CODES.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        {country.flag} {country.name} ({country.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  id="whatsapp"
-                  type="tel"
-                  placeholder="9876543210"
-                  value={formData.whatsappNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, whatsappNumber: e.target.value.replace(/\D/g, "") }))}
-                  className={`flex-1 ${showErrors && formData.whatsappNumber.length < 10 ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                />
-              </div>
-              {showErrors && formData.whatsappNumber.length < 10 ? (
-                <p className="text-xs text-destructive">Enter a valid 10-digit WhatsApp number</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Customers will place orders via WhatsApp to this number</p>
-              )}
-            </div>
           </div>
 
           {/* Footer */}
