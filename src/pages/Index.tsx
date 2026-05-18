@@ -195,7 +195,9 @@ const Index = () => {
       title: "Instagram Auto-Reply",
       description: "Never miss a customer inquiry with intelligent Instagram auto-reply features.",
       gradient: "from-pink-500 to-rose-500",
-      size: "normal"
+      size: "normal",
+      customIconSrc: "/icons/instagram.svg",
+      iconNoBg: true
     },
     {
       icon: Star,
@@ -224,7 +226,9 @@ const Index = () => {
       description: "Embed Instagram videos directly on your website for better engagement.",
       gradient: "from-fuchsia-500 to-pink-500",
       size: "normal",
-      comingSoon: true
+      comingSoon: true,
+      customIconSrc: "/icons/instagram.svg",
+      iconNoBg: true
     },
     {
       icon: LineChart,
