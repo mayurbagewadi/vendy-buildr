@@ -173,7 +173,8 @@ const Index = () => {
       description: "Receive orders directly on WhatsApp. Chat with customers in real-time instantly.",
       gradient: "from-green-500 to-emerald-500",
       size: "normal",
-      customIconSrc: "/icons/whatsapp.svg"
+      customIconSrc: "/icons/whatsapp.svg",
+      iconNoBg: true
     },
     {
       icon: CreditCard,
@@ -767,9 +768,19 @@ const Index = () => {
                   <div className="mb-4 lg:mb-6">
                     <div className={`relative inline-block`}>
                       <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-sm opacity-20 group-hover:blur-md group-hover:opacity-30 transition-all duration-500`} />
-                      <div className={`relative w-14 h-14 lg:w-16 lg:h-16 ${(feature as any).customIconSrc ? 'bg-white p-2.5' : `bg-gradient-to-br ${feature.gradient}`} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                      <div className={`relative w-14 h-14 lg:w-16 lg:h-16 ${
+                        (feature as any).customIconSrc
+                          ? (feature as any).iconNoBg
+                            ? 'overflow-hidden'
+                            : 'bg-white p-2.5'
+                          : `bg-gradient-to-br ${feature.gradient}`
+                      } rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
                         {(feature as any).customIconSrc ? (
-                          <img src={(feature as any).customIconSrc} className="w-full h-full object-contain" alt={feature.title} />
+                          <img
+                            src={(feature as any).customIconSrc}
+                            className={`${(feature as any).iconNoBg ? 'w-full h-full object-cover' : 'w-full h-full object-contain'}`}
+                            alt={feature.title}
+                          />
                         ) : (
                           <feature.icon className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
                         )}
