@@ -251,6 +251,21 @@ const Index = () => {
       description: "Generate unique coupon codes and track redemptions. Perfect for referrals and loyalty programs.",
       gradient: "from-purple-500 to-pink-500",
       size: "normal"
+    },
+    {
+      icon: Search,
+      title: "Google Search Console",
+      description: "Connect your store to Google Search Console. Monitor search performance, indexing status, and fix SEO issues instantly.",
+      gradient: "from-blue-500 to-green-500",
+      size: "normal",
+      customIconSrc: "/icons/search-console.svg"
+    },
+    {
+      icon: BarChart3,
+      title: "Google Analytics",
+      description: "Track every visitor, page, and conversion with Google Analytics 4. Understand your audience and grow smarter.",
+      gradient: "from-orange-500 to-amber-500",
+      size: "normal"
     }
   ];
 
@@ -750,8 +765,12 @@ const Index = () => {
                   <div className="mb-4 lg:mb-6">
                     <div className={`relative inline-block`}>
                       <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-sm opacity-20 group-hover:blur-md group-hover:opacity-30 transition-all duration-500`} />
-                      <div className={`relative w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                        <feature.icon className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
+                      <div className={`relative w-14 h-14 lg:w-16 lg:h-16 ${(feature as any).customIconSrc ? 'bg-white p-2.5' : `bg-gradient-to-br ${feature.gradient}`} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                        {(feature as any).customIconSrc ? (
+                          <img src={(feature as any).customIconSrc} className="w-full h-full object-contain" alt={feature.title} />
+                        ) : (
+                          <feature.icon className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
+                        )}
                       </div>
                     </div>
                   </div>
