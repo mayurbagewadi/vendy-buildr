@@ -197,7 +197,8 @@ const Index = () => {
       gradient: "from-pink-500 to-rose-500",
       size: "normal",
       customIconSrc: "/icons/instagram.svg",
-      iconNoBg: true
+      iconNoBg: true,
+      comingSoon: true
     },
     {
       icon: Star,
