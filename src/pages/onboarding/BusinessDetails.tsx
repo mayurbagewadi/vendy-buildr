@@ -5,9 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Phone, MessageCircle, Loader2, ArrowLeft, Sparkles } from "lucide-react";
+import { Building2, Phone, MessageCircle, Loader2, ArrowLeft, Sparkles, ChevronsUpDown, Check } from "lucide-react";
 
 const COUNTRIES = [
   { iso: "IN", flag: "🇮🇳", name: "India",              dialCode: "+91"  },
@@ -136,6 +137,9 @@ const BusinessDetails = () => {
   const [showErrors, setShowErrors]         = useState(false);
   const [storeId, setStoreId]               = useState<string | null>(null);
   const [highlighted, setHighlighted]       = useState<Set<string>>(new Set());
+  const [countryOpen, setCountryOpen]       = useState(false);
+  const [contactOpen, setContactOpen]       = useState(false);
+  const [whatsappOpen, setWhatsappOpen]     = useState(false);
 
   const [form, setForm] = useState({
     country:       "IN",
@@ -354,21 +358,41 @@ const BusinessDetails = () => {
               <Label className="flex items-center gap-1.5">
                 Country <span className="text-destructive">*</span>
               </Label>
-              <Select value={form.country} onValueChange={handleCountryChange}>
-                <SelectTrigger className={`w-full ${inputClass("country", false)}`}>
-                  <span className="flex items-center gap-2">
-                    <span>{selectedCountry.flag}</span>
-                    <span>{selectedCountry.name}</span>
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map(c => (
-                    <SelectItem key={c.iso} value={c.iso}>
-                      {c.flag} {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${inputClass("country", false)}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{selectedCountry.flag}</span>
+                      <span>{selectedCountry.name}</span>
+                    </span>
+                    <ChevronsUpDown className="w-4 h-4 opacity-50 shrink-0" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search country…" />
+                    <CommandList>
+                      <CommandEmpty>No country found.</CommandEmpty>
+                      <CommandGroup>
+                        {COUNTRIES.map(c => (
+                          <CommandItem
+                            key={c.iso}
+                            value={`${c.name} ${c.iso}`}
+                            onSelect={() => { handleCountryChange(c.iso); setCountryOpen(false); }}
+                          >
+                            <span className="mr-2">{c.flag}</span>
+                            {c.name}
+                            {form.country === c.iso && <Check className="ml-auto w-4 h-4 text-primary" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </motion.div>
 
             {/* Street Address */}
@@ -470,21 +494,42 @@ const BusinessDetails = () => {
                 <span className="text-xs text-muted-foreground font-normal">(optional)</span>
               </Label>
               <div className="flex gap-2">
-                <Select value={form.contactCode} onValueChange={v => set("contactCode", v)}>
-                  <SelectTrigger className="w-28 min-w-[7rem]">
-                    <span className="flex items-center gap-1">
-                      <span>{contactEntry.flag}</span>
-                      <span>{form.contactCode}</span>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map(c => (
-                      <SelectItem key={c.iso} value={c.dialCode}>
-                        {c.flag} {c.name} ({c.dialCode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={contactOpen} onOpenChange={setContactOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-10 w-28 min-w-[7rem] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0"
+                    >
+                      <span className="flex items-center gap-1">
+                        <span>{contactEntry.flag}</span>
+                        <span>{form.contactCode}</span>
+                      </span>
+                      <ChevronsUpDown className="w-3 h-3 opacity-50 shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search country or code…" />
+                      <CommandList>
+                        <CommandEmpty>No country found.</CommandEmpty>
+                        <CommandGroup>
+                          {COUNTRIES.map(c => (
+                            <CommandItem
+                              key={c.iso}
+                              value={`${c.name} ${c.dialCode}`}
+                              onSelect={() => { set("contactCode", c.dialCode); setContactOpen(false); }}
+                            >
+                              <span className="mr-2">{c.flag}</span>
+                              <span className="flex-1">{c.name}</span>
+                              <span className="text-muted-foreground text-xs ml-2">{c.dialCode}</span>
+                              {form.contactCode === c.dialCode && <Check className="ml-2 w-4 h-4 text-primary" />}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <Input
                   id="contact"
                   type="tel"
@@ -504,21 +549,42 @@ const BusinessDetails = () => {
                 WhatsApp Business Number <span className="text-destructive">*</span>
               </Label>
               <div className="flex gap-2">
-                <Select value={form.whatsappCode} onValueChange={v => set("whatsappCode", v)}>
-                  <SelectTrigger className="w-28 min-w-[7rem]">
-                    <span className="flex items-center gap-1">
-                      <span>{whatsappEntry.flag}</span>
-                      <span>{form.whatsappCode}</span>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map(c => (
-                      <SelectItem key={c.iso} value={c.dialCode}>
-                        {c.flag} {c.name} ({c.dialCode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={whatsappOpen} onOpenChange={setWhatsappOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-10 w-28 min-w-[7rem] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0"
+                    >
+                      <span className="flex items-center gap-1">
+                        <span>{whatsappEntry.flag}</span>
+                        <span>{form.whatsappCode}</span>
+                      </span>
+                      <ChevronsUpDown className="w-3 h-3 opacity-50 shrink-0" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search country or code…" />
+                      <CommandList>
+                        <CommandEmpty>No country found.</CommandEmpty>
+                        <CommandGroup>
+                          {COUNTRIES.map(c => (
+                            <CommandItem
+                              key={c.iso}
+                              value={`${c.name} ${c.dialCode}`}
+                              onSelect={() => { set("whatsappCode", c.dialCode); setWhatsappOpen(false); }}
+                            >
+                              <span className="mr-2">{c.flag}</span>
+                              <span className="flex-1">{c.name}</span>
+                              <span className="text-muted-foreground text-xs ml-2">{c.dialCode}</span>
+                              {form.whatsappCode === c.dialCode && <Check className="ml-2 w-4 h-4 text-primary" />}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <Input
                   id="whatsapp"
                   type="tel"
