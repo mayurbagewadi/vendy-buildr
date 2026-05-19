@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Palette, Sun, Moon, Monitor } from "lucide-react";
+import { Palette, Sun, Moon, Monitor, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { COLOR_PALETTES, type PaletteId } from "@/lib/colorPalettes";
 
 type ThemeOption = "dark" | "light" | "system";
+
+const CACHE_PREFIX = 'dd_sf_';
 
 const THEME_OPTIONS: { value: ThemeOption; label: string; icon: React.ReactNode; desc: string }[] = [
   { value: "dark",   label: "Dark",   icon: <Moon className="w-5 h-5" />,    desc: "Dark background, light text" },
@@ -20,7 +22,13 @@ const ThemeSettings = () => {
   const [storefrontTheme, setStorefrontTheme] = useState<ThemeOption>("dark");
   const [storefrontPalette, setStorefrontPalette] = useState<PaletteId>("default");
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // BUG-3 fix: sequence counters — only the latest click's response is applied.
+  const paletteSeq = useRef(0);
+  const themeSeq = useRef(0);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -29,19 +37,27 @@ const ThemeSettings = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, whatsapp_float_enabled, storefront_theme, storefront_color_palette")
+        .select("id, slug, whatsapp_float_enabled, storefront_theme, storefront_color_palette")
         .eq("user_id", user.id)
         .single();
 
       if (store) {
         setStoreId(store.id);
+        setStoreSlug(store.slug);
         setWhatsappFloatEnabled(store.whatsapp_float_enabled !== false);
         setStorefrontTheme((store.storefront_theme as ThemeOption) || "dark");
         setStorefrontPalette((store.storefront_color_palette as PaletteId) || "default");
       }
+      setIsLoading(false);
     };
     loadSettings();
   }, []);
+
+  // BUG-4 fix: bust the customer-facing sessionStorage cache so palette/theme
+  // changes are visible immediately without waiting for the 5-min TTL to expire.
+  const bustStoreCache = () => {
+    if (storeSlug) sessionStorage.removeItem(CACHE_PREFIX + storeSlug);
+  };
 
   const handleWhatsappToggle = async (checked: boolean) => {
     setWhatsappFloatEnabled(checked);
@@ -65,6 +81,8 @@ const ThemeSettings = () => {
   const handlePaletteChange = async (value: PaletteId) => {
     if (!storeId) return;
     const previous = storefrontPalette;
+    // BUG-3: stamp this click; ignore any response that isn't the latest.
+    const seq = ++paletteSeq.current;
     setStorefrontPalette(value);
 
     const { error } = await supabase
@@ -72,10 +90,13 @@ const ThemeSettings = () => {
       .update({ storefront_color_palette: value })
       .eq("id", storeId);
 
+    if (seq !== paletteSeq.current) return; // stale — a newer click already fired
+
     if (error) {
       setStorefrontPalette(previous);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not update color palette. Please try again." });
     } else {
+      bustStoreCache(); // BUG-4: customers see the new palette immediately
       const label = COLOR_PALETTES.find(p => p.id === value)?.label ?? value;
       toast({ title: "Saved", description: `Color palette set to ${label}.` });
     }
@@ -84,6 +105,8 @@ const ThemeSettings = () => {
   const handleThemeChange = async (value: ThemeOption) => {
     if (!storeId) return;
     const previous = storefrontTheme;
+    // BUG-3: stamp this click; ignore any response that isn't the latest.
+    const seq = ++themeSeq.current;
     setStorefrontTheme(value);
 
     const { error } = await supabase
@@ -91,13 +114,36 @@ const ThemeSettings = () => {
       .update({ storefront_theme: value })
       .eq("id", storeId);
 
+    if (seq !== themeSeq.current) return; // stale — a newer click already fired
+
     if (error) {
       setStorefrontTheme(previous);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not update theme. Please try again." });
     } else {
+      bustStoreCache(); // BUG-4: customers see the new theme immediately
       toast({ title: "Saved", description: `Store theme set to ${value}.` });
     }
   };
+
+  // BUG-5 fix: show skeleton while storeId is loading so buttons can't be
+  // clicked before the store data is ready (prevents silent save failures).
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Palette className="w-6 h-6 text-primary" />
+            Theme
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Customize the appearance of your store</p>
+        </div>
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" />
+          <span className="text-sm">Loading settings…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
