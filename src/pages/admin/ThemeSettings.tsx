@@ -2,12 +2,23 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Palette } from "lucide-react";
+import { Palette, Sun, Moon, Monitor } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { COLOR_PALETTES, type PaletteId } from "@/lib/colorPalettes";
+
+type ThemeOption = "dark" | "light" | "system";
+
+const THEME_OPTIONS: { value: ThemeOption; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: "dark",   label: "Dark",   icon: <Moon className="w-5 h-5" />,    desc: "Dark background, light text" },
+  { value: "light",  label: "Light",  icon: <Sun className="w-5 h-5" />,     desc: "Light background, dark text" },
+  { value: "system", label: "System", icon: <Monitor className="w-5 h-5" />, desc: "Follows visitor's OS setting" },
+];
 
 const ThemeSettings = () => {
   const [whatsappFloatEnabled, setWhatsappFloatEnabled] = useState(true);
+  const [storefrontTheme, setStorefrontTheme] = useState<ThemeOption>("dark");
+  const [storefrontPalette, setStorefrontPalette] = useState<PaletteId>("default");
   const [storeId, setStoreId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -18,19 +29,21 @@ const ThemeSettings = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, whatsapp_float_enabled")
+        .select("id, whatsapp_float_enabled, storefront_theme, storefront_color_palette")
         .eq("user_id", user.id)
         .single();
 
       if (store) {
         setStoreId(store.id);
         setWhatsappFloatEnabled(store.whatsapp_float_enabled !== false);
+        setStorefrontTheme((store.storefront_theme as ThemeOption) || "dark");
+        setStorefrontPalette((store.storefront_color_palette as PaletteId) || "default");
       }
     };
     loadSettings();
   }, []);
 
-  const handleToggle = async (checked: boolean) => {
+  const handleWhatsappToggle = async (checked: boolean) => {
     setWhatsappFloatEnabled(checked);
     if (!storeId) return;
 
@@ -49,6 +62,39 @@ const ThemeSettings = () => {
     }
   };
 
+  const handlePaletteChange = async (value: PaletteId) => {
+    if (!storeId) return;
+    setStorefrontPalette(value);
+
+    const { error } = await supabase
+      .from("stores")
+      .update({ storefront_color_palette: value })
+      .eq("id", storeId);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Save Failed", description: "Could not update color palette. Please try again." });
+    } else {
+      const label = COLOR_PALETTES.find(p => p.id === value)?.label ?? value;
+      toast({ title: "Saved", description: `Color palette set to ${label}.` });
+    }
+  };
+
+  const handleThemeChange = async (value: ThemeOption) => {
+    if (!storeId) return;
+    setStorefrontTheme(value);
+
+    const { error } = await supabase
+      .from("stores")
+      .update({ storefront_theme: value })
+      .eq("id", storeId);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Save Failed", description: "Could not update theme. Please try again." });
+    } else {
+      toast({ title: "Saved", description: `Store theme set to ${value}.` });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -59,6 +105,98 @@ const ThemeSettings = () => {
         <p className="text-sm text-muted-foreground mt-0.5">Customize the appearance of your store</p>
       </div>
 
+      {/* Storefront Theme */}
+      <Card className="admin-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-base">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Palette className="w-4 h-4 text-primary" />
+            </div>
+            Store Theme
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Choose the default theme for your customer-facing store</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {THEME_OPTIONS.map(({ value, label, icon, desc }) => {
+              const isSelected = storefrontTheme === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleThemeChange(value)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
+                    ${isSelected
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                >
+                  <div className={`p-2 rounded-lg ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
+                    {icon}
+                  </div>
+                  <span className="text-sm font-semibold">{label}</span>
+                  <span className="text-xs text-center leading-tight opacity-70">{desc}</span>
+                  {isSelected && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                      Active
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Color Palette */}
+      <Card className="admin-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-base">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Palette className="w-4 h-4 text-primary" />
+            </div>
+            Color Palette
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Choose a color scheme for your customer-facing store</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {COLOR_PALETTES.map(({ id, label, swatches }) => {
+              const isSelected = storefrontPalette === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handlePaletteChange(id as PaletteId)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
+                    ${isSelected
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                >
+                  <div className="flex gap-1.5">
+                    {swatches.map((color, i) => (
+                      <span
+                        key={i}
+                        className="w-4 h-4 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-semibold">{label}</span>
+                  {isSelected && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                      Active
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp Button Visibility */}
       <Card className="admin-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-base">
@@ -90,7 +228,7 @@ const ThemeSettings = () => {
             <Switch
               id="whatsappFloatEnabled"
               checked={whatsappFloatEnabled}
-              onCheckedChange={handleToggle}
+              onCheckedChange={handleWhatsappToggle}
               disabled={isSaving}
               className={`ml-4 ${whatsappFloatEnabled ? "data-[state=checked]:bg-green-500" : ""}`}
             />
