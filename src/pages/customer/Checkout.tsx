@@ -345,6 +345,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 }
               }
 
+              // Fire-and-forget — email failure must never block checkout
+              supabase.functions.invoke('send-order-email', {
+                body: { orderId: insertedOrder.id, storeId: params.storeId },
+              }).catch(err => console.error('Order email trigger failed:', err));
+
               // Step 5: Clear cart and redirect to success page
               clearCart();
               setIsProcessingPayment(false);
@@ -1171,6 +1176,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           // Don't fail the order, just log the error
         }
       }
+
+      // Fire-and-forget — email failure must never block checkout
+      supabase.functions.invoke('send-order-email', {
+        body: { orderId: insertedOrder.id, storeId: storeId },
+      }).catch(err => console.error('Order email trigger failed:', err));
 
       // Handle remaining payment methods (PhonePe, COD)
       if (selectedPaymentMethod === 'phonepe') {

@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+import nodemailer from "npm:nodemailer";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -43,7 +41,7 @@ serve(async (req) => {
       throw new Error('Store not found');
     }
 
-    // Get user profile with email
+    // Get store owner email from profiles
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('email, full_name')
@@ -54,7 +52,7 @@ serve(async (req) => {
       throw new Error('Store owner email not found');
     }
 
-    // Check if user's subscription plan has email notifications enabled
+    // Check subscription plan has order emails enabled
     const { data: subscription, error: subError } = await supabaseClient
       .from('subscriptions')
       .select('plan_id, subscription_plans(enable_order_emails)')
@@ -66,10 +64,7 @@ serve(async (req) => {
       console.log('No active subscription found for user');
       return new Response(
         JSON.stringify({ success: false, message: 'No active subscription' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
@@ -78,138 +73,149 @@ serve(async (req) => {
       console.log('Order emails not enabled for this plan');
       return new Response(
         JSON.stringify({ success: false, message: 'Feature not enabled in plan' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Get order details
-    const { data: order, error: orderError } = await supabaseClient
+    // ── Idempotency: atomically claim the send slot ──
+    // Only the first caller gets a row back — retries and concurrent calls exit early.
+    const { data: claimed, error: claimError } = await supabaseClient
       .from('orders')
-      .select('*')
+      .update({ email_sent_at: new Date().toISOString() })
       .eq('id', orderId)
-      .single();
+      .is('email_sent_at', null)
+      .select('*')
+      .maybeSingle();
 
-    if (orderError || !order) {
-      throw new Error('Order not found');
+    if (claimError) throw claimError;
+
+    if (!claimed) {
+      console.log('Email already sent for order:', orderId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email already sent' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
-    // Format order items for email
+    const order = claimed;
+
+    // Format order items as HTML table rows
     const itemsHtml = (order.items as any[]).map(item => `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price * item.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&#8377;${item.price}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&#8377;${item.price * item.quantity}</td>
       </tr>
     `).join('');
 
-    // Send email using Resend API
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Store Orders <onboarding@resend.dev>',
-        to: [profile.email],
-        subject: `New Order #${order.order_number} - ${store.name}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #333; margin-bottom: 20px;">New Order Received! 🎉</h2>
-            
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <h3 style="color: #666; margin: 0 0 10px 0;">Order Details</h3>
-              <p style="margin: 5px 0;"><strong>Order Number:</strong> ${order.order_number}</p>
-              <p style="margin: 5px 0;"><strong>Status:</strong> ${order.status}</p>
-              <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${order.payment_method}</p>
-            </div>
+    // ── Send via Gmail SMTP ──
+    const gmailUser = Deno.env.get('GMAIL_USER');
+    const gmailPassword = Deno.env.get('GMAIL_APP_PASSWORD');
 
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <h3 style="color: #666; margin: 0 0 10px 0;">Customer Information</h3>
-              <p style="margin: 5px 0;"><strong>Name:</strong> ${order.customer_name}</p>
-              <p style="margin: 5px 0;"><strong>Phone:</strong> ${order.customer_phone}</p>
-              ${order.customer_email ? `<p style="margin: 5px 0;"><strong>Email:</strong> ${order.customer_email}</p>` : ''}
-              <p style="margin: 5px 0;"><strong>Address:</strong> ${order.delivery_address}</p>
-              ${order.delivery_landmark ? `<p style="margin: 5px 0;"><strong>Landmark:</strong> ${order.delivery_landmark}</p>` : ''}
-              ${order.delivery_pincode ? `<p style="margin: 5px 0;"><strong>Pincode:</strong> ${order.delivery_pincode}</p>` : ''}
-            </div>
-
-            <div style="margin-bottom: 20px;">
-              <h3 style="color: #666;">Order Items</h3>
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr style="background: #f0f0f0;">
-                    <th style="padding: 8px; text-align: left;">Item</th>
-                    <th style="padding: 8px; text-align: center;">Qty</th>
-                    <th style="padding: 8px; text-align: right;">Price</th>
-                    <th style="padding: 8px; text-align: right;">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${itemsHtml}
-                </tbody>
-              </table>
-            </div>
-
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                <span>Subtotal:</span>
-                <strong>₹${order.subtotal}</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                <span>Delivery Charge:</span>
-                <strong>₹${order.delivery_charge}</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin: 10px 0; padding-top: 10px; border-top: 2px solid #333; font-size: 18px;">
-                <span>Total:</span>
-                <strong>₹${order.total}</strong>
-              </div>
-            </div>
-
-            ${order.notes ? `
-              <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h3 style="color: #856404; margin: 0 0 10px 0;">Special Instructions</h3>
-                <p style="margin: 0; color: #856404;">${order.notes}</p>
-              </div>
-            ` : ''}
-
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 12px; text-align: center;">
-              This is an automated notification from your store management system.
-            </p>
-          </div>
-        `,
-      }),
-    });
-
-    if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      throw new Error(errorData.message || 'Failed to send email');
+    if (!gmailUser || !gmailPassword) {
+      throw new Error('Gmail SMTP credentials not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in Supabase secrets.');
     }
 
-    const emailData = await emailResponse.json();
-    console.log('Order email sent successfully:', emailData);
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // STARTTLS on port 587
+      auth: {
+        user: gmailUser,
+        pass: gmailPassword,
+      },
+    });
+
+    await transporter.sendMail({
+      from: '"' + store.name + ' Orders" <' + gmailUser + '>',
+      to: profile.email,
+      subject: 'New Order #' + order.order_number + ' - ' + store.name,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">New Order Received!</h2>
+
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #666; margin: 0 0 10px 0;">Order Details</h3>
+            <p style="margin: 5px 0;"><strong>Order Number:</strong> ${order.order_number}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> ${order.status}</p>
+            <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${order.payment_method}</p>
+          </div>
+
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #666; margin: 0 0 10px 0;">Customer Information</h3>
+            <p style="margin: 5px 0;"><strong>Name:</strong> ${order.customer_name}</p>
+            <p style="margin: 5px 0;"><strong>Phone:</strong> ${order.customer_phone}</p>
+            ${order.customer_email ? `<p style="margin: 5px 0;"><strong>Email:</strong> ${order.customer_email}</p>` : ''}
+            <p style="margin: 5px 0;"><strong>Address:</strong> ${order.delivery_address}</p>
+            ${order.delivery_landmark ? `<p style="margin: 5px 0;"><strong>Landmark:</strong> ${order.delivery_landmark}</p>` : ''}
+            ${order.delivery_pincode ? `<p style="margin: 5px 0;"><strong>Pincode:</strong> ${order.delivery_pincode}</p>` : ''}
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #666;">Order Items</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f0f0f0;">
+                  <th style="padding: 8px; text-align: left;">Item</th>
+                  <th style="padding: 8px; text-align: center;">Qty</th>
+                  <th style="padding: 8px; text-align: right;">Price</th>
+                  <th style="padding: 8px; text-align: right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Subtotal:</span>
+              <strong>&#8377;${order.subtotal}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Delivery Charge:</span>
+              <strong>&#8377;${order.delivery_charge}</strong>
+            </div>
+            ${order.discount_amount > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin: 5px 0; color: green;">
+              <span>Discount:</span>
+              <strong>-&#8377;${order.discount_amount}</strong>
+            </div>` : ''}
+            <div style="display: flex; justify-content: space-between; margin: 10px 0; padding-top: 10px; border-top: 2px solid #333; font-size: 18px;">
+              <span>Total:</span>
+              <strong>&#8377;${order.total}</strong>
+            </div>
+          </div>
+
+          ${order.notes ? `
+          <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #856404; margin: 0 0 10px 0;">Special Instructions</h3>
+            <p style="margin: 0; color: #856404;">${order.notes}</p>
+          </div>` : ''}
+
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            Automated notification from your store management system.
+          </p>
+        </div>
+      `,
+    });
+
+    console.log('Order email sent to:', profile.email, 'for order:', order.order_number);
 
     return new Response(
-      JSON.stringify({ success: true, data: emailData }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
+
   } catch (error) {
     console.error('Error sending order email:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
   }
 });
