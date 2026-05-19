@@ -64,6 +64,7 @@ const ThemeSettings = () => {
 
   const handlePaletteChange = async (value: PaletteId) => {
     if (!storeId) return;
+    const previous = storefrontPalette;
     setStorefrontPalette(value);
 
     const { error } = await supabase
@@ -72,6 +73,7 @@ const ThemeSettings = () => {
       .eq("id", storeId);
 
     if (error) {
+      setStorefrontPalette(previous);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not update color palette. Please try again." });
     } else {
       const label = COLOR_PALETTES.find(p => p.id === value)?.label ?? value;
@@ -81,6 +83,7 @@ const ThemeSettings = () => {
 
   const handleThemeChange = async (value: ThemeOption) => {
     if (!storeId) return;
+    const previous = storefrontTheme;
     setStorefrontTheme(value);
 
     const { error } = await supabase
@@ -89,6 +92,7 @@ const ThemeSettings = () => {
       .eq("id", storeId);
 
     if (error) {
+      setStorefrontTheme(previous);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not update theme. Please try again." });
     } else {
       toast({ title: "Saved", description: `Store theme set to ${value}.` });
