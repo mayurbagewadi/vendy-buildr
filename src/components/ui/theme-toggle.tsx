@@ -7,16 +7,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { VISITOR_THEME_KEY } from "@/contexts/StoreContext";
 
 export function ThemeToggle() {
   const { setTheme } = useTheme();
 
+  const handleSetTheme = (value: string) => {
+    // Persist visitor's manual choice so StoreContext respects it on refresh.
+    localStorage.setItem(VISITOR_THEME_KEY, value);
+    setTheme(value);
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="icon" 
+        <Button
+          variant="outline"
+          size="icon"
           className="transition-all duration-300 hover:scale-110 hover:rotate-12 border-primary"
         >
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-primary" />
@@ -25,15 +32,15 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuItem onClick={() => handleSetTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           <span>Light</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem onClick={() => handleSetTheme("dark")}>
           <Moon className="mr-2 h-4 w-4" />
           <span>Dark</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem onClick={() => handleSetTheme("system")}>
           <span className="mr-2 h-4 w-4">💻</span>
           <span>System</span>
         </DropdownMenuItem>

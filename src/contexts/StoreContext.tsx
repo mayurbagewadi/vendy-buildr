@@ -96,15 +96,28 @@ function applyColorPalette(paletteId: string | null) {
   el.textContent = css;
 }
 
-function applyTheme(theme: string | null) {
+// Key written by ThemeToggle when visitor manually picks a theme.
+// Distinct from next-themes' "theme" key so we can tell visitor intent from owner default.
+export const VISITOR_THEME_KEY = 'dd_visitor_theme';
+
+function applyTheme(ownerTheme: string | null) {
+  // Visitor's manual choice always wins over owner's default.
+  const visitorChoice = localStorage.getItem(VISITOR_THEME_KEY);
+  const effective = (visitorChoice === 'light' || visitorChoice === 'dark' || visitorChoice === 'system')
+    ? visitorChoice
+    : ownerTheme;
+
   const resolved =
-    theme === 'light' ? 'light' :
-    theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') :
+    effective === 'light' ? 'light' :
+    effective === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') :
     'dark';
+
   const html = document.documentElement;
   html.classList.remove('dark', 'light');
   html.classList.add(resolved);
   html.style.colorScheme = resolved;
+  // Keep next-themes in sync so the toggle icon shows the correct state.
+  localStorage.setItem('theme', resolved);
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
