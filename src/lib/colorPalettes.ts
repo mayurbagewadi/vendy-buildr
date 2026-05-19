@@ -28,7 +28,7 @@ export const COLOR_PALETTES: ColorPalette[] = [
       primary: '113 91% 43%',
       'primary-foreground': '0 0% 100%',
       'primary-hover': '113 91% 37%',
-      background: '96 40% 94%',
+      background: '0 0% 100%',
       foreground: '120 30% 8%',
       card: '0 0% 100%',
       'card-foreground': '120 30% 8%',
