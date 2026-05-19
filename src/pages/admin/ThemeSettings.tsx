@@ -45,8 +45,20 @@ const ThemeSettings = () => {
         setStoreId(store.id);
         setStoreSlug(store.slug);
         setWhatsappFloatEnabled(store.whatsapp_float_enabled !== false);
-        setStorefrontTheme((store.storefront_theme as ThemeOption) || "dark");
-        setStorefrontPalette((store.storefront_color_palette as PaletteId) || "default");
+        // BUG-10 fix: validate against known values — || only catches falsy,
+        // not invalid non-empty strings like "xyz" from old/corrupt DB data.
+        const validThemes: ThemeOption[] = ['dark', 'light', 'system'];
+        const validPalettes = COLOR_PALETTES.map(p => p.id);
+        setStorefrontTheme(
+          validThemes.includes(store.storefront_theme as ThemeOption)
+            ? (store.storefront_theme as ThemeOption)
+            : 'dark'
+        );
+        setStorefrontPalette(
+          validPalettes.includes(store.storefront_color_palette as PaletteId)
+            ? (store.storefront_color_palette as PaletteId)
+            : 'default'
+        );
       }
       setIsLoading(false);
     };
@@ -167,13 +179,15 @@ const ThemeSettings = () => {
           <p className="text-sm text-muted-foreground">Choose the default theme for your customer-facing store</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Store theme">
             {THEME_OPTIONS.map(({ value, label, icon, desc }) => {
               const isSelected = storefrontTheme === value;
               return (
                 <button
                   key={value}
                   type="button"
+                  role="radio"
+                  aria-checked={isSelected}
                   onClick={() => handleThemeChange(value)}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
                     ${isSelected
@@ -210,13 +224,15 @@ const ThemeSettings = () => {
           <p className="text-sm text-muted-foreground">Choose a color scheme for your customer-facing store</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="radiogroup" aria-label="Color palette">
             {COLOR_PALETTES.map(({ id, label, swatches }) => {
               const isSelected = storefrontPalette === id;
               return (
                 <button
                   key={id}
                   type="button"
+                  role="radio"
+                  aria-checked={isSelected}
                   onClick={() => handlePaletteChange(id as PaletteId)}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
                     ${isSelected

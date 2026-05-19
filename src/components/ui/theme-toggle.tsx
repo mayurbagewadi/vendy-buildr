@@ -7,14 +7,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { VISITOR_THEME_KEY } from "@/contexts/StoreContext";
+import { visitorThemeKey, useStorefront } from "@/contexts/StoreContext";
 
 export function ThemeToggle() {
   const { setTheme } = useTheme();
+  const { storeSlug } = useStorefront();
 
   const handleSetTheme = (value: string) => {
-    // Persist visitor's manual choice so StoreContext respects it on refresh.
-    localStorage.setItem(VISITOR_THEME_KEY, value);
+    // BUG-6 fix: use per-store key so toggle on Store A doesn't affect Store B.
+    localStorage.setItem(visitorThemeKey(storeSlug), value);
     setTheme(value);
   };
 

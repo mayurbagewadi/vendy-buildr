@@ -96,13 +96,15 @@ function applyColorPalette(paletteId: string | null) {
   el.textContent = css;
 }
 
-// Key written by ThemeToggle when visitor manually picks a theme.
-// Distinct from next-themes' "theme" key so we can tell visitor intent from owner default.
-export const VISITOR_THEME_KEY = 'dd_visitor_theme';
+// BUG-6 fix: per-store key so Store A's toggle never bleeds into Store B
+// on the same origin (e.g. yesgive.shop/store-a vs yesgive.shop/store-b).
+export const visitorThemeKey = (slug: string | null | undefined): string =>
+  slug ? `dd_visitor_theme_${slug}` : 'dd_visitor_theme';
 
-function applyTheme(ownerTheme: string | null) {
+function applyTheme(ownerTheme: string | null, slug?: string | null) {
   // Visitor's manual choice always wins over owner's default.
-  const visitorChoice = localStorage.getItem(VISITOR_THEME_KEY);
+  const key = visitorThemeKey(slug);
+  const visitorChoice = localStorage.getItem(key);
   const effective = (visitorChoice === 'light' || visitorChoice === 'dark' || visitorChoice === 'system')
     ? visitorChoice
     : ownerTheme;
@@ -136,9 +138,21 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
   useLayoutEffect(() => {
     if (store) {
       applyColorPalette(store.storefront_color_palette ?? null);
-      applyTheme(store.storefront_theme ?? null);
+      applyTheme(store.storefront_theme ?? null, slug);
     }
-  }, [store?.storefront_theme, store?.storefront_color_palette]);
+  }, [store?.storefront_theme, store?.storefront_color_palette, slug]);
+
+  // BUG-7 fix: when owner sets System theme, listen for OS dark/light changes
+  // mid-session so the store updates without requiring a page reload.
+  useEffect(() => {
+    if (!store || store.storefront_theme !== 'system') return;
+    const key = visitorThemeKey(slug);
+    if (localStorage.getItem(key)) return; // visitor override takes precedence
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => applyTheme('system', slug);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [store?.storefront_theme, store?.id, slug]);
 
   // Restore dark (admin default) only when the entire storefront section unmounts
   // (i.e. user navigates to admin). Does NOT run between customer page navigations
