@@ -730,7 +730,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                                   <>
                                     <span className="font-bold text-primary text-lg">₹{variant.offer_price}</span>
                                     <span className="text-sm text-muted-foreground line-through">₹{variant.price}</span>
-                                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                    <span className="bg-badge text-badge-foreground text-xs font-bold px-1.5 py-0.5 rounded">
                                       {Math.round((variant.price - variant.offer_price) / variant.price * 100)}% off
                                     </span>
                                   </>
@@ -777,7 +777,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                       <div className="flex items-center gap-3">
                         <p data-ai="product-price" className="text-3xl font-bold text-primary">₹{op}</p>
                         <p className="text-xl text-muted-foreground line-through">₹{sp}</p>
-                        <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-md">
+                        <span className="bg-badge text-badge-foreground text-sm font-bold px-2 py-1 rounded-md">
                           {Math.round((sp - op!) / sp * 100)}% off
                         </span>
                       </div>

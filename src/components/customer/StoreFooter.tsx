@@ -241,7 +241,7 @@ const StoreFooter = ({
                     href={resolvedSocial.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
                     aria-label="Facebook"
                   >
                     <Facebook className="w-4 h-4" />
@@ -252,7 +252,7 @@ const StoreFooter = ({
                     href={resolvedSocial.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
                     aria-label="Instagram"
                   >
                     <Instagram className="w-4 h-4" />
@@ -263,7 +263,7 @@ const StoreFooter = ({
                     href={resolvedSocial.twitter}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
                     aria-label="Twitter"
                   >
                     <Twitter className="w-4 h-4" />
@@ -274,7 +274,7 @@ const StoreFooter = ({
                     href={resolvedSocial.youtube}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
                     aria-label="YouTube"
                   >
                     <Youtube className="w-4 h-4" />
@@ -285,7 +285,7 @@ const StoreFooter = ({
                     href={resolvedSocial.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
                     aria-label="LinkedIn"
                   >
                     <Linkedin className="w-4 h-4" />

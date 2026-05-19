@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle, Truck, Palette } from "lucide-react";
+import { Save, Upload, Store, Phone, Mail, MapPin, MessageCircle, Image, Plus, X, Globe, Lock, Download, FileText, ChevronDown, AlertTriangle, Trash2, HardDrive, Loader2, CheckCircle2, CreditCard, Eye, EyeOff, ExternalLink, Settings as SettingsIcon, AlertCircle, Truck, Palette, Megaphone } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -91,6 +91,7 @@ const AdminSettings = () => {
     // Delivery fee
     delivery_fee_amount: "",
     free_delivery_above: "",
+    promo_bar_text: "",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [storageUsed, setStorageUsed] = useState(0);
@@ -214,6 +215,7 @@ const AdminSettings = () => {
         // Delivery fee
         delivery_fee_amount: store?.delivery_fee_amount != null ? String(store.delivery_fee_amount) : "",
         free_delivery_above: store?.free_delivery_above != null ? String(store.free_delivery_above) : "",
+        promo_bar_text: store?.promo_bar_text || "",
       });
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -445,6 +447,7 @@ const AdminSettings = () => {
         payment_mode: formData.payment_mode,
         delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
         free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
+        promo_bar_text: formData.promo_bar_text.trim() || null,
       };
 
       if (subscriptionLimits.enableCustomDomain) {
@@ -1104,6 +1107,7 @@ const AdminSettings = () => {
         payment_mode: formData.payment_mode,
         delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
         free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
+        promo_bar_text: formData.promo_bar_text.trim() || null,
       };
 
       // Only update custom_domain if user has permission
@@ -1933,6 +1937,54 @@ const AdminSettings = () => {
                   <p className="text-sm">No banner images added yet.</p>
                   <p className="text-xs mt-1">Upload images or paste URLs above to create a carousel.</p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Promo Bar Section */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Megaphone className="w-5 h-5 text-primary" />
+                </div>
+                Promo Bar
+              </CardTitle>
+              <p className="text-muted-foreground">
+                A slim announcement strip shown at the top of your storefront. Leave blank to auto-show your free-delivery threshold (if configured), or leave both blank to hide the bar entirely.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="promo_bar_text">Promo Message</Label>
+                <Input
+                  id="promo_bar_text"
+                  type="text"
+                  placeholder="e.g. Sale ends Sunday · Use code SAVE20 for 20% off"
+                  value={formData.promo_bar_text}
+                  onChange={(e) => handleInputChange('promo_bar_text', e.target.value)}
+                  className="admin-input mt-2"
+                  maxLength={120}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formData.promo_bar_text.length}/120 characters. Keep it short — one line of text.
+                </p>
+              </div>
+              {!formData.promo_bar_text.trim() && formData.free_delivery_above && (
+                <Alert>
+                  <Megaphone className="h-4 w-4" />
+                  <AlertDescription>
+                    No message typed — your store will automatically show: <strong>"Free delivery on orders above ₹{formData.free_delivery_above}"</strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!formData.promo_bar_text.trim() && !formData.free_delivery_above && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    The promo bar is currently <strong>hidden</strong> on your store. Type a message above to show it.
+                  </AlertDescription>
+                </Alert>
               )}
             </CardContent>
           </Card>

@@ -22,6 +22,15 @@ interface HeaderProps {
 const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
   const { store, storeId: ctxStoreId, storeSlug: ctxStoreSlug } = useStorefront();
 
+  // Promo bar: custom text takes priority; fall back to free-delivery threshold; hide if neither.
+  const promoMessage = (() => {
+    const custom = store?.promo_bar_text?.trim();
+    if (custom) return custom;
+    const threshold = store?.free_delivery_above;
+    if (threshold && threshold > 0) return `Free delivery on orders above ₹${threshold}`;
+    return null;
+  })();
+
   // Context data takes priority over props (available on all customer pages).
   // Props remain as fallback for any call-sites not yet inside StoreProvider.
   const storeId = ctxStoreId ?? idProp ?? null;
@@ -97,6 +106,13 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
 
   return (
     <header data-ai="header" className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      {/* Promo Bar — shown only when the store has configured promo text or a free-delivery threshold */}
+      {promoMessage && (
+        <div className="bg-badge text-badge-foreground text-xs font-medium py-2 text-center tracking-wide">
+          {promoMessage}
+        </div>
+      )}
+
       {/* ═══ STORE HEADER ═══
           Purpose: Navigation bar at top of page with logo, menu, search, and actions
           Content: Store logo/name, navigation links (Home/Products/Categories/About), search bar, WhatsApp button, theme toggle, shopping cart

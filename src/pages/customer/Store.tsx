@@ -596,7 +596,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
               <AnimateOnScroll animation="fadeSlideUp" duration={0.7}>
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h2 className="text-3xl font-bold text-foreground mb-2">New Arrivals</h2>
+                    <h2 className="text-3xl font-bold text-foreground mb-2">
+                      New Arrivals
+                      <span className="ml-2 align-middle text-xs font-bold bg-badge-alt text-badge-alt-foreground px-2 py-1 rounded-full">NEW</span>
+                    </h2>
                     <p className="text-muted-foreground">Fresh products just for you</p>
                   </div>
                   <Link to={productsLink}>

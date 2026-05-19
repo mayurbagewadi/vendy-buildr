@@ -256,7 +256,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                     {computedDeliveryFee > 0 ? (
                       <span>₹{computedDeliveryFee.toFixed(2)}</span>
                     ) : (
-                      <span className="text-green-600 font-medium">FREE</span>
+                      <span className="text-success font-medium">FREE</span>
                     )}
                   </div>
                   <div className="border-t border-border pt-3 flex justify-between items-center">

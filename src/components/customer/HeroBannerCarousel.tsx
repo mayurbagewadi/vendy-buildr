@@ -32,7 +32,7 @@ const HeroBannerCarousel = ({
   // If no banners, show gradient fallback
   if (!convertedBanners.length) {
     return (
-      <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-background py-32">
+      <section className="bg-gradient-to-r from-primary/10 via-accent/5 to-background py-32">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             {logoUrl && (
@@ -103,8 +103,8 @@ const HeroBannerCarousel = ({
         {/* Navigation Arrows - Only show if multiple banners */}
         {convertedBanners.length > 1 && (
           <>
-            <CarouselPrevious className="left-4 bg-white/20 border-white/30 text-white hover:bg-white/30" />
-            <CarouselNext className="right-4 bg-white/20 border-white/30 text-white hover:bg-white/30" />
+            <CarouselPrevious className="left-4 bg-card/20 border-border/30 text-card-foreground hover:bg-card/40" />
+            <CarouselNext className="right-4 bg-card/20 border-border/30 text-card-foreground hover:bg-card/40" />
           </>
         )}
       </Carousel>

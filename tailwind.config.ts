@@ -60,6 +60,14 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        badge: {
+          DEFAULT: "hsl(var(--badge))",
+          foreground: "hsl(var(--badge-foreground))",
+        },
+        "badge-alt": {
+          DEFAULT: "hsl(var(--badge-alt))",
+          foreground: "hsl(var(--badge-alt-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

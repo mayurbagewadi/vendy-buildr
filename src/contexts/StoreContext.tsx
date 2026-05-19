@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getPalette, buildPaletteCSS } from '@/lib/colorPalettes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,7 @@ export interface StoreContextData {
   whatsapp_float_enabled: boolean | null;
   address: string | null;
   storefront_theme: string | null;
+  storefront_color_palette: string | null;
   social_links: Record<string, string | null> | null;
   policies: Record<string, string | null> | null;
   facebook_url: string | null;
@@ -24,6 +26,8 @@ export interface StoreContextData {
   twitter_url: string | null;
   youtube_url: string | null;
   linkedin_url: string | null;
+  free_delivery_above: number | null;
+  promo_bar_text: string | null;
   user_id: string;
   [key: string]: unknown;
 }
@@ -75,6 +79,23 @@ function writeCache(slug: string, store: StoreContextData, profile: StoreProfile
 
 // ─── Theme application ────────────────────────────────────────────────────────
 
+function applyColorPalette(paletteId: string | null) {
+  const palette = getPalette(paletteId);
+  const css = buildPaletteCSS(palette);
+  const STYLE_ID = 'dd-palette-styles';
+  let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (!css) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('style');
+    el.id = STYLE_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
+
 function applyTheme(theme: string | null) {
   const resolved =
     theme === 'light' ? 'light' :
@@ -100,8 +121,11 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
   // Apply theme synchronously before paint when we have cached data.
   // This fires before useEffect, so it wins on cached sessions (zero flash).
   useLayoutEffect(() => {
-    if (store) applyTheme(store.storefront_theme ?? null);
-  }, [store?.storefront_theme]);
+    if (store) {
+      applyColorPalette(store.storefront_color_palette ?? null);
+      applyTheme(store.storefront_theme ?? null);
+    }
+  }, [store?.storefront_theme, store?.storefront_color_palette]);
 
   // Restore dark (admin default) only when the entire storefront section unmounts
   // (i.e. user navigates to admin). Does NOT run between customer page navigations
@@ -111,6 +135,8 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
       document.documentElement.classList.remove('light');
       document.documentElement.classList.add('dark');
       document.documentElement.style.colorScheme = 'dark';
+      const paletteEl = document.getElementById('dd-palette-styles');
+      if (paletteEl) paletteEl.remove();
     };
   }, []);
 

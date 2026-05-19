@@ -1749,12 +1749,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     {computedDeliveryFee > 0 ? (
                       <span data-ai="price-delivery">₹{computedDeliveryFee.toFixed(2)}</span>
                     ) : (
-                      <span data-ai="price-delivery" className="text-green-600 font-medium">FREE</span>
+                      <span data-ai="price-delivery" className="text-success font-medium">FREE</span>
                     )}
                   </div>
 
                   {computedDeliveryFee === 0 && freeDeliveryAbove !== null && deliveryFeeAmount > 0 && (
-                    <p className="text-xs text-green-600">
+                    <p className="text-xs text-success">
                       You saved ₹{deliveryFeeAmount.toFixed(2)} on delivery!
                     </p>
                   )}
@@ -1793,7 +1793,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     )}
                     {selectedPaymentMethod === 'cod' && (
                       <>
-                        <Wallet className="w-4 h-4 text-gray-500" />
+                        <Wallet className="w-4 h-4 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
                           Cash on Delivery
                         </p>

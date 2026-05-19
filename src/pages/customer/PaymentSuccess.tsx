@@ -235,16 +235,16 @@ export default function PaymentSuccess() {
 
         {/* Verifying State */}
         {status === 'verifying' && (
-          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
-            <Loader2 className="h-20 w-20 text-blue-600 mx-auto animate-spin mb-6" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment</h2>
-            <p className="text-gray-600">Please wait while we confirm your payment...</p>
+          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
+            <Loader2 className="h-20 w-20 text-primary mx-auto animate-spin mb-6" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Verifying Payment</h2>
+            <p className="text-muted-foreground">Please wait while we confirm your payment...</p>
           </div>
         )}
 
         {/* Success State - Redesigned for psychological engagement */}
         {status === 'success' && (
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="bg-card rounded-3xl shadow-2xl overflow-hidden">
             {/* Header - Orange/Amber to signal "pending action needed" */}
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center">
               <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white mb-4">
@@ -280,28 +280,28 @@ export default function PaymentSuccess() {
                 </div>
 
                 {/* Connector Line 2 */}
-                <div className="absolute left-[52%] right-[15%] top-5 h-1 bg-gray-200"></div>
+                <div className="absolute left-[52%] right-[15%] top-5 h-1 bg-muted"></div>
 
                 {/* Step 3: Shipped - Pending */}
                 <div className="flex flex-col items-center z-10">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <Truck className="w-6 h-6 text-gray-400" />
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <span className="text-xs mt-2 text-gray-400 font-medium">Shipped</span>
+                  <span className="text-xs mt-2 text-muted-foreground font-medium">Shipped</span>
                 </div>
               </div>
             </div>
 
             {/* Order Details */}
             <div className="p-8 space-y-5">
-              <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+              <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Order Number</span>
-                  <span className="text-gray-900 font-bold">{orderNumber}</span>
+                  <span className="text-muted-foreground font-medium">Order Number</span>
+                  <span className="text-foreground font-bold">{orderNumber}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Transaction ID</span>
-                  <span className="text-gray-900 font-mono text-sm">{transactionId.slice(0, 20)}...</span>
+                  <span className="text-muted-foreground font-medium">Transaction ID</span>
+                  <span className="text-foreground font-mono text-sm">{transactionId.slice(0, 20)}...</span>
                 </div>
               </div>
 
@@ -334,7 +334,7 @@ export default function PaymentSuccess() {
                 </Button>
 
                 {/* Instruction text */}
-                <p className="text-center text-sm text-gray-500">
+                <p className="text-center text-sm text-muted-foreground">
                   Click to confirm order & send details via WhatsApp
                 </p>
               </div>
@@ -351,7 +351,7 @@ export default function PaymentSuccess() {
               <div className="text-center pt-2">
                 <button
                   onClick={handleGoHome}
-                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                  className="text-sm text-muted-foreground hover:text-foreground underline"
                 >
                   Return to store
                 </button>
@@ -362,13 +362,13 @@ export default function PaymentSuccess() {
 
         {/* Failed State */}
         {status === 'failed' && (
-          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
-            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 mb-6">
-              <XCircle className="h-12 w-12 text-red-600" />
+          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-destructive/10 mb-6">
+              <XCircle className="h-12 w-12 text-destructive" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Payment Verification Failed</h2>
-            <p className="text-gray-600 mb-6">There was an issue verifying your payment.</p>
-            <p className="text-sm text-gray-500 mb-8">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Payment Verification Failed</h2>
+            <p className="text-muted-foreground mb-6">There was an issue verifying your payment.</p>
+            <p className="text-sm text-muted-foreground mb-8">
               If the amount was deducted from your account, please contact our support with your transaction details.
             </p>
             <Button

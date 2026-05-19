@@ -116,7 +116,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             {discountPct > 0 && (
-              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+              <div className="absolute top-2 left-2 bg-badge text-badge-foreground text-xs font-bold px-2 py-1 rounded-md">
                 {isVariantMode ? `Upto ${discountPct}% off` : `${discountPct}% off`}
               </div>
             )}
