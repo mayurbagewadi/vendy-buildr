@@ -54,8 +54,8 @@ const WelcomePage = () => {
     const makePiece = (yOffset = 0): Piece => ({
       x: Math.random() * canvas.width,
       y: -20 - Math.random() * yOffset,
-      vx: (Math.random() - 0.5) * 5,
-      vy: Math.random() * 2 + 1.5,
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 1.6 + 1.2,
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       w: Math.random() * 10 + 5,
       h: Math.random() * 6 + 3,
