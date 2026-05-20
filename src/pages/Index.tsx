@@ -392,8 +392,8 @@ const Index = () => {
       {/* SEO Meta Tags */}
       <Helmet>
         {/* Primary Meta Tags */}
-        <title>DigitalDukandar — Free Ecommerce Website Builder | Create Online Store &amp; Sell Online</title>
-        <meta name="title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store & Sell Online" />
+        <title>DigitalDukandar — Smart Business Needs Smart Website | Create Online Store &amp; Sell Online</title>
+        <meta name="title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store & Sell Online" />
         <meta name="description" content="Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments & analytics. Trusted by 10,000+ store owners. No coding needed. Start free — no credit card required." />
         <meta name="keywords" content="ecommerce website builder, create online store, build ecommerce website, sell online, best ecommerce platform, free online store, online store builder, ecommerce platform, AI ecommerce website builder, no code online store, whatsapp ecommerce, free ecommerce platform, shopify alternative, start selling online, ecommerce platform for small business, ecommerce website builder free, whatsapp store builder, free shopify alternative, cheap ecommerce platform, ecommerce platform for beginners, build online store free, no transaction fee ecommerce, sell online free, AI online store builder, woocommerce alternative, bigcommerce alternative, squarespace alternative, ecommerce platform comparison, small business online store, dropshipping website builder, mobile ecommerce platform, custom domain online store, sell products online, online selling platform, ecommerce store builder, website builder with ecommerce, free website with online store, sell online without fees, ecommerce website free, start online store, ecommerce builder, no code ecommerce builder, online shop builder, ecommerce site builder, create ecommerce website, ecommerce website for small business, free online shop, sell online for free, best free online store builder, ecommerce platform with whatsapp, whatsapp order management, AI store designer, ecommerce analytics, inventory management ecommerce, coupon code ecommerce, discount management online store" />
         <link rel="canonical" href="https://digitaldukandar.in" />
@@ -408,7 +408,7 @@ const Index = () => {
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://digitaldukandar.in" />
-        <meta property="og:title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store" />
+        <meta property="og:title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store" />
         <meta property="og:description" content="Build your ecommerce website in minutes. AI-powered online store builder with WhatsApp integration, custom domain & analytics. Trusted by 10,000+ store owners. Start free!" />
         <meta property="og:image" content="https://digitaldukandar.in/logo.png" />
         <meta property="og:site_name" content="DigitalDukandar" />
@@ -417,7 +417,7 @@ const Index = () => {
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://digitaldukandar.in" />
-        <meta name="twitter:title" content="DigitalDukandar — Free Ecommerce Website Builder | Create Online Store" />
+        <meta name="twitter:title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store" />
         <meta name="twitter:description" content="Build your ecommerce website in minutes. AI-powered store builder with WhatsApp integration, payments & analytics. 10,000+ store owners trust us. Start free!" />
         <meta name="twitter:image" content="https://digitaldukandar.in/logo.png" />
 
@@ -631,7 +631,7 @@ const Index = () => {
             {/* Main Heading */}
             <div className="hero-heading mb-6">
               <AnimatedText
-                text="Free Ecommerce Website Builder"
+                text="Smart Business Needs Smart Website"
                 as="h1"
                 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground leading-[1.1]"
                 delay={0.3}
@@ -1048,7 +1048,7 @@ const Index = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Why DigitalDukandar is the Best Free Ecommerce Website Builder
+              Why Smart Businesses Choose DigitalDukandar
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
               Trusted by 10,000+ entrepreneurs worldwide to build ecommerce websites and sell online without coding
