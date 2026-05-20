@@ -156,7 +156,7 @@ const GoogleDriveSetup = () => {
 
   const handleContinue = async () => {
     try {
-      navigate("/admin/dashboard");
+      navigate("/onboarding/welcome");
     } catch (error: any) {
       toast({
         title: "Error",
