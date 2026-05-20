@@ -225,7 +225,7 @@ const WelcomePage = () => {
           transition={{ delay: 0.64, duration: 0.4, ease: "easeOut" }}
           className="text-muted-foreground text-base md:text-lg leading-relaxed mb-10"
         >
-          Congratulations! You've successfully set up your store on DigitalDukandar. Everything is ready — now it's time to start selling.
+          Congratulations! You've successfully set up your store on DigitalDukandar. Everything is ready. Now it's time to start selling.
         </motion.p>
 
         {/* CTA */}
