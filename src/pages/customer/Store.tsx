@@ -598,7 +598,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <div>
                     <h2 className="text-3xl font-bold text-foreground mb-2">
                       New Arrivals
-                      <span className="ml-2 align-middle text-xs font-bold bg-badge-alt text-badge-alt-foreground px-2 py-1 rounded-full">NEW</span>
                     </h2>
                     <p className="text-muted-foreground">Fresh products just for you</p>
                   </div>
