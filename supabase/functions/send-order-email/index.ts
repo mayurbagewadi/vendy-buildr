@@ -102,7 +102,7 @@ serve(async (req) => {
     // Format order items as HTML table rows
     const itemsHtml = (order.items as any[]).map(item => `
       <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.productName || item.name || 'Unknown item'}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&#8377;${item.price}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&#8377;${item.price * item.quantity}</td>
