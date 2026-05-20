@@ -274,6 +274,15 @@ const Index = () => {
       gradient: "from-orange-500 to-amber-500",
       size: "normal",
       customIconSrc: "/icons/google-analytics.svg"
+    },
+    {
+      icon: MessageCircle,
+      title: "Gmail Order Alerts",
+      description: "Get instant email notifications on every new order directly to your Gmail inbox. Never miss a sale.",
+      gradient: "from-red-500 to-yellow-500",
+      size: "normal",
+      customIconSrc: "/icons/gmail.svg",
+      iconNoBg: true
     }
   ];
 
