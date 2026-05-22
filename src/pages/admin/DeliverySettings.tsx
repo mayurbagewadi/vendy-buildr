@@ -38,13 +38,10 @@ const DeliverySettings = () => {
           setStoreId(store.id);
           const savedMode = (store.delivery_mode as 'single' | 'multiple') || 'single';
           setMode(savedMode);
-          if (savedMode === 'single') {
-            setSingleFee(store.delivery_fee_amount != null ? String(store.delivery_fee_amount) : "");
-            setSingleFreeAbove(store.free_delivery_above != null ? String(store.free_delivery_above) : "");
-          } else {
-            const savedTiers = store.delivery_tiers as DeliveryTier[] | null;
-            if (savedTiers && savedTiers.length > 0) setTiers(savedTiers);
-          }
+          setSingleFee(store.delivery_fee_amount != null ? String(store.delivery_fee_amount) : "");
+          setSingleFreeAbove(store.free_delivery_above != null ? String(store.free_delivery_above) : "");
+          const savedTiers = store.delivery_tiers as DeliveryTier[] | null;
+          if (savedTiers && savedTiers.length > 0) setTiers(savedTiers);
         }
       } catch (error) {
         console.error("Error loading delivery settings:", error);
@@ -58,9 +55,6 @@ const DeliverySettings = () => {
   const handleModeSwitch = (newMode: 'single' | 'multiple') => {
     if (newMode === mode) return;
     setMode(newMode);
-    setSingleFee("");
-    setSingleFreeAbove("");
-    setTiers([{ min: 0, max: null, fee: 0 }]);
   };
 
   const addTier = () => {
