@@ -54,6 +54,7 @@ const planFormSchema = z.object({
   enable_order_emails: z.boolean().default(false),
   enable_ai_voice: z.boolean().default(false),
   enable_discounts_coupons: z.boolean().default(false),
+  enable_seo: z.boolean().default(false),
   google_reviews_calls_limit: z.coerce.number().min(0).default(15),
   google_reviews_period: z.enum(["monthly", "yearly"]).default("monthly"),
   features: z.array(z.string()).default([]),
@@ -101,6 +102,7 @@ export const PlanFormDialog = ({
       enable_order_emails: false,
       enable_ai_voice: false,
       enable_discounts_coupons: false,
+      enable_seo: false,
       google_reviews_calls_limit: 15,
       google_reviews_period: "monthly",
       features: [],
@@ -138,6 +140,7 @@ export const PlanFormDialog = ({
         enable_order_emails: false,
         enable_ai_voice: false,
         enable_discounts_coupons: false,
+        enable_seo: false,
         google_reviews_calls_limit: 15,
         google_reviews_period: "monthly",
         features: [],
@@ -637,6 +640,27 @@ export const PlanFormDialog = ({
                       <FormLabel className="text-base">Discounts & Coupons</FormLabel>
                       <FormDescription>
                         Allow store owners to create coupon codes and automatic discounts
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="enable_seo"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">SEO Tools</FormLabel>
+                      <FormDescription>
+                        Allow store owners to configure SEO, Google Search Console, and sitemap submission
                       </FormDescription>
                     </div>
                     <FormControl>

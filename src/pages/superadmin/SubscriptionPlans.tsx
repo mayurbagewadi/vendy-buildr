@@ -339,6 +339,12 @@ const SubscriptionPlansPage = () => {
                         {plan.enable_ai_voice && (
                           <Badge variant="secondary">AI Voice</Badge>
                         )}
+                        {plan.enable_discounts_coupons && (
+                          <Badge variant="secondary">Discounts</Badge>
+                        )}
+                        {plan.enable_seo && (
+                          <Badge variant="secondary">SEO</Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-4">

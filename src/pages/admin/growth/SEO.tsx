@@ -54,6 +54,7 @@ const SEOSettingsPage = () => {
   const navigate = useNavigate();
   const [googleAnim, setGoogleAnim] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
@@ -103,6 +104,27 @@ const SEOSettingsPage = () => {
         navigate("/auth");
         return;
       }
+
+      // Check subscription feature access
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select("status, subscription_plans(enable_seo)")
+        .eq("user_id", session.user.id)
+        .in("status", ["active", "trial"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const featureEnabled = (subscription?.subscription_plans as any)?.enable_seo || false;
+      const isActive = ["active", "trial"].includes(subscription?.status || "");
+
+      if (!featureEnabled || !isActive) {
+        setHasAccess(false);
+        setIsLoading(false);
+        return;
+      }
+
+      setHasAccess(true);
 
       // Fetch store data
       const { data: store, error } = await supabase
@@ -449,6 +471,23 @@ const SEOSettingsPage = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-16 px-4">
+        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted mx-auto mb-6">
+          <Search className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-bold mb-3">SEO Tools Not Available</h2>
+        <p className="text-muted-foreground mb-8 leading-relaxed">
+          Your current plan does not include SEO tools. Upgrade to access Google Search Console integration, sitemap submission, structured data, and more.
+        </p>
+        <Button onClick={() => navigate("/pricing")}>
+          View Plans
+        </Button>
       </div>
     );
   }
