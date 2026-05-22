@@ -35,7 +35,7 @@ import {
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 
-interface RecruitedHelper {
+interface RecruitedBDM {
   id: string;
   full_name: string;
   referral_code: string;
@@ -50,12 +50,12 @@ interface RecruitedHelper {
   application_status?: string;
 }
 
-export default function MyHelperNetwork() {
+export default function MyBDMNetwork() {
   const navigate = useNavigate();
   const { toast: toastHook } = useToast();
   const [loading, setLoading] = useState(true);
   const [helper, setHelper] = useState<any>(null);
-  const [recruitedHelpers, setRecruitedHelpers] = useState<RecruitedHelper[]>([]);
+  const [recruitedBDMs, setRecruitedBDMs] = useState<RecruitedBDM[]>([]);
   const [stats, setStats] = useState({
     totalRecruited: 0,
     pendingApproval: 0,
@@ -68,10 +68,10 @@ export default function MyHelperNetwork() {
   });
 
   useEffect(() => {
-    checkHelperAccess();
+    checkBDMAccess();
   }, []);
 
-  const checkHelperAccess = async () => {
+  const checkBDMAccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -87,22 +87,21 @@ export default function MyHelperNetwork() {
         .single();
 
       if (helperError || !helperData) {
-        navigate("/helper/dashboard");
+        navigate("/bdm/dashboard");
         return;
       }
 
       setHelper(helperData);
-      await loadRecruitedHelpers(helperData.id);
+      await loadRecruitedBDMs(helperData.id);
       setLoading(false);
     } catch (error) {
-      console.error("Error checking helper access:", error);
+      console.error("Error checking BDM access:", error);
       navigate("/auth");
     }
   };
 
-  const loadRecruitedHelpers = async (helperId: string) => {
+  const loadRecruitedBDMs = async (helperId: string) => {
     try {
-      // Get all helpers recruited by this helper
       const { data: recruited, error: recruitedError } = await supabase
         .from("helpers")
         .select(`
@@ -114,16 +113,13 @@ export default function MyHelperNetwork() {
 
       if (recruitedError) throw recruitedError;
 
-      // For each recruited helper, get their performance
-      const enrichedHelpers = await Promise.all(
+      const enrichedBDMs = await Promise.all(
         (recruited || []).map(async (recruitedHelper) => {
-          // Get store referrals count
           const { data: storeReferrals } = await supabase
             .from("store_referrals")
             .select("id")
             .eq("helper_id", recruitedHelper.id);
 
-          // Get their total commission earned
           const { data: theirCommissions } = await supabase
             .from("network_commissions")
             .select("direct_commission_amount, commission_status")
@@ -134,7 +130,6 @@ export default function MyHelperNetwork() {
             0
           ) || 0;
 
-          // Get network commission earned by recruiter from this helper
           const { data: networkCommissions } = await supabase
             .from("network_commissions")
             .select("network_commission_amount, commission_status")
@@ -146,7 +141,6 @@ export default function MyHelperNetwork() {
             0
           ) || 0;
 
-          // Determine commission status
           let commissionStatus = "Not Earned";
           if (networkCommissions && networkCommissions.length > 0) {
             const hasPending = networkCommissions.some(c => c.commission_status.includes("Pending"));
@@ -172,27 +166,25 @@ export default function MyHelperNetwork() {
         })
       );
 
-      setRecruitedHelpers(enrichedHelpers);
+      setRecruitedBDMs(enrichedBDMs);
 
-      // Calculate stats
-      const total = enrichedHelpers.length;
-      const pending = enrichedHelpers.filter(h => h.application_status === "Pending").length;
-      const active = enrichedHelpers.filter(h => h.status === "Active").length;
-      const suspended = enrichedHelpers.filter(h => h.status === "Suspended").length;
+      const total = enrichedBDMs.length;
+      const pending = enrichedBDMs.filter(h => h.application_status === "Pending").length;
+      const active = enrichedBDMs.filter(h => h.status === "Active").length;
+      const suspended = enrichedBDMs.filter(h => h.status === "Suspended").length;
 
-      const totalNetwork = enrichedHelpers.reduce((sum, h) => sum + h.network_commission_to_recruiter, 0);
-      const pendingComm = enrichedHelpers
+      const totalNetwork = enrichedBDMs.reduce((sum, h) => sum + h.network_commission_to_recruiter, 0);
+      const pendingComm = enrichedBDMs
         .filter(h => h.commission_status === "Pending")
         .reduce((sum, h) => sum + h.network_commission_to_recruiter, 0);
-      const paidComm = enrichedHelpers
+      const paidComm = enrichedBDMs
         .filter(h => h.commission_status === "Paid")
         .reduce((sum, h) => sum + h.network_commission_to_recruiter, 0);
 
-      // Find best performer
-      const bestPerformer = enrichedHelpers.reduce(
-        (best, helper) => {
-          if (helper.network_commission_to_recruiter > best.earned) {
-            return { name: helper.full_name, earned: helper.network_commission_to_recruiter };
+      const bestPerformer = enrichedBDMs.reduce(
+        (best, bdm) => {
+          if (bdm.network_commission_to_recruiter > best.earned) {
+            return { name: bdm.full_name, earned: bdm.network_commission_to_recruiter };
           }
           return best;
         },
@@ -210,7 +202,7 @@ export default function MyHelperNetwork() {
         bestPerformer
       });
     } catch (error) {
-      console.error("Error loading recruited helpers:", error);
+      console.error("Error loading recruited BDMs:", error);
       toast.error("Failed to load network data");
     }
   };
@@ -224,7 +216,6 @@ export default function MyHelperNetwork() {
         </Badge>
       );
     }
-
     if (status === "Active") {
       return (
         <Badge className="bg-green-500">
@@ -233,7 +224,6 @@ export default function MyHelperNetwork() {
         </Badge>
       );
     }
-
     if (status === "Suspended") {
       return (
         <Badge className="bg-red-500">
@@ -242,20 +232,14 @@ export default function MyHelperNetwork() {
         </Badge>
       );
     }
-
     return <Badge variant="outline">Unknown</Badge>;
   };
 
   const getCommissionStatusBadge = (status: string) => {
-    if (status === "Paid") {
-      return <Badge className="bg-blue-500">Paid</Badge>;
-    } else if (status === "Pending") {
-      return <Badge className="bg-yellow-500">Pending</Badge>;
-    } else if (status === "Earned") {
-      return <Badge className="bg-green-500">Earned</Badge>;
-    } else {
-      return <Badge variant="outline">Not Earned</Badge>;
-    }
+    if (status === "Paid") return <Badge className="bg-blue-500">Paid</Badge>;
+    if (status === "Pending") return <Badge className="bg-yellow-500">Pending</Badge>;
+    if (status === "Earned") return <Badge className="bg-green-500">Earned</Badge>;
+    return <Badge variant="outline">Not Earned</Badge>;
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -265,10 +249,7 @@ export default function MyHelperNetwork() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toastHook({
-      title: "Logged Out",
-      description: "You have been logged out successfully",
-    });
+    toastHook({ title: "Logged Out", description: "You have been logged out successfully" });
     navigate("/");
   };
 
@@ -289,7 +270,7 @@ export default function MyHelperNetwork() {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <Link to="/helper/dashboard">
+            <Link to="/bdm/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
@@ -297,7 +278,7 @@ export default function MyHelperNetwork() {
             </Link>
             <div className="flex items-center gap-2">
               <Network className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">My Helper Network</h1>
+              <h1 className="text-xl font-bold">My BDM Network</h1>
             </div>
           </div>
 
@@ -328,7 +309,7 @@ export default function MyHelperNetwork() {
 
       {/* Main Content */}
       <main className="container mx-auto p-6 space-y-6">
-        {/* Network Summary Stats */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -351,7 +332,7 @@ export default function MyHelperNetwork() {
                 ₹{stats.totalNetworkCommission.toLocaleString()}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                From {stats.active} active helpers
+                From {stats.active} active BDMs
               </p>
             </CardContent>
           </Card>
@@ -393,32 +374,30 @@ export default function MyHelperNetwork() {
           </Card>
         </div>
 
-        {/* Recruited Helpers */}
-        {recruitedHelpers.length === 0 ? (
-          // Empty State
+        {/* Recruited BDMs */}
+        {recruitedBDMs.length === 0 ? (
           <Card>
             <CardContent className="py-16">
               <div className="text-center max-w-2xl mx-auto">
                 <Network className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-                <h3 className="text-2xl font-bold mb-4">Build Your Helper Network</h3>
+                <h3 className="text-2xl font-bold mb-4">Build Your BDM Network</h3>
                 <p className="text-muted-foreground mb-6 text-lg">
-                  You haven't recruited any helpers yet. Start building your network to earn 5% network commission on their earnings!
+                  You haven't recruited any BDMs yet. Start building your network to earn 5% network commission on their earnings!
                 </p>
 
-                {/* Benefits */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <DollarSign className="h-8 w-8 text-green-500 mx-auto mb-2" />
                     <h4 className="font-semibold mb-1">Passive Income</h4>
                     <p className="text-sm text-muted-foreground">
-                      Earn 5% of everything your recruited helpers earn
+                      Earn 5% of everything your recruited BDMs earn
                     </p>
                   </div>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <TrendingUp className="h-8 w-8 text-blue-500 mx-auto mb-2" />
                     <h4 className="font-semibold mb-1">Unlimited Potential</h4>
                     <p className="text-sm text-muted-foreground">
-                      No limit on how many helpers you can recruit
+                      No limit on how many BDMs you can recruit
                     </p>
                   </div>
                   <div className="bg-muted/50 p-4 rounded-lg">
@@ -430,24 +409,23 @@ export default function MyHelperNetwork() {
                   </div>
                 </div>
 
-                {/* Recruitment Link */}
                 <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-6">
                   <h4 className="font-semibold text-lg mb-3 flex items-center justify-center gap-2">
                     <Link2 className="h-5 w-5" />
-                    Your Helper Recruitment Link
+                    Your BDM Recruitment Link
                   </h4>
                   <div className="flex gap-2 mb-2">
                     <input
                       type="text"
-                      value={`${window.location.origin}/become-helper?ref=${helper?.referral_code}`}
+                      value={`${window.location.origin}/become-bdm?ref=${helper?.referral_code}`}
                       readOnly
                       className="flex-1 px-4 py-2 bg-background border rounded-lg text-sm"
                     />
                     <Button
                       onClick={() =>
                         copyToClipboard(
-                          `${window.location.origin}/become-helper?ref=${helper?.referral_code}`,
-                          "Helper recruitment link"
+                          `${window.location.origin}/become-bdm?ref=${helper?.referral_code}`,
+                          "BDM recruitment link"
                         )
                       }
                     >
@@ -456,7 +434,7 @@ export default function MyHelperNetwork() {
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Share this link with people interested in becoming helpers
+                    Share this link with people interested in becoming BDMs
                   </p>
                 </div>
               </div>
@@ -464,7 +442,6 @@ export default function MyHelperNetwork() {
           </Card>
         ) : (
           <>
-            {/* Visual Hierarchy Header */}
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -476,16 +453,15 @@ export default function MyHelperNetwork() {
                       You ({helper?.full_name} - {helper?.helper_id})
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Network Builder | {recruitedHelpers.length} Helper{recruitedHelpers.length !== 1 ? "s" : ""} Recruited
+                      Network Builder | {recruitedBDMs.length} BDM{recruitedBDMs.length !== 1 ? "s" : ""} Recruited
                     </p>
                   </div>
                 </div>
 
-                {/* Recruitment Link */}
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={`${window.location.origin}/become-helper?ref=${helper?.referral_code}`}
+                    value={`${window.location.origin}/become-bdm?ref=${helper?.referral_code}`}
                     readOnly
                     className="flex-1 px-3 py-2 bg-background border rounded-lg text-sm"
                   />
@@ -493,8 +469,8 @@ export default function MyHelperNetwork() {
                     size="sm"
                     onClick={() =>
                       copyToClipboard(
-                        `${window.location.origin}/become-helper?ref=${helper?.referral_code}`,
-                        "Helper recruitment link"
+                        `${window.location.origin}/become-bdm?ref=${helper?.referral_code}`,
+                        "BDM recruitment link"
                       )
                     }
                   >
@@ -505,75 +481,68 @@ export default function MyHelperNetwork() {
               </CardContent>
             </Card>
 
-            {/* Recruited Helpers List */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Your Recruited Helpers ({recruitedHelpers.length})</h3>
+              <h3 className="text-lg font-semibold">Your Recruited BDMs ({recruitedBDMs.length})</h3>
 
-              {recruitedHelpers.map((recruitedHelper, index) => (
-                <Card key={recruitedHelper.id} className="hover:shadow-md transition-shadow">
+              {recruitedBDMs.map((recruitedBDM, index) => (
+                <Card key={recruitedBDM.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
-                      {/* Tree Line Visual */}
                       <div className="flex flex-col items-center">
                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                           <Users className="h-4 w-4 text-primary" />
                         </div>
-                        {index < recruitedHelpers.length - 1 && (
+                        {index < recruitedBDMs.length - 1 && (
                           <div className="w-0.5 h-full bg-primary/20 mt-2"></div>
                         )}
                       </div>
 
-                      {/* Helper Details */}
                       <div className="flex-1 min-w-0">
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                          {/* Basic Info */}
                           <div>
-                            <div className="font-semibold text-lg">{recruitedHelper.full_name}</div>
+                            <div className="font-semibold text-lg">{recruitedBDM.full_name}</div>
                             <div className="text-sm text-muted-foreground">
-                              {recruitedHelper.id} | {recruitedHelper.referral_code}
+                              {recruitedBDM.id} | {recruitedBDM.referral_code}
                             </div>
-                            <div className="text-sm text-muted-foreground">{recruitedHelper.email}</div>
+                            <div className="text-sm text-muted-foreground">{recruitedBDM.email}</div>
                             <div className="text-xs text-muted-foreground mt-2">
                               <Calendar className="inline w-3 h-3 mr-1" />
-                              Joined: {format(new Date(recruitedHelper.created_at), "PPP")}
+                              Joined: {format(new Date(recruitedBDM.created_at), "PPP")}
                             </div>
                             <div className="mt-2">
-                              {getStatusBadge(recruitedHelper.status, recruitedHelper.application_status!)}
+                              {getStatusBadge(recruitedBDM.status, recruitedBDM.application_status!)}
                             </div>
                           </div>
 
-                          {/* Performance */}
                           <div>
                             <div className="text-sm font-semibold mb-2">Their Performance</div>
                             <div className="space-y-1 text-sm">
                               <div className="flex items-center gap-2">
                                 <Shield className="w-3 h-3 text-muted-foreground" />
                                 <span className="text-muted-foreground">Store Referrals:</span>
-                                <span className="font-semibold">{recruitedHelper.store_referrals_count}</span>
+                                <span className="font-semibold">{recruitedBDM.store_referrals_count}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-3 h-3 text-muted-foreground" />
                                 <span className="text-muted-foreground">Their Earnings:</span>
                                 <span className="font-semibold text-green-500">
-                                  ₹{recruitedHelper.total_commission_earned.toLocaleString()}
+                                  ₹{recruitedBDM.total_commission_earned.toLocaleString()}
                                 </span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Network Commission */}
                           <div>
                             <div className="text-sm font-semibold mb-2">Your Network Commission</div>
                             <div className="text-2xl font-bold text-green-500 mb-2">
-                              ₹{recruitedHelper.network_commission_to_recruiter.toLocaleString()}
+                              ₹{recruitedBDM.network_commission_to_recruiter.toLocaleString()}
                             </div>
                             <div className="text-xs text-muted-foreground mb-2">
-                              5% of their ₹{recruitedHelper.total_commission_earned.toLocaleString()}
+                              5% of their ₹{recruitedBDM.total_commission_earned.toLocaleString()}
                             </div>
-                            {getCommissionStatusBadge(recruitedHelper.commission_status)}
+                            {getCommissionStatusBadge(recruitedBDM.commission_status)}
                           </div>
 
-                          {/* Actions */}
                           <div className="flex items-center">
                             <Button variant="outline" size="sm" className="w-full">
                               <ExternalLink className="w-4 h-4 mr-2" />

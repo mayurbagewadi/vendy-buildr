@@ -65,9 +65,9 @@ const StoreSetup = () => {
       .maybeSingle();
 
     if (existingHelper) {
-      setBlockErrorMessage("You are registered as a helper. Helpers cannot create stores. Please contact support if you need assistance.");
+      setBlockErrorMessage("You are registered as a BDM. BDMs cannot create stores. Please contact support if you need assistance.");
       setBlockModalOpen(true);
-      setTimeout(() => navigate("/helper/dashboard"), 3000);
+      setTimeout(() => navigate("/bdm/dashboard"), 3000);
       return;
     }
 
@@ -79,7 +79,7 @@ const StoreSetup = () => {
       .maybeSingle();
 
     if (helperApplication) {
-      setBlockErrorMessage("You have applied or are registered as a helper. Helpers cannot create stores.");
+      setBlockErrorMessage("You have applied or are registered as a BDM. BDMs cannot create stores.");
       setBlockModalOpen(true);
       setTimeout(() => navigate("/application-status"), 3000);
       return;

@@ -494,8 +494,8 @@ const Index = () => {
             <Link to="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
-            <a href="#helper-program" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              For Helpers
+            <a href="#bdm-program" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              For BDMs
             </a>
             <Link to="/guide" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Guide
@@ -551,11 +551,11 @@ const Index = () => {
                     Pricing
                   </Link>
                   <a
-                    href="#helper-program"
+                    href="#bdm-program"
                     className="text-lg font-medium text-foreground hover:text-primary transition-colors py-3 border-b"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    For Helpers
+                    For BDMs
                   </a>
                   <Link
                     to="/guide"
@@ -875,7 +875,7 @@ const Index = () => {
       </section>
 
       {/* BDM Program Section */}
-      <section id="helper-program" className="relative bg-gradient-to-b from-background via-green-500/5 to-background py-24 lg:py-32 overflow-hidden">
+      <section id="bdm-program" className="relative bg-gradient-to-b from-background via-green-500/5 to-background py-24 lg:py-32 overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-green-500/10 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-0 left-0 w-96 h-96 bg-green-500/10 rounded-full blur-3xl opacity-20" />
@@ -944,13 +944,13 @@ const Index = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">
-              <Link to="/become-helper" className="w-full sm:w-auto">
+              <Link to="/become-bdm" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto h-14 px-10 text-base shadow-2xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all group font-semibold"
                 >
                   <UserPlus className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-                  Apply to Become a Helper
+                  Apply to Become a BDM
                 </Button>
               </Link>
               <Link to="/application-status" className="w-full sm:w-auto">
@@ -968,7 +968,7 @@ const Index = () => {
             {/* Additional Info */}
             <div className="mt-12 text-center">
               <p className="text-sm text-muted-foreground">
-                Already a helper? <Link to="/helper/login" className="text-primary font-semibold hover:underline">Login here</Link>
+                Already a BDM? <Link to="/bdm/login" className="text-primary font-semibold hover:underline">Login here</Link>
               </p>
             </div>
           </div>
@@ -1354,8 +1354,8 @@ const Index = () => {
               <a href="#how-it-works" className="hover:text-foreground transition-colors">
                 How It Works
               </a>
-              <a href="#helper-program" className="hover:text-foreground transition-colors">
-                For Helpers
+              <a href="#bdm-program" className="hover:text-foreground transition-colors">
+                For BDMs
               </a>
               <Link to="/guide" className="hover:text-foreground transition-colors">
                 Guide
@@ -1363,8 +1363,8 @@ const Index = () => {
               <Link to="/blog" className="hover:text-foreground transition-colors">
                 Blog
               </Link>
-              <Link to="/become-helper" className="hover:text-foreground transition-colors">
-                Apply as Helper
+              <Link to="/become-bdm" className="hover:text-foreground transition-colors">
+                Apply as BDM
               </Link>
               <Link to="/application-status" className="hover:text-foreground transition-colors">
                 Check Status

@@ -10,12 +10,12 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
   const basePath = storeSlug ? `/${storeSlug}` : '';
 
   return (
-    <footer className="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-16">
+    <footer className="bg-muted border-t border-border mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Shop Section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 flex items-center">
               <Store className="h-4 w-4 mr-2" />
               Shop
             </h3>
@@ -23,7 +23,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={basePath || '/'}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Home
                 </Link>
@@ -31,7 +31,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={`${basePath}/products`}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   All Products
                 </Link>
@@ -39,7 +39,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={`${basePath}/categories`}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Categories
                 </Link>
@@ -47,7 +47,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={`${basePath}/cart`}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Shopping Cart
                 </Link>
@@ -57,7 +57,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
 
           {/* Help & Support Section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 flex items-center">
               <HelpCircle className="h-4 w-4 mr-2" />
               Help & Support
             </h3>
@@ -65,7 +65,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={`${basePath}/policies`}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Store Policies
                 </Link>
@@ -73,7 +73,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#contact"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Contact Us
                 </a>
@@ -81,7 +81,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#faq"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   FAQ
                 </a>
@@ -89,7 +89,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#shipping"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Shipping Info
                 </a>
@@ -99,7 +99,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
 
           {/* Legal Section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 flex items-center">
               <Shield className="h-4 w-4 mr-2" />
               Legal
             </h3>
@@ -107,7 +107,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to="/privacy-policy"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Privacy Policy
                 </Link>
@@ -115,7 +115,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to="/terms-of-service"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Terms of Service
                 </Link>
@@ -123,7 +123,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#refund"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Refund Policy
                 </a>
@@ -131,7 +131,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#cookies"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Cookie Policy
                 </a>
@@ -141,7 +141,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
 
           {/* About Section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 flex items-center">
               <Info className="h-4 w-4 mr-2" />
               About
             </h3>
@@ -149,7 +149,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <Link
                   to={`${basePath}/about`}
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   About Us
                 </Link>
@@ -157,7 +157,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#mission"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Our Mission
                 </a>
@@ -165,7 +165,7 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               <li>
                 <a
                   href="#quality"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Quality Guarantee
                 </a>
@@ -173,10 +173,10 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
               {!storeSlug && (
                 <li>
                   <Link
-                    to="/become-helper"
-                    className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                    to="/become-bdm"
+                    className="text-muted-foreground hover:text-primary transition-colors"
                   >
-                    Become a Helper
+                    Become a BDM
                   </Link>
                 </li>
               )}
@@ -185,21 +185,21 @@ export default function FooterSitemap({ storeSlug }: FooterSitemapProps) {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
+        <div className="mt-12 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} {storeSlug ? 'All Rights Reserved' : 'YesGive. All Rights Reserved'}
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link
                 to="/sitemap.xml"
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Sitemap
               </Link>
               <a
                 href="#accessibility"
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Accessibility
               </a>

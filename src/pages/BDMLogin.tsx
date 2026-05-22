@@ -6,18 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, Users, ArrowLeft } from "lucide-react";
 
-export default function HelperLogin() {
+export default function BDMLogin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
   // Check for existing session and handle OAuth redirects
   useEffect(() => {
-    const checkHelperSession = async (userId: string) => {
+    const checkBDMSession = async (userId: string) => {
       try {
-        console.log('[HelperLogin] Checking helper status for user:', userId);
+        console.log('[BDMLogin] Checking BDM status for user:', userId);
 
-        // Check if user is an approved helper
+        // Check if user is an approved BDM
         const { data: helperData, error: helperError } = await supabase
           .from('helpers')
           .select('*')
@@ -25,15 +25,15 @@ export default function HelperLogin() {
           .maybeSingle();
 
         if (helperError) {
-          console.error('[HelperLogin] Error checking helper status:', helperError);
+          console.error('[BDMLogin] Error checking BDM status:', helperError);
           return;
         }
 
         if (helperData) {
-          // User is an approved helper - redirect to dashboard
-          console.log('[HelperLogin] Approved helper found, redirecting to dashboard');
+          // User is an approved BDM - redirect to dashboard
+          console.log('[BDMLogin] Approved BDM found, redirecting to dashboard');
           toast.success('Welcome back!');
-          navigate('/helper/dashboard');
+          navigate('/bdm/dashboard');
           return;
         }
 
@@ -45,18 +45,18 @@ export default function HelperLogin() {
           .maybeSingle();
 
         if (appError) {
-          console.error('[HelperLogin] Error checking application:', appError);
+          console.error('[BDMLogin] Error checking application:', appError);
           return;
         }
 
         if (applicationData) {
           // User has an application - redirect based on status
-          console.log('[HelperLogin] Application found with status:', applicationData.application_status);
+          console.log('[BDMLogin] Application found with status:', applicationData.application_status);
 
           if (applicationData.application_status === 'Pending') {
             toast.info('Your application is under review');
           } else if (applicationData.application_status === 'Rejected') {
-            toast.error('Your helper application was rejected');
+            toast.error('Your BDM application was rejected');
           } else {
             toast.info('Checking your application status...');
           }
@@ -65,35 +65,35 @@ export default function HelperLogin() {
           return;
         }
 
-        // User is not a helper and has no application
-        console.log('[HelperLogin] No helper or application found');
-        toast.error('You are not registered as a helper. Please apply to become a helper first.');
+        // User is not a BDM and has no application
+        console.log('[BDMLogin] No BDM or application found');
+        toast.error('You are not registered as a BDM. Please apply to become a BDM first.');
         await supabase.auth.signOut();
       } catch (error) {
-        console.error('[HelperLogin] Error in session check:', error);
+        console.error('[BDMLogin] Error in session check:', error);
       }
     };
 
     // Check for existing session on page load
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        console.log('[HelperLogin] Existing session found');
-        await checkHelperSession(session.user.id);
+        console.log('[BDMLogin] Existing session found');
+        await checkBDMSession(session.user.id);
       }
       setCheckingSession(false);
     });
 
     // Listen for auth state changes (OAuth redirects)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[HelperLogin] Auth state changed:', event);
+      console.log('[BDMLogin] Auth state changed:', event);
 
       if (event === 'SIGNED_IN' && session) {
-        console.log('[HelperLogin] User signed in, checking helper status');
+        console.log('[BDMLogin] User signed in, checking BDM status');
         setCheckingSession(true);
 
         // Defer check to avoid auth deadlock
         setTimeout(async () => {
-          await checkHelperSession(session.user.id);
+          await checkBDMSession(session.user.id);
           setCheckingSession(false);
         }, 100);
       }
@@ -105,25 +105,23 @@ export default function HelperLogin() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      console.log('[HelperLogin] Starting Google sign in for helper...');
+      console.log('[BDMLogin] Starting Google sign in for BDM...');
 
-      // Google OAuth WITHOUT Drive scope (helpers don't need Drive access)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/helper/login`,
-          // No scopes = only basic profile (email, name) - no Drive access
+          redirectTo: `${window.location.origin}/bdm/login`,
         },
       });
 
       if (error) {
-        console.error('[HelperLogin] Google sign in error:', error);
+        console.error('[BDMLogin] Google sign in error:', error);
         toast.error(error.message || "Failed to sign in with Google");
       } else {
-        console.log('[HelperLogin] Google OAuth redirect initiated');
+        console.log('[BDMLogin] Google OAuth redirect initiated');
       }
     } catch (error: any) {
-      console.error('[HelperLogin] Unexpected error:', error);
+      console.error('[BDMLogin] Unexpected error:', error);
       toast.error(error.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -148,9 +146,9 @@ export default function HelperLogin() {
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
               <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
-            <CardTitle className="text-2xl font-bold">Helper Login</CardTitle>
+            <CardTitle className="text-2xl font-bold">BDM Login</CardTitle>
             <CardDescription>
-              Sign in to access your helper dashboard
+              Sign in to access your BDM dashboard
             </CardDescription>
           </CardHeader>
 
@@ -202,11 +200,11 @@ export default function HelperLogin() {
 
             <div className="mt-6 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Don't have a helper account?
+                Don't have a BDM account?
               </p>
-              <Link to="/become-helper">
+              <Link to="/become-bdm">
                 <Button variant="link" className="text-blue-600 dark:text-blue-400">
-                  Apply to become a helper
+                  Apply to become a BDM
                 </Button>
               </Link>
             </div>
@@ -228,7 +226,7 @@ export default function HelperLogin() {
         <Card className="mt-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-4">
             <p className="text-xs text-blue-900 dark:text-blue-200 text-center">
-              <strong>Note:</strong> This login is exclusively for helpers. Store owners should use the main login page.
+              <strong>Note:</strong> This login is exclusively for BDMs. Store owners should use the main login page.
             </p>
           </CardContent>
         </Card>

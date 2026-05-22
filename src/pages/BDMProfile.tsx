@@ -45,7 +45,7 @@ import {
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 
-export default function HelperProfile() {
+export default function BDMProfile() {
   const navigate = useNavigate();
   const { toast: toastHook } = useToast();
   const [loading, setLoading] = useState(true);
@@ -55,13 +55,11 @@ export default function HelperProfile() {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [pendingBankUpdate, setPendingBankUpdate] = useState<any>(null);
 
-  // Profile edit form
   const [profileForm, setProfileForm] = useState({
     full_name: "",
     phone: ""
   });
 
-  // Bank details form
   const [bankForm, setBankForm] = useState({
     account_holder_name: "",
     account_number: "",
@@ -69,17 +67,14 @@ export default function HelperProfile() {
     bank_name: ""
   });
 
-  // Password verification
   const [verifyPassword, setVerifyPassword] = useState("");
 
-  // Change password form
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: ""
   });
 
-  // Performance stats
   const [performance, setPerformance] = useState({
     memberSince: "",
     daysActive: 0,
@@ -89,10 +84,10 @@ export default function HelperProfile() {
   });
 
   useEffect(() => {
-    checkHelperAccess();
+    checkBDMAccess();
   }, []);
 
-  const checkHelperAccess = async () => {
+  const checkBDMAccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -108,7 +103,7 @@ export default function HelperProfile() {
         .single();
 
       if (helperError || !helperData) {
-        navigate("/helper/dashboard");
+        navigate("/bdm/dashboard");
         return;
       }
 
@@ -117,15 +112,14 @@ export default function HelperProfile() {
         full_name: helperData.full_name,
         phone: helperData.phone
       });
-      
-      // Fetch bank details from helper_applications table
+
       if (helperData.application_id) {
         const { data: applicationData } = await supabase
           .from("helper_applications")
           .select("bank_account_name, bank_account_number, bank_ifsc_code, bank_name")
           .eq("id", helperData.application_id)
           .single();
-        
+
         if (applicationData) {
           setBankForm({
             account_holder_name: applicationData.bank_account_name || "",
@@ -139,17 +133,15 @@ export default function HelperProfile() {
       await loadPerformance(helperData.id, helperData.created_at);
       setLoading(false);
     } catch (error) {
-      console.error("Error checking helper access:", error);
+      console.error("Error checking BDM access:", error);
       navigate("/auth");
     }
   };
 
   const loadPerformance = async (helperId: string, createdAt: string) => {
     try {
-      // Calculate days active
       const daysActive = differenceInDays(new Date(), new Date(createdAt));
 
-      // Get total earnings from commissions
       const { data: commissions } = await supabase
         .from("network_commissions")
         .select("direct_commission_amount, network_commission_amount")
@@ -160,7 +152,6 @@ export default function HelperProfile() {
         0
       ) || 0;
 
-      // Calculate rank based on total earnings
       let rank = "Bronze";
       const badges: string[] = [];
 
@@ -172,7 +163,7 @@ export default function HelperProfile() {
         badges.push("Silver Member", "Rising Star");
       } else {
         rank = "Bronze";
-        if (daysActive >= 30) badges.push("Consistent Helper");
+        if (daysActive >= 30) badges.push("Consistent BDM");
         if (totalEarnings > 0) badges.push("First Earnings");
       }
 
@@ -217,7 +208,6 @@ export default function HelperProfile() {
 
   const handleVerifyPasswordAndUpdateBank = async () => {
     try {
-      // Verify password
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error("User not found");
 
@@ -231,7 +221,6 @@ export default function HelperProfile() {
         return;
       }
 
-      // Update bank details in helper_applications table
       const { error: updateError } = await supabase
         .from("helper_applications")
         .update({
@@ -275,7 +264,6 @@ export default function HelperProfile() {
     }
 
     try {
-      // Verify current password
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error("User not found");
 
@@ -289,18 +277,13 @@ export default function HelperProfile() {
         return;
       }
 
-      // Update password
       const { error: updateError } = await supabase.auth.updateUser({
         password: passwordForm.newPassword
       });
 
       if (updateError) throw updateError;
 
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       toast.success("Password changed successfully!");
     } catch (error) {
       console.error("Error changing password:", error);
@@ -348,7 +331,7 @@ export default function HelperProfile() {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <Link to="/helper/dashboard">
+            <Link to="/bdm/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
@@ -407,10 +390,7 @@ export default function HelperProfile() {
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => {
                         setEditingProfile(false);
-                        setProfileForm({
-                          full_name: helper.full_name,
-                          phone: helper.phone
-                        });
+                        setProfileForm({ full_name: helper.full_name, phone: helper.phone });
                       }}>
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -466,7 +446,7 @@ export default function HelperProfile() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Helper ID</p>
+                      <p className="text-sm text-muted-foreground mb-1">BDM ID</p>
                       <p className="font-semibold flex items-center gap-2">
                         <Shield className="h-4 w-4" />
                         {helper.helper_id}
@@ -655,26 +635,22 @@ export default function HelperProfile() {
                     <span className="text-sm text-muted-foreground">Member Since</span>
                     <span className="font-semibold">{performance.memberSince}</span>
                   </div>
-
                   <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">Days Active</span>
                     <span className="font-semibold text-blue-500">{performance.daysActive} days</span>
                   </div>
-
                   <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">Total Earnings</span>
                     <span className="font-bold text-green-500 text-lg">
                       ₹{performance.totalEarnings.toLocaleString()}
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">Current Rank</span>
                     <span className="font-semibold">{performance.rank}</span>
                   </div>
                 </div>
 
-                {/* Achievement Badges */}
                 {performance.badges.length > 0 && (
                   <div className="mt-6">
                     <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -692,7 +668,6 @@ export default function HelperProfile() {
                   </div>
                 )}
 
-                {/* Rank Progress */}
                 <div className="mt-6 pt-6 border-t">
                   <h4 className="text-sm font-semibold mb-3">Rank Progression</h4>
                   <div className="space-y-2 text-sm">

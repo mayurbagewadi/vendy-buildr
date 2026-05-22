@@ -80,7 +80,7 @@ export default function ApplicationStatus() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Check Application Status</h1>
           <p className="text-muted-foreground text-lg">
-            Enter your email or phone number to check your helper application status
+            Enter your email or phone number to check your BDM application status
           </p>
         </div>
 
@@ -196,7 +196,7 @@ export default function ApplicationStatus() {
                   <p className="text-muted-foreground mb-6">
                     We couldn't find an application with this email or phone number
                   </p>
-                  <Link to="/become-helper">
+                  <Link to="/become-bdm">
                     <Button>Apply Now</Button>
                   </Link>
                 </CardContent>

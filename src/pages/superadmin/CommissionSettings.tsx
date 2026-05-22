@@ -586,7 +586,7 @@ export default function SuperAdminCommissionSettings() {
                                (commission.yearly.model === "hybrid" && (commission.yearly.onetimeValue > 0 || commission.yearly.recurringValue > 0));
 
         if (!hasMonthlyValue && !hasYearlyValue) {
-          errors.push(`${planName}: Commission is enabled but all values are 0 - helpers will not earn anything`);
+          errors.push(`${planName}: Commission is enabled but all values are 0 - BDMs will not earn anything`);
         }
       }
     });
@@ -605,7 +605,7 @@ export default function SuperAdminCommissionSettings() {
     }
 
     if (maxHelpersPerRecruiter < -1) {
-      errors.push("Max Helpers Per Recruiter must be -1 (unlimited) or a positive number");
+      errors.push("Max BDMs Per Recruiter must be -1 (unlimited) or a positive number");
     }
 
     return {
@@ -786,7 +786,7 @@ export default function SuperAdminCommissionSettings() {
       const oldValue = originalValues.maxHelpersPerRecruiter === -1 ? 'Unlimited' : originalValues.maxHelpersPerRecruiter;
       const newValue = maxHelpersPerRecruiter === -1 ? 'Unlimited' : maxHelpersPerRecruiter;
       categorizedChanges.recruitmentSettings.push(
-        `Max Helpers: ${oldValue} → ${newValue}`
+        `Max BDMs: ${oldValue} → ${newValue}`
       );
     }
     if (referralCodePrefix !== originalValues.referralCodePrefix) {
@@ -1031,7 +1031,7 @@ export default function SuperAdminCommissionSettings() {
               Commission Settings
             </h1>
             <p className="text-muted-foreground mt-1">
-              Configure commission rates, payment settings, and helper program rules
+              Configure commission rates, payment settings, and BDM program rules
             </p>
           </div>
           <Button onClick={() => navigate("/superadmin/dashboard")}>
@@ -1043,7 +1043,7 @@ export default function SuperAdminCommissionSettings() {
         <Card>
           <CardHeader>
             <CardTitle>Network Commission Settings</CardTitle>
-            <CardDescription>Commission when helper recruits a another helper (multi-tier)</CardDescription>
+            <CardDescription>Commission when BDM recruits another BDM (multi-tier)</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="monthly" className="w-full">
@@ -1420,7 +1420,7 @@ export default function SuperAdminCommissionSettings() {
                             ⚠️ Commission Disabled
                           </p>
                           <p className="text-red-700 dark:text-red-300 text-sm mt-2">
-                            Helpers will receive <strong>NO commission</strong> for recruiting store owners on this plan.
+                            BDMs will receive <strong>NO commission</strong> for recruiting store owners on this plan.
                             Enable commission above to set rates.
                           </p>
                         </div>
@@ -1655,14 +1655,14 @@ export default function SuperAdminCommissionSettings() {
         <Card>
           <CardHeader>
             <CardTitle>Feature Controls</CardTitle>
-            <CardDescription>Enable or disable helper program features</CardDescription>
+            <CardDescription>Enable or disable BDM program features</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Enable Multi-Tier BDM Program</Label>
                 <p className="text-xs text-muted-foreground">
-                  Allow helpers to recruit other helpers and earn network commissions
+                  Allow BDMs to recruit other BDMs and earn network commissions
                 </p>
               </div>
               <Switch checked={enableMultiTier} onCheckedChange={setEnableMultiTier} />
@@ -1670,9 +1670,9 @@ export default function SuperAdminCommissionSettings() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Auto-approve Helper Applications</Label>
+                <Label>Auto-approve BDM Applications</Label>
                 <p className="text-xs text-muted-foreground">
-                  Automatically approve all helper applications without manual review
+                  Automatically approve all BDM applications without manual review
                 </p>
               </div>
               <Switch checked={autoApproveApplications} onCheckedChange={setAutoApproveApplications} />
@@ -1680,9 +1680,9 @@ export default function SuperAdminCommissionSettings() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Send Helper Welcome Email</Label>
+                <Label>Send BDM Welcome Email</Label>
                 <p className="text-xs text-muted-foreground">
-                  Send welcome email when helper application is approved
+                  Send welcome email when BDM application is approved
                 </p>
               </div>
               <Switch checked={sendWelcomeEmail} onCheckedChange={setSendWelcomeEmail} />
@@ -1692,7 +1692,7 @@ export default function SuperAdminCommissionSettings() {
               <div className="space-y-0.5">
                 <Label>Send Commission Earned Notifications</Label>
                 <p className="text-xs text-muted-foreground">
-                  Notify helpers when they earn new commissions
+                  Notify BDMs when they earn new commissions
                 </p>
               </div>
               <Switch checked={sendCommissionNotifications} onCheckedChange={setSendCommissionNotifications} />
@@ -1730,7 +1730,7 @@ export default function SuperAdminCommissionSettings() {
               </div>
               {!fieldErrors.minPayoutThreshold && (
                 <p className="text-xs text-muted-foreground">
-                  Helpers must earn at least this amount before payment is processed
+                  BDMs must earn at least this amount before payment is processed
                 </p>
               )}
             </div>
@@ -1784,15 +1784,15 @@ export default function SuperAdminCommissionSettings() {
           </CardContent>
         </Card>
 
-        {/* Helper Recruitment Settings */}
+        {/* BDM Recruitment Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Helper Recruitment Settings</CardTitle>
-            <CardDescription>Configure helper recruitment rules and referral codes</CardDescription>
+            <CardTitle>BDM Recruitment Settings</CardTitle>
+            <CardDescription>Configure BDM recruitment rules and referral codes</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Maximum Helpers Per Recruiter</Label>
+              <Label>Maximum BDMs Per Recruiter</Label>
               <Input
                 type="number"
                 value={maxHelpersPerRecruiter === -1 ? "" : maxHelpersPerRecruiter}
@@ -1837,7 +1837,7 @@ export default function SuperAdminCommissionSettings() {
               <div className="space-y-0.5">
                 <Label>Auto-generate Referral Codes</Label>
                 <p className="text-xs text-muted-foreground">
-                  Automatically generate unique referral codes for new helpers
+                  Automatically generate unique referral codes for new BDMs
                 </p>
               </div>
               <Switch checked={autoGenerateCodes} onCheckedChange={setAutoGenerateCodes} />

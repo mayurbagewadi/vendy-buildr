@@ -421,17 +421,17 @@ const SuperAdminReportsAnalytics = () => {
         percentage: applications?.length ? ((helpers?.length || 0) / applications.length) * 100 : 0
       },
       {
-        stage: "Helpers with Referrals",
+        stage: "BDMs with Referrals",
         count: helpersWithReferrals.filter(h => h.hasReferrals).length,
         percentage: helpers?.length ? (helpersWithReferrals.filter(h => h.hasReferrals).length / helpers.length) * 100 : 0
       },
       {
-        stage: "Helpers with Paid Referrals",
+        stage: "BDMs with Paid Referrals",
         count: helpersWithReferrals.filter(h => h.hasPaidReferrals).length,
         percentage: helpers?.length ? (helpersWithReferrals.filter(h => h.hasPaidReferrals).length / helpers.length) * 100 : 0
       },
       {
-        stage: "Helpers who Recruited",
+        stage: "BDMs who Recruited",
         count: helpersWithReferrals.filter(h => h.hasRecruited).length,
         percentage: helpers?.length ? (helpersWithReferrals.filter(h => h.hasRecruited).length / helpers.length) * 100 : 0
       }
@@ -442,8 +442,8 @@ const SuperAdminReportsAnalytics = () => {
     try {
       const data = topHelpers.map((helper, index) => ({
         "Rank": index + 1,
-        "Helper Name": helper.name,
-        "Helper ID": helper.id,
+        "BDM Name": helper.name,
+        "BDM ID": helper.id,
         "Direct Commissions": `₹${helper.directCommissions.toLocaleString()}`,
         "Referral Count": helper.referralCount,
         "Network Size": helper.networkSize,
@@ -455,7 +455,7 @@ const SuperAdminReportsAnalytics = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Top Performers");
 
-      const fileName = `top_helpers_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+      const fileName = `top_bdms_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
       XLSX.writeFile(wb, fileName);
       toast.success("Report exported successfully!");
     } catch (error) {
@@ -496,7 +496,7 @@ const SuperAdminReportsAnalytics = () => {
             <div>
               <h1 className="text-2xl font-bold">Reports & Analytics</h1>
               <p className="text-sm text-muted-foreground">
-                Comprehensive insights into helper program performance
+                Comprehensive insights into BDM program performance
               </p>
             </div>
             <Badge variant="default" className="text-sm px-3 py-1">
@@ -527,7 +527,7 @@ const SuperAdminReportsAnalytics = () => {
                 <span className="font-semibold text-yellow-600">{overviewStats?.helperProgram.pendingApplications}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Approved helpers:</span>
+                <span className="text-muted-foreground">Approved BDMs:</span>
                 <span className="font-semibold text-green-600">{overviewStats?.helperProgram.approvedHelpers}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -535,7 +535,7 @@ const SuperAdminReportsAnalytics = () => {
                 <span className="font-semibold text-red-600">{overviewStats?.helperProgram.rejectedApplications}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Active helpers:</span>
+                <span className="text-muted-foreground">Active BDMs:</span>
                 <span className="font-semibold text-green-600">{overviewStats?.helperProgram.activeHelpers}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -622,7 +622,7 @@ const SuperAdminReportsAnalytics = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Largest network:</span>
-                <span className="font-semibold text-blue-600">{overviewStats?.networkGrowth.largestNetwork} helpers</span>
+                <span className="font-semibold text-blue-600">{overviewStats?.networkGrowth.largestNetwork} BDMs</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Average size:</span>
@@ -691,10 +691,10 @@ const SuperAdminReportsAnalytics = () => {
                 </div>
               </TabsContent>
 
-              {/* Chart 3: Helper Performance Distribution */}
+              {/* Chart 3: BDM Performance Distribution */}
               <TabsContent value="distribution" className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Helper Performance Distribution</h3>
+                  <h3 className="text-lg font-semibold mb-4">BDM Performance Distribution</h3>
                   <ResponsiveContainer width="100%" height={400}>
                     <PieChart>
                       <Pie
@@ -702,7 +702,7 @@ const SuperAdminReportsAnalytics = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry) => `${entry.name}: ${entry.value} helpers`}
+                        label={(entry) => `${entry.name}: ${entry.value} BDMs`}
                         outerRadius={120}
                         fill="#8884d8"
                         dataKey="value"
@@ -726,7 +726,7 @@ const SuperAdminReportsAnalytics = () => {
                             <span className="font-semibold">{segment.name}</span>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {segment.value} helpers
+                            {segment.value} BDMs
                           </p>
                           <p className="text-sm font-semibold text-green-600">
                             ₹{segment.earnings?.toLocaleString()} earned
@@ -759,7 +759,7 @@ const SuperAdminReportsAnalytics = () => {
                             className="bg-gradient-to-r from-blue-500 to-green-500 h-full flex items-center justify-center text-white text-sm font-semibold transition-all"
                             style={{ width: `${stage.percentage}%` }}
                           >
-                            {stage.percentage > 20 && `${stage.count} helpers`}
+                            {stage.percentage > 20 && `${stage.count} BDMs`}
                           </div>
                         </div>
                       </div>
@@ -786,10 +786,10 @@ const SuperAdminReportsAnalytics = () => {
                 <TabsTrigger value="applications">Applications</TabsTrigger>
               </TabsList>
 
-              {/* Report 1: Top Performing Helpers */}
+              {/* Report 1: Top Performing BDMs */}
               <TabsContent value="top-performers" className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Top 20 Performing Helpers</h3>
+                  <h3 className="text-lg font-semibold">Top 20 Performing BDMs</h3>
                   <Button onClick={exportTopHelpers}>
                     <Download className="h-4 w-4 mr-2" />
                     Export to Excel
@@ -801,7 +801,7 @@ const SuperAdminReportsAnalytics = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-16">Rank</TableHead>
-                        <TableHead>Helper Name</TableHead>
+                        <TableHead>BDM Name</TableHead>
                         <TableHead>Direct Commissions</TableHead>
                         <TableHead>Referral Count</TableHead>
                         <TableHead>Network Size</TableHead>
@@ -841,9 +841,9 @@ const SuperAdminReportsAnalytics = () => {
                 </div>
               </TabsContent>
 
-              {/* Report 2: Helper Network Analytics */}
+              {/* Report 2: BDM Network Analytics */}
               <TabsContent value="network" className="space-y-4">
-                <h3 className="text-lg font-semibold">Helper Network Analytics</h3>
+                <h3 className="text-lg font-semibold">BDM Network Analytics</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardHeader>

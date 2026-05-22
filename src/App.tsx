@@ -57,7 +57,7 @@ const AdminCustomerCare         = lazy(() => import("./pages/admin/CustomerCare"
 const SuperAdminLogin           = lazy(() => import("./pages/superadmin/Login"));
 const SuperAdminDashboard       = lazy(() => import("./pages/superadmin/Dashboard"));
 const SuperAdminUsers           = lazy(() => import("./pages/superadmin/Users"));
-const HelperManagement          = lazy(() => import("./pages/superadmin/HelperManagement"));
+const BDMManagement             = lazy(() => import("./pages/superadmin/BDMManagement"));
 const SuperAdminCommissions     = lazy(() => import("./pages/superadmin/Commissions"));
 const SuperAdminCommissionSettings = lazy(() => import("./pages/superadmin/CommissionSettings"));
 const SuperAdminReportsAnalytics = lazy(() => import("./pages/superadmin/ReportsAnalytics"));
@@ -84,14 +84,14 @@ const Blog                      = lazy(() => import("./pages/Blog"));
 const BlogPost                  = lazy(() => import("./pages/BlogPost"));
 const PrivacyPolicy             = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService            = lazy(() => import("./pages/TermsOfService"));
-const BecomeHelper              = lazy(() => import("./pages/BecomeHelper"));
+const BecomeBDM                 = lazy(() => import("./pages/BecomeBDM"));
 const ApplicationStatus         = lazy(() => import("./pages/ApplicationStatus"));
-const HelperLogin               = lazy(() => import("./pages/HelperLogin"));
-const HelperDashboard           = lazy(() => import("./pages/HelperDashboard"));
+const BDMLogin                  = lazy(() => import("./pages/BDMLogin"));
+const BDMDashboard              = lazy(() => import("./pages/BDMDashboard"));
 const MyReferrals               = lazy(() => import("./pages/MyReferrals"));
-const MyHelperNetwork           = lazy(() => import("./pages/MyHelperNetwork"));
+const MyBDMNetwork              = lazy(() => import("./pages/MyBDMNetwork"));
 const CommissionHistory         = lazy(() => import("./pages/CommissionHistory"));
-const HelperProfile             = lazy(() => import("./pages/HelperProfile"));
+const BDMProfile                = lazy(() => import("./pages/BDMProfile"));
 const Sitemap                   = lazy(() => import("./pages/Sitemap"));
 const OnboardingStoreSetup      = lazy(() => import("./pages/onboarding/StoreSetup"));
 const OnboardingBusinessDetails = lazy(() => import("./pages/onboarding/BusinessDetails"));
@@ -138,7 +138,7 @@ function ClarityAnalytics() {
   const { pathname } = useLocation();
   const isPrivatePath =
     /^\/(admin|superadmin|onboarding|home)(\/|$)/.test(pathname) ||
-    /^\/helper\/(dashboard|my-referrals|my-helper-network|commission-history|profile)(\/|$)/.test(pathname);
+    /^\/bdm\/(dashboard|my-referrals|my-bdm-network|commission-history|profile)(\/|$)/.test(pathname);
 
   useEffect(() => {
     if (isPrivatePath) return;
@@ -246,14 +246,14 @@ const App = () => {
                           <Route path="/sitemap.xml" element={<Sitemap />} />
                           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                           <Route path="/terms-of-service" element={<TermsOfService />} />
-                          <Route path="/become-helper" element={<BecomeHelper />} />
+                          <Route path="/become-bdm" element={<BecomeBDM />} />
                           <Route path="/application-status" element={<ApplicationStatus />} />
-                          <Route path="/helper/login" element={<HelperLogin />} />
-                          <Route path="/helper/dashboard" element={<HelperDashboard />} />
-                          <Route path="/helper/my-referrals" element={<MyReferrals />} />
-                          <Route path="/helper/my-helper-network" element={<MyHelperNetwork />} />
-                          <Route path="/helper/commission-history" element={<CommissionHistory />} />
-                          <Route path="/helper/profile" element={<HelperProfile />} />
+                          <Route path="/bdm/login" element={<BDMLogin />} />
+                          <Route path="/bdm/dashboard" element={<BDMDashboard />} />
+                          <Route path="/bdm/my-referrals" element={<MyReferrals />} />
+                          <Route path="/bdm/my-bdm-network" element={<MyBDMNetwork />} />
+                          <Route path="/bdm/commission-history" element={<CommissionHistory />} />
+                          <Route path="/bdm/profile" element={<BDMProfile />} />
 
                           {/* Admin Routes - Protected by StoreGuard - MUST BE BEFORE CUSTOMER ROUTES */}
                           <Route path="/admin/dashboard" element={<StoreGuard><AdminLayout><AdminDashboard /></AdminLayout></StoreGuard>} />
@@ -292,7 +292,7 @@ const App = () => {
                           <Route path="/superadmin" element={<SuperAdminGuard />}>
                             <Route path="dashboard" element={<SuperAdminLayout><SuperAdminDashboard /></SuperAdminLayout>} />
                             <Route path="users" element={<SuperAdminLayout><SuperAdminUsers /></SuperAdminLayout>} />
-                            <Route path="helpers" element={<SuperAdminLayout><HelperManagement /></SuperAdminLayout>} />
+                            <Route path="bdm" element={<SuperAdminLayout><BDMManagement /></SuperAdminLayout>} />
                             <Route path="commissions" element={<SuperAdminLayout><SuperAdminCommissions /></SuperAdminLayout>} />
                             <Route path="commission-settings" element={<SuperAdminLayout><SuperAdminCommissionSettings /></SuperAdminLayout>} />
                             <Route path="reports-analytics" element={<SuperAdminLayout><SuperAdminReportsAnalytics /></SuperAdminLayout>} />

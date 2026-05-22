@@ -79,7 +79,7 @@ serve(async (req) => {
       phone: application.phone,
       referral_code: referralCode,
       store_referral_link: `${baseUrl}/signup?ref=${referralCode}`,
-      helper_recruitment_link: `${baseUrl}/become-helper?ref=${referralCode}`,
+      helper_recruitment_link: `${baseUrl}/become-bdm?ref=${referralCode}`,
       recruited_by_helper_id: application.recruited_by_helper_id,
       status: "Active",
     });
@@ -116,7 +116,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Helper approved and activated successfully',
+        message: 'BDM approved and activated successfully',
         referralCode: referralCode
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

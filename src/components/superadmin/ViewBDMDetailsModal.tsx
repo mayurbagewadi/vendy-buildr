@@ -24,14 +24,14 @@ import {
   Download,
 } from "lucide-react";
 
-interface ViewHelperDetailsModalProps {
+interface ViewBDMDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   helperId: string;
   helperName: string;
 }
 
-interface HelperDetails {
+interface BDMDetails {
   id: string;
   full_name: string;
   email: string;
@@ -47,7 +47,7 @@ interface HelperDetails {
   store_referral_link?: string;
 }
 
-interface HelperApplication {
+interface BDMApplication {
   why_helper: string;
   bank_account_name: string;
   bank_account_number: string;
@@ -74,15 +74,15 @@ interface CommissionData {
   network_bonus: number;
 }
 
-export default function ViewHelperDetailsModal({
+export default function ViewBDMDetailsModal({
   open,
   onOpenChange,
   helperId,
   helperName,
-}: ViewHelperDetailsModalProps) {
+}: ViewBDMDetailsModalProps) {
   const [loading, setLoading] = useState(true);
-  const [helperDetails, setHelperDetails] = useState<HelperDetails | null>(null);
-  const [applicationDetails, setApplicationDetails] = useState<HelperApplication | null>(null);
+  const [bdmDetails, setBDMDetails] = useState<BDMDetails | null>(null);
+  const [applicationDetails, setApplicationDetails] = useState<BDMApplication | null>(null);
   const [recruitedStores, setRecruitedStores] = useState<RecruitedStore[]>([]);
   const [commissionData, setCommissionData] = useState<CommissionData>({
     total_earned: 0,
@@ -103,20 +103,20 @@ export default function ViewHelperDetailsModal({
     setLoading(true);
     try {
       await Promise.all([
-        loadHelperDetails(),
+        loadBDMDetails(),
         loadApplicationDetails(),
         loadRecruitedStores(),
         loadCommissionData(),
       ]);
     } catch (error) {
-      console.error("Error loading helper data:", error);
-      toast.error("Failed to load helper details");
+      console.error("Error loading BDM data:", error);
+      toast.error("Failed to load BDM details");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadHelperDetails = async () => {
+  const loadBDMDetails = async () => {
     const { data, error } = await supabase
       .from("helpers")
       .select("*")
@@ -124,7 +124,7 @@ export default function ViewHelperDetailsModal({
       .single();
 
     if (error) throw error;
-    setHelperDetails(data);
+    setBDMDetails(data);
   };
 
   const loadApplicationDetails = async () => {
@@ -135,7 +135,7 @@ export default function ViewHelperDetailsModal({
       .single();
 
     if (error) {
-      console.warn("No application found for helper");
+      console.warn("No application found for BDM");
       return;
     }
 
@@ -240,9 +240,8 @@ export default function ViewHelperDetailsModal({
     toast.success(`${label} copied to clipboard!`);
   };
 
-  const handleViewAsHelper = () => {
-    // Open helper dashboard in new tab (impersonation mode)
-    const url = `/helper/dashboard?impersonate=${helperId}`;
+  const handleViewAsBDM = () => {
+    const url = `/bdm/dashboard?impersonate=${helperId}`;
     window.open(url, "_blank");
   };
 
@@ -251,14 +250,14 @@ export default function ViewHelperDetailsModal({
     // TODO: Implement PDF export
   };
 
-  if (loading || !helperDetails) {
+  if (loading || !bdmDetails) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading helper details...</p>
+              <p className="text-muted-foreground">Loading BDM details...</p>
             </div>
           </div>
         </DialogContent>
@@ -267,7 +266,7 @@ export default function ViewHelperDetailsModal({
   }
 
   const daysActive = Math.floor(
-    (new Date().getTime() - new Date(helperDetails.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    (new Date().getTime() - new Date(bdmDetails.created_at).getTime()) / (1000 * 60 * 60 * 24)
   );
 
   return (
@@ -276,7 +275,7 @@ export default function ViewHelperDetailsModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Helper Details - {helperName}
+            BDM Details - {helperName}
           </DialogTitle>
         </DialogHeader>
 
@@ -302,16 +301,16 @@ export default function ViewHelperDetailsModal({
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Full Name</p>
-                    <p className="font-medium">{helperDetails.full_name}</p>
+                    <p className="font-medium">{bdmDetails.full_name}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Email</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{helperDetails.email}</p>
+                      <p className="font-medium text-sm">{bdmDetails.email}</p>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => copyToClipboard(helperDetails.email, "Email")}
+                        onClick={() => copyToClipboard(bdmDetails.email, "Email")}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -320,34 +319,34 @@ export default function ViewHelperDetailsModal({
                   <div>
                     <p className="text-xs text-muted-foreground">Phone</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{helperDetails.phone}</p>
+                      <p className="font-medium">{bdmDetails.phone}</p>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => copyToClipboard(helperDetails.phone, "Phone")}
+                        onClick={() => copyToClipboard(bdmDetails.phone, "Phone")}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Helper ID</p>
-                    <p className="font-mono text-sm">{helperDetails.id}</p>
+                    <p className="text-xs text-muted-foreground">BDM ID</p>
+                    <p className="font-mono text-sm">{bdmDetails.id}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge variant={helperDetails.status === "Active" ? "default" : "destructive"}>
-                      {helperDetails.status}
+                    <Badge variant={bdmDetails.status === "Active" ? "default" : "destructive"}>
+                      {bdmDetails.status}
                     </Badge>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Referral Code</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-mono font-medium">{helperDetails.referral_code}</p>
+                      <p className="font-mono font-medium">{bdmDetails.referral_code}</p>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => copyToClipboard(helperDetails.referral_code, "Referral Code")}
+                        onClick={() => copyToClipboard(bdmDetails.referral_code, "Referral Code")}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -447,7 +446,7 @@ export default function ViewHelperDetailsModal({
                         </div>
                       )}
                       <div>
-                        <p className="text-xs text-muted-foreground">Why Helper?</p>
+                        <p className="text-xs text-muted-foreground">Why BDM?</p>
                         <p className="text-sm mt-1">{applicationDetails.why_helper || "Not provided"}</p>
                       </div>
                       {recruiterName && (
@@ -487,7 +486,7 @@ export default function ViewHelperDetailsModal({
                   </div>
                   <div className="text-center p-4 bg-orange-50 rounded-lg">
                     <p className="text-2xl font-bold text-orange-600">
-                      {helperDetails.direct_commission_rate}% / {helperDetails.network_commission_rate}%
+                      {bdmDetails.direct_commission_rate}% / {bdmDetails.network_commission_rate}%
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Direct / Network Rate</p>
                   </div>
@@ -555,7 +554,7 @@ export default function ViewHelperDetailsModal({
                     <div className="flex-1">
                       <p className="font-medium text-sm">Active</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(helperDetails.created_at), "PPp")}
+                        {format(new Date(bdmDetails.created_at), "PPp")}
                         {approverName && ` (Approved by ${approverName})`}
                       </p>
                     </div>
@@ -601,7 +600,7 @@ export default function ViewHelperDetailsModal({
                     <Store className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                     <p className="text-muted-foreground">No recruited stores yet</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Helper hasn't referred any stores
+                      BDM hasn't referred any stores
                     </p>
                   </div>
                 ) : (
@@ -688,7 +687,7 @@ export default function ViewHelperDetailsModal({
                     <div className="flex items-start gap-3 text-sm">
                       <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
                       <div>
-                        <p>Approved as helper</p>
+                        <p>Approved as BDM</p>
                         <p className="text-xs text-muted-foreground">
                           {applicationDetails.approved_at
                             ? format(new Date(applicationDetails.approved_at), "PPp")
@@ -701,7 +700,7 @@ export default function ViewHelperDetailsModal({
                     <div className="flex items-start gap-3 text-sm">
                       <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
                       <div>
-                        <p>Applied for helper</p>
+                        <p>Applied for BDM</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(applicationDetails.created_at), "PPp")}
                         </p>
@@ -716,9 +715,9 @@ export default function ViewHelperDetailsModal({
 
         {/* Action Buttons */}
         <div className="flex gap-2 justify-end mt-4 pt-4 border-t">
-          <Button variant="outline" onClick={handleViewAsHelper}>
+          <Button variant="outline" onClick={handleViewAsBDM}>
             <Eye className="h-4 w-4 mr-2" />
-            View as Helper
+            View as BDM
           </Button>
           <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />

@@ -72,8 +72,8 @@ export default function Auth() {
         console.log('[Auth] Helper query result:', { helperData, helperError });
 
         if (helperData) {
-          console.log('[Auth] Helper found - redirecting to helper dashboard');
-          navigate("/helper/dashboard");
+          console.log('[Auth] BDM found - redirecting to BDM dashboard');
+          navigate("/bdm/dashboard");
           setIsLoading(false);
           return;
         }
@@ -145,12 +145,12 @@ export default function Auth() {
             console.log('[Auth] SIGNED_IN - Helper query result:', { helperData, helperError });
 
             if (helperData) {
-              console.log('[Auth] Helper found - redirecting to helper dashboard');
+              console.log('[Auth] BDM found - redirecting to BDM dashboard');
               toast({
                 title: "Welcome back!",
-                description: "Redirecting to your helper dashboard.",
+                description: "Redirecting to your BDM dashboard.",
               });
-              navigate("/helper/dashboard");
+              navigate("/bdm/dashboard");
               return;
             }
 

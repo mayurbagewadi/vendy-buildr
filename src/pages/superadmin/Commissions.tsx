@@ -298,8 +298,8 @@ export default function SuperAdminCommissions() {
       }
 
       const exportData = data.map(c => ({
-        "Helper Name": c.helper_name,
-        "Helper ID": c.helper_id,
+        "BDM Name": c.helper_name,
+        "BDM ID": c.helper_id,
         "Store Owner": c.store_owner_name,
         "Plan": c.plan_name,
         "Plan Amount": `₹${c.plan_amount.toLocaleString()}`,
@@ -498,7 +498,7 @@ export default function SuperAdminCommissions() {
                               onCheckedChange={(checked) => handleSelectAll("direct", checked as boolean)}
                             />
                           </TableHead>
-                          <TableHead>Helper</TableHead>
+                          <TableHead>BDM</TableHead>
                           <TableHead>Store Owner</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Plan Amount</TableHead>
@@ -596,7 +596,7 @@ export default function SuperAdminCommissions() {
                               onCheckedChange={(checked) => handleSelectAll("network", checked as boolean)}
                             />
                           </TableHead>
-                          <TableHead>Helper</TableHead>
+                          <TableHead>BDM</TableHead>
                           <TableHead>Store Owner</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Plan Amount</TableHead>
@@ -670,7 +670,7 @@ export default function SuperAdminCommissions() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Helper</TableHead>
+                          <TableHead>BDM</TableHead>
                           <TableHead>Store Owner</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Commission</TableHead>

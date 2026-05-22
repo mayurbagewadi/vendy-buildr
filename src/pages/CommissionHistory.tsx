@@ -110,7 +110,7 @@ export default function CommissionHistory() {
         .single();
 
       if (helperError || !helperData) {
-        navigate("/helper/dashboard");
+        navigate("/bdm/dashboard");
         return;
       }
 
@@ -310,7 +310,7 @@ export default function CommissionHistory() {
       // Prepare network commissions data
       const networkData = filteredNetwork.map(c => ({
         "Date Earned": format(new Date(c.date_earned), "PPP"),
-        "Helper Name": c.helper_name,
+        "BDM Name": c.helper_name,
         "Their Customer": c.customer_name,
         "Their Commission": `₹${c.helper_commission.toLocaleString()}`,
         "Your Network Commission (5%)": `₹${c.network_commission.toLocaleString()}`,
@@ -380,7 +380,7 @@ export default function CommissionHistory() {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <Link to="/helper/dashboard">
+            <Link to="/bdm/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
@@ -600,7 +600,7 @@ export default function CommissionHistory() {
             <div className="flex items-center gap-2">
               <DollarSign className="h-6 w-6 text-blue-500" />
               <h2 className="text-2xl font-bold">Network Commissions</h2>
-              <span className="text-muted-foreground">(From Helpers You Recruited)</span>
+              <span className="text-muted-foreground">(From BDMs You Recruited)</span>
             </div>
 
             {/* Network Summary Card */}
@@ -618,14 +618,14 @@ export default function CommissionHistory() {
                     <p className="text-xl font-bold text-yellow-500">
                       ₹{stats.network.pending.toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">from {stats.network.pendingCount} helper{stats.network.pendingCount !== 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground">from {stats.network.pendingCount} BDM{stats.network.pendingCount !== 1 ? "s" : ""}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Paid</p>
                     <p className="text-xl font-bold text-green-500">
                       ₹{stats.network.paid.toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">from {stats.network.paidCount} helper{stats.network.paidCount !== 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground">from {stats.network.paidCount} BDM{stats.network.paidCount !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
               </CardContent>
@@ -645,7 +645,7 @@ export default function CommissionHistory() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date Earned</TableHead>
-                          <TableHead>Helper Name</TableHead>
+                          <TableHead>BDM Name</TableHead>
                           <TableHead>Their Customer</TableHead>
                           <TableHead>Their Commission</TableHead>
                           <TableHead>Your Network Commission (5%)</TableHead>

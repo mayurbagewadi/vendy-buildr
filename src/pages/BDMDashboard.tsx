@@ -34,25 +34,24 @@ import {
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 
-export default function HelperDashboard() {
+export default function BDMDashboard() {
   const navigate = useNavigate();
   const { toast: toastHook } = useToast();
   const [loading, setLoading] = useState(true);
   const [helper, setHelper] = useState<any>(null);
   const [stats, setStats] = useState<any>({
     directReferrals: { total: 0, trial: 0, paid: 0, conversionRate: 0 },
-    helperNetwork: { total: 0, pending: 0, approved: 0, suspended: 0 },
+    bdmNetwork: { total: 0, pending: 0, approved: 0, suspended: 0 },
     directCommission: { total: 0, pending: 0, paid: 0 },
     networkCommission: { total: 0, pending: 0, paid: 0 },
   });
 
   useEffect(() => {
-    checkHelperAccess();
+    checkBDMAccess();
   }, []);
 
-  const checkHelperAccess = async () => {
+  const checkBDMAccess = async () => {
     try {
-      // Check Supabase authentication
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
@@ -60,7 +59,6 @@ export default function HelperDashboard() {
         return;
       }
 
-      // Get helper record by email
       const { data: helperData, error: helperError } = await supabase
         .from("helpers")
         .select("*")
@@ -68,7 +66,6 @@ export default function HelperDashboard() {
         .single();
 
       if (helperError || !helperData) {
-        // No helper record found - check if application exists
         const { data: appData } = await supabase
           .from("helper_applications")
           .select("*")
@@ -89,17 +86,15 @@ export default function HelperDashboard() {
             return;
           }
         } else {
-          // No application found
-          navigate("/become-helper");
+          navigate("/become-bdm");
           return;
         }
       }
 
-      // Check if helper is suspended
       if (helperData.status === "Suspended") {
         toastHook({
           title: "Account Suspended",
-          description: "Your helper account has been suspended. Please contact support.",
+          description: "Your BDM account has been suspended. Please contact support.",
           variant: "destructive"
         });
         return;
@@ -109,14 +104,13 @@ export default function HelperDashboard() {
       await loadStats(helperData.id);
       setLoading(false);
     } catch (error) {
-      console.error("Error checking helper access:", error);
+      console.error("Error checking BDM access:", error);
       navigate("/auth");
     }
   };
 
   const loadStats = async (helperId: string) => {
     try {
-      // Load direct referrals (store owners)
       const { data: storeReferrals } = await supabase
         .from("store_referrals")
         .select("*")
@@ -127,7 +121,6 @@ export default function HelperDashboard() {
       const paidStores = storeReferrals?.filter(s => s.subscription_purchased).length || 0;
       const conversionRate = totalStores > 0 ? (paidStores / totalStores) * 100 : 0;
 
-      // Load helper network (helpers recruited)
       const { data: recruitedHelpers } = await supabase
         .from("helpers")
         .select("*, helper_applications!inner(*)")
@@ -135,7 +128,6 @@ export default function HelperDashboard() {
 
       const totalHelpers = recruitedHelpers?.length || 0;
 
-      // Get pending applications for recruited helpers
       const { data: pendingApps } = await supabase
         .from("helper_applications")
         .select("*")
@@ -145,7 +137,6 @@ export default function HelperDashboard() {
       const approvedHelpers = recruitedHelpers?.filter(h => h.status === "Active").length || 0;
       const suspendedHelpers = recruitedHelpers?.filter(h => h.status === "Suspended").length || 0;
 
-      // Load commissions
       const { data: commissions } = await supabase
         .from("network_commissions")
         .select("*")
@@ -167,7 +158,7 @@ export default function HelperDashboard() {
           paid: paidStores,
           conversionRate: Math.round(conversionRate)
         },
-        helperNetwork: {
+        bdmNetwork: {
           total: totalHelpers,
           pending: pendingApps?.length || 0,
           approved: approvedHelpers,
@@ -219,7 +210,7 @@ export default function HelperDashboard() {
   }
 
   const storeReferralLink = `${window.location.origin}/auth?ref=${helper.referral_code}`;
-  const helperRecruitmentLink = `${window.location.origin}/become-helper?ref=${helper.referral_code}`;
+  const bdmRecruitmentLink = `${window.location.origin}/become-bdm?ref=${helper.referral_code}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -228,7 +219,7 @@ export default function HelperDashboard() {
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">Helper Dashboard</h1>
+            <h1 className="text-xl font-bold">BDM Dashboard</h1>
           </div>
 
           <div className="flex items-center gap-3">
@@ -241,7 +232,7 @@ export default function HelperDashboard() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate("/helper/profile")}>
+                <DropdownMenuItem onClick={() => navigate("/bdm/profile")}>
                   <Settings className="mr-2 h-4 w-4" />
                   Account Settings
                 </DropdownMenuItem>
@@ -304,30 +295,30 @@ export default function HelperDashboard() {
             </CardContent>
           </Card>
 
-          {/* Helper Network */}
+          {/* BDM Network */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Helper Network
+                BDM Network
               </CardTitle>
               <Globe className="h-5 w-5 text-purple-500" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-purple-500 mb-2">
-                {stats.helperNetwork.total}
+                {stats.bdmNetwork.total}
               </div>
               <div className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Clock className="h-3 w-3" />
-                  <span>{stats.helperNetwork.pending} pending approval</span>
+                  <span>{stats.bdmNetwork.pending} pending approval</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-500" />
-                  <span>{stats.helperNetwork.approved} approved & active</span>
+                  <span>{stats.bdmNetwork.approved} approved & active</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <XCircle className="h-3 w-3 text-red-500" />
-                  <span>{stats.helperNetwork.suspended} suspended</span>
+                  <span>{stats.bdmNetwork.suspended} suspended</span>
                 </div>
               </div>
             </CardContent>
@@ -386,7 +377,7 @@ export default function HelperDashboard() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/helper/my-referrals")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/bdm/my-referrals")}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -400,13 +391,13 @@ export default function HelperDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/helper/my-helper-network")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/bdm/my-bdm-network")}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">My Helper Network</h3>
+                  <h3 className="text-lg font-semibold mb-2">My BDM Network</h3>
                   <p className="text-sm text-muted-foreground">
-                    View all {stats.helperNetwork.total} helpers you've recruited
+                    View all {stats.bdmNetwork.total} BDMs you've recruited
                   </p>
                 </div>
                 <ArrowRight className="h-6 w-6 text-primary" />
@@ -414,7 +405,7 @@ export default function HelperDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/helper/commission-history")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/bdm/commission-history")}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -469,12 +460,12 @@ export default function HelperDashboard() {
               </div>
             </div>
 
-            {/* Helper Recruitment Link */}
+            {/* BDM Recruitment Link */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">Helper Recruitment Link</h3>
-                  <p className="text-sm text-muted-foreground">Share this to recruit helpers</p>
+                  <h3 className="font-semibold">BDM Recruitment Link</h3>
+                  <p className="text-sm text-muted-foreground">Share this to recruit BDMs</p>
                 </div>
                 <Button
                   variant="outline"
@@ -488,10 +479,10 @@ export default function HelperDashboard() {
               </div>
               <div className="flex gap-2">
                 <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-sm truncate">
-                  {helperRecruitmentLink}
+                  {bdmRecruitmentLink}
                 </div>
                 <Button
-                  onClick={() => handleCopyLink(helperRecruitmentLink, "Helper recruitment")}
+                  onClick={() => handleCopyLink(bdmRecruitmentLink, "BDM recruitment")}
                   className="gap-2"
                 >
                   <Copy className="h-4 w-4" />

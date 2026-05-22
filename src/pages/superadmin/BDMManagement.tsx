@@ -51,9 +51,9 @@ import {
   TrendingUp,
   Network,
 } from "lucide-react";
-import ViewHelperDetailsModal from "@/components/superadmin/ViewHelperDetailsModal";
+import ViewBDMDetailsModal from "@/components/superadmin/ViewBDMDetailsModal";
 
-interface HelperApplication {
+interface BDMApplication {
   id: string;
   user_id: string;
   full_name: string;
@@ -70,7 +70,7 @@ interface HelperApplication {
   rejection_reason?: string;
 }
 
-interface Helper {
+interface BDM {
   id: string;
   full_name: string;
   email: string;
@@ -86,32 +86,28 @@ interface Helper {
   store_referral_link?: string;
 }
 
-type CombinedData = (HelperApplication | Helper) & {
-  type?: 'application' | 'helper';
+type CombinedData = (BDMApplication | BDM) & {
+  type?: 'application' | 'bdm';
 };
 
-export default function HelperManagement() {
+export default function BDMManagement() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Data
-  const [applications, setApplications] = useState<HelperApplication[]>([]);
-  const [helpers, setHelpers] = useState<Helper[]>([]);
+  const [applications, setApplications] = useState<BDMApplication[]>([]);
+  const [bdms, setBDMs] = useState<BDM[]>([]);
 
-  // Modals
   const [viewDetailsModal, setViewDetailsModal] = useState(false);
-  const [viewHelperModal, setViewHelperModal] = useState(false);
+  const [viewBDMModal, setViewBDMModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [editRatesModal, setEditRatesModal] = useState(false);
 
-  // Selected items
-  const [selectedApplication, setSelectedApplication] = useState<HelperApplication | null>(null);
-  const [selectedHelper, setSelectedHelper] = useState<Helper | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<BDMApplication | null>(null);
+  const [selectedBDM, setSelectedBDM] = useState<BDM | null>(null);
 
-  // Forms
   const [rejectionReason, setRejectionReason] = useState("");
   const [editRatesForm, setEditRatesForm] = useState({
     direct_rate: 10,
@@ -134,7 +130,7 @@ export default function HelperManagement() {
   };
 
   const loadData = async () => {
-    await Promise.all([loadApplications(), loadHelpers()]);
+    await Promise.all([loadApplications(), loadBDMs()]);
   };
 
   const loadApplications = async () => {
@@ -152,7 +148,7 @@ export default function HelperManagement() {
     }
   };
 
-  const loadHelpers = async () => {
+  const loadBDMs = async () => {
     try {
       const { data, error } = await supabase
         .from("helpers")
@@ -160,25 +156,23 @@ export default function HelperManagement() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setHelpers(data || []);
+      setBDMs(data || []);
     } catch (error) {
-      console.error("Error loading helpers:", error);
-      toast.error("Failed to load helpers");
+      console.error("Error loading BDMs:", error);
+      toast.error("Failed to load BDMs");
     }
   };
 
-  // Stats - exclude approved applications to avoid duplication
   const nonApprovedApplications = applications.filter(a => a.application_status !== "Approved");
 
   const stats = {
-    total: nonApprovedApplications.length + helpers.length,
+    total: nonApprovedApplications.length + bdms.length,
     pending: applications.filter(a => a.application_status === "Pending").length,
-    approved: helpers.filter(h => h.status === "Active").length,
+    approved: bdms.filter(h => h.status === "Active").length,
     rejected: applications.filter(a => a.application_status === "Rejected").length,
-    suspended: helpers.filter(h => h.status === "Suspended").length,
+    suspended: bdms.filter(h => h.status === "Suspended").length,
   };
 
-  // Filter data based on tab
   const getFilteredData = (): CombinedData[] => {
     let data: CombinedData[] = [];
 
@@ -189,7 +183,7 @@ export default function HelperManagement() {
           .map(a => ({ ...a, type: 'application' as const }));
         break;
       case "approved":
-        data = helpers.map(h => ({ ...h, type: 'helper' as const }));
+        data = bdms.map(h => ({ ...h, type: 'bdm' as const }));
         break;
       case "rejected":
         data = applications
@@ -197,17 +191,15 @@ export default function HelperManagement() {
           .map(a => ({ ...a, type: 'application' as const }));
         break;
       case "all":
-        // Exclude approved applications to avoid showing duplicates (they're already in helpers table)
         data = [
           ...applications
             .filter(a => a.application_status !== "Approved")
             .map(a => ({ ...a, type: 'application' as const })),
-          ...helpers.map(h => ({ ...h, type: 'helper' as const }))
+          ...bdms.map(h => ({ ...h, type: 'bdm' as const }))
         ];
         break;
     }
 
-    // Apply search
     if (searchTerm) {
       data = data.filter(item =>
         item.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -219,26 +211,25 @@ export default function HelperManagement() {
     return data;
   };
 
-  const handleApprove = async (application: HelperApplication) => {
+  const handleApprove = async (application: BDMApplication) => {
     try {
-      // Call database RPC function with SECURITY DEFINER (bypasses RLS)
       const { data: result, error } = await supabase.rpc('approve_helper_application', {
         p_application_id: application.id
       });
 
       if (error) {
         console.error("Error calling approve RPC:", error);
-        throw new Error(error.message || "Failed to approve helper");
+        throw new Error(error.message || "Failed to approve BDM");
       }
 
       const resultObj = result as { success?: boolean; error?: string; referralCode?: string } | null;
 
       if (!resultObj?.success) {
-        console.error("Approve helper failed:", result);
+        console.error("Approve BDM failed:", result);
         throw new Error(resultObj?.error || "Approval operation failed");
       }
 
-      toast.success(`Helper approved! Referral code: ${resultObj.referralCode}`);
+      toast.success(`BDM approved! Referral code: ${resultObj.referralCode}`);
       await loadData();
     } catch (error: any) {
       console.error("Error approving application:", error);
@@ -274,14 +265,11 @@ export default function HelperManagement() {
     }
   };
 
-  const handleReconsider = async (application: HelperApplication) => {
+  const handleReconsider = async (application: BDMApplication) => {
     try {
       const { error } = await supabase
         .from("helper_applications")
-        .update({
-          application_status: "Pending",
-          rejection_reason: null,
-        })
+        .update({ application_status: "Pending", rejection_reason: null })
         .eq("id", application.id);
 
       if (error) throw error;
@@ -294,30 +282,30 @@ export default function HelperManagement() {
     }
   };
 
-  const handleSuspend = async (helper: Helper) => {
+  const handleSuspend = async (bdm: BDM) => {
     try {
-      const newStatus = helper.status === "Active" ? "Suspended" : "Active";
+      const newStatus = bdm.status === "Active" ? "Suspended" : "Active";
 
       const { error } = await supabase
         .from("helpers")
         .update({ status: newStatus })
-        .eq("id", helper.id);
+        .eq("id", bdm.id);
 
       if (error) throw error;
 
-      toast.success(`Helper ${newStatus.toLowerCase()}`);
+      toast.success(`BDM ${newStatus.toLowerCase()}`);
       await loadData();
     } catch (error) {
-      console.error("Error updating helper status:", error);
-      toast.error("Failed to update helper status");
+      console.error("Error updating BDM status:", error);
+      toast.error("Failed to update BDM status");
     }
   };
 
   const handleDelete = async () => {
-    if (!selectedApplication && !selectedHelper) return;
+    if (!selectedApplication && !selectedBDM) return;
 
     try {
-      const userId = selectedApplication?.user_id || selectedHelper?.id;
+      const userId = selectedApplication?.user_id || selectedBDM?.id;
       const deleteType = selectedApplication ? 'application' : 'helper';
 
       if (!userId) {
@@ -330,7 +318,6 @@ export default function HelperManagement() {
       });
 
       if (error) {
-        // Check if it's a blocked deletion (403 Forbidden)
         if (error.message?.includes('BLOCKED') || error.message?.includes('store owner')) {
           toast.error(`🚫 ${error.message}`, { duration: 8000 });
           setDeleteModal(false);
@@ -340,7 +327,6 @@ export default function HelperManagement() {
       }
 
       if (!result?.success) {
-        // Check for blocked deletion in result
         if (result?.error?.includes('BLOCKED') || result?.error?.includes('store owner')) {
           toast.error(`🚫 ${result.error}`, { duration: 8000 });
           setDeleteModal(false);
@@ -351,14 +337,14 @@ export default function HelperManagement() {
 
       if (selectedApplication) {
         await supabase.from("helper_applications").delete().eq("id", selectedApplication.id);
-      } else if (selectedHelper) {
-        await supabase.from("helpers").delete().eq("id", selectedHelper.id);
+      } else if (selectedBDM) {
+        await supabase.from("helpers").delete().eq("id", selectedBDM.id);
       }
 
       toast.success("Deleted successfully");
       setDeleteModal(false);
       setSelectedApplication(null);
-      setSelectedHelper(null);
+      setSelectedBDM(null);
       await loadData();
     } catch (error: any) {
       console.error("Error deleting:", error);
@@ -367,7 +353,7 @@ export default function HelperManagement() {
   };
 
   const handleSaveRates = async () => {
-    if (!editRatesForm.reason || !selectedHelper) {
+    if (!editRatesForm.reason || !selectedBDM) {
       toast.error("Please provide a reason for changing rates");
       return;
     }
@@ -380,7 +366,7 @@ export default function HelperManagement() {
           network_commission_rate: editRatesForm.network_rate,
           updated_at: new Date().toISOString()
         })
-        .eq("id", selectedHelper.id);
+        .eq("id", selectedBDM.id);
 
       if (error) throw error;
 
@@ -398,33 +384,21 @@ export default function HelperManagement() {
     let color = '';
 
     if (item.type === 'application') {
-      const app = item as HelperApplication;
+      const app = item as BDMApplication;
       status = app.application_status;
       switch (status) {
-        case 'Pending':
-          color = 'bg-yellow-500';
-          break;
-        case 'Rejected':
-          color = 'bg-red-500';
-          break;
-        case 'Approved':
-          color = 'bg-green-500';
-          break;
-        default:
-          color = 'bg-gray-500';
+        case 'Pending': color = 'bg-yellow-500'; break;
+        case 'Rejected': color = 'bg-red-500'; break;
+        case 'Approved': color = 'bg-green-500'; break;
+        default: color = 'bg-gray-500';
       }
     } else {
-      const helper = item as Helper;
-      status = helper.status;
+      const bdm = item as BDM;
+      status = bdm.status;
       switch (status) {
-        case 'Active':
-          color = 'bg-green-500';
-          break;
-        case 'Suspended':
-          color = 'bg-orange-500';
-          break;
-        default:
-          color = 'bg-gray-500';
+        case 'Active': color = 'bg-green-500'; break;
+        case 'Suspended': color = 'bg-orange-500'; break;
+        default: color = 'bg-gray-500';
       }
     }
 
@@ -436,7 +410,7 @@ export default function HelperManagement() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading helper management...</p>
+          <p className="text-muted-foreground">Loading BDM management...</p>
         </div>
       </div>
     );
@@ -452,10 +426,10 @@ export default function HelperManagement() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Users className="h-8 w-8" />
-              Helper Management
+              BDM Management
             </h1>
             <p className="text-muted-foreground mt-1">
-              Manage all helper applications and approved helpers in one place
+              Manage all BDM applications and approved BDMs in one place
             </p>
           </div>
           <Button onClick={() => navigate("/superadmin/dashboard")}>
@@ -596,7 +570,7 @@ export default function HelperManagement() {
                       </TableHeader>
                       <TableBody>
                         {filteredData.map((item) => {
-                          const app = item as HelperApplication;
+                          const app = item as BDMApplication;
                           return (
                             <TableRow key={app.id}>
                               <TableCell className="font-medium">{app.full_name}</TableCell>
@@ -606,46 +580,17 @@ export default function HelperManagement() {
                               <TableCell>{getStatusBadge(item)}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setViewDetailsModal(true);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-1" />
-                                    View
+                                  <Button size="sm" variant="outline" onClick={() => { setSelectedApplication(app); setViewDetailsModal(true); }}>
+                                    <Eye className="h-4 w-4 mr-1" />View
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => handleApprove(app)}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Approve
+                                  <Button size="sm" variant="default" onClick={() => handleApprove(app)}>
+                                    <CheckCircle className="h-4 w-4 mr-1" />Approve
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setRejectModal(true);
-                                    }}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                    Reject
+                                  <Button size="sm" variant="destructive" onClick={() => { setSelectedApplication(app); setRejectModal(true); }}>
+                                    <XCircle className="h-4 w-4 mr-1" />Reject
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setDeleteModal(true);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Delete
+                                  <Button size="sm" variant="destructive" onClick={() => { setSelectedApplication(app); setDeleteModal(true); }}>
+                                    <Trash2 className="h-4 w-4 mr-1" />Delete
                                   </Button>
                                 </div>
                               </TableCell>
@@ -667,14 +612,14 @@ export default function HelperManagement() {
                 {filteredData.length === 0 ? (
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No approved helpers</p>
+                    <p className="text-muted-foreground">No approved BDMs</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Helper ID</TableHead>
+                          <TableHead>BDM ID</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
@@ -686,18 +631,18 @@ export default function HelperManagement() {
                       </TableHeader>
                       <TableBody>
                         {filteredData.map((item) => {
-                          const helper = item as Helper;
+                          const bdm = item as BDM;
                           return (
-                            <TableRow key={helper.id}>
-                              <TableCell className="font-mono">{helper.id.slice(0, 8)}...</TableCell>
-                              <TableCell className="font-medium">{helper.full_name}</TableCell>
-                              <TableCell>{helper.email}</TableCell>
-                              <TableCell>{helper.phone}</TableCell>
-                              <TableCell className="font-mono">{helper.referral_code}</TableCell>
+                            <TableRow key={bdm.id}>
+                              <TableCell className="font-mono">{bdm.id.slice(0, 8)}...</TableCell>
+                              <TableCell className="font-medium">{bdm.full_name}</TableCell>
+                              <TableCell>{bdm.email}</TableCell>
+                              <TableCell>{bdm.phone}</TableCell>
+                              <TableCell className="font-mono">{bdm.referral_code}</TableCell>
                               <TableCell>
                                 <div className="text-sm">
-                                  <div>Direct: {helper.direct_commission_rate}%</div>
-                                  <div>Network: {helper.network_commission_rate}%</div>
+                                  <div>Direct: {bdm.direct_commission_rate}%</div>
+                                  <div>Network: {bdm.network_commission_rate}%</div>
                                 </div>
                               </TableCell>
                               <TableCell>{getStatusBadge(item)}</TableCell>
@@ -705,23 +650,16 @@ export default function HelperManagement() {
                                 <div className="flex gap-2 justify-end">
                                   <Button
                                     size="sm"
-                                    variant={helper.status === "Active" ? "destructive" : "default"}
-                                    onClick={() => handleSuspend(helper)}
+                                    variant={bdm.status === "Active" ? "destructive" : "default"}
+                                    onClick={() => handleSuspend(bdm)}
                                   >
-                                    {helper.status === "Active" ? (
+                                    {bdm.status === "Active" ? (
                                       <><Ban className="h-4 w-4 mr-1" />Suspend</>
                                     ) : (
                                       <><UserCheck className="h-4 w-4 mr-1" />Activate</>
                                     )}
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedHelper(helper);
-                                      setDeleteModal(true);
-                                    }}
-                                  >
+                                  <Button size="sm" variant="destructive" onClick={() => { setSelectedBDM(bdm); setDeleteModal(true); }}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
@@ -762,7 +700,7 @@ export default function HelperManagement() {
                       </TableHeader>
                       <TableBody>
                         {filteredData.map((item) => {
-                          const app = item as HelperApplication;
+                          const app = item as BDMApplication;
                           return (
                             <TableRow key={app.id}>
                               <TableCell className="font-medium">{app.full_name}</TableCell>
@@ -775,35 +713,14 @@ export default function HelperManagement() {
                               <TableCell>{getStatusBadge(item)}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setViewDetailsModal(true);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-1" />
-                                    View
+                                  <Button size="sm" variant="outline" onClick={() => { setSelectedApplication(app); setViewDetailsModal(true); }}>
+                                    <Eye className="h-4 w-4 mr-1" />View
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => handleReconsider(app)}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Reconsider
+                                  <Button size="sm" variant="default" onClick={() => handleReconsider(app)}>
+                                    <CheckCircle className="h-4 w-4 mr-1" />Reconsider
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setDeleteModal(true);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Delete
+                                  <Button size="sm" variant="destructive" onClick={() => { setSelectedApplication(app); setDeleteModal(true); }}>
+                                    <Trash2 className="h-4 w-4 mr-1" />Delete
                                   </Button>
                                 </div>
                               </TableCell>
@@ -825,7 +742,7 @@ export default function HelperManagement() {
                 {filteredData.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No helpers or applications found</p>
+                    <p className="text-muted-foreground">No BDMs or applications found</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -843,15 +760,15 @@ export default function HelperManagement() {
                       </TableHeader>
                       <TableBody>
                         {filteredData.map((item) => {
-                          const isHelper = item.type === 'helper';
-                          const helper = isHelper ? item as Helper : null;
-                          const app = !isHelper ? item as HelperApplication : null;
+                          const isBDM = item.type === 'bdm';
+                          const bdm = isBDM ? item as BDM : null;
+                          const app = !isBDM ? item as BDMApplication : null;
 
                           return (
-                            <TableRow key={isHelper ? helper!.id : app!.id}>
+                            <TableRow key={isBDM ? bdm!.id : app!.id}>
                               <TableCell>
                                 <Badge variant="outline">
-                                  {isHelper ? 'Helper' : 'Application'}
+                                  {isBDM ? 'BDM' : 'Application'}
                                 </Badge>
                               </TableCell>
                               <TableCell className="font-medium">{item.full_name}</TableCell>
@@ -861,62 +778,28 @@ export default function HelperManagement() {
                               <TableCell>{getStatusBadge(item)}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
-                                  {isHelper ? (
+                                  {isBDM ? (
                                     <>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedHelper(helper!);
-                                          setViewHelperModal(true);
-                                        }}
-                                      >
-                                        <Eye className="h-4 w-4 mr-1" />
-                                        View
+                                      <Button size="sm" variant="outline" onClick={() => { setSelectedBDM(bdm!); setViewBDMModal(true); }}>
+                                        <Eye className="h-4 w-4 mr-1" />View
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedHelper(helper!);
-                                          setEditRatesForm({
-                                            direct_rate: helper!.direct_commission_rate,
-                                            network_rate: helper!.network_commission_rate,
-                                            reason: "",
-                                          });
-                                          setEditRatesModal(true);
-                                        }}
-                                      >
+                                      <Button size="sm" variant="outline" onClick={() => {
+                                        setSelectedBDM(bdm!);
+                                        setEditRatesForm({ direct_rate: bdm!.direct_commission_rate, network_rate: bdm!.network_commission_rate, reason: "" });
+                                        setEditRatesModal(true);
+                                      }}>
                                         <Edit className="h-4 w-4" />
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant={helper!.status === "Active" ? "destructive" : "default"}
-                                        onClick={() => handleSuspend(helper!)}
-                                      >
-                                        {helper!.status === "Active" ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                                      <Button size="sm" variant={bdm!.status === "Active" ? "destructive" : "default"} onClick={() => handleSuspend(bdm!)}>
+                                        {bdm!.status === "Active" ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => {
-                                          setSelectedHelper(helper!);
-                                          setDeleteModal(true);
-                                        }}
-                                      >
+                                      <Button size="sm" variant="destructive" onClick={() => { setSelectedBDM(bdm!); setDeleteModal(true); }}>
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </>
                                   ) : (
                                     <>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedApplication(app!);
-                                          setViewDetailsModal(true);
-                                        }}
-                                      >
+                                      <Button size="sm" variant="outline" onClick={() => { setSelectedApplication(app!); setViewDetailsModal(true); }}>
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                       {app!.application_status === "Pending" && (
@@ -924,14 +807,7 @@ export default function HelperManagement() {
                                           <Button size="sm" variant="default" onClick={() => handleApprove(app!)}>
                                             <CheckCircle className="h-4 w-4" />
                                           </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() => {
-                                              setSelectedApplication(app!);
-                                              setRejectModal(true);
-                                            }}
-                                          >
+                                          <Button size="sm" variant="destructive" onClick={() => { setSelectedApplication(app!); setRejectModal(true); }}>
                                             <XCircle className="h-4 w-4" />
                                           </Button>
                                         </>
@@ -941,14 +817,7 @@ export default function HelperManagement() {
                                           <CheckCircle className="h-4 w-4" />
                                         </Button>
                                       )}
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => {
-                                          setSelectedApplication(app!);
-                                          setDeleteModal(true);
-                                        }}
-                                      >
+                                      <Button size="sm" variant="destructive" onClick={() => { setSelectedApplication(app!); setDeleteModal(true); }}>
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </>
@@ -967,7 +836,7 @@ export default function HelperManagement() {
           </TabsContent>
         </Tabs>
 
-        {/* View Details Modal */}
+        {/* View Application Details Modal */}
         <Dialog open={viewDetailsModal} onOpenChange={setViewDetailsModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -979,44 +848,20 @@ export default function HelperManagement() {
             {selectedApplication && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Full Name</Label>
-                    <p className="text-sm">{selectedApplication.full_name}</p>
-                  </div>
-                  <div>
-                    <Label>Email</Label>
-                    <p className="text-sm">{selectedApplication.email}</p>
-                  </div>
-                  <div>
-                    <Label>Phone</Label>
-                    <p className="text-sm">{selectedApplication.phone}</p>
-                  </div>
-                  <div>
-                    <Label>Applied On</Label>
-                    <p className="text-sm">{format(new Date(selectedApplication.created_at), "PPP")}</p>
-                  </div>
+                  <div><Label>Full Name</Label><p className="text-sm">{selectedApplication.full_name}</p></div>
+                  <div><Label>Email</Label><p className="text-sm">{selectedApplication.email}</p></div>
+                  <div><Label>Phone</Label><p className="text-sm">{selectedApplication.phone}</p></div>
+                  <div><Label>Applied On</Label><p className="text-sm">{format(new Date(selectedApplication.created_at), "PPP")}</p></div>
                 </div>
                 <div>
-                  <Label>Why Helper?</Label>
+                  <Label>Why BDM?</Label>
                   <p className="text-sm mt-1">{selectedApplication.why_helper || "Not provided"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Bank Account Name</Label>
-                    <p className="text-sm">{selectedApplication.bank_account_name}</p>
-                  </div>
-                  <div>
-                    <Label>Bank Name</Label>
-                    <p className="text-sm">{selectedApplication.bank_name}</p>
-                  </div>
-                  <div>
-                    <Label>Account Number</Label>
-                    <p className="text-sm font-mono">{selectedApplication.bank_account_number}</p>
-                  </div>
-                  <div>
-                    <Label>IFSC Code</Label>
-                    <p className="text-sm font-mono">{selectedApplication.bank_ifsc_code}</p>
-                  </div>
+                  <div><Label>Bank Account Name</Label><p className="text-sm">{selectedApplication.bank_account_name}</p></div>
+                  <div><Label>Bank Name</Label><p className="text-sm">{selectedApplication.bank_name}</p></div>
+                  <div><Label>Account Number</Label><p className="text-sm font-mono">{selectedApplication.bank_account_number}</p></div>
+                  <div><Label>IFSC Code</Label><p className="text-sm font-mono">{selectedApplication.bank_ifsc_code}</p></div>
                 </div>
                 {selectedApplication.rejection_reason && (
                   <div>
@@ -1050,12 +895,8 @@ export default function HelperManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setRejectModal(false)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleReject}>
-                Reject Application
-              </Button>
+              <Button variant="outline" onClick={() => setRejectModal(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleReject}>Reject Application</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1065,9 +906,7 @@ export default function HelperManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Commission Rates</DialogTitle>
-              <DialogDescription>
-                Update commission rates for {selectedHelper?.full_name}
-              </DialogDescription>
+              <DialogDescription>Update commission rates for {selectedBDM?.full_name}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -1075,9 +914,7 @@ export default function HelperManagement() {
                 <Input
                   type="number"
                   value={editRatesForm.direct_rate}
-                  onChange={(e) =>
-                    setEditRatesForm({ ...editRatesForm, direct_rate: parseFloat(e.target.value) })
-                  }
+                  onChange={(e) => setEditRatesForm({ ...editRatesForm, direct_rate: parseFloat(e.target.value) })}
                 />
               </div>
               <div>
@@ -1085,9 +922,7 @@ export default function HelperManagement() {
                 <Input
                   type="number"
                   value={editRatesForm.network_rate}
-                  onChange={(e) =>
-                    setEditRatesForm({ ...editRatesForm, network_rate: parseFloat(e.target.value) })
-                  }
+                  onChange={(e) => setEditRatesForm({ ...editRatesForm, network_rate: parseFloat(e.target.value) })}
                 />
               </div>
               <div>
@@ -1100,9 +935,7 @@ export default function HelperManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditRatesModal(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => setEditRatesModal(false)}>Cancel</Button>
               <Button onClick={handleSaveRates}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
@@ -1115,12 +948,11 @@ export default function HelperManagement() {
               <AlertDialogTitle>⚠️ Permanently Delete?</AlertDialogTitle>
               <AlertDialogDescription>
                 This will permanently delete{" "}
-                <strong>{selectedApplication?.full_name || selectedHelper?.full_name}</strong> and ALL
-                related data:
+                <strong>{selectedApplication?.full_name || selectedBDM?.full_name}</strong> and ALL related data:
                 <ul className="list-disc list-inside mt-2 space-y-1">
-                  {selectedHelper ? (
+                  {selectedBDM ? (
                     <>
-                      <li>Helper account and profile</li>
+                      <li>BDM account and profile</li>
                       <li>All store referrals</li>
                       <li>All commission records</li>
                       <li>All network connections</li>
@@ -1148,13 +980,13 @@ export default function HelperManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* View Helper Details Modal */}
-        {selectedHelper && (
-          <ViewHelperDetailsModal
-            open={viewHelperModal}
-            onOpenChange={setViewHelperModal}
-            helperId={selectedHelper.id}
-            helperName={selectedHelper.full_name}
+        {/* View BDM Details Modal */}
+        {selectedBDM && (
+          <ViewBDMDetailsModal
+            open={viewBDMModal}
+            onOpenChange={setViewBDMModal}
+            helperId={selectedBDM.id}
+            helperName={selectedBDM.full_name}
           />
         )}
       </div>

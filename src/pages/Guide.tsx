@@ -799,16 +799,16 @@ const Guide = () => {
       disabled: true
     },
     {
-      id: "helper",
+      id: "bdm",
       title: "Business Development Manager",
       icon: "👥",
       content: {
         title: "Business Development Manager",
-        description: "Coming soon: Build your referral and helper network.",
+        description: "Coming soon: Build your referral and BDM network.",
         sections: [
           {
             heading: "Coming Soon",
-            content: "This section is under development. Check back soon for comprehensive helper program guides."
+            content: "This section is under development. Check back soon for comprehensive BDM program guides."
           }
         ]
       },

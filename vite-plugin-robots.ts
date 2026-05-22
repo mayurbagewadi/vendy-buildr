@@ -127,7 +127,7 @@ User-agent: *
 Allow: /
 Allow: /pricing
 Allow: /auth
-Allow: /become-helper
+Allow: /become-bdm
 Allow: /privacy-policy
 Allow: /terms-of-service
 
@@ -135,7 +135,7 @@ Allow: /terms-of-service
 Disallow: /admin/
 Disallow: /superadmin/
 Disallow: /onboarding/
-Disallow: /helper/
+Disallow: /bdm/
 Disallow: /application-status
 
 # Disallow API endpoints

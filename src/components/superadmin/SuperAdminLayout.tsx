@@ -112,10 +112,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       current: location.pathname === "/superadmin/users",
     },
     {
-      name: "Helper Management",
-      href: "/superadmin/helpers",
+      name: "BDM Management",
+      href: "/superadmin/bdm",
       icon: Users,
-      current: location.pathname === "/superadmin/helpers",
+      current: location.pathname === "/superadmin/bdm",
     },
     {
       name: "Commission Management",

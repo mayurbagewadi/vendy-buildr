@@ -45,8 +45,8 @@ const ConceptNavbar = () => {
                         <Link to="/pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                             Pricing
                         </Link>
-                        <Link to="/become-helper" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                            For Helpers
+                        <Link to="/become-bdm" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                            For BDMs
                         </Link>
                     </nav>
 
