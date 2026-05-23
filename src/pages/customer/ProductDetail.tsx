@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/components/customer/Header";
 import StoreFooter from "@/components/customer/StoreFooter";
+import { useStorefront } from "@/contexts/StoreContext";
+import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,85 +84,71 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart, triggerFlyAnimation } = useCart();
+
+  // ── StoreContext: store + profile already resolved — no separate fetch needed
+  const { store: ctxStore, profile: ctxProfile, loading: storeLoading } = useStorefront();
+  const storeData    = ctxStore as any;   // all columns present (select('*'))
+  const profileData  = ctxProfile as any;
+  // storeId and storeSlug derived from context; fall back to route prop during load
+  const storeId   = ctxStore?.id   ?? null;
+  const storeSlug = ctxStore?.slug ?? storeSlugFromRoute;
+
   const [product, setProduct] = useState<Product | null>(null);
   const mainImageRef = useRef<HTMLImageElement>(null);
   const variantSectionRef = useRef<HTMLDivElement>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(storeSlugFromRoute);
-  const [storeId, setStoreId] = useState<string | null>(null);
+  const [productLoading, setProductLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [storeData, setStoreData] = useState<any>(null);
-  const [profileData, setProfileData] = useState<any>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+
+  // Combined loading: wait for context + product data
+  const loading = storeLoading || productLoading;
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
 
   useEffect(() => {
+    // Wait for StoreContext to resolve before fetching the product.
+    // storeLoading ensures we don't fire before ctxStore is available.
+    if (!productSlug || storeLoading) return;
+
     const loadProduct = async () => {
-      if (!productSlug) {
-        navigate("/products");
-        return;
-      }
-
       try {
-        setLoading(true);
+        setProductLoading(true);
 
-        // Get store ID if we're on a store-scoped URL
-        let currentStoreId: string | null = null;
-        if (storeSlugFromRoute) {
-          const normalizedSlug = storeSlugFromRoute.toLowerCase();
-          let storeQuery = supabase.from('stores').select('id, user_id, subdomain, custom_domain');
-          if (normalizedSlug.includes('.')) {
-            storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-          } else {
-            storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-          }
-          const { data: storeResults } = await storeQuery.limit(1);
-          const store = storeResults?.[0] ?? null;
+        // Inject AI design CSS early (skip if already applied from prev page)
+        const aiDesignPromise = !document.getElementById('ai-layer2-styles') && storeId
+          ? supabase
+              .from('store_design_state')
+              .select('current_design, ai_full_css, mode')
+              .eq('store_id', storeId)
+              .maybeSingle()
+          : Promise.resolve({ data: null });
 
-          if (store?.id) {
-            currentStoreId = store.id;
-            setStoreId(store.id);
+        // Fetch product + AI design in parallel (store/profile come from context)
+        const [productData, designResult] = await Promise.all([
+          getProductBySlug(productSlug, storeId || undefined),
+          aiDesignPromise,
+        ]);
 
-            // Inject AI design CSS early (while loading spinner is still showing)
-            // so user never sees a flash of default design
-            if (!document.getElementById('ai-layer2-styles')) {
-              const { data: designData } = await supabase
-                .from('store_design_state')
-                .select('ai_full_css, mode')
-                .eq('store_id', store.id)
-                .maybeSingle();
-              if (designData?.mode === 'advanced' && designData?.ai_full_css) {
-                const styleEl = document.createElement('style');
-                styleEl.id = 'ai-layer2-styles';
-                styleEl.textContent = designData.ai_full_css;
-                document.head.appendChild(styleEl);
-              }
-            }
-          }
+        // Apply AI design CSS if not already injected
+        if (designResult.data) {
+          applyStoreDesignCSS(designResult.data);
         }
 
-        // Try to fetch by slug first (SEO-friendly URLs)
-        // Pass storeId if available for store-scoped lookups
-        let data = await getProductBySlug(productSlug, currentStoreId || undefined);
-
-        // Fallback: If slug doesn't work, try as UUID (backward compatibility)
+        // Fallback: try by UUID for backward compatibility
+        let data = productData;
         if (!data) {
           data = await getProductById(productSlug);
-
-          // If found by UUID, redirect to slug URL (301 redirect for SEO)
+          // Found by UUID → redirect to slug URL (SEO 301)
           if (data && data.slug) {
-            const isSubdomain = isStoreSpecificDomain();
             const newUrl = isSubdomain
               ? `/products/${data.slug}`
               : storeSlug
                 ? `/${storeSlug}/products/${data.slug}`
                 : `/products/${data.slug}`;
-
             navigate(newUrl, { replace: true });
             return;
           }
@@ -178,53 +166,17 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
         setProduct(data);
 
-        // Auto-select when only one variant exists — no meaningful choice to make
+        // Auto-select when only one variant exists
         if (data.variants && data.variants.length === 1) {
           setSelectedVariant(data.variants[0].name);
         }
-        
-        // Fetch store data for navigation and footer
-        const storeId = data.store_id;
+
+        // Fetch related products — limit to 12 (was 200, wasted bandwidth)
         if (storeId) {
-          const { data: store } = await supabase
-            .from("stores")
-            .select("*")
-            .eq("id", storeId)
-            .single();
-
-          if (store) {
-            setStoreSlug(store.slug);
-            setStoreData(store);
-
-            // Fetch profile data for contact information
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("phone, email")
-              .eq("user_id", store.user_id)
-              .maybeSingle();
-
-            if (profile) {
-              setProfileData(profile);
-            }
-          }
-
-          // Fetch related products from the same store
-          const allStoreProducts = await getPublishedProducts(storeId);
-
-          // Filter out current product
-          const otherProducts = allStoreProducts.filter(p => p.id !== data.id);
-          
-          // Get products from same category first
-          const sameCategoryProducts = otherProducts.filter(
-            p => p.category === data.category
-          );
-          
-          // If no products in same category, show all other products
-          const recommended = sameCategoryProducts.length > 0 
-            ? sameCategoryProducts 
-            : otherProducts;
-          
-          setRelatedProducts(recommended);
+          const allStoreProducts = await getPublishedProducts(storeId, 12);
+          const others   = allStoreProducts.filter(p => p.id !== data!.id);
+          const sameCat  = others.filter(p => p.category === data!.category);
+          setRelatedProducts(sameCat.length > 0 ? sameCat : others);
         }
 
       } catch (error) {
@@ -236,12 +188,12 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         });
         navigate("/products");
       } finally {
-        setLoading(false);
+        setProductLoading(false);
       }
     };
 
     loadProduct();
-  }, [productSlug, navigate, toast, storeSlug, isSubdomain]);
+  }, [productSlug, storeId, storeLoading, navigate, toast, isSubdomain]);
 
   // Remove pulse animation when variant is selected
   useEffect(() => {
@@ -333,6 +285,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       </div>
     );
   }
+
 
   if (!product) {
     return null;

@@ -9,6 +9,7 @@ import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
+import { useStorefront } from "@/contexts/StoreContext";
 
 interface CartProps {
   slug?: string;
@@ -18,64 +19,42 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
   const { cart, cartTotal, updateQuantity, removeItem } = useCart();
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
-  const [deliveryMode, setDeliveryMode] = useState<'single' | 'multiple'>('single');
-  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
-  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
-  const [deliveryTiers, setDeliveryTiers] = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
-  const [footerStore, setFooterStore] = useState<any>(null);
-  const [footerProfile, setFooterProfile] = useState<any>(null);
 
-  // Determine if we're on a store-specific domain (subdomain or custom domain)
+  // ── StoreContext: provides store + profile — no full store fetch needed ──────
+  const { store: ctxStore, profile: ctxProfile } = useStorefront();
+  const footerStore   = ctxStore   as any;
+  const footerProfile = ctxProfile as any;
+  // storeSlug from context when available, fall back to route param
+  const storeSlug = ctxStore?.slug ?? slug;
+
+  // Delivery-specific fields are NOT in StoreContext — fetch only these 3 columns
+  const [deliveryMode, setDeliveryMode]       = useState<'single' | 'multiple'>('single');
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
+  const [deliveryTiers, setDeliveryTiers]     = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
+
+  // free_delivery_above IS in StoreContext — use it directly
+  const freeDeliveryAbove = ctxStore?.free_delivery_above ?? null;
+
   const isSubdomain = isStoreSpecificDomain();
 
+  // Only fetch the 3 delivery columns not covered by StoreContext.
+  // Triggered once per store resolution — NOT on every cart change.
   useEffect(() => {
-    const fetchStoreData = async () => {
-      let data: any = null;
+    const resolvedStoreId = ctxStore?.id ?? (cart.length > 0 ? cart[0].storeId : null);
+    if (!resolvedStoreId) return;
 
-      if (cart.length > 0) {
-        const { data: storeData } = await supabase
-          .from("stores")
-          .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
-          .eq("id", cart[0].storeId)
-          .maybeSingle();
-        data = storeData;
-      } else if (slug) {
-        const normalizedSlug = slug.toLowerCase();
-        let query = supabase
-          .from("stores")
-          .select("slug, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
-          .eq("is_active", true);
-        if (normalizedSlug.includes('.')) {
-          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-        } else {
-          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-        }
-        const { data: storeResults } = await query.limit(1);
-        data = storeResults?.[0] ?? null;
-      }
-
-      if (!data) return;
-
-      if (!slug) setStoreSlug(data.slug);
-      setDeliveryMode((data.delivery_mode as 'single' | 'multiple') || 'single');
-      setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
-      setFreeDeliveryAbove(data.free_delivery_above != null ? Number(data.free_delivery_above) : null);
-      setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
-      setFooterStore(data);
-      if (data.user_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone, email")
-          .eq("user_id", data.user_id)
-          .maybeSingle();
-        if (profile) setFooterProfile(profile);
-      }
-    };
-
-    if (slug) setStoreSlug(slug);
-    fetchStoreData();
-  }, [slug, cart]);
+    supabase
+      .from("stores")
+      .select("delivery_mode, delivery_fee_amount, delivery_tiers")
+      .eq("id", resolvedStoreId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setDeliveryMode((data.delivery_mode as 'single' | 'multiple') || 'single');
+        setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
+        setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
+      });
+  }, [ctxStore?.id, cart[0]?.storeId]);
 
   // Compute delivery fee
   const computedDeliveryFee = (() => {

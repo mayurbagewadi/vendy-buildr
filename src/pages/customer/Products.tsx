@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useSearchParams, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/customer/Header";
 import StoreFooter from "@/components/customer/StoreFooter";
 import ProductCard from "@/components/customer/ProductCard";
@@ -18,6 +18,7 @@ import type { Product } from "@/lib/productData";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { useStorefront } from "@/contexts/StoreContext";
 
 interface ProductsProps {
   slug?: string;
@@ -27,103 +28,51 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
-  const navigate = useNavigate();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<number[]>([0, 10000]);
-  const [sortBy, setSortBy] = useState<string>("newest");
-  const [showFilters, setShowFilters] = useState(false);
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [storeData, setStoreData] = useState<any>(null);
-  const [profileData, setProfileData] = useState<any>(null);
 
-  // Determine if we're on a store-specific domain (subdomain or custom domain)
+  // ── StoreContext: store + profile — no separate fetch needed ────────────────
+  const { store, profile, loading: storeLoading } = useStorefront();
+  const storeAny = store as any;
+
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories]             = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [priceRange, setPriceRange]             = useState<number[]>([0, 10000]);
+  const [sortBy, setSortBy]                     = useState<string>("newest");
+  const [showFilters, setShowFilters]           = useState(false);
+
   const isSubdomain = isStoreSpecificDomain();
 
-  // Fetch store data and products if accessing via /:slug/products
+  // ── Products: React Query with 2-min cache ──────────────────────────────────
+  // refetchOnWindowFocus (React Query default) replaces the manual window
+  // focus listener that was here before.
+  const {
+    data: allProducts = [],
+    isLoading: productsLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey:  ['store-products', store?.id],
+    queryFn:   () => getPublishedProducts((store as any).id, 50),
+    enabled:   !!store?.id,
+    staleTime: 2 * 60 * 1000, // 2 min — products listing should feel fresh
+    gcTime:    5 * 60 * 1000,
+  });
+
+  const loading = storeLoading || productsLoading;
+
+  // Extract unique categories whenever products change
   useEffect(() => {
-    const loadStoreDataAndProducts = async () => {
-      if (!slug) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const normalizedSlug = slug.toLowerCase();
-        let storeQuery = supabase.from("stores").select("*").eq("is_active", true);
-        if (normalizedSlug.includes('.')) {
-          storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-        } else {
-          storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-        }
-        const { data: storeResults } = await storeQuery.limit(1);
-        const store = storeResults?.[0] ?? null;
-
-        if (store) {
-          setStoreId(store.id);
-          setStoreData(store);
-
-          // Fetch profile data for contact information
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("phone, email")
-            .eq("user_id", store.user_id)
-            .maybeSingle();
-
-          if (profile) {
-            setProfileData(profile);
-          }
-
-          // Fetch products for this store
-          const products = await getPublishedProducts(store.id);
-          setAllProducts(products);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load products');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStoreDataAndProducts();
-  }, [slug]);
-
-  const refresh = async () => {
-    if (storeId) {
-      try {
-        const products = await getPublishedProducts(storeId);
-        setAllProducts(products);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to reload products');
-      }
-    }
-  };
-
-  // Extract categories whenever products change
-  useEffect(() => {
-    const uniqueCategories = [...new Set(allProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
-    setCategories(uniqueCategories);
+    const unique = [...new Set(allProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
+    setCategories(unique);
   }, [allProducts]);
 
-  // Handle URL parameters and reload on window focus
+  // Sync URL category param into selection state
   useEffect(() => {
     const categoryParam = searchParams.get("category");
     if (categoryParam && categories.includes(categoryParam)) {
       setSelectedCategories([categoryParam]);
     }
-    
-    // Reload products when window regains focus
-    const handleFocus = () => {
-      refresh();
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [searchParams, categories, refresh]);
+  }, [searchParams, categories]);
 
   // Filter and sort products
   useEffect(() => {
@@ -134,20 +83,15 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
     let filtered = [...allProducts];
 
-    // Filter by store if accessing via /:slug/products
-    if (storeId) {
-      filtered = filtered.filter(p => p.store_id === storeId);
-    }
-
     // Apply URL-based search filter
     const searchParam = searchParams.get("search");
     if (searchParam) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(searchParam.toLowerCase())
       );
     }
 
-    // Apply category filter (from URL param or user selection)
+    // Apply category filter (URL param takes priority over manual selection)
     const categoryParam = searchParams.get("category");
     if (categoryParam) {
       filtered = filtered.filter(p => p.category === categoryParam);
@@ -159,10 +103,9 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
     if (priceRange[0] > 0 || priceRange[1] < 10000) {
       filtered = filtered.filter(p => {
         const minPrice = p.basePrice || (p.variants?.length ? Math.min(...p.variants.map(v => v.price)) : 0);
-        const maxPrice = p.variants?.length 
+        const maxPrice = p.variants?.length
           ? Math.max(...p.variants.map(v => v.price))
           : (p.basePrice || 0);
-        
         return maxPrice >= priceRange[0] && minPrice <= priceRange[1];
       });
     }
@@ -192,27 +135,21 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
     }
 
     setFilteredProducts(filtered);
-  }, [allProducts, selectedCategories, priceRange, sortBy, searchParams, storeId]);
+  }, [allProducts, selectedCategories, priceRange, sortBy, searchParams]);
 
   const handleCategoryToggle = (category: string) => {
-    // Clear the URL category parameter to allow manual selection
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('category');
     setSearchParams(newParams);
-
     setSelectedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
+      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
     );
   };
 
   const clearFilters = () => {
-    // Clear URL parameters
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('category');
     setSearchParams(newParams);
-
     setSelectedCategories([]);
     setPriceRange([0, 10000]);
     setSortBy("newest");
@@ -220,27 +157,27 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {storeData && (
+      {store && (
         <SEOHead
-          title={`Products | ${storeData.name}`}
-          description={storeData.description || `Shop all products at ${storeData.name}. Browse our full collection with easy WhatsApp ordering.`}
-          canonical={getStoreCanonicalUrl(storeData.slug, storeData.subdomain, storeData.custom_domain) + "/products"}
-          image={storeData.logo_url || undefined}
+          title={`Products | ${storeAny.name}`}
+          description={storeAny.description || `Shop all products at ${storeAny.name}. Browse our full collection with easy WhatsApp ordering.`}
+          canonical={getStoreCanonicalUrl(storeAny.slug, storeAny.subdomain, storeAny.custom_domain) + "/products"}
+          image={storeAny.logo_url || undefined}
         />
       )}
-      <Header storeSlug={slug} storeId={storeId || undefined} />
+      <Header storeSlug={slug} storeId={store?.id || undefined} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {loading ? (
           <div className="py-20">
             <LoadingSpinner size="lg" text="Loading products..." />
           </div>
-        ) : error ? (
+        ) : isError ? (
           <div className="py-20">
-            <ErrorDisplay 
+            <ErrorDisplay
               title="Failed to load products"
-              message={error}
-              onRetry={refresh}
+              message="Something went wrong. Please try again."
+              onRetry={refetch}
             />
           </div>
         ) : (
@@ -368,21 +305,21 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
         )}
       </main>
 
-      {storeData ? (
+      {store ? (
         <StoreFooter
-          storeName={storeData.name}
-          storeDescription={storeData.description}
-          whatsappNumber={storeData.whatsapp_number}
-          phone={profileData?.phone}
-          email={profileData?.email}
-          address={storeData.address}
-          facebookUrl={storeData.facebook_url}
-          instagramUrl={storeData.instagram_url}
-          twitterUrl={storeData.twitter_url}
-          youtubeUrl={storeData.youtube_url}
-          linkedinUrl={storeData.linkedin_url}
-          socialLinks={storeData.social_links}
-          policies={storeData.policies}
+          storeName={storeAny.name}
+          storeDescription={storeAny.description}
+          whatsappNumber={storeAny.whatsapp_number}
+          phone={profile?.phone}
+          email={profile?.email}
+          address={storeAny.address}
+          facebookUrl={storeAny.facebook_url}
+          instagramUrl={storeAny.instagram_url}
+          twitterUrl={storeAny.twitter_url}
+          youtubeUrl={storeAny.youtube_url}
+          linkedinUrl={storeAny.linkedin_url}
+          socialLinks={storeAny.social_links}
+          policies={storeAny.policies}
         />
       ) : (
         <footer className="bg-muted border-t border-border">

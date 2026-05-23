@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import StoreFooter from "@/components/customer/StoreFooter";
@@ -7,10 +8,7 @@ import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import { getPublishedProducts } from "@/lib/productData";
-import type { Product as ProductType } from "@/lib/productData";
-import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
 import InstagramReels from "@/components/customer/InstagramReels";
 import { GoogleReviewsSection } from "@/components/store/reviews";
@@ -20,8 +18,12 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { buildDesignCSS, AIDesignResult } from "@/lib/aiDesigner";
+import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
+import { useStorefront } from "@/contexts/StoreContext";
+import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Product {
   id: string;
@@ -33,6 +35,11 @@ interface Product {
   created_at?: string;
 }
 
+/**
+ * StoreData mirrors the stores DB row for type-safe field access.
+ * StoreContext uses select('*') so all columns are present at runtime;
+ * we cast ctxStore to this shape after receiving it.
+ */
 interface StoreData {
   id: string;
   name: string;
@@ -57,7 +64,6 @@ interface StoreData {
     termsConditions?: string | null;
     deliveryAreas?: string | null;
   } | null;
-  // SEO fields
   alternate_names: string | null;
   seo_description: string | null;
   business_phone: string | null;
@@ -74,7 +80,6 @@ interface StoreData {
   youtube_url: string | null;
   linkedin_url: string | null;
   price_range: string | null;
-  // Instagram Reels
   instagram_reels_settings: {
     enabled: boolean;
     display_mode: string;
@@ -89,11 +94,6 @@ interface StoreData {
   storefront_theme: string | null;
 }
 
-interface ProfileData {
-  phone: string | null;
-  email: string | null;
-}
-
 interface Category {
   id: string;
   name: string;
@@ -105,281 +105,130 @@ interface StoreProps {
   slug?: string;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
-  const [store, setStore] = useState<StoreData | null>(null);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // ── StoreContext: store + profile served from 5-min session cache.
+  // On return visits this is instant (zero DB round trip).
+  const { store: ctxStore, profile, loading: storeLoading } = useStorefront();
+  // Cast to StoreData — safe because StoreContext uses select('*')
+  const store = ctxStore as unknown as StoreData | null;
+
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  const [aiDesign, setAiDesign] = useState<AIDesignResult | null>(null);
 
-  // Scroll animations
-  const categoriesGridRef = useScrollAnimation({ animation: 'slideUp', duration: 0.6, stagger: 0.1, delay: 0.2 });
+  // Scroll animations (unchanged)
+  const categoriesGridRef       = useScrollAnimation({ animation: 'slideUp',     duration: 0.6, stagger: 0.1,  delay: 0.2 });
   const featuredProductsGridRef = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
-  const newArrivalsGridRef = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
+  const newArrivalsGridRef      = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
 
-  // Determine if we're on a store-specific domain (subdomain or custom domain)
-  const isSubdomain = isStoreSpecificDomain();
-  // Build links based on domain type
+  const isSubdomain  = isStoreSpecificDomain();
   const productsLink = isSubdomain ? '/products' : `/${slug}/products`;
 
-  useEffect(() => {
-    loadStoreData();
-  }, [slug]);
-
-  // Theme is now applied by StoreContext (via StorefrontLayout) so it persists
-  // across all customer pages. No per-page theme logic needed here.
-
-  // Load and apply AI-generated design from store_design_state
-  useEffect(() => {
-    if (!store?.id) return;
-
-    const loadAndApplyDesign = async () => {
-      try {
-        const { data } = await supabase
+  // ── Page data: categories + products + AI design — all in parallel ──────────
+  // Fires immediately once ctxStore.id is available (instant on cached sessions).
+  // Previously: 4 sequential DB round-trips (store→profile→categories→products)
+  // + 1 delayed AI design fetch. Now: 1 parallel batch of 3 queries.
+  const { data: pageData, isLoading: pageLoading } = useQuery({
+    queryKey: ['store-page', ctxStore?.id],
+    queryFn: async () => {
+      const storeId = ctxStore!.id;
+      const [categoriesResult, products, designResult] = await Promise.all([
+        supabase.from('categories').select('*').eq('store_id', storeId).order('name'),
+        getPublishedProducts(storeId, 16),
+        supabase
           .from('store_design_state')
           .select('current_design, ai_full_css, mode')
-          .eq('store_id', store.id)
-          .maybeSingle();
+          .eq('store_id', storeId)
+          .maybeSingle(),
+      ]);
+      return {
+        categories: (categoriesResult.data ?? []) as Category[],
+        products:   products as Product[],
+        design:     designResult.data ?? null,
+      };
+    },
+    enabled:   !!ctxStore?.id,
+    staleTime: 5  * 60 * 1000, // 5 min — products/categories rarely change mid-session
+    gcTime:    10 * 60 * 1000, // keep in memory 10 min for instant back-navigation
+  });
 
-        // 🔍 DEBUG: Log what's being loaded from DB
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📖 [STORE-LOAD-DESIGN] Loading design from database');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Store ID:', store.id);
-        console.log('Design data:', data);
-        console.log('Mode:', data?.mode);
-        console.log('Has Layer 2 CSS:', !!data?.ai_full_css);
-        if (data?.ai_full_css) {
-          console.log('Layer 2 CSS length:', data.ai_full_css.length);
-          console.log('Layer 2 CSS preview (first 300 chars):', data.ai_full_css.substring(0, 300));
-          console.log('Layer 2 CSS FULL:', data.ai_full_css);
-        }
+  // Combined loading: wait for both store context AND page-specific data
+  const loading = storeLoading || pageLoading;
 
-        // Layer 2: full CSS injection (takes priority over Layer 1)
-        if (data?.mode === 'advanced' && data?.ai_full_css) {
-          console.log('💉 [STORE] Injecting Layer 2 CSS...');
-          let layer2El = document.getElementById('ai-layer2-styles');
-          if (!layer2El) {
-            layer2El = document.createElement('style');
-            layer2El.id = 'ai-layer2-styles';
-            document.head.appendChild(layer2El);
-          }
-          layer2El.textContent = data.ai_full_css;
-          console.log('✅ [STORE] Layer 2 CSS injected into page. Checking result...');
-          // Verify what's actually in the style tag
-          console.log('💾 [VERIFY] Style tag content length:', layer2El.textContent?.length);
-          console.log('💾 [VERIFY] Style tag content:', layer2El.textContent);
-        } else {
-          console.log('⚠️  [STORE] No Layer 2 CSS to inject (mode:', data?.mode, ', has CSS:', !!data?.ai_full_css, ')');
-          // No Layer 2 — remove if previously injected
-          const layer2El = document.getElementById('ai-layer2-styles');
-          if (layer2El) layer2El.remove();
-        }
+  // Derive display data from query results (no separate state needed)
+  const categories       = pageData?.categories ?? [];
+  const products         = pageData?.products   ?? [];
+  const featuredProducts = products.slice(0, 16);
+  const newArrivals      = [...products]
+    .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+    .slice(0, 4);
 
-        // Layer 1: CSS variables
-        if (data?.current_design) {
-          console.log('💉 [STORE] Injecting Layer 1 CSS variables...');
-          setAiDesign(data.current_design as unknown as AIDesignResult);
+  // Derive AI design for layout calculations
+  const aiDesign = (pageData?.design?.current_design as unknown as AIDesignResult | null) ?? null;
 
-          const cssString = buildDesignCSS(data.current_design as unknown as AIDesignResult);
-          let styleEl = document.getElementById('ai-designer-styles');
-          if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = 'ai-designer-styles';
-            document.head.appendChild(styleEl);
-          }
-          styleEl.textContent = cssString;
-          console.log('✅ [STORE] Layer 1 CSS injected');
-        } else {
-          console.log('⚠️  [STORE] No Layer 1 design to apply');
-          setAiDesign(null);
-          const styleEl = document.getElementById('ai-designer-styles');
-          if (styleEl) styleEl.remove();
-        }
-      } catch (error) {
-        console.error('❌ [STORE-LOAD-DESIGN-ERROR] Failed to load AI design:', error);
-      }
-    };
+  // ── Apply AI design CSS whenever page data arrives ───────────────────────────
+  useEffect(() => {
+    applyStoreDesignCSS(pageData?.design ?? null);
+  }, [pageData?.design]);
 
-    loadAndApplyDesign();
-  }, [store?.id]);
-
-  // Load ElevenLabs script dynamically
+  // ── ElevenLabs AI Voice Widget — loaded on demand ───────────────────────────
   useEffect(() => {
     if (!store?.ai_voice_embed_code) return;
 
-    // Check if script is already loaded
-    const existingScript = document.querySelector('script[src*="elevenlabs"]');
-    if (existingScript) {
-      setScriptLoaded(true);
-      return;
-    }
+    const existing = document.querySelector('script[src*="elevenlabs"]');
+    if (existing) { setScriptLoaded(true); return; }
 
-    // Create and load the script
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+    script.src   = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
     script.async = true;
-    script.type = 'text/javascript';
-
-    script.onload = () => {
-      console.log('ElevenLabs widget script loaded successfully');
-      setScriptLoaded(true);
-    };
-
-    script.onerror = (error) => {
-      console.error('Failed to load ElevenLabs widget script:', error);
-    };
-
+    script.type  = 'text/javascript';
+    script.onload = () => setScriptLoaded(true);
     document.body.appendChild(script);
 
-    // Cleanup on unmount
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
+    return () => { script.parentNode?.removeChild(script); };
   }, [store?.ai_voice_embed_code]);
 
-  // SEO: Add structured data for store page (Organization Schema + Breadcrumbs)
+  // ── SEO structured data ──────────────────────────────────────────────────────
   useSEOStore(
     store && profile
       ? {
           store: {
-            id: store.id,
-            name: store.name,
-            slug: store.slug,
-            description: store.description,
-            logo_url: store.logo_url,
-            address: store.address,
+            id:              store.id,
+            name:            store.name,
+            slug:            store.slug,
+            description:     store.description,
+            logo_url:        store.logo_url,
+            address:         store.address,
             whatsapp_number: store.whatsapp_number,
-            social_links: store.social_links,
-            // SEO fields from admin settings
+            social_links:    store.social_links,
             alternate_names: store.alternate_names,
             seo_description: store.seo_description,
-            business_phone: store.business_phone,
-            business_email: store.business_email,
-            street_address: store.street_address,
-            city: store.city,
-            state: store.state,
-            postal_code: store.postal_code,
-            country: store.country,
-            opening_hours: store.opening_hours,
-            facebook_url: store.facebook_url,
-            instagram_url: store.instagram_url,
-            twitter_url: store.twitter_url,
-            price_range: store.price_range
+            business_phone:  store.business_phone,
+            business_email:  store.business_email,
+            street_address:  store.street_address,
+            city:            store.city,
+            state:           store.state,
+            postal_code:     store.postal_code,
+            country:         store.country,
+            opening_hours:   store.opening_hours,
+            facebook_url:    store.facebook_url,
+            instagram_url:   store.instagram_url,
+            twitter_url:     store.twitter_url,
+            price_range:     store.price_range,
           },
           email: profile.email || undefined,
           breadcrumbs: [
-            {
-              name: 'Home',
-              url: window.location.origin
-            },
-            {
-              name: store.name,
-              url: window.location.href
-            }
-          ]
+            { name: 'Home',     url: window.location.origin },
+            { name: store.name, url: window.location.href  },
+          ],
         }
       : null
   );
 
-  const loadStoreData = async () => {
-    try {
-      setLoading(true);
-
-      // Determine if we're using subdomain or custom domain lookup
-      const domainInfo = isStoreSpecificDomain();
-      let storeQuery = supabase
-        .from("stores")
-        .select("*")
-        .eq("is_active", true);
-
-      const normalizedSlug = (slug || '').toLowerCase();
-      if (domainInfo && normalizedSlug) {
-        if (normalizedSlug.includes('.')) {
-          storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-        } else {
-          storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-        }
-      } else {
-        storeQuery = storeQuery.eq("slug", normalizedSlug);
-      }
-
-      const { data: storeResults, error: storeError } = await storeQuery.limit(1);
-      const storeData = storeResults?.[0] ?? null;
-
-      if (storeError) throw storeError;
-      if (!storeData) {
-        toast({
-          title: "Store not found",
-          description: "The store you're looking for doesn't exist or is inactive.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setStore({
-        ...storeData,
-        social_links: storeData.social_links as any,
-        policies: storeData.policies as any,
-        instagram_reels_settings: storeData.instagram_reels_settings as any,
-      });
-
-      // Fetch profile data for contact information
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("phone, email")
-        .eq("user_id", storeData.user_id)
-        .maybeSingle();
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-
-      // Fetch categories for this store
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("store_id", storeData.id)
-        .order("name");
-
-      if (categoriesError) {
-        console.error("Error fetching categories:", categoriesError);
-      } else if (categoriesData) {
-        setCategories(categoriesData);
-      }
-
-      // Fetch published products for this store
-      const publishedProducts = await getPublishedProducts(storeData.id, 8);
-      setProducts(publishedProducts as any);
-      
-      // Featured products (first 16)
-      setFeaturedProducts(publishedProducts.slice(0, 16) as any);
-      
-      // New arrivals (last 4 sorted by creation date)
-      const sorted = [...publishedProducts].sort((a, b) => 
-        new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-      );
-      setNewArrivals(sorted.slice(0, 4) as any);
-    } catch (error: any) {
-      console.error("Error loading store:", error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ── Loading / not-found guards ───────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -400,7 +249,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     );
   }
 
-  // Compute layout classes from AI design
+  // ── Layout classes derived from AI design ────────────────────────────────────
   const gridColsClass = (() => {
     const cols = aiDesign?.layout?.product_grid_cols;
     if (cols === "2") return "grid grid-cols-2 sm:grid-cols-2 gap-6";
@@ -410,23 +259,23 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   const sectionPy = (() => {
     const p = aiDesign?.layout?.section_padding;
-    if (p === "compact") return "py-8";
+    if (p === "compact")  return "py-8";
     if (p === "spacious") return "py-24";
     return "py-16";
   })();
 
-  // Check if any section between Featured Products and New Arrivals will be shown
   const showInstagramReels = store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage;
-  const showGoogleReviews = store.google_reviews_enabled;
-  const hasMiddleSections = showInstagramReels || showGoogleReviews;
+  const showGoogleReviews  = store.google_reviews_enabled;
+  const hasMiddleSections  = showInstagramReels || showGoogleReviews;
 
   const sectionPyLarge = (() => {
     const p = aiDesign?.layout?.section_padding;
-    if (p === "compact") return "py-10";
+    if (p === "compact")  return "py-10";
     if (p === "spacious") return "py-28";
     return "py-20";
   })();
 
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
@@ -438,7 +287,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         type="website"
       />
       <Header storeSlug={store.slug} storeId={store.id} />
-      
+
       <main className="flex-1">
         {/* ═══ HERO BANNER SECTION ═══
             Purpose: Large banner at top of page with store name and logo
@@ -448,10 +297,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         */}
         <section data-ai="section-hero">
         <HeroBannerCarousel
-          bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0 
-            ? store.hero_banner_urls 
-            : store.hero_banner_url 
-            ? [store.hero_banner_url] 
+          bannerUrls={store.hero_banner_urls && store.hero_banner_urls.length > 0
+            ? store.hero_banner_urls
+            : store.hero_banner_url
+            ? [store.hero_banner_url]
             : []}
           storeName={store.name}
           logoUrl={store.logo_url}
@@ -478,7 +327,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   </p>
                 </div>
               </AnimateOnScroll>
-              
+
               {/* Horizontal Scrollable Layout */}
               <div className="relative px-4">
                 <div ref={categoriesGridRef} className="flex gap-2 overflow-x-auto py-4 scrollbar-hide snap-x snap-mandatory px-4">
