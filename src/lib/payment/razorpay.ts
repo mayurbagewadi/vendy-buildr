@@ -9,12 +9,8 @@ declare global {
   }
 }
 
-/**
- * Load Razorpay SDK script
- */
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    // Check if already loaded
     if (window.Razorpay) {
       resolve(true);
       return;
@@ -22,26 +18,21 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = false;  // ✅ Load synchronously (Perplexity's suggestion)
+    script.async = false;
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
-    document.head.appendChild(script);  // ✅ Append to head instead of body
+    document.head.appendChild(script);
   });
 };
 
-/**
- * Create Razorpay order via backend.
- * The edge function fetches prices from DB server-side — the client never
- * touches the amount. Returns the server-verified total so the caller can
- * use it for both the Razorpay modal and the DB insert.
- */
 export const createRazorpayOrder = async (
   cartItems: { productId: string; quantity: number; variant?: string }[],
   currency: string,
   storeId: string,
   couponCode?: string,
-  autoDiscountId?: string
-): Promise<{ orderId: string; verifiedTotal: number; error?: string }> => {
+  autoDiscountId?: string,
+  orderRecord?: Record<string, any>
+): Promise<{ orderId: string; dbOrderId: string; verifiedTotal: number; error?: string }> => {
   try {
     const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
       body: {
@@ -50,39 +41,40 @@ export const createRazorpayOrder = async (
         currency,
         couponCode: couponCode || undefined,
         autoDiscountId: autoDiscountId || undefined,
+        orderRecord,
       },
     });
 
     if (error) throw error;
 
     if (!data.success) {
-      return { orderId: '', verifiedTotal: 0, error: data.error || 'Failed to create order' };
+      return { orderId: '', dbOrderId: '', verifiedTotal: 0, error: data.error || 'Failed to create order' };
     }
 
-    // ✅ Validate Razorpay order ID format
     if (!data.orderId || !data.orderId.startsWith('order_')) {
       console.error('Invalid Razorpay order ID:', data.orderId);
-      return { orderId: '', verifiedTotal: 0, error: 'Invalid order ID format' };
+      return { orderId: '', dbOrderId: '', verifiedTotal: 0, error: 'Invalid order ID format' };
     }
 
-    console.log('✅ Razorpay order created:', data.orderId, '| verified total: ₹' + data.verifiedTotal);
-    return { orderId: data.orderId, verifiedTotal: data.verifiedTotal };
+    if (!data.dbOrderId) {
+      console.error('Missing DB order ID from Razorpay order response');
+      return { orderId: '', dbOrderId: '', verifiedTotal: 0, error: 'Could not start payment. Please try again.' };
+    }
+
+    console.log('Razorpay order created:', data.orderId, '| verified total:', data.verifiedTotal);
+    return { orderId: data.orderId, dbOrderId: data.dbOrderId, verifiedTotal: data.verifiedTotal };
   } catch (error: any) {
     console.error('Error creating Razorpay order:', error);
-    return { orderId: '', verifiedTotal: 0, error: error.message || 'Failed to create order' };
+    return { orderId: '', dbOrderId: '', verifiedTotal: 0, error: error.message || 'Failed to create order' };
   }
 };
 
-/**
- * Open Razorpay checkout modal
- */
 export const openRazorpayCheckout = async (
   orderDetails: OrderDetails,
   credentials: { key_id: string },
   callbacks: PaymentCallbacks
 ): Promise<PaymentResult> => {
   try {
-    // Load Razorpay script
     const loaded = await loadRazorpayScript();
     if (!loaded) {
       return {
@@ -91,25 +83,23 @@ export const openRazorpayCheckout = async (
       };
     }
 
-    // ✅ Validate order ID before opening checkout (Gemini's circuit breaker)
     if (!orderDetails.orderId || !orderDetails.orderId.startsWith('order_')) {
-      console.error('CRITICAL ERROR: Invalid Razorpay Order ID format:', orderDetails.orderId);
+      console.error('Invalid Razorpay Order ID format:', orderDetails.orderId);
       return {
         success: false,
         error: 'Invalid Order ID. Please try again.',
       };
     }
 
-    console.log('✅ Opening Razorpay with order_id:', orderDetails.orderId);  // Debug log
+    console.log('Opening Razorpay with order_id:', orderDetails.orderId);
 
-    // Configure Razorpay options
     const options = {
       key: credentials.key_id,
-      amount: Math.round(orderDetails.amount * 100), // Convert to paise
+      amount: Math.round(orderDetails.amount * 100),
       currency: orderDetails.currency,
       name: 'Your Store Name',
       description: `Order #${orderDetails.orderNumber}`,
-      order_id: String(orderDetails.orderId),  // ✅ Force string (Perplexity's suggestion)
+      order_id: String(orderDetails.orderId),
       prefill: {
         name: orderDetails.customerName,
         email: orderDetails.customerEmail || '',
@@ -119,13 +109,7 @@ export const openRazorpayCheckout = async (
         color: '#3b82f6',
       },
       handler: function (response: any) {
-        // ✅ Log raw response for debugging
-        console.log('🎉 Razorpay handler response:', response);
-        console.log('razorpay_payment_id:', response.razorpay_payment_id);
-        console.log('razorpay_order_id:', response.razorpay_order_id);
-        console.log('razorpay_signature:', response.razorpay_signature);
-
-        // Pass the raw Razorpay response directly
+        console.log('Razorpay handler response:', response);
         callbacks.onSuccess(response);
       },
       modal: {
@@ -137,7 +121,6 @@ export const openRazorpayCheckout = async (
       },
     };
 
-    // Open Razorpay checkout
     const razorpay = new window.Razorpay(options);
 
     razorpay.on('payment.failed', function (response: any) {
@@ -160,15 +143,13 @@ export const openRazorpayCheckout = async (
   }
 };
 
-/**
- * Verify Razorpay payment signature
- */
 export const verifyRazorpayPayment = async (
   orderId: string,
   paymentId: string,
   signature: string,
-  storeId: string
-): Promise<{ verified: boolean; error?: string }> => {
+  storeId: string,
+  dbOrderId?: string
+): Promise<{ verified: boolean; orderId?: string; error?: string }> => {
   try {
     const { data, error } = await supabase.functions.invoke('verify-razorpay-payment', {
       body: {
@@ -176,12 +157,13 @@ export const verifyRazorpayPayment = async (
         razorpay_payment_id: paymentId,
         razorpay_signature: signature,
         storeId,
+        dbOrderId,
       },
     });
 
     if (error) throw error;
 
-    return { verified: data.verified };
+    return { verified: data.verified, orderId: data.orderId };
   } catch (error: any) {
     console.error('Error verifying Razorpay payment:', error);
     return { verified: false, error: error.message };

@@ -20,6 +20,7 @@ interface CreateOrderRequest {
   currency: string;
   couponCode?: string;
   autoDiscountId?: string;
+  orderRecord?: Record<string, any>;
 }
 
 interface DeliveryTier {
@@ -32,6 +33,31 @@ interface VariantJson {
   name: string;
   price: number;
   offer_price?: number;
+}
+
+async function logPaymentEvent(
+  supabase: any,
+  eventType: string,
+  values: {
+    storeId?: string;
+    orderId?: string;
+    gatewayOrderId?: string;
+    paymentId?: string;
+    details?: Record<string, any>;
+  }
+) {
+  try {
+    await supabase.from('payment_events').insert({
+      store_id: values.storeId ?? null,
+      order_id: values.orderId ?? null,
+      event_type: eventType,
+      gateway_order_id: values.gatewayOrderId ?? null,
+      payment_id: values.paymentId ?? null,
+      details: values.details ?? {},
+    });
+  } catch (error) {
+    console.warn('[payment-events] log failed:', error);
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -241,7 +267,7 @@ serve(async (req) => {
     );
 
     const body: CreateOrderRequest = await req.json();
-    const { storeId, cartItems, currency, couponCode, autoDiscountId } = body;
+    const { storeId, cartItems, currency, couponCode, autoDiscountId, orderRecord } = body;
 
     // ── 1. Input validation ────────────────────────────────────────────────
     if (!storeId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0 || !currency) {
@@ -249,6 +275,22 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: 'Missing required parameters' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
+    }
+
+    if (!orderRecord) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing order details' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    for (const field of ['order_number', 'customer_name', 'customer_phone', 'delivery_address', 'items']) {
+      if (!orderRecord[field]) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Missing order field: ${field}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
     }
 
     for (const item of cartItems) {
@@ -386,6 +428,55 @@ serve(async (req) => {
     });
 
     // ── 8. Create Razorpay order with the server-verified amount ──────────
+    const draftPayload = {
+      store_id: storeId,
+      order_number: orderRecord.order_number,
+      customer_name: orderRecord.customer_name,
+      customer_phone: orderRecord.customer_phone,
+      customer_email: orderRecord.customer_email ?? null,
+      delivery_address: orderRecord.delivery_address,
+      delivery_landmark: orderRecord.delivery_landmark ?? null,
+      delivery_pincode: orderRecord.delivery_pincode ?? null,
+      delivery_time: orderRecord.delivery_time ?? null,
+      delivery_latitude: orderRecord.delivery_latitude ?? null,
+      delivery_longitude: orderRecord.delivery_longitude ?? null,
+      items: orderRecord.items,
+      subtotal,
+      discount_amount: discountAmount,
+      coupon_code: couponCode || orderRecord.coupon_code || null,
+      automatic_discount_id: couponCode ? null : (autoDiscountId || orderRecord.automatic_discount_id || null),
+      delivery_charge: deliveryFee,
+      total: verifiedTotal,
+      status: 'new',
+      payment_method: 'razorpay',
+      payment_status: 'awaiting_payment',
+      payment_gateway: 'razorpay',
+    };
+
+    const { data: draftOrder, error: draftError } = await supabase
+      .from('orders')
+      .insert(draftPayload)
+      .select('id')
+      .single();
+
+    if (draftError || !draftOrder) {
+      console.error('[orders] draft create failed:', draftError);
+      await logPaymentEvent(supabase, 'draft_create_failed', {
+        storeId,
+        details: { error: draftError?.message ?? 'No draft order returned' },
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Could not start payment. Please try again.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    await logPaymentEvent(supabase, 'draft_created', {
+      storeId,
+      orderId: draftOrder.id,
+      details: { order_number: orderRecord.order_number, total: verifiedTotal },
+    });
+
     const amountInPaise = Math.round(verifiedTotal * 100); // Razorpay expects paise (integer)
     const timestamp = Date.now().toString().substring(5);
 
@@ -393,7 +484,7 @@ serve(async (req) => {
       amount: amountInPaise,
       currency,
       receipt: 'order_' + timestamp,
-      notes: { store_id: storeId },
+      notes: { store_id: storeId, db_order_id: draftOrder.id },
     };
 
     const basicAuth = btoa(razorpayKeyId + ':' + razorpayKeySecret);
@@ -409,18 +500,51 @@ serve(async (req) => {
     if (!razorpayResponse.ok) {
       const errText = await razorpayResponse.text();
       console.error('[razorpay] API error:', errText);
+      await supabase
+        .from('orders')
+        .update({ payment_status: 'failed', payment_response: { razorpay_order_error: errText } })
+        .eq('id', draftOrder.id);
+      await logPaymentEvent(supabase, 'razorpay_order_create_failed', {
+        storeId,
+        orderId: draftOrder.id,
+        details: { error: errText },
+      });
       throw new Error('Razorpay API error: ' + errText);
     }
 
     const razorpayOrder = await razorpayResponse.json();
 
+    const { error: gatewayUpdateError } = await supabase
+      .from('orders')
+      .update({ gateway_order_id: razorpayOrder.id })
+      .eq('id', draftOrder.id);
+
+    if (gatewayUpdateError) {
+      console.error('[orders] gateway_order_id update failed:', gatewayUpdateError);
+      await logPaymentEvent(supabase, 'gateway_order_link_failed', {
+        storeId,
+        orderId: draftOrder.id,
+        gatewayOrderId: razorpayOrder.id,
+        details: { error: gatewayUpdateError.message },
+      });
+      throw new Error('Could not link payment to order');
+    }
+
     console.log('[razorpay] Order created:', razorpayOrder.id, 'amount:', razorpayOrder.amount);
+
+    await logPaymentEvent(supabase, 'razorpay_order_created', {
+      storeId,
+      orderId: draftOrder.id,
+      gatewayOrderId: razorpayOrder.id,
+      details: { amount: razorpayOrder.amount, currency: razorpayOrder.currency },
+    });
 
     // ── 9. Return orderId + verified financials to client ─────────────────
     // Client MUST use verifiedTotal for the DB insert — not its own calculated value
     return new Response(
       JSON.stringify({
         success: true,
+        dbOrderId: draftOrder.id,
         orderId: razorpayOrder.id,
         verifiedTotal,           // ₹ value — use for DB order.total
         verifiedSubtotal: subtotal,

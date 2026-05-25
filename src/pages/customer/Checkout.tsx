@@ -180,11 +180,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
   };
 
-  // Process Razorpay payment
-  // Critical: order is written to DB only inside onSuccess — never before.
-  // If customer closes modal or payment fails, zero trace in database.
-  // The server is the ONLY source of truth for the amount — client value is
-  // used solely for the fallback warning message display.
+  // Process Razorpay payment. The backend creates the draft order before Razorpay opens.
   const processRazorpayPayment = async (params: {
     orderNumber: string;
     customerName: string;
@@ -222,42 +218,22 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Step 1: Create Razorpay order server-side.
       // Edge function fetches prices from DB, calculates all financials,
       // and returns the server-verified total. Client amount is never used.
-      const { orderId: razorpayOrderId, verifiedTotal, error: razorpayOrderError } = await createRazorpayOrder(
+      const {
+        orderId: razorpayOrderId,
+        dbOrderId,
+        verifiedTotal,
+        error: razorpayOrderError,
+      } = await createRazorpayOrder(
         params.cartItems,
         params.currency,
         params.storeId,
         params.appliedCoupon?.code,
-        params.autoDiscountId
+        params.autoDiscountId,
+        params.baseOrderRecord
       );
 
       if (razorpayOrderError) throw new Error(razorpayOrderError);
-
-      // Step 2a: Save a draft order before the modal opens.
-      // If the customer abandons payment or it fails, this record stays as
-      // payment_status='failed' so the store owner can see who attempted to buy.
-      // Non-fatal: if this insert fails we still open the modal and fall back
-      // to a fresh insert inside onSuccess.
-      let draftOrderId: string | null = null;
-      try {
-        const { data: draftOrder } = await supabase
-          .from('orders')
-          .insert({
-            ...params.baseOrderRecord,
-            total: verifiedTotal,
-            status: 'new',
-            payment_method: 'razorpay',
-            payment_status: 'failed',
-            payment_gateway: 'razorpay',
-            gateway_order_id: razorpayOrderId,
-          })
-          .select('id')
-          .single();
-        draftOrderId = draftOrder?.id ?? null;
-      } catch {
-        // Non-fatal — proceed with payment regardless.
-      }
-
-      // Step 2b: Open Razorpay modal — amount comes from server, not client
+      if (!dbOrderId) throw new Error('Could not start payment. Please try again.');
       const result = await openRazorpayCheckout(
         {
           orderId: razorpayOrderId,
@@ -272,91 +248,26 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         {
           onSuccess: async (response: any) => {
             try {
-              // Step 3a: Best-effort stock decrement — non-fatal for Razorpay.
-              // Payment already succeeded; order must be saved regardless of stock level.
-              // Store owner is responsible for managing stock.
-              try {
-                await supabase.rpc('decrement_stock_for_order', {
-                  p_store_id: params.storeId,
-                  p_items: params.cartItems.map(i => ({ product_id: i.productId, quantity: i.quantity })),
-                });
-              } catch {
-                // Non-fatal — proceed with order save
+              const verification = await verifyRazorpayPayment(
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature,
+                params.storeId,
+                dbOrderId
+              );
+
+              if (!verification.verified) {
+                throw new Error(verification.error || 'Payment verification failed');
               }
 
-              const paymentFields = {
-                total: verifiedTotal,
-                status: 'new',
-                payment_method: 'razorpay',
-                payment_status: 'completed',
-                payment_gateway: 'razorpay',
-                payment_id: response.razorpay_payment_id,
-                gateway_order_id: response.razorpay_order_id,
-                payment_response: {
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_signature: response.razorpay_signature,
-                },
-              };
+              const finalOrderId = verification.orderId || dbOrderId;
 
-              let insertedOrder: { id: string } | null = null;
-              let orderError: any = null;
-
-              if (draftOrderId) {
-                const { data, error } = await supabase
-                  .from('orders')
-                  .update(paymentFields)
-                  .eq('id', draftOrderId)
-                  .select('id')
-                  .single();
-                insertedOrder = data;
-                orderError = error;
-              }
-
-              if (!insertedOrder) {
-                const { data, error } = await supabase
-                  .from('orders')
-                  .insert({ ...params.baseOrderRecord, ...paymentFields })
-                  .select('id')
-                  .single();
-                insertedOrder = data;
-                orderError = error;
-              }
-
-              if (orderError) throw orderError;
-              if (!insertedOrder) throw new Error('Failed to save order after payment');
-
-              // Step 4: Record coupon usage against the newly created order
-              if (params.appliedCoupon && params.discountAmount > 0) {
-                try {
-                  await supabase.functions.invoke('record-coupon-usage', {
-                    body: {
-                      couponCode: params.appliedCoupon.code,
-                      storeId: params.storeId,
-                      orderId: insertedOrder.id,
-                      customerPhone: params.baseOrderRecord.customer_phone,
-                      customerEmail: params.baseOrderRecord.customer_email || undefined,
-                      discountApplied: params.discountAmount,
-                    },
-                  });
-                } catch (couponErr) {
-                  // Non-fatal — order is already saved, coupon tracking failed silently
-                  console.error('Coupon usage recording failed:', couponErr);
-                }
-              }
-
-              // Fire-and-forget — email failure must never block checkout
-              supabase.functions.invoke('send-order-email', {
-                body: { orderId: insertedOrder.id, storeId: params.storeId },
-              }).catch(err => console.error('Order email trigger failed:', err));
-
-              // Step 5: Clear cart and redirect to success page
               clearCart();
               setIsProcessingPayment(false);
 
-              const successParams = new URLSearchParams({
+              const verifiedSuccessParams = new URLSearchParams({
                 gateway: 'razorpay',
-                orderId: insertedOrder.id,
+                orderId: finalOrderId,
                 storeId: params.storeId,
                 paymentId: response.razorpay_payment_id,
                 razorpayOrderId: response.razorpay_order_id,
@@ -364,8 +275,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 storeSlug: storeSlug || '',
               });
 
-              window.location.href = `/payment-success?${successParams.toString()}`;
-
+              window.location.href = `/payment-success?${verifiedSuccessParams.toString()}`;
+              return;
             } catch (saveError: any) {
               // Payment went through but DB save failed — critical, show payment ID so customer can contact support
               console.error('Order save after payment failed:', saveError);
@@ -1957,3 +1868,5 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 };
 
 export default Checkout;
+
+
