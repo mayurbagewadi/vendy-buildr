@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { LocationPicker } from "@/components/customer/LocationPicker";
 import { getAvailablePaymentMethods, PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment";
-import { openRazorpayCheckout, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/payment/razorpay";
+import { openRazorpayCheckout, createRazorpayOrder, verifyRazorpayPayment, markRazorpayPaymentFailed } from "@/lib/payment/razorpay";
 import { initiatePhonePePayment, verifyPhonePePayment } from "@/lib/payment/phonepe";
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
@@ -234,6 +234,15 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
       if (razorpayOrderError) throw new Error(razorpayOrderError);
       if (!dbOrderId) throw new Error('Could not start payment. Please try again.');
+      const paymentAttemptStartedAtMs = Date.now();
+      const paymentAttemptTrace = {
+        attemptId: `${dbOrderId}-${paymentAttemptStartedAtMs}`,
+        startedAt: new Date().toISOString(),
+        pagePath: window.location.pathname,
+        online: navigator.onLine,
+        visibilityState: document.visibilityState,
+        userAgent: navigator.userAgent,
+      };
       const result = await openRazorpayCheckout(
         {
           orderId: razorpayOrderId,
@@ -288,11 +297,40 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               setIsProcessingPayment(false);
             }
           },
-          onFailure: (error: any) => {
+          onFailure: async (error: any) => {
+            await markRazorpayPaymentFailed(
+              params.storeId,
+              dbOrderId,
+              'payment_failed',
+              {
+                ...paymentAttemptTrace,
+                callbackAt: new Date().toISOString(),
+                elapsedMs: Date.now() - paymentAttemptStartedAtMs,
+                code: error.code,
+                description: error.description,
+                reason: error.reason,
+                metadata: error.metadata,
+              },
+              razorpayOrderId
+            );
             showModal('error', 'Payment Failed', error.description || 'Your payment could not be processed. Please try again.');
             setIsProcessingPayment(false);
           },
-          onDismiss: () => {
+          onDismiss: async () => {
+            await markRazorpayPaymentFailed(
+              params.storeId,
+              dbOrderId,
+              'payment_window_closed',
+              {
+                ...paymentAttemptTrace,
+                callbackAt: new Date().toISOString(),
+                elapsedMs: Date.now() - paymentAttemptStartedAtMs,
+                source: 'razorpay_modal_dismiss',
+                onlineAtDismiss: navigator.onLine,
+                visibilityStateAtDismiss: document.visibilityState,
+              },
+              razorpayOrderId
+            );
             showModal(
               'error',
               'Payment Not Completed',

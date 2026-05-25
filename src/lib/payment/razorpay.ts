@@ -169,3 +169,41 @@ export const verifyRazorpayPayment = async (
     return { verified: false, error: error.message };
   }
 };
+
+export const markRazorpayPaymentFailed = async (
+  storeId: string,
+  dbOrderId: string,
+  reason: string,
+  failureDetails?: Record<string, any>,
+  razorpayOrderId?: string
+): Promise<{ success: boolean; markedFailed?: boolean; error?: string }> => {
+  try {
+    console.log('Marking Razorpay payment failed:', {
+      storeId,
+      dbOrderId,
+      reason,
+      razorpayOrderId,
+      failureDetails,
+    });
+
+    const { data, error } = await supabase.functions.invoke('verify-razorpay-payment', {
+      body: {
+        action: 'mark_failed',
+        storeId,
+        dbOrderId,
+        reason,
+        failureDetails,
+        razorpay_order_id: razorpayOrderId,
+      },
+    });
+
+    if (error) throw error;
+
+    console.log('Razorpay payment failed marker response:', data);
+
+    return { success: Boolean(data?.success), markedFailed: data?.markedFailed };
+  } catch (error: any) {
+    console.error('Error marking Razorpay payment failed:', error);
+    return { success: false, error: error.message };
+  }
+};

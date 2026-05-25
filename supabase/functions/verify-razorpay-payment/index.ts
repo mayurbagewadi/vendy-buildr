@@ -8,11 +8,14 @@ const corsHeaders = {
 };
 
 interface VerifyPaymentRequest {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
+  action?: 'verify_payment' | 'mark_failed';
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
   storeId: string;
   dbOrderId?: string;
+  reason?: string;
+  failureDetails?: Record<string, any>;
 }
 
 async function logPaymentEvent(
@@ -83,9 +86,94 @@ serve(async (req) => {
     );
 
     const requestBody: VerifyPaymentRequest = await req.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, dbOrderId } = requestBody;
+    const {
+      action = 'verify_payment',
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      storeId,
+      dbOrderId,
+      reason,
+      failureDetails,
+    } = requestBody;
 
-    console.log('Starting payment verification:', { razorpay_order_id, razorpay_payment_id, storeId, dbOrderId });
+    console.log('Starting Razorpay payment action:', { action, razorpay_order_id, razorpay_payment_id, storeId, dbOrderId });
+
+    if (action === 'mark_failed') {
+      if (!storeId || !dbOrderId) {
+        throw new Error('storeId and dbOrderId are required');
+      }
+
+      await logPaymentEvent(supabaseClient, 'mark_failed_received', {
+        storeId,
+        orderId: dbOrderId,
+        gatewayOrderId: razorpay_order_id,
+        details: {
+          reason: reason || 'payment_not_completed',
+          failureDetails: failureDetails || {},
+        },
+      });
+
+      const failedResponse = {
+        failure_reason: reason || 'payment_not_completed',
+        failure_details: failureDetails || {},
+        failed_at: new Date().toISOString(),
+      };
+
+      const { data: failedOrder, error: failedError } = await supabaseClient
+        .from('orders')
+        .update({
+          payment_status: 'failed',
+          payment_response: failedResponse,
+        })
+        .eq('id', dbOrderId)
+        .eq('store_id', storeId)
+        .eq('payment_gateway', 'razorpay')
+        .eq('payment_status', 'awaiting_payment')
+        .select('id, gateway_order_id')
+        .maybeSingle();
+
+      if (failedError) {
+        await logPaymentEvent(supabaseClient, 'order_mark_failed_failed', {
+          storeId,
+          orderId: dbOrderId,
+          details: { error: failedError.message, reason },
+        });
+        throw failedError;
+      }
+
+      if (failedOrder) {
+        await logPaymentEvent(supabaseClient, 'order_marked_failed', {
+          storeId,
+          orderId: failedOrder.id,
+          gatewayOrderId: failedOrder.gateway_order_id ?? razorpay_order_id,
+          details: { reason: reason || 'payment_not_completed', failureDetails: failureDetails || {} },
+        });
+      } else {
+        const { data: currentOrder } = await supabaseClient
+          .from('orders')
+          .select('id, status, payment_status, payment_gateway, payment_id, gateway_order_id, updated_at')
+          .eq('id', dbOrderId)
+          .eq('store_id', storeId)
+          .maybeSingle();
+
+        await logPaymentEvent(supabaseClient, 'order_mark_failed_skipped', {
+          storeId,
+          orderId: dbOrderId,
+          gatewayOrderId: currentOrder?.gateway_order_id ?? razorpay_order_id,
+          paymentId: currentOrder?.payment_id ?? undefined,
+          details: {
+            reason: reason || 'payment_not_completed',
+            currentOrder: currentOrder || null,
+          },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, orderId: dbOrderId, markedFailed: Boolean(failedOrder) }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !storeId) {
       throw new Error('Missing required parameters');
