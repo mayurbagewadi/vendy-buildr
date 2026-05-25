@@ -53,6 +53,7 @@ const AdminAIDesigner           = lazy(() => import("./pages/admin/AIDesigner"))
 const BuyTokens                 = lazy(() => import("./pages/admin/BuyTokens"));
 const AdminGoogleReviews        = lazy(() => import("./pages/admin/GoogleReviews"));
 const AdminCustomerCare         = lazy(() => import("./pages/admin/CustomerCare"));
+const AdminNotifications        = lazy(() => import("./pages/admin/Notifications"));
 
 const SuperAdminLogin           = lazy(() => import("./pages/superadmin/Login"));
 const SuperAdminDashboard       = lazy(() => import("./pages/superadmin/Dashboard"));
@@ -214,6 +215,7 @@ const App = () => {
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/theme" element={<StoreGuard><AdminLayout><ThemeSettings /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/settings/notifications" element={<StoreGuard><AdminLayout><AdminNotifications /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />
@@ -274,6 +276,7 @@ const App = () => {
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/theme" element={<StoreGuard><AdminLayout><ThemeSettings /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/settings/notifications" element={<StoreGuard><AdminLayout><AdminNotifications /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />

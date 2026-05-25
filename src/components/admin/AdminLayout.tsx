@@ -30,6 +30,7 @@ import {
   Sparkles,
   Palette,
   Headphones,
+  MonitorSmartphone,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -75,7 +76,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [storeLoaded, setStoreLoaded] = useState(false);
 
   // Dynamic notifications from existing database tables (orders, products)
-  const { notifications, unreadCount, markAllSeen } = useNotifications();
+  const { notifications, unreadCount, markAllSeen, markAsRead } = useNotifications();
 
   const { resolvedTheme } = useTheme();
 
@@ -411,6 +412,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           icon: Palette,
           current: location.pathname === "/admin/settings/theme",
         },
+        {
+          name: "Notifications",
+          href: "/admin/settings/notifications",
+          icon: MonitorSmartphone,
+          current: location.pathname === "/admin/settings/notifications",
+        },
       ],
     },
     {
@@ -628,6 +635,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                         notifications.map((notification) => (
                           <div
                             key={notification.id}
+                            onClick={() => {
+                              markAsRead(notification.id);
+                              if (notification.actionUrl) {
+                                navigate(notification.actionUrl);
+                                setIsNotificationOpen(false);
+                              }
+                            }}
                             className={`p-4 hover:bg-muted transition-colors cursor-pointer border-b border-border last:border-0 ${
                               notification.unread ? 'bg-primary/5' : ''
                             }`}
