@@ -318,14 +318,20 @@ serve(async (req) => {
           .map((item: any) => ({
             product_id: item.productId || item.product_id,
             quantity: item.quantity,
+            variant: item.variant,
           }))
           .filter((item: any) => item.product_id && item.quantity);
 
         if (stockItems.length > 0) {
-          await supabaseClient.rpc('decrement_stock_for_order', {
+          const { data: stockResult, error: stockRpcError } = await supabaseClient.rpc('decrement_stock_for_order', {
             p_store_id: storeId,
             p_items: stockItems,
           });
+
+          if (stockRpcError) throw stockRpcError;
+          if (stockResult?.success === false) {
+            throw new Error(stockResult.error || 'Stock decrement failed');
+          }
         }
       } catch (stockError) {
         console.warn('Stock decrement after Razorpay verification failed:', stockError);
@@ -336,6 +342,7 @@ serve(async (req) => {
           paymentId: razorpay_payment_id,
           details: { error: stockError instanceof Error ? stockError.message : String(stockError) },
         });
+        throw stockError;
       }
 
       if (updatedOrder.coupon_code && Number(updatedOrder.discount_amount ?? 0) > 0) {

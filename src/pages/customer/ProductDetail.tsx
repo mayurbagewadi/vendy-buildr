@@ -37,6 +37,7 @@ interface Variant {
   price: number;
   sku?: string;
   offer_price?: number;
+  stock?: number | null;
 }
 
 interface Product {
@@ -56,6 +57,7 @@ interface Product {
   variants?: Variant[];
   priceRange?: string;
   price_range?: string;
+  stock?: number | null;
   status: string;
   storeId?: string;
   store_id?: string;
@@ -228,7 +230,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             whatsapp_number: storeData.whatsapp_number,
             social_links: storeData.social_links
           },
-          availability: product.status === 'published' ? 'InStock' : 'OutOfStock',
+          availability: product.status === 'published' && product.stock !== 0 ? 'InStock' : 'OutOfStock',
           email: profileData?.email,
           breadcrumbs: [
             {
@@ -308,6 +310,14 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.svg"];
   const videoUrl = product.videoUrl || product.video_url;
   const baseSku = product.baseSku || product.sku;
+  const variantStock = currentVariant && typeof currentVariant.stock === "number" ? currentVariant.stock : null;
+  const availableStock = hasVariants ? variantStock : (typeof product.stock === "number" ? product.stock : null);
+  const isOutOfStock = availableStock === 0;
+  const stockLabel = isOutOfStock
+    ? "Out of Stock"
+    : availableStock !== null && availableStock <= 5
+      ? `Only ${availableStock} left`
+      : "In Stock";
 
   // Extract YouTube video ID and get thumbnail
   const getYouTubeVideoId = (url: string) => {
@@ -323,11 +333,32 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
 
   const handleQuantityChange = (delta: number) => {
-    setQuantity(Math.max(1, quantity + delta));
+    if (isOutOfStock) return;
+    const nextQuantity = Math.max(1, quantity + delta);
+    setQuantity(availableStock !== null ? Math.min(nextQuantity, availableStock) : nextQuantity);
   };
 
   const handleAddToCart = () => {
     if (!product) return;
+
+    if (isOutOfStock) {
+      toast({
+        title: "Out of stock",
+        description: "This product is currently unavailable.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (availableStock !== null && quantity > availableStock) {
+      toast({
+        title: "Stock limit reached",
+        description: `Only ${availableStock} available for this ${hasVariants ? "variant" : "product"}.`,
+        variant: "destructive",
+      });
+      setQuantity(availableStock);
+      return;
+    }
 
     // Validate variant selection if product has variants
     if (product.variants && product.variants.length > 0 && !selectedVariant) {
@@ -459,7 +490,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         image={images[0]}
         type="product"
         price={currentVariant?.price || product.base_price}
-        availability={product.status === 'published' ? 'in stock' : 'out of stock'}
+        availability={product.status === 'published' && !isOutOfStock ? 'in stock' : 'out of stock'}
         keywords={[product.name, product.category, storeData?.name || 'store', 'buy online']}
       />
       <Header storeSlug={storeSlug} storeId={product.store_id || product.storeId} />
@@ -642,7 +673,10 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           {/* Product Info */}
           <div data-ai="product-info">
             <div className="mb-4">
-              <Badge data-ai="category-badge" variant="secondary" className="mb-2">{product.category}</Badge>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Badge data-ai="category-badge" variant="secondary">{product.category}</Badge>
+                {isOutOfStock && <Badge variant="destructive">Out of Stock</Badge>}
+              </div>
               <h1 data-ai="product-name" className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
               <p data-ai="product-description" className="text-muted-foreground">{product.description}</p>
             </div>
@@ -661,23 +695,32 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   </div>
                   <RadioGroup value={selectedVariant} onValueChange={setSelectedVariant}>
                     <div className="space-y-3">
-                      {product.variants.map((variant) => (
+                      {product.variants.map((variant) => {
+                        const variantOutOfStock = variant.stock === 0;
+                        return (
                         <div
                           key={variant.name}
-                          className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                            selectedVariant === variant.name
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50 hover:bg-accent'
+                          className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
+                            variantOutOfStock
+                              ? 'cursor-not-allowed border-border bg-muted/50 opacity-60'
+                              : selectedVariant === variant.name
+                                ? 'cursor-pointer border-primary bg-primary/5'
+                                : 'cursor-pointer border-border hover:border-primary/50 hover:bg-accent'
                           }`}
-                          onClick={() => setSelectedVariant(variant.name)}
+                          onClick={() => {
+                            if (!variantOutOfStock) setSelectedVariant(variant.name);
+                          }}
                         >
-                          <RadioGroupItem value={variant.name} id={variant.name} className="min-w-[20px] min-h-[20px]" />
+                          <RadioGroupItem value={variant.name} id={variant.name} disabled={variantOutOfStock} className="min-w-[20px] min-h-[20px]" />
                           <Label
                             htmlFor={variant.name}
-                            className="flex-1 cursor-pointer font-normal"
+                            className={`flex-1 font-normal ${variantOutOfStock ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             <div className="flex justify-between items-center">
-                              <span className="font-medium">{variant.name}</span>
+                              <span className="font-medium">
+                                {variant.name}
+                                {variantOutOfStock && <span className="ml-2 text-xs text-destructive">Out of stock</span>}
+                              </span>
                               <div className="flex items-center gap-2">
                                 {variant.offer_price && variant.offer_price > 0 && variant.offer_price < variant.price ? (
                                   <>
@@ -694,7 +737,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                             </div>
                           </Label>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   </RadioGroup>
 
@@ -763,7 +806,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                     size="icon"
                     className="min-w-[44px] min-h-[44px]"
                     onClick={() => handleQuantityChange(-1)}
-                    disabled={quantity <= 1 || needsVariantSelection}
+                    disabled={quantity <= 1 || needsVariantSelection || isOutOfStock}
                   >
                     <Minus className="w-5 h-5" />
                   </Button>
@@ -775,7 +818,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                     size="icon"
                     className="min-w-[44px] min-h-[44px]"
                     onClick={() => handleQuantityChange(1)}
-                    disabled={needsVariantSelection}
+                    disabled={needsVariantSelection || isOutOfStock || (availableStock !== null && quantity >= availableStock)}
                   >
                     <Plus className="w-5 h-5" />
                   </Button>
@@ -794,10 +837,10 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 onClick={handleAddToCart}
                 className="w-full min-h-[48px]"
                 size="lg"
-                disabled={quantity === 0}
+                disabled={isOutOfStock}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                Add to Cart
+                {isOutOfStock ? "Out of Stock" : "Add to Cart"}
               </Button>
               <Button onClick={handleShare} variant="outline" className="w-full min-h-[44px]">
                 <Share2 className="w-4 h-4 mr-2" />
@@ -830,7 +873,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   )}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Availability:</dt>
-                    <dd data-ai="product-availability" className="font-medium text-success">In Stock</dd>
+                    <dd data-ai="product-availability" className={`font-medium ${isOutOfStock ? "text-destructive" : "text-success"}`}>
+                      {stockLabel}
+                    </dd>
                   </div>
                 </dl>
               </CardContent>
@@ -856,6 +901,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                   base_price={relatedProduct.base_price}
                   offer_price={relatedProduct.offer_price}
                   variants={(relatedProduct as any).variants}
+                  stock={(relatedProduct as any).stock}
                   images={relatedProduct.images}
                   status={relatedProduct.status}
                   storeSlug={isSubdomain ? undefined : storeSlug}
@@ -889,10 +935,10 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
               onClick={handleAddToCart}
               size="lg"
               className="min-h-[48px] px-6 font-semibold"
-              disabled={quantity === 0}
+              disabled={isOutOfStock}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              Add to Cart
+              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </Button>
           </div>
         </div>

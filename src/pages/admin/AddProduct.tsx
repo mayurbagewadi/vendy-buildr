@@ -33,6 +33,11 @@ const generateSlug = (name: string): string => {
     .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
 };
 
+const parseStockInput = (value: string): number | null => {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : parseInt(trimmed, 10);
+};
+
 const variantSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1, "Variant name is required"),
@@ -42,6 +47,7 @@ const variantSchema = z.object({
   }, "Price must be a valid positive number"),
   offerPrice: z.string().optional(),
   sku: z.string().trim().optional(),
+  stock: z.string().optional(),
 });
 
 const productSchema = z.object({
@@ -67,7 +73,7 @@ const AddProduct = () => {
   const [offerPrice, setOfferPrice] = useState("");
   const [baseStock, setBaseStock] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [newVariant, setNewVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
+  const [newVariant, setNewVariant] = useState({ name: "", price: "", offerPrice: "", sku: "", stock: "" });
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
@@ -78,7 +84,7 @@ const AddProduct = () => {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Store files until save
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); // Preview URLs for display
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
-  const [editingVariant, setEditingVariant] = useState({ name: "", price: "", offerPrice: "", sku: "" });
+  const [editingVariant, setEditingVariant] = useState({ name: "", price: "", offerPrice: "", sku: "", stock: "" });
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
   const subscriptionLimits = useSubscriptionLimits();
@@ -369,6 +375,14 @@ category: "",
       });
       return;
     }
+    if (newVariant.stock.trim() && !/^\d+$/.test(newVariant.stock.trim())) {
+      toast({
+        title: "Invalid stock",
+        description: "Variant stock must be empty or a whole number 0 or above",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const variant: Variant = {
       id: Date.now().toString(),
@@ -376,10 +390,11 @@ category: "",
       price: newVariant.price,
       offerPrice: newVariant.offerPrice.trim() || undefined,
       sku: newVariant.sku.trim() || undefined,
+      stock: newVariant.stock.trim(),
     };
 
     setVariants(prev => [...prev, variant]);
-    setNewVariant({ name: "", price: "", offerPrice: "", sku: "" });
+    setNewVariant({ name: "", price: "", offerPrice: "", sku: "", stock: "" });
   };
 
   const removeVariant = (id: string) => {
@@ -388,7 +403,7 @@ category: "",
 
   const startEditVariant = (variant: Variant) => {
     setEditingVariantId(variant.id);
-    setEditingVariant({ name: variant.name, price: variant.price, offerPrice: variant.offerPrice || "", sku: variant.sku || "" });
+    setEditingVariant({ name: variant.name, price: variant.price, offerPrice: variant.offerPrice || "", sku: variant.sku || "", stock: variant.stock || "" });
   };
 
   const saveEditVariant = () => {
@@ -413,17 +428,25 @@ category: "",
       });
       return;
     }
+    if (editingVariant.stock.trim() && !/^\d+$/.test(editingVariant.stock.trim())) {
+      toast({
+        title: "Invalid stock",
+        description: "Variant stock must be empty or a whole number 0 or above",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setVariants(prev =>
       prev.map(v =>
         v.id === editingVariantId
-          ? { ...v, name: editingVariant.name.trim(), price: editingVariant.price, offerPrice: editingVariant.offerPrice.trim() || undefined, sku: editingVariant.sku.trim() || undefined }
+          ? { ...v, name: editingVariant.name.trim(), price: editingVariant.price, offerPrice: editingVariant.offerPrice.trim() || undefined, sku: editingVariant.sku.trim() || undefined, stock: editingVariant.stock.trim() }
           : v
       )
     );
 
     setEditingVariantId(null);
-    setEditingVariant({ name: "", price: "", offerPrice: "", sku: "" });
+    setEditingVariant({ name: "", price: "", offerPrice: "", sku: "", stock: "" });
   };
 
   const cancelEditVariant = () => {
@@ -450,6 +473,14 @@ category: "",
       toast({
         title: "Price required",
         description: "Please enter a valid product price",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (pricingMode === "single" && baseStock.trim() && !/^\d+$/.test(baseStock.trim())) {
+      toast({
+        title: "Invalid stock",
+        description: "Stock must be empty or a whole number 0 or above",
         variant: "destructive",
       });
       return;
@@ -648,12 +679,13 @@ category: "",
           : cheapestOfferVariant
             ? parseFloat(cheapestOfferVariant.offerPrice!)
             : undefined,
-        stock: pricingMode === "single" && baseStock ? parseInt(baseStock) : 0,
+        stock: pricingMode === "single" ? parseStockInput(baseStock) : null,
         variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
           offer_price: v.offerPrice && parseFloat(v.offerPrice) > 0 ? parseFloat(v.offerPrice) : undefined,
           sku: v.sku,
+          stock: parseStockInput(v.stock || ""),
         })) : [],
         priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : (basePrice ? `₹${parseFloat(basePrice).toFixed(2)}` : undefined),
         createdAt: new Date().toISOString(),
@@ -871,11 +903,14 @@ category: "",
                             <label className="text-sm font-medium">Stock</label>
                             <Input
                               type="number"
-                              placeholder="0 = Unlimited"
+                              placeholder="Leave empty = Unlimited"
+                              min="0"
+                              step="1"
                               value={baseStock}
                               onChange={(e) => setBaseStock(e.target.value)}
                               className="no-spinner"
                             />
+                            <p className="mt-1 text-xs text-muted-foreground">Use 0 to mark this product out of stock.</p>
                           </div>
                         </div>
                         {offerPrice && basePrice && parseFloat(offerPrice) > 0 && parseFloat(basePrice) > 0 && parseFloat(offerPrice) < parseFloat(basePrice) && (
@@ -924,9 +959,13 @@ category: "",
                         <div>
                           <label className="text-sm font-medium">Stock</label>
                           <Input
-                            placeholder="0 = Unlimited"
-                            value={newVariant.sku}
-                            onChange={(e) => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="Leave empty = Unlimited"
+                            value={newVariant.stock}
+                            onChange={(e) => setNewVariant(prev => ({ ...prev, stock: e.target.value }))}
+                            className="no-spinner"
                           />
                         </div>
                       </div>
@@ -990,10 +1029,13 @@ category: "",
                                       </TableCell>
                                       <TableCell>
                                         <Input
-                                          placeholder="0 = Unlimited"
-                                          value={editingVariant.sku}
-                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, sku: e.target.value }))}
-                                          className="h-8"
+                                          type="number"
+                                          min="0"
+                                          step="1"
+                                          placeholder="Unlimited"
+                                          value={editingVariant.stock}
+                                          onChange={(e) => setEditingVariant(prev => ({ ...prev, stock: e.target.value }))}
+                                          className="h-8 no-spinner"
                                         />
                                       </TableCell>
                                       <TableCell>
@@ -1031,7 +1073,7 @@ category: "",
                                         )}
                                       </TableCell>
                                       <TableCell className="text-muted-foreground">
-                                        {variant.sku === "0" || variant.sku === "" ? "Unlimited" : (variant.sku || "—")}
+                                        {variant.stock === "0" ? "Out of stock" : variant.stock || "Unlimited"}
                                       </TableCell>
                                       <TableCell>
                                         <div className="flex gap-1">

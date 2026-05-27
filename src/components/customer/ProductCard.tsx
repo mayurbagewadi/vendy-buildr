@@ -20,12 +20,13 @@ interface ProductCardProps {
   offerPrice?: number;
   offer_price?: number;
   variants?: Array<{ name: string; price: number; offer_price?: number }>;
+  stock?: number | null;
   images: string[];
   status: string;
   storeSlug?: string;
 }
 
-const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, images, status, storeSlug }: ProductCardProps) => {
+const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, stock, images, status, storeSlug }: ProductCardProps) => {
   const navigate = useNavigate();
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -56,6 +57,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
 
   const discountPct = singleDiscount || variantMaxDiscount;
   const isVariantMode = variants && variants.length > 0;
+  const isOutOfStock = stock === 0;
 
   // Fallback for variant products where base_price/offer_price columns are null in DB.
   // Picks the variant with the lowest offer_price and uses its price pair for display.
@@ -120,7 +122,11 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
                 {isVariantMode ? `Upto ${discountPct}% off` : `${discountPct}% off`}
               </div>
             )}
-            {status === "draft" && (
+            {isOutOfStock ? (
+              <Badge className="absolute top-2 right-2" variant="destructive">
+                Out of Stock
+              </Badge>
+            ) : status === "draft" && (
               <Badge className="absolute top-2 right-2" variant="secondary">
                 Coming Soon
               </Badge>
@@ -147,8 +153,8 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
           )}
         </CardContent>
         <CardFooter className="p-3 pt-0">
-          <Button className="w-full min-h-[44px]" variant="default">
-            View Details
+          <Button className="w-full min-h-[44px]" variant={isOutOfStock ? "secondary" : "default"}>
+            {isOutOfStock ? "Out of Stock" : "View Details"}
           </Button>
         </CardFooter>
       </Card>

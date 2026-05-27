@@ -6,6 +6,7 @@ export interface Variant {
   price: number;
   sku?: string;
   offer_price?: number;
+  stock?: number | null;
 }
 
 export interface Product {
@@ -20,7 +21,7 @@ export interface Product {
   offer_price?: number;
   priceRange?: string;
   price_range?: string;
-  stock?: number;
+  stock?: number | null;
   sku?: string;
   status: 'published' | 'draft' | 'inactive';
   images: string[];
@@ -72,8 +73,10 @@ export const getProducts = async (): Promise<Product[]> => {
   return (data || []) as unknown as Product[];
 };
 
-// Get published products (for customer view)
-export const getPublishedProducts = async (storeId?: string): Promise<Product[]> => {
+// Get published products (for customer listing view)
+// Fetches only columns needed for cards — description/video excluded to cut payload ~70%.
+// Hard cap of 200 prevents runaway queries on large stores; detail page loads full row.
+export const getPublishedProducts = async (storeId?: string, limit = 200): Promise<Product[]> => {
   if (!storeId) {
     const currentStoreId = await getStoreId();
     if (!currentStoreId) return [];
@@ -82,10 +85,11 @@ export const getPublishedProducts = async (storeId?: string): Promise<Product[]>
 
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select('id, slug, name, category, base_price, offer_price, price_range, stock, sku, status, images, variants, created_at, store_id')
     .eq('store_id', storeId)
     .eq('status', 'published')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
   if (error) {
     console.error('Error fetching published products:', error);
@@ -158,7 +162,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
       base_price: product.basePrice || product.base_price,
       offer_price: product.offerPrice || product.offer_price || null,
       price_range: product.priceRange || product.price_range,
-      stock: product.stock || 0,
+      stock: product.stock ?? null,
       sku: product.sku,
       status: product.status || 'published',  // FIX: Default to published instead of draft
       images: product.images || [],

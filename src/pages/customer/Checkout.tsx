@@ -1086,7 +1086,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       // Prevents two customers buying the same last item simultaneously.
       const stockCheck = await supabase.rpc('decrement_stock_for_order', {
         p_store_id: storeData.id,
-        p_items: cart.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+        p_items: cart.map(i => ({ product_id: i.productId, quantity: i.quantity, variant: i.variant })),
       });
 
       if (stockCheck.data?.success === false) {

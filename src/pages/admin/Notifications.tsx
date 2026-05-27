@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -33,6 +34,7 @@ const Notifications = () => {
     new_order_enabled: true,
     paid_order_enabled: true,
     low_stock_enabled: false,
+    low_stock_threshold: 5,
   });
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
@@ -56,7 +58,7 @@ const Notifications = () => {
       const [{ data: pref }, { data: devices }] = await Promise.all([
         (supabase as any)
           .from("notification_preferences")
-          .select("browser_push_enabled, new_order_enabled, paid_order_enabled, low_stock_enabled")
+          .select("browser_push_enabled, new_order_enabled, paid_order_enabled, low_stock_enabled, low_stock_threshold")
           .eq("store_id", store.id)
           .eq("user_id", session.user.id)
           .maybeSingle(),
@@ -68,7 +70,7 @@ const Notifications = () => {
           .limit(10),
       ]);
 
-      if (pref) setPreferences(pref);
+      if (pref) setPreferences((current) => ({ ...current, ...pref }));
       setSubscriptions(devices || []);
     } catch (error) {
       console.error("[Notifications] load failed:", error);
@@ -105,6 +107,12 @@ const Notifications = () => {
     if (error) {
       toast({ title: "Could not save preferences", description: error.message, variant: "destructive" });
     }
+  };
+
+  const handleThresholdChange = (value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    const nextThreshold = Number.isFinite(parsed) ? Math.max(0, Math.min(parsed, 999999)) : 0;
+    upsertPreferences({ ...preferences, low_stock_threshold: nextThreshold });
   };
 
   const handleEnable = async () => {
@@ -226,7 +234,7 @@ const Notifications = () => {
               {[
                 ["new_order_enabled", "COD orders", "Notify when a new cash-on-delivery order is placed."],
                 ["paid_order_enabled", "Paid orders", "Notify only after online payment is verified."],
-                ["low_stock_enabled", "Low stock", "Reserved for stock alerts when inventory drops below threshold."],
+                ["low_stock_enabled", "Low stock", `Notify when product stock reaches ${preferences.low_stock_threshold} or less.`],
               ].map(([key, label, description]) => (
                 <div key={key} className="flex items-center justify-between gap-4 rounded-lg border p-4">
                   <div>
@@ -239,6 +247,22 @@ const Notifications = () => {
                   />
                 </div>
               ))}
+              <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Low-stock threshold</p>
+                  <p className="text-xs text-muted-foreground">Products at or below this stock count create one alert until restocked.</p>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="999999"
+                  step="1"
+                  value={preferences.low_stock_threshold}
+                  onChange={(event) => handleThresholdChange(event.target.value)}
+                  className="w-full sm:w-28"
+                  disabled={saving}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

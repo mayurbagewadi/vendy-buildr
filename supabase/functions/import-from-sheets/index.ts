@@ -7,6 +7,15 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+const parseStockCell = (value: unknown, label: string): number | null => {
+  const text = String(value ?? '').trim();
+  if (text === '') return null;
+  if (!/^\d+$/.test(text)) {
+    throw new Error(`${label} must be blank or a whole number 0 or above`);
+  }
+  return Number.parseInt(text, 10);
+};
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -169,7 +178,7 @@ serve(async (req) => {
         const basePrice = parseFloat(row[4]) || 0;
         const status = row[5] || 'draft';
         const sku = row[6] || '';
-        const stock = parseInt(row[7]) || 0;
+        const stock = parseStockCell(row[7], 'Stock');
 
         // Collect images
         const images = [];
@@ -186,7 +195,7 @@ serve(async (req) => {
               name: variantName,
               price: parseFloat(row[j + 1]) || 0,
               sku: row[j + 2] || '',
-              stock: parseInt(row[j + 3]) || 0,
+              stock: parseStockCell(row[j + 3], `${variantName} stock`),
             });
           }
         }

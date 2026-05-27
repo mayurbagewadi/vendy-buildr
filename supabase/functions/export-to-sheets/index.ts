@@ -7,6 +7,10 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+const formatStockCell = (value: unknown): number | '' => {
+  return value === null || value === undefined || value === '' ? '' : Number(value);
+};
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -255,7 +259,7 @@ serve(async (req) => {
         product.base_price || product.basePrice || '',
         product.status || 'draft',
         product.sku || '',
-        product.stock || '',
+        formatStockCell(product.stock),
         images[0] || '',
         images[1] || '',
         images[2] || '',
@@ -264,15 +268,15 @@ serve(async (req) => {
         variants[0]?.name || '',
         variants[0]?.price || '',
         variants[0]?.sku || '',
-        variants[0]?.stock || '',
+        formatStockCell(variants[0]?.stock),
         variants[1]?.name || '',
         variants[1]?.price || '',
         variants[1]?.sku || '',
-        variants[1]?.stock || '',
+        formatStockCell(variants[1]?.stock),
         variants[2]?.name || '',
         variants[2]?.price || '',
         variants[2]?.sku || '',
-        variants[2]?.stock || '',
+        formatStockCell(variants[2]?.stock),
         product.created_at || '',
         product.updated_at || '',
       ];

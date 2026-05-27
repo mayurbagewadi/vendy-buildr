@@ -237,6 +237,7 @@ const Home = () => {
                     basePrice={(product as any).base_price}
                     offerPrice={(product as any).offer_price}
                     variants={(product as any).variants}
+                    stock={(product as any).stock}
                     images={product.images}
                     status={product.status}
                   />
@@ -268,6 +269,7 @@ const Home = () => {
                     basePrice={(product as any).base_price}
                     offerPrice={(product as any).offer_price}
                     variants={(product as any).variants}
+                    stock={(product as any).stock}
                     images={product.images}
                     status={product.status}
                   />

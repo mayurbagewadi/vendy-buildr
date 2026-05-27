@@ -22,6 +22,7 @@ import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
+import PlayfulStorefront from "@/components/customer/themes/PlayfulStorefront";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ interface StoreData {
   google_reviews_enabled: boolean | null;
   whatsapp_float_enabled: boolean | null;
   storefront_theme: string | null;
+  storefront_template: string;
 }
 
 interface Category {
@@ -249,6 +251,18 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     );
   }
 
+  // ── Theme routing: swap entire layout based on storefront_template ───────────
+  if (store.storefront_template === 'playful') {
+    return (
+      <PlayfulStorefront
+        store={store as any}
+        profile={profile}
+        products={pageData?.products ?? []}
+        categories={pageData?.categories ?? []}
+      />
+    );
+  }
+
   // ── Layout classes derived from AI design ────────────────────────────────────
   const gridColsClass = (() => {
     const cols = aiDesign?.layout?.product_grid_cols;
@@ -388,6 +402,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     basePrice={(product as any).base_price}
                     offerPrice={(product as any).offer_price}
                     variants={(product as any).variants}
+                    stock={(product as any).stock}
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
@@ -470,6 +485,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     basePrice={(product as any).base_price}
                     offerPrice={(product as any).offer_price}
                     variants={(product as any).variants}
+                    stock={(product as any).stock}
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
