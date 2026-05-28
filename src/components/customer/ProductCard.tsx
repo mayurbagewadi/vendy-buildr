@@ -19,7 +19,7 @@ interface ProductCardProps {
   base_price?: number;
   offerPrice?: number;
   offer_price?: number;
-  variants?: Array<{ name: string; price: number; offer_price?: number }>;
+  variants?: Array<{ name: string; price: number; offer_price?: number; stock?: number | string | null }>;
   stock?: number | null;
   images: string[];
   status: string;
@@ -57,7 +57,15 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
 
   const discountPct = singleDiscount || variantMaxDiscount;
   const isVariantMode = variants && variants.length > 0;
-  const isOutOfStock = stock === 0;
+  const isVariantOutOfStock = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined || value === "") return false;
+    const parsedStock = Number(value);
+    return Number.isFinite(parsedStock) && parsedStock === 0;
+  };
+  const areAllVariantsOutOfStock = isVariantMode
+    ? variants.every((variant) => isVariantOutOfStock(variant.stock))
+    : false;
+  const isOutOfStock = isVariantMode ? areAllVariantsOutOfStock : stock === 0;
 
   // Fallback for variant products where base_price/offer_price columns are null in DB.
   // Picks the variant with the lowest offer_price and uses its price pair for display.
