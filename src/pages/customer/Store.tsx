@@ -22,7 +22,6 @@ import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
-import PlayfulStorefront from "@/components/customer/themes/PlayfulStorefront";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -248,18 +247,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           <Button>Go Home</Button>
         </Link>
       </div>
-    );
-  }
-
-  // ── Theme routing: swap entire layout based on storefront_template ───────────
-  if (store.storefront_template === 'playful') {
-    return (
-      <PlayfulStorefront
-        store={store as any}
-        profile={profile}
-        products={pageData?.products ?? []}
-        categories={pageData?.categories ?? []}
-      />
     );
   }
 
