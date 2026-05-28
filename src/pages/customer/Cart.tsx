@@ -11,9 +11,22 @@ import LazyImage from "@/components/ui/lazy-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useStorefront } from "@/contexts/StoreContext";
 
+interface CartStockInfo {
+  stock: number | null;
+  unavailable: boolean;
+}
+
 interface CartProps {
   slug?: string;
 }
+
+const cartStockKey = (productId: string, variant?: string) => `${productId}::${variant || ""}`;
+
+const parseStockValue = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const stock = Number(value);
+  return Number.isFinite(stock) ? stock : null;
+};
 
 const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
@@ -31,6 +44,8 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const [deliveryMode, setDeliveryMode]       = useState<'single' | 'multiple'>('single');
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
   const [deliveryTiers, setDeliveryTiers]     = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
+  const [cartStock, setCartStock] = useState<Record<string, CartStockInfo>>({});
+  const [stockLoading, setStockLoading] = useState(false);
 
   // free_delivery_above IS in StoreContext — use it directly
   const freeDeliveryAbove = ctxStore?.free_delivery_above ?? null;
@@ -56,6 +71,63 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
       });
   }, [ctxStore?.id, cart[0]?.storeId]);
 
+  useEffect(() => {
+    const productIds = [...new Set(cart.map((item) => item.productId))];
+    if (productIds.length === 0) {
+      setCartStock({});
+      return;
+    }
+
+    let cancelled = false;
+    setStockLoading(true);
+
+    supabase
+      .from("products")
+      .select("id, stock, variants, status")
+      .in("id", productIds)
+      .then(({ data }) => {
+        if (cancelled) return;
+
+        const productMap = new Map((data || []).map((product: any) => [product.id, product]));
+        const nextStock: Record<string, CartStockInfo> = {};
+
+        for (const item of cart) {
+          const product = productMap.get(item.productId) as any;
+          const key = cartStockKey(item.productId, item.variant);
+
+          if (!product || product.status !== "published") {
+            nextStock[key] = { stock: 0, unavailable: true };
+            continue;
+          }
+
+          if (item.variant) {
+            const variant = Array.isArray(product.variants)
+              ? product.variants.find((v: any) => v?.name === item.variant)
+              : null;
+
+            nextStock[key] = variant
+              ? { stock: parseStockValue(variant.stock), unavailable: false }
+              : { stock: 0, unavailable: true };
+            continue;
+          }
+
+          nextStock[key] = {
+            stock: parseStockValue(product.stock),
+            unavailable: false,
+          };
+        }
+
+        setCartStock(nextStock);
+      })
+      .finally(() => {
+        if (!cancelled) setStockLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cart]);
+
   // Compute delivery fee
   const computedDeliveryFee = (() => {
     if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
@@ -75,6 +147,10 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const homeLink = isSubdomain ? "/" : (storeSlug ? `/${storeSlug}` : "/home");
   const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
   const checkoutLink = isSubdomain ? "/checkout" : (storeSlug ? `/${storeSlug}/checkout` : "/checkout");
+  const hasStockIssue = cart.some((item) => {
+    const info = cartStock[cartStockKey(item.productId, item.variant)];
+    return !!info && (info.unavailable || (info.stock !== null && item.quantity > info.stock));
+  });
 
   if (cart.length === 0) {
     return (
@@ -128,7 +204,14 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
           <div data-ai="cart-items" className="lg:col-span-2">
             <h1 data-ai="cart-page-heading" className="text-3xl font-bold mb-6">Shopping Cart</h1>
             <div className="space-y-4">
-              {cart.map((item) => (
+              {cart.map((item) => {
+                const stockInfo = cartStock[cartStockKey(item.productId, item.variant)];
+                const stockLimit = stockInfo?.stock ?? null;
+                const isUnavailable = stockInfo?.unavailable || stockLimit === 0;
+                const isAboveStock = stockLimit !== null && item.quantity > stockLimit;
+                const disableIncrease = stockLoading || isUnavailable || (stockLimit !== null && item.quantity >= stockLimit);
+
+                return (
                 <Card key={`${item.productId}-${item.variant}`}>
                   <CardContent className="p-4 md:p-6">
                     <div className="flex gap-4">
@@ -153,6 +236,15 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                             {item.sku && (
                               <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                             )}
+                            {isUnavailable ? (
+                              <p className="mt-1 text-sm font-medium text-destructive">Out of stock</p>
+                            ) : isAboveStock ? (
+                              <p className="mt-1 text-sm font-medium text-destructive">
+                                Only {stockLimit} available. Please reduce quantity.
+                              </p>
+                            ) : stockLimit !== null ? (
+                              <p className="mt-1 text-xs text-muted-foreground">Only {stockLimit} available</p>
+                            ) : null}
                           </div>
                           <Button
                             data-ai="remove-item-button"
@@ -196,6 +288,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                                   item.quantity + 1
                                 )
                               }
+                              disabled={disableIncrease}
                             >
                               <Plus className="w-5 h-5" />
                             </Button>
@@ -215,7 +308,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           </div>
 
@@ -244,10 +337,19 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                   </div>
                 </div>
 
-                <Button data-ai="checkout-button" asChild className="w-full min-h-[48px]" size="lg">
-                  <Link to={checkoutLink}>
-                    Proceed to Checkout
-                  </Link>
+                {hasStockIssue && (
+                  <p className="mb-3 text-sm text-destructive">
+                    Please update unavailable items before checkout.
+                  </p>
+                )}
+                <Button data-ai="checkout-button" asChild={!hasStockIssue} className="w-full min-h-[48px]" size="lg" disabled={hasStockIssue}>
+                  {hasStockIssue ? (
+                    <span>Update Cart to Checkout</span>
+                  ) : (
+                    <Link to={checkoutLink}>
+                      Proceed to Checkout
+                    </Link>
+                  )}
                 </Button>
                 <Button asChild variant="outline" className="w-full min-h-[44px] mt-3">
                   <Link to={productsLink}>
