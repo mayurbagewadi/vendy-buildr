@@ -161,8 +161,8 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
           )}
         </CardContent>
         <CardFooter className="p-3 pt-0">
-          <Button className="w-full min-h-[44px]" variant={isOutOfStock ? "secondary" : "default"}>
-            {isOutOfStock ? "Out of Stock" : "View Details"}
+          <Button className="w-full min-h-[44px]">
+            View Details
           </Button>
         </CardFooter>
       </Card>
