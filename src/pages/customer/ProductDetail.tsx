@@ -37,7 +37,7 @@ interface Variant {
   price: number;
   sku?: string;
   offer_price?: number;
-  stock?: number | null;
+  stock?: number | string | null;
 }
 
 interface Product {
@@ -57,7 +57,7 @@ interface Product {
   variants?: Variant[];
   priceRange?: string;
   price_range?: string;
-  stock?: number | null;
+  stock?: number | string | null;
   status: string;
   storeId?: string;
   store_id?: string;
@@ -66,6 +66,21 @@ interface Product {
 interface ProductDetailProps {
   slug?: string;
 }
+
+const isZeroStock = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined || value === "") return false;
+  const parsedStock = Number(value);
+  return Number.isFinite(parsedStock) && parsedStock === 0;
+};
+
+const isProductAvailableForSeo = (product: Product) => {
+  if (product.status !== "published") return false;
+  const variants = product.variants || [];
+  if (variants.length > 0) {
+    return variants.some((variant) => !isZeroStock(variant.stock));
+  }
+  return !isZeroStock(product.stock);
+};
 
 const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   // Handle both route patterns:
@@ -110,6 +125,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
+  const isSeoAvailable = product ? isProductAvailableForSeo(product) : false;
 
   useEffect(() => {
     // Wait for StoreContext to resolve before fetching the product.
@@ -230,7 +246,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             whatsapp_number: storeData.whatsapp_number,
             social_links: storeData.social_links
           },
-          availability: product.status === 'published' && product.stock !== 0 ? 'InStock' : 'OutOfStock',
+          availability: isSeoAvailable ? 'InStock' : 'OutOfStock',
           email: profileData?.email,
           breadcrumbs: [
             {
@@ -490,7 +506,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         image={images[0]}
         type="product"
         price={currentVariant?.price || product.base_price}
-        availability={product.status === 'published' && !isOutOfStock ? 'in stock' : 'out of stock'}
+        availability={isSeoAvailable ? 'in stock' : 'out of stock'}
         keywords={[product.name, product.category, storeData?.name || 'store', 'buy online']}
       />
       <Header storeSlug={storeSlug} storeId={product.store_id || product.storeId} />
