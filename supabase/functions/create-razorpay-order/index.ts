@@ -477,6 +477,59 @@ serve(async (req) => {
       details: { order_number: orderRecord.order_number, total: verifiedTotal },
     });
 
+    const stockItems = cartItems.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+      variant: item.variant ?? null,
+    }));
+
+    const { data: reservationResult, error: reservationError } = await supabase.rpc('reserve_stock_for_order', {
+      p_store_id: storeId,
+      p_order_id: draftOrder.id,
+      p_items: stockItems,
+      p_ttl_minutes: 15,
+    });
+
+    if (reservationError || reservationResult?.success === false) {
+      const reservationMessage = reservationResult?.name
+        ? `${reservationResult.name} does not have enough stock.`
+        : 'Some items are no longer available.';
+
+      await supabase
+        .from('orders')
+        .update({
+          payment_status: 'failed',
+          payment_response: {
+            stock_reservation_error: reservationError?.message ?? reservationResult?.error ?? 'STOCK_UNAVAILABLE',
+            stock_reservation_result: reservationResult ?? null,
+          },
+        })
+        .eq('id', draftOrder.id);
+
+      await logPaymentEvent(supabase, 'stock_reservation_failed', {
+        storeId,
+        orderId: draftOrder.id,
+        details: {
+          error: reservationError?.message ?? reservationResult?.error ?? 'STOCK_UNAVAILABLE',
+          result: reservationResult ?? null,
+        },
+      });
+
+      return new Response(
+        JSON.stringify({ success: false, error: reservationMessage, stock: reservationResult ?? null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
+      );
+    }
+
+    await logPaymentEvent(supabase, 'stock_reserved', {
+      storeId,
+      orderId: draftOrder.id,
+      details: {
+        reservation_id: reservationResult?.reservation_id ?? null,
+        expires_in_minutes: 15,
+      },
+    });
+
     const amountInPaise = Math.round(verifiedTotal * 100); // Razorpay expects paise (integer)
     const timestamp = Date.now().toString().substring(5);
 
@@ -500,6 +553,10 @@ serve(async (req) => {
     if (!razorpayResponse.ok) {
       const errText = await razorpayResponse.text();
       console.error('[razorpay] API error:', errText);
+      await supabase.rpc('release_stock_reservation', {
+        p_order_id: draftOrder.id,
+        p_reason: 'razorpay_order_create_failed',
+      });
       await supabase
         .from('orders')
         .update({ payment_status: 'failed', payment_response: { razorpay_order_error: errText } })
@@ -521,6 +578,10 @@ serve(async (req) => {
 
     if (gatewayUpdateError) {
       console.error('[orders] gateway_order_id update failed:', gatewayUpdateError);
+      await supabase.rpc('release_stock_reservation', {
+        p_order_id: draftOrder.id,
+        p_reason: 'gateway_order_link_failed',
+      });
       await logPaymentEvent(supabase, 'gateway_order_link_failed', {
         storeId,
         orderId: draftOrder.id,
@@ -529,6 +590,12 @@ serve(async (req) => {
       });
       throw new Error('Could not link payment to order');
     }
+
+    await supabase
+      .from('stock_reservations')
+      .update({ gateway_order_id: razorpayOrder.id })
+      .eq('order_id', draftOrder.id)
+      .eq('status', 'active');
 
     console.log('[razorpay] Order created:', razorpayOrder.id, 'amount:', razorpayOrder.amount);
 

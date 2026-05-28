@@ -143,11 +143,33 @@ serve(async (req) => {
       }
 
       if (failedOrder) {
+        const { data: releaseResult, error: releaseError } = await supabaseClient.rpc('release_stock_reservation', {
+          p_order_id: failedOrder.id,
+          p_reason: reason || 'payment_not_completed',
+        });
+
+        if (releaseError || releaseResult?.success === false) {
+          await logPaymentEvent(supabaseClient, 'stock_reservation_release_failed', {
+            storeId,
+            orderId: failedOrder.id,
+            gatewayOrderId: failedOrder.gateway_order_id ?? razorpay_order_id,
+            details: {
+              error: releaseError?.message ?? releaseResult?.error ?? 'Reservation release failed',
+              result: releaseResult ?? null,
+            },
+          });
+          throw releaseError ?? new Error(releaseResult?.error || 'Reservation release failed');
+        }
+
         await logPaymentEvent(supabaseClient, 'order_marked_failed', {
           storeId,
           orderId: failedOrder.id,
           gatewayOrderId: failedOrder.gateway_order_id ?? razorpay_order_id,
-          details: { reason: reason || 'payment_not_completed', failureDetails: failureDetails || {} },
+          details: {
+            reason: reason || 'payment_not_completed',
+            failureDetails: failureDetails || {},
+            stockReservationReleased: releaseResult?.released ?? false,
+          },
         });
       } else {
         const { data: currentOrder } = await supabaseClient
@@ -277,109 +299,85 @@ serve(async (req) => {
       verified_at: new Date().toISOString(),
     };
 
-    const { data: updatedOrder, error: updateError } = await supabaseClient
-      .from('orders')
-      .update({
-        status: 'new',
-        payment_method: 'razorpay',
-        payment_status: 'completed',
-        payment_gateway: 'razorpay',
-        payment_id: razorpay_payment_id,
-        gateway_order_id: razorpay_order_id,
-        payment_response: paymentResponse,
-      })
-      .eq('id', order.id)
-      .neq('payment_status', 'completed')
-      .select('*')
-      .maybeSingle();
+    const { data: paidResult, error: updateError } = await supabaseClient.rpc(
+      'mark_razorpay_order_paid_with_stock_reservation',
+      {
+        p_order_id: order.id,
+        p_store_id: storeId,
+        p_gateway_order_id: razorpay_order_id,
+        p_payment_id: razorpay_payment_id,
+        p_payment_response: paymentResponse,
+      }
+    );
 
-    if (updateError) {
+    if (updateError || paidResult?.success === false) {
       await logPaymentEvent(supabaseClient, 'order_mark_paid_failed', {
         storeId,
         orderId: order.id,
         gatewayOrderId: razorpay_order_id,
         paymentId: razorpay_payment_id,
-        details: { error: updateError.message },
+        details: {
+          error: updateError?.message ?? paidResult?.error ?? 'Order payment update failed',
+          result: paidResult ?? null,
+        },
       });
-      throw updateError;
+      throw updateError ?? new Error(paidResult?.error || 'Order payment update failed');
     }
 
+    const updatedOrder = paidResult?.order ?? null;
+    const alreadyCompleted = Boolean(paidResult?.already_completed);
+
     if (updatedOrder) {
-      await logPaymentEvent(supabaseClient, 'order_marked_paid', {
-        storeId,
-        orderId: updatedOrder.id,
-        gatewayOrderId: razorpay_order_id,
-        paymentId: razorpay_payment_id,
-      });
-
-      try {
-        const items = Array.isArray(updatedOrder.items) ? updatedOrder.items : [];
-        const stockItems = items
-          .map((item: any) => ({
-            product_id: item.productId || item.product_id,
-            quantity: item.quantity,
-            variant: item.variant,
-          }))
-          .filter((item: any) => item.product_id && item.quantity);
-
-        if (stockItems.length > 0) {
-          const { data: stockResult, error: stockRpcError } = await supabaseClient.rpc('decrement_stock_for_order', {
-            p_store_id: storeId,
-            p_items: stockItems,
-          });
-
-          if (stockRpcError) throw stockRpcError;
-          if (stockResult?.success === false) {
-            throw new Error(stockResult.error || 'Stock decrement failed');
-          }
-        }
-      } catch (stockError) {
-        console.warn('Stock decrement after Razorpay verification failed:', stockError);
-        await logPaymentEvent(supabaseClient, 'stock_decrement_failed', {
+      if (!alreadyCompleted) {
+        await logPaymentEvent(supabaseClient, 'order_marked_paid', {
           storeId,
           orderId: updatedOrder.id,
           gatewayOrderId: razorpay_order_id,
           paymentId: razorpay_payment_id,
-          details: { error: stockError instanceof Error ? stockError.message : String(stockError) },
-        });
-        throw stockError;
-      }
-
-      if (updatedOrder.coupon_code && Number(updatedOrder.discount_amount ?? 0) > 0) {
-        try {
-          const { data: coupon } = await supabaseClient
-            .from('coupons')
-            .select('id')
-            .eq('store_id', storeId)
-            .eq('code', String(updatedOrder.coupon_code).toUpperCase())
-            .maybeSingle();
-
-          if (coupon) {
-            await supabaseClient.from('coupon_usage').insert({
-              coupon_id: coupon.id,
-              order_id: updatedOrder.id,
-              customer_phone: updatedOrder.customer_phone,
-              customer_email: updatedOrder.customer_email || null,
-              discount_applied: updatedOrder.discount_amount,
-              used_at: new Date().toISOString(),
-            });
-          }
-        } catch (couponError) {
-          console.warn('Coupon usage recording failed:', couponError);
-        }
-      }
-
-      try {
-        await fetch(`${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/send-order-email`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
-            'Content-Type': 'application/json',
+          details: {
+            stockReservationCompleted: true,
+            reservation_id: paidResult?.reservation_id ?? null,
           },
-          body: JSON.stringify({ orderId: updatedOrder.id, storeId }),
         });
-      } catch (emailError) {
-        console.warn('Order email trigger failed:', emailError);
+      }
+
+      if (!alreadyCompleted) {
+        if (updatedOrder.coupon_code && Number(updatedOrder.discount_amount ?? 0) > 0) {
+          try {
+            const { data: coupon } = await supabaseClient
+              .from('coupons')
+              .select('id')
+              .eq('store_id', storeId)
+              .eq('code', String(updatedOrder.coupon_code).toUpperCase())
+              .maybeSingle();
+
+            if (coupon) {
+              await supabaseClient.from('coupon_usage').insert({
+                coupon_id: coupon.id,
+                order_id: updatedOrder.id,
+                customer_phone: updatedOrder.customer_phone,
+                customer_email: updatedOrder.customer_email || null,
+                discount_applied: updatedOrder.discount_amount,
+                used_at: new Date().toISOString(),
+              });
+            }
+          } catch (couponError) {
+            console.warn('Coupon usage recording failed:', couponError);
+          }
+        }
+
+        try {
+          await fetch(`${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/send-order-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ orderId: updatedOrder.id, storeId }),
+          });
+        } catch (emailError) {
+          console.warn('Order email trigger failed:', emailError);
+        }
       }
     } else {
       console.log('Idempotent: order already marked paid:', order.id);
