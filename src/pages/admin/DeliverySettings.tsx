@@ -112,7 +112,10 @@ const DeliverySettings = () => {
         updateData.free_delivery_above = singleFreeAbove !== "" ? parseFloat(singleFreeAbove) : null;
         updateData.delivery_tiers = null;
       } else {
-        updateData.delivery_tiers = tiers;
+        updateData.delivery_tiers = tiers.map((tier) => ({
+          ...tier,
+          fee: tier.fee ?? 0,
+        }));
         updateData.delivery_fee_amount = null;
         updateData.free_delivery_above = null;
       }
@@ -269,7 +272,7 @@ const DeliverySettings = () => {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
               <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
               <p className="text-xs text-muted-foreground">
-                The last tier has no upper limit. Set fee to <strong>0</strong> for free delivery on that range.
+                The last tier has no upper limit. Leave fee empty or set it to <strong>0</strong> for free delivery on that range.
               </p>
             </div>
 
