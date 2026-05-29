@@ -9,7 +9,6 @@ import { AppLogo } from "@/components/ui/AppLogo";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
-import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
 import { supabase } from "@/integrations/supabase/client";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { useStorefront } from "@/contexts/StoreContext";
@@ -68,9 +67,6 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Load AI design CSS on any customer page (not just the home page)
-  useAIDesignCSS(storeId, storeSlug);
 
   // Check if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();

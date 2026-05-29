@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LazyImage from "@/components/ui/lazy-image";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
-import { motion } from "framer-motion";
-import { useState } from "react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface ProductCardProps {
@@ -28,7 +26,6 @@ interface ProductCardProps {
 
 const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, stock, images, status, storeSlug }: ProductCardProps) => {
   const navigate = useNavigate();
-  const [isAnimating, setIsAnimating] = useState(false);
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
@@ -89,22 +86,13 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    setTimeout(() => {
-      navigate(productLink);
-    }, 700);
+    navigate(productLink);
   };
 
   return (
-    <motion.div
-      whileHover={{ y: -8, scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
+    <div
       onClick={handleClick}
-      className="cursor-pointer w-[90%] mx-auto mb-6"
+      className="cursor-pointer w-[90%] mx-auto mb-6 transition-transform duration-200 ease-out hover:-translate-y-2 hover:scale-[1.03] active:scale-95 will-change-transform"
       data-ai="product-card"
     >
       <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden !rounded-[1.55rem]">
@@ -166,7 +154,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
           </Button>
         </CardFooter>
       </Card>
-    </motion.div>
+    </div>
   );
 };
 

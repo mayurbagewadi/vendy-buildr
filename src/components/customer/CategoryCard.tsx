@@ -3,8 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { generateCategoryImageAlt } from "@/lib/seo/altTags";
 import LazyImage from "@/components/ui/lazy-image";
-import { motion } from "framer-motion";
-import { useState } from "react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface CategoryCardProps {
@@ -16,7 +14,6 @@ interface CategoryCardProps {
 
 const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardProps) => {
   const navigate = useNavigate();
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // On store-specific domains (subdomain/custom), don't include slug in URL
   // On main platform, include slug prefix
@@ -42,12 +39,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
   const directImageUrl = image_url ? convertToDirectImageUrl(image_url) : getDefaultImage();
 
   const handleClick = () => {
-    if (isAnimating) return;
-
-    setIsAnimating(true);
-    setTimeout(() => {
-      navigate(categoryLink);
-    }, 700);
+    navigate(categoryLink);
   };
 
   return (
@@ -65,13 +57,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
             [data-ai="category-card-name"]           → category name text (font, size, color, weight)
             [data-ai="category-card-count"]          → product count text (font, size, color)
       */}
-      <motion.div
-        whileHover={{ y: -8, scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className="group h-full"
-        animate={isAnimating ? { scale: 0.95 } : { scale: 1 }}
-      >
+      <div className="group h-full transition-transform duration-200 ease-out hover:-translate-y-2 hover:scale-[1.03] active:scale-95 will-change-transform">
         <Card data-ai="category-card-inner" className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary transition-all duration-500 shadow-md hover:shadow-[0_5px_40px_-20px_rgba(0,0,0,0.4)] rounded-2xl">
           <CardContent className="p-0 relative">
             {/* Image Container with Gradient Overlay */}
@@ -99,7 +85,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 };

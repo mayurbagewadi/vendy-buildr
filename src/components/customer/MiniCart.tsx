@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,29 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
-import { supabase } from "@/integrations/supabase/client";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
+import { useStorefront } from "@/contexts/StoreContext";
 
 const MiniCart = () => {
   const { cart, cartCount, cartTotal, removeItem } = useCart();
-  const [storeSlug, setStoreSlug] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    // Get store slug from cart items
-    if (cart.length > 0 && cart[0].storeId) {
-      const fetchStoreSlug = async () => {
-        const { data } = await supabase
-          .from("stores")
-          .select("slug")
-          .eq("id", cart[0].storeId)
-          .maybeSingle();
-        if (data) {
-          setStoreSlug(data.slug);
-        }
-      };
-      fetchStoreSlug();
-    }
-  }, [cart]);
+  const { storeSlug } = useStorefront();
 
   // Check if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
