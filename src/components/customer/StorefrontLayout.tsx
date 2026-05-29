@@ -1,5 +1,6 @@
 import { Outlet, useParams } from 'react-router-dom';
-import { StoreProvider } from '@/contexts/StoreContext';
+import { StoreProvider, useStorefront } from '@/contexts/StoreContext';
+import { useAIDesignCSS } from '@/hooks/useAIDesignCSS';
 
 interface StorefrontLayoutProps {
   // Provided by App.tsx for subdomain/custom-domain routes where the slug
@@ -13,9 +14,16 @@ const StorefrontLayout = ({ slug: slugProp }: StorefrontLayoutProps = {}) => {
 
   return (
     <StoreProvider slug={slug}>
+      <StorefrontDesignLoader />
       <Outlet />
     </StoreProvider>
   );
+};
+
+const StorefrontDesignLoader = () => {
+  const { storeId, storeSlug } = useStorefront();
+  useAIDesignCSS(storeId, storeSlug);
+  return null;
 };
 
 export default StorefrontLayout;

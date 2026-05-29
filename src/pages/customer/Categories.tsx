@@ -17,6 +17,11 @@ interface Category {
   productCount?: number;
 }
 
+interface CategoryProductCount {
+  category: string;
+  product_count: number;
+}
+
 // Demo categories with images (fallback)
 const DEMO_CATEGORIES: Category[] = [
   {
@@ -70,6 +75,38 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const [storeName, setStoreName] = useState<string>("Store");
   const [storeFullData, setStoreFullData] = useState<any>(null);
   const [storeProfileData, setStoreProfileData] = useState<any>(null);
+
+  const loadCategoryCounts = async (storeIdToUse: string): Promise<Map<string, number>> => {
+    const { data: rpcCounts, error: rpcError } = await (supabase as any)
+      .rpc("get_category_product_counts", { p_store_id: storeIdToUse });
+
+    if (!rpcError && rpcCounts) {
+      return new Map(
+        (rpcCounts as CategoryProductCount[]).map((row) => [
+          row.category,
+          Number(row.product_count) || 0,
+        ])
+      );
+    }
+
+    // Fallback keeps production working until the RPC migration is deployed.
+    const { data: productsData, error: productsError } = await supabase
+      .from("products")
+      .select("category")
+      .eq("store_id", storeIdToUse)
+      .eq("status", "published")
+      .not("category", "is", null);
+
+    if (productsError) throw productsError;
+
+    const counts = new Map<string, number>();
+    for (const product of productsData || []) {
+      const category = product.category;
+      if (!category) continue;
+      counts.set(category, (counts.get(category) || 0) + 1);
+    }
+    return counts;
+  };
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -148,29 +185,14 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
             if (categoriesError) throw categoriesError;
 
-            // Fetch product counts for each category
-            const categoriesWithCounts: Category[] = await Promise.all(
-              (categoriesData || []).map(async (cat: any) => {
-                const { count, error } = await supabase
-                  .from("products")
-                  .select("*", { count: "exact", head: true })
-                  .eq("store_id", storeIdToUse)
-                  .eq("category", cat.name)
-                  .eq("status", "published");
-
-                console.log(`Category "${cat.name}": ${count} products`, { error });
-
-                return {
-                  id: cat.id,
-                  name: cat.name,
-                  image_url: cat.image_url,
-                  store_id: cat.store_id,
-                  productCount: count || 0
-                };
-              })
-            );
-
-            console.log("Categories with counts:", categoriesWithCounts);
+            const productCounts = await loadCategoryCounts(storeIdToUse);
+            const categoriesWithCounts: Category[] = (categoriesData || []).map((cat: any) => ({
+              id: cat.id,
+              name: cat.name,
+              image_url: cat.image_url,
+              store_id: cat.store_id,
+              productCount: productCounts.get(cat.name) || 0,
+            }));
 
             setCategories(categoriesWithCounts.length > 0 ? categoriesWithCounts : DEMO_CATEGORIES);
           } catch (err) {
