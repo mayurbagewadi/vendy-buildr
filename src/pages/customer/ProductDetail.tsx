@@ -82,6 +82,9 @@ const isProductAvailableForSeo = (product: Product) => {
   return !isZeroStock(product.stock);
 };
 
+const COLLAPSED_DESCRIPTION_HEIGHT = 96;
+const COLLAPSED_DESCRIPTION_CHARACTER_LIMIT = 280;
+
 const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   // Handle both route patterns:
   // 1. SUBDOMAIN: /products/:slug (with slugProp from App.tsx containing storeIdentifier)
@@ -113,15 +116,22 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const [product, setProduct] = useState<Product | null>(null);
   const mainImageRef = useRef<HTMLImageElement>(null);
   const variantSectionRef = useRef<HTMLDivElement>(null);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [productLoading, setProductLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
 
   // Combined loading: wait for context + product data
   const loading = storeLoading || productLoading;
+  const shouldLimitDescriptionByLength =
+    (product?.description?.length ?? 0) > COLLAPSED_DESCRIPTION_CHARACTER_LIMIT;
+  const shouldShowDescriptionToggle = shouldLimitDescriptionByLength || isDescriptionOverflowing;
+  const shouldCollapseDescription = shouldShowDescriptionToggle && !isDescriptionExpanded;
 
   // Determine if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
@@ -219,6 +229,40 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       variantSectionRef.current.classList.remove('animate-pulse');
     }
   }, [selectedVariant]);
+
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
+  }, [product?.id]);
+
+  useEffect(() => {
+    const descriptionElement = descriptionRef.current;
+    if (!descriptionElement) return;
+
+    const updateOverflowState = () => {
+      setIsDescriptionOverflowing(
+        descriptionElement.scrollHeight > COLLAPSED_DESCRIPTION_HEIGHT + 1
+      );
+    };
+
+    updateOverflowState();
+
+    const animationFrameId = window.requestAnimationFrame(updateOverflowState);
+    const timeoutId = window.setTimeout(updateOverflowState, 100);
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateOverflowState)
+      : null;
+
+    resizeObserver?.observe(descriptionElement);
+    window.addEventListener("resize", updateOverflowState);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      window.clearTimeout(timeoutId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateOverflowState);
+    };
+  }, [product?.description]);
 
   // SEO: Add structured data for product page (Product Schema + Organization Schema + Breadcrumbs)
   useSEOProduct(
@@ -694,7 +738,37 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 {isOutOfStock && <Badge variant="destructive">Out of Stock</Badge>}
               </div>
               <h1 data-ai="product-name" className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
-              <p data-ai="product-description" className="text-muted-foreground">{product.description}</p>
+              <div className="relative">
+                <p
+                  ref={descriptionRef}
+                  id="product-description-text"
+                  data-ai="product-description"
+                  className={`text-muted-foreground whitespace-pre-wrap break-words ${
+                    shouldCollapseDescription
+                      ? "max-h-24 overflow-hidden"
+                      : ""
+                  }`}
+                >
+                  {product.description}
+                </p>
+                {shouldCollapseDescription && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent"
+                  />
+                )}
+              </div>
+              {shouldShowDescriptionToggle && (
+                <button
+                  type="button"
+                  aria-controls="product-description-text"
+                  aria-expanded={isDescriptionExpanded}
+                  onClick={() => setIsDescriptionExpanded((expanded) => !expanded)}
+                  className="mt-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {isDescriptionExpanded ? "Show less" : "Read more"}
+                </button>
+              )}
             </div>
 
             {/* Variant Selection */}
