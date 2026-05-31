@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component, ReactNode } from "react";
+import { lazy, Suspense, Component, ReactNode, useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
@@ -72,6 +72,37 @@ const StorefrontNotFound = () => (
 
 const queryClient = new QueryClient();
 
+const ClarityAnalytics = () => {
+  useEffect(() => {
+    const inject = () => {
+      if ((window as any).clarity) return;
+      (function (c: any, l: any, a: string, r: string, i: string) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        const t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+        const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+      })(window, document, "clarity", "script", "wimnj0f7x4");
+    };
+
+    const schedule = () => {
+      if ("requestIdleCallback" in window) {
+        (window as any).requestIdleCallback(inject, { timeout: 4000 });
+      } else {
+        setTimeout(inject, 3000);
+      }
+    };
+
+    if (document.readyState === "complete") {
+      schedule();
+    } else {
+      window.addEventListener("load", schedule, { once: true });
+    }
+
+    return () => window.removeEventListener("load", schedule);
+  }, []);
+
+  return null;
+};
+
 const StorefrontRoutes = () => {
   const domainInfo = detectDomain();
   const storeIdentifier = getStoreIdentifier();
@@ -122,6 +153,7 @@ const StorefrontApp = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ClarityAnalytics />
               <ScrollToTop />
               <ChunkErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
