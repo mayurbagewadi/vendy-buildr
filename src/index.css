@@ -274,12 +274,42 @@
     animation: gradient-shift 8s ease infinite;
   }
 
+  .animate-audio-pulse {
+    animation: audio-pulse 1.45s ease-out infinite;
+  }
+
+  .animate-card-enter {
+    animation: card-enter 0.28s ease-out both;
+  }
+
   @keyframes gradient-shift {
     0%, 100% {
       background-position: 0% 50%;
     }
     50% {
       background-position: 100% 50%;
+    }
+  }
+
+  @keyframes audio-pulse {
+    0% {
+      opacity: 0.35;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.55);
+    }
+  }
+
+  @keyframes card-enter {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 

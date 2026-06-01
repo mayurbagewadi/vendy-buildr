@@ -475,7 +475,7 @@ const Index = () => {
       </Helmet>
 
       {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
+      <header className="border-b border-border/50 bg-background sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-3 sm:gap-4 group flex-shrink-0" aria-label="DigitalDukandar Home">
             <AppLogo size={40} className="transition-transform group-hover:scale-105" />
@@ -607,17 +607,21 @@ const Index = () => {
       {/* Hero Section */}
       <section ref={heroRef} className="relative overflow-hidden bg-gradient-to-b from-background via-primary/[0.02] to-background">
         {/* Floating Particles */}
-        <FloatingParticles />
+        <div className="hidden md:block">
+          <FloatingParticles />
+        </div>
 
         {/* Gradient Blobs - Multiple layers for depth */}
-        <GradientBlob color="blue" size="md" position={{ top: '-10%', right: '0%' }} />
-        <GradientBlob color="purple" size="sm" position={{ bottom: '-5%', left: '0%' }} />
-        <GradientBlob color="pink" size="sm" position={{ top: '30%', left: 'calc(50% - 100px)' }} />
+        <div className="hidden md:block">
+          <GradientBlob color="blue" size="md" position={{ top: '-10%', right: '0%' }} />
+          <GradientBlob color="purple" size="sm" position={{ bottom: '-5%', left: '0%' }} />
+          <GradientBlob color="pink" size="sm" position={{ top: '30%', left: 'calc(50% - 100px)' }} />
+        </div>
 
         {/* Decorative Elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="hero-decorative absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
-        <div className="hero-decorative absolute bottom-0 left-0 w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-3xl opacity-20" />
+        <div className="hero-decorative hidden md:block absolute top-0 right-0 w-64 h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-2xl opacity-20" />
+        <div className="hero-decorative hidden md:block absolute bottom-0 left-0 w-64 h-64 lg:w-96 lg:h-96 bg-primary/10 rounded-full blur-2xl opacity-20" />
         
         <div className="container relative mx-auto px-4 lg:px-8 py-24 lg:py-36">
           <div className="max-w-5xl mx-auto text-center">
@@ -754,16 +758,16 @@ const Index = () => {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className={`feature-card relative p-6 lg:p-8 hover:shadow-2xl transition-all duration-700 border-0 bg-gradient-to-br from-card to-card/50 backdrop-blur group overflow-hidden hover:-translate-y-2 hover:scale-[1.02]`}
+                className={`feature-card relative p-6 lg:p-8 hover:shadow-lg transition-[transform,box-shadow] duration-500 border-0 bg-gradient-to-br from-card to-card/50 group overflow-hidden hover:-translate-y-2 hover:scale-[1.02]`}
                 style={{
                   animationDelay: `${index * 50}ms`
                 }}
               >
                 {/* Animated gradient overlay - 50% without hover, 100% with hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-20 transition-all duration-700`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-20 transition-opacity duration-500`} />
 
                 {/* Animated border glow - 50% without hover, 100% with hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-20 blur-xl transition-all duration-700`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-5 group-hover:opacity-15 blur-md transition-opacity duration-500`} />
 
                 {/* Decorative corner accent */}
                 <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${feature.gradient} opacity-5 rounded-bl-[100px] group-hover:opacity-10 transition-opacity duration-500`} />
@@ -781,14 +785,14 @@ const Index = () => {
                   {/* Icon with animated background - reduced glow by 50% */}
                   <div className="mb-4 lg:mb-6">
                     <div className={`relative inline-block`}>
-                      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-sm opacity-20 group-hover:blur-md group-hover:opacity-30 transition-all duration-500`} />
+                      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-sm opacity-20 group-hover:opacity-30 transition-opacity duration-500`} />
                       <div className={`relative w-14 h-14 lg:w-16 lg:h-16 ${
                         (feature as any).customIconSrc
                           ? (feature as any).iconNoBg
                             ? 'overflow-hidden'
                             : 'bg-white p-2.5'
                           : `bg-gradient-to-br ${feature.gradient}`
-                      } rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                      } rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
                         {(feature as any).customIconSrc ? (
                           <img
                             src={(feature as any).customIconSrc}
