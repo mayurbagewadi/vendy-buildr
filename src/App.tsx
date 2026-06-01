@@ -13,9 +13,9 @@ import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 
 // ─── Static imports (critical path — must load immediately) ───────────────────
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import StorefrontLayout from "./components/customer/StorefrontLayout";
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
+const StorefrontLayout = lazy(() => import("./components/customer/StorefrontLayout"));
 
 // ─── Store frontend — lazy (never needed on main platform landing page) ────────
 const Store           = lazy(() => import("./pages/customer/Store"));
@@ -26,10 +26,14 @@ const Checkout        = lazy(() => import("./pages/customer/Checkout"));
 const PaymentSuccess  = lazy(() => import("./pages/customer/PaymentSuccess"));
 
 // Guard + Layout components — always static (they're wrappers, not pages)
-import { SuperAdminGuard } from "./components/superadmin/SuperAdminGuard";
-import SuperAdminLayout from "./components/superadmin/SuperAdminLayout";
-import { StoreGuard } from "./components/admin/StoreGuard";
-import AdminLayout from "./components/admin/AdminLayout";
+const SuperAdminGuard = lazy(() =>
+  import("./components/superadmin/SuperAdminGuard").then(module => ({ default: module.SuperAdminGuard }))
+);
+const SuperAdminLayout = lazy(() => import("./components/superadmin/SuperAdminLayout"));
+const StoreGuard = lazy(() =>
+  import("./components/admin/StoreGuard").then(module => ({ default: module.StoreGuard }))
+);
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 
 // ─── Lazy imports (non-critical — loaded only when navigated to) ───────────────
 const AdminDashboard            = lazy(() => import("./pages/admin/Dashboard"));
