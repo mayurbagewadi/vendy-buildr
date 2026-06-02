@@ -102,6 +102,11 @@ interface Category {
   store_id: string;
 }
 
+interface CategoryProductCount {
+  category: string;
+  product_count: number;
+}
+
 interface StoreProps {
   slug?: string;
 }
@@ -136,9 +141,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     queryKey: ['store-page', ctxStore?.id],
     queryFn: async () => {
       const storeId = ctxStore!.id;
-      const [categoriesResult, products, designResult] = await Promise.all([
+      const [categoriesResult, products, categoryCountsResult, designResult] = await Promise.all([
         supabase.from('categories').select('*').eq('store_id', storeId).order('name'),
         getPublishedProducts(storeId, 16),
+        (supabase as any).rpc('get_category_product_counts', { p_store_id: storeId }),
         supabase
           .from('store_design_state')
           .select('current_design, ai_full_css, mode')
@@ -148,6 +154,14 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
       return {
         categories: (categoriesResult.data ?? []) as Category[],
         products:   products as Product[],
+        categoryCounts: !categoryCountsResult.error && categoryCountsResult.data
+          ? new Map(
+              (categoryCountsResult.data as CategoryProductCount[]).map((row) => [
+                row.category,
+                Number(row.product_count) || 0,
+              ])
+            )
+          : new Map<string, number>(),
         design:     designResult.data ?? null,
       };
     },
@@ -162,6 +176,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   // Derive display data from query results (no separate state needed)
   const categories       = pageData?.categories ?? [];
   const products         = pageData?.products   ?? [];
+  const categoryCounts   = pageData?.categoryCounts ?? new Map<string, number>();
   const featuredProducts = products.slice(0, 16);
   const newArrivals      = [...products]
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
@@ -333,7 +348,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
               <div className="relative px-4">
                 <div ref={categoriesGridRef} className="flex gap-2 overflow-x-auto py-4 scrollbar-hide snap-x snap-mandatory px-4">
                   {categories.map((category, index) => {
-                    const productCount = products.filter(p => p.category === category.name && p.status === 'published').length;
+                    const productCount = categoryCounts.get(category.name) || 0;
                     return (
                       <div
                         key={category.id}
