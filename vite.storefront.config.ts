@@ -37,6 +37,12 @@ function copyStorefrontPublicAssets() {
         "User-agent: *\nAllow: /\n",
         "utf-8"
       );
+
+      const storefrontHtml = path.resolve(outDir, "storefront.html");
+      const indexHtml = path.resolve(outDir, "index.html");
+      if (existsSync(storefrontHtml)) {
+        copyFileSync(storefrontHtml, indexHtml);
+      }
     },
   };
 }
