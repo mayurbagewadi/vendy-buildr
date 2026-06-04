@@ -43,7 +43,19 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
   };
 
   return (
-    <div className="block p-2 cursor-pointer" data-ai="category-card" onClick={handleClick}>
+    <div
+      className="block p-2 cursor-pointer outline-none rounded-2xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      data-ai="category-card"
+      onClick={handleClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(categoryLink);
+        }
+      }}
+      role="link"
+      tabIndex={0}
+    >
       {/* ═══ CATEGORY CARD ═══
           Purpose: Individual category display in horizontal scrollable list
           Content: Category image, category name, product count badge
@@ -57,8 +69,8 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
             [data-ai="category-card-name"]           → category name text (font, size, color, weight)
             [data-ai="category-card-count"]          → product count text (font, size, color)
       */}
-      <div className="group h-full transition-transform duration-200 ease-out hover:-translate-y-2 hover:scale-[1.03] active:scale-95 will-change-transform">
-        <Card data-ai="category-card-inner" className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary transition-all duration-500 shadow-md hover:shadow-[0_5px_40px_-20px_rgba(0,0,0,0.4)] rounded-2xl">
+      <div className="group h-full motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.98]">
+        <Card data-ai="category-card-inner" className="relative h-full border-2 border-transparent bg-card/50 backdrop-blur-sm shadow-sm transition-[background-color,border-color,box-shadow] duration-200 hover:bg-card hover:border-primary/50 hover:shadow-md rounded-2xl">
           <CardContent className="p-0 relative">
             {/* Image Container with Gradient Overlay */}
             <div data-ai="category-card-image-container" className="relative aspect-square overflow-hidden rounded-xl">
@@ -66,18 +78,18 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
                 src={directImageUrl}
                 alt={generateCategoryImageAlt(name)}
                 data-ai="category-card-image"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-90 group-hover:brightness-100"
+                className="w-full h-full object-cover brightness-90 motion-safe:transition-[transform,filter] motion-safe:duration-300 motion-safe:group-hover:scale-[1.03] group-hover:brightness-100"
               />
               {/* Gradient Overlay */}
-              <div data-ai="category-card-overlay" className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-500" />
+              <div data-ai="category-card-overlay" className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-200" />
 
               {/* Category Name Overlay */}
-              <div className="absolute inset-x-0 bottom-0 p-3 transform translate-y-0 transition-transform duration-500">
-                <h3 data-ai="category-card-name" className="font-bold text-base md:text-lg text-foreground drop-shadow-lg transition-colors duration-300">
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <h3 data-ai="category-card-name" className="font-bold text-base md:text-lg text-foreground drop-shadow-lg transition-colors duration-200">
                   {name}
                 </h3>
                 {productCount !== undefined && (
-                  <p data-ai="category-card-count" className="text-xs text-muted-foreground mt-1 opacity-90 group-hover:text-primary transition-colors duration-300">
+                  <p data-ai="category-card-count" className="text-xs text-muted-foreground mt-1 opacity-90 group-hover:text-primary transition-colors duration-200">
                     {productCount} {productCount === 1 ? 'product' : 'products'}
                   </p>
                 )}
