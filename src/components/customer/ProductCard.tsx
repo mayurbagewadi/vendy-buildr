@@ -92,10 +92,18 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
   return (
     <div
       onClick={handleClick}
-      className="cursor-pointer w-[90%] mx-auto mb-6 transition-transform duration-200 ease-out hover:-translate-y-2 hover:scale-[1.03] active:scale-95 will-change-transform"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(productLink);
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      className="cursor-pointer w-[90%] mx-auto mb-6 outline-none motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.55rem]"
       data-ai="product-card"
     >
-      <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden !rounded-[1.55rem]">
+      <Card className="group overflow-hidden !rounded-[1.55rem] border-border/80 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-md">
         {/* ═══ PRODUCT CARD ═══
             Purpose: Individual product display card in grid/list
             Content: Product image, category tag, name, price, "View Details" button
@@ -111,7 +119,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
                 storeName: storeSlug,
                 category: category || undefined
               })}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-[1.02]"
             />
             {discountPct > 0 && (
               <div className="absolute top-2 left-2 bg-badge text-badge-foreground text-xs font-bold px-2 py-1 rounded-md">
@@ -131,7 +139,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
         </CardContent>
         <CardContent className="p-3">
           <p className="text-xs text-muted-foreground mb-1">{category}</p>
-          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
+          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors duration-200 line-clamp-2">
             {name}
           </h3>
           {singleDiscount > 0 && sellingPrice && activeOfferPrice ? (
