@@ -13,14 +13,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { LocationPicker } from "@/components/customer/LocationPicker";
-import { getAvailablePaymentMethods, PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment";
-import { openRazorpayCheckout, createRazorpayOrder, verifyRazorpayPayment, markRazorpayPaymentFailed } from "@/lib/payment/razorpay";
-import { initiatePhonePePayment, verifyPhonePePayment } from "@/lib/payment/phonepe";
+import { getAvailablePaymentMethods } from "@/lib/payment/methods";
+import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/types";
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
 import {
@@ -197,6 +195,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   }) => {
     try {
       setIsProcessingPayment(true);
+      const {
+        openRazorpayCheckout,
+        createRazorpayOrder,
+        verifyRazorpayPayment,
+        markRazorpayPaymentFailed,
+      } = await import("@/lib/payment/razorpay");
 
       if (!paymentCredentials.razorpay?.key_id) {
         showModal(
@@ -372,6 +376,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   }) => {
     try {
       setIsProcessingPayment(true);
+      const { initiatePhonePePayment } = await import("@/lib/payment/phonepe");
 
       const storeId = cart[0]?.storeId;
       if (!storeId) {
@@ -1375,14 +1380,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                           <div className="flex items-center gap-2">
                             <Label className="text-base font-medium">Share Your Location</Label>
                             {forceLocationSharing ? (
-                              <motion.span
-                                className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary border border-primary/20"
-                                initial={{ scale: 0, x: -10 }}
-                                animate={{ scale: 1, x: 0 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                              >
+                              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
                                 Required
-                              </motion.span>
+                              </span>
                             ) : (
                               <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
                                 Optional
@@ -1404,38 +1404,23 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                             enabled={locationEnabled}
                           />
 
-                          <AnimatePresence mode="wait">
-                            {location && (
-                              <motion.div
-                                className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md"
-                                initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.8, y: -10 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                              >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                Location captured successfully
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                          {location && (
+                            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Location captured successfully
+                            </div>
+                          )}
 
-                          <AnimatePresence>
-                            {locationError && !location && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20"
-                              >
-                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                Please share your location to continue - it's required for delivery
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                          {locationError && !location && (
+                            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              Please share your location to continue - it's required for delivery
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1453,13 +1438,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     ) : (
                       <div className="space-y-3">
                         {paymentMethods.map((method) => (
-                          <motion.div
+                          <div
                             data-ai="payment-option"
                             key={method.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
                             className={`relative cursor-pointer rounded-xl border-2 transition-all duration-300 overflow-hidden ${
                               selectedPaymentMethod === method.id
                                 ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/20'
@@ -1509,12 +1490,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                                     : 'border-muted-foreground/30 hover:border-primary/50'
                                 }`}>
                                   {selectedPaymentMethod === method.id && (
-                                    <motion.div
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                                      className="w-3 h-3 rounded-full bg-white"
-                                    />
+                                    <div className="w-3 h-3 rounded-full bg-white" />
                                   )}
                                 </div>
                               </div>
@@ -1522,26 +1498,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                             {/* Selected indicator glow */}
                             {selectedPaymentMethod === method.id && (
-                              <motion.div
-                                layoutId="payment-indicator"
-                                className="absolute inset-0 rounded-xl border-2 border-primary pointer-events-none"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                              />
+                              <div className="absolute inset-0 rounded-xl border-2 border-primary pointer-events-none" />
                             )}
-                          </motion.div>
+                          </div>
                         ))}
                       </div>
                     )}
 
                     {/* Payment info */}
                     {selectedPaymentMethod && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-4 p-3 bg-accent/50 rounded-lg border border-border"
-                      >
+                      <div className="mt-4 p-3 bg-accent/50 rounded-lg border border-border">
                         <div className="flex items-start gap-2 text-sm">
                           <svg className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -1551,7 +1517,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                             {(selectedPaymentMethod === 'razorpay' || selectedPaymentMethod === 'phonepe') && 'Your payment is secure and encrypted. Complete payment to confirm your order.'}
                           </span>
                         </div>
-                      </motion.div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
