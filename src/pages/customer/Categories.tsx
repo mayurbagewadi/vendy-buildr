@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
 import StoreFooter from "@/components/customer/StoreFooter";
@@ -7,6 +7,7 @@ import CategoryCard from "@/components/customer/CategoryCard";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { useStorefront } from "@/contexts/StoreContext";
 
 interface Category {
   id: string;
@@ -69,12 +70,8 @@ interface CategoriesProps {
 const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string>("Store");
-  const [storeFullData, setStoreFullData] = useState<any>(null);
-  const [storeProfileData, setStoreProfileData] = useState<any>(null);
+  const { store, profile, loading: storeLoading } = useStorefront();
+  const storeAny = store as any;
 
   const loadCategoryCounts = async (storeIdToUse: string): Promise<Map<string, number>> => {
     const { data: rpcCounts, error: rpcError } = await (supabase as any)
@@ -108,117 +105,51 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
     return counts;
   };
 
-  useEffect(() => {
-    const loadCategories = async () => {
+  const {
+    data: categories = DEMO_CATEGORIES,
+    isLoading: categoriesLoading,
+  } = useQuery({
+    queryKey: ["store-categories", store?.id],
+    queryFn: async () => {
       try {
-        setLoading(true);
+        const storeIdToUse = store!.id;
+        const [categoriesResult, productCounts] = await Promise.all([
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("store_id", storeIdToUse)
+            .order("created_at", { ascending: true }),
+          loadCategoryCounts(storeIdToUse),
+        ]);
 
-        let storeIdToUse: string | null = null;
+        if (categoriesResult.error) throw categoriesResult.error;
 
-        // Fetch store data if accessing via /:slug/categories
-        if (slug) {
-          const normalizedSlug = (slug || '').toLowerCase();
-          let storeQuery = supabase.from("stores").select("id, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id").eq("is_active", true);
-          if (normalizedSlug.includes('.')) {
-            storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-          } else {
-            storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-          }
-          const { data: storeResults } = await storeQuery.limit(1);
-          const storeData = storeResults?.[0] ?? null;
+        const categoriesWithCounts: Category[] = (categoriesResult.data || []).map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          image_url: cat.image_url,
+          store_id: cat.store_id,
+          productCount: productCounts.get(cat.name) || 0,
+        }));
 
-          if (storeData) {
-            storeIdToUse = storeData.id;
-            setStoreId(storeData.id);
-            setStoreName(storeData.name);
-            setStoreFullData(storeData);
-            if (storeData.user_id) {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("phone, email")
-                .eq("user_id", storeData.user_id)
-                .maybeSingle();
-              if (profile) setStoreProfileData(profile);
-            }
-          } else {
-            // Store not found, use demo categories
-            setCategories(DEMO_CATEGORIES);
-            setLoading(false);
-            return;
-          }
-        } else {
-          // If no slug, fetch the current user's store
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: storeData } = await supabase
-              .from("stores")
-              .select("id, name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
-              .eq("user_id", user.id)
-              .eq("is_active", true)
-              .maybeSingle();
-
-            if (storeData) {
-              storeIdToUse = storeData.id;
-              setStoreId(storeData.id);
-              setStoreName(storeData.name);
-              setStoreFullData(storeData);
-              if (storeData.user_id) {
-                const { data: profile } = await supabase
-                  .from("profiles")
-                  .select("phone, email")
-                  .eq("user_id", storeData.user_id)
-                  .maybeSingle();
-                if (profile) setStoreProfileData(profile);
-              }
-            }
-          }
-        }
-
-        if (storeIdToUse) {
-          try {
-            // Fetch categories
-            const { data: categoriesData, error: categoriesError } = await supabase
-              .from("categories")
-              .select("*")
-              .eq("store_id", storeIdToUse)
-              .order("created_at", { ascending: true });
-
-            if (categoriesError) throw categoriesError;
-
-            const productCounts = await loadCategoryCounts(storeIdToUse);
-            const categoriesWithCounts: Category[] = (categoriesData || []).map((cat: any) => ({
-              id: cat.id,
-              name: cat.name,
-              image_url: cat.image_url,
-              store_id: cat.store_id,
-              productCount: productCounts.get(cat.name) || 0,
-            }));
-
-            setCategories(categoriesWithCounts.length > 0 ? categoriesWithCounts : DEMO_CATEGORIES);
-          } catch (err) {
-            console.error("Error fetching categories:", err);
-            setCategories(DEMO_CATEGORIES);
-          }
-        } else {
-          // No store found, use demo categories
-          setCategories(DEMO_CATEGORIES);
-        }
+        return categoriesWithCounts.length > 0 ? categoriesWithCounts : DEMO_CATEGORIES;
       } catch (err) {
         console.error("Error loading categories:", err);
-        // On error, show demo categories instead of error
-        setCategories(DEMO_CATEGORIES);
-      } finally {
-        setLoading(false);
+        return DEMO_CATEGORIES;
       }
-    };
+    },
+    enabled: !!store?.id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-    loadCategories();
-  }, [slug]);
+  const loading = storeLoading || categoriesLoading;
+  const storeName = storeAny?.name || "Store";
 
   if (loading) {
     return (
       <>
-        <Header storeSlug={slug} storeId={storeId} />
+        <Header storeSlug={slug} storeId={store?.id} />
         <div className="min-h-screen flex items-center justify-center">
           <LoadingSpinner size="lg" text="Loading categories..." />
         </div>
@@ -232,11 +163,11 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
       <SEOHead
         title={`Categories - ${storeName} | Browse Our Collections`}
         description={`Explore all product categories at ${storeName}. Find exactly what you're looking for in our organized collections.`}
-        canonical={getStoreCanonicalUrl(slug || '', null, null)}
+        canonical={`${getStoreCanonicalUrl(storeAny?.slug || slug || '', storeAny?.subdomain, storeAny?.custom_domain)}/categories`}
         keywords={categories.map(c => c.name).concat([storeName, 'categories', 'shop by category'])}
         type="website"
       />
-      <Header storeSlug={slug} storeId={storeId} />
+      <Header storeSlug={slug} storeId={store?.id} />
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -269,18 +200,18 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
       <StoreFooter
         storeName={storeName}
-        storeDescription={storeFullData?.description}
-        whatsappNumber={storeFullData?.whatsapp_number}
-        phone={storeProfileData?.phone}
-        email={storeProfileData?.email}
-        address={storeFullData?.address}
-        facebookUrl={storeFullData?.facebook_url}
-        instagramUrl={storeFullData?.instagram_url}
-        twitterUrl={storeFullData?.twitter_url}
-        youtubeUrl={storeFullData?.youtube_url}
-        linkedinUrl={storeFullData?.linkedin_url}
-        socialLinks={storeFullData?.social_links}
-        policies={storeFullData?.policies}
+        storeDescription={storeAny?.description}
+        whatsappNumber={storeAny?.whatsapp_number}
+        phone={profile?.phone}
+        email={profile?.email}
+        address={storeAny?.address}
+        facebookUrl={storeAny?.facebook_url}
+        instagramUrl={storeAny?.instagram_url}
+        twitterUrl={storeAny?.twitter_url}
+        youtubeUrl={storeAny?.youtube_url}
+        linkedinUrl={storeAny?.linkedin_url}
+        socialLinks={storeAny?.social_links}
+        policies={storeAny?.policies}
       />
     </div>
   );
