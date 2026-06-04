@@ -1,11 +1,9 @@
-import { lazy, Suspense, Component, ReactNode, useEffect } from "react";
+import { lazy, Suspense, Component, ReactNode, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -21,6 +19,8 @@ const Checkout = lazy(() => import("@/pages/customer/Checkout"));
 const PaymentSuccess = lazy(() => import("@/pages/customer/PaymentSuccess"));
 const Policies = lazy(() => import("@/pages/customer/Policies"));
 const About = lazy(() => import("@/pages/customer/About"));
+const Toaster = lazy(() => import("@/components/ui/toaster").then((module) => ({ default: module.Toaster })));
+const Sonner = lazy(() => import("@/components/ui/sonner").then((module) => ({ default: module.Toaster })));
 
 const PageLoader = () => (
   <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "hsl(var(--background))" }}>
@@ -103,6 +103,31 @@ const ClarityAnalytics = () => {
   return null;
 };
 
+const DeferredToasters = () => {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const show = () => setReady(true);
+
+    if ("requestIdleCallback" in window) {
+      const idleId = (window as any).requestIdleCallback(show, { timeout: 3000 });
+      return () => (window as any).cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = window.setTimeout(show, 1500);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  if (!ready) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <Toaster />
+      <Sonner />
+    </Suspense>
+  );
+};
+
 const StorefrontRoutes = () => {
   const domainInfo = detectDomain();
   const storeIdentifier = getStoreIdentifier();
@@ -150,8 +175,7 @@ const StorefrontApp = () => (
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
         <TooltipProvider>
           <CartProvider>
-            <Toaster />
-            <Sonner />
+            <DeferredToasters />
             <BrowserRouter>
               <ClarityAnalytics />
               <ScrollToTop />
