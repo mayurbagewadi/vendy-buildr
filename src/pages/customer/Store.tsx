@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/customer/Header";
-import StoreFooter from "@/components/customer/StoreFooter";
 import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
-import InstagramReels from "@/components/customer/InstagramReels";
-import { GoogleReviewsSection } from "@/components/store/reviews";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
@@ -22,6 +19,14 @@ import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
+
+const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
+const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
+const GoogleReviewsSection = lazy(() =>
+  import("@/components/store/reviews").then((module) => ({
+    default: module.GoogleReviewsSection,
+  }))
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -425,11 +430,13 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         */}
         {store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage && (
           <section data-ai="section-reels">
-          <InstagramReels
-            storeId={store.id}
-            settings={store.instagram_reels_settings}
-            instagramUsername={store.instagram_username || undefined}
-          />
+            <Suspense fallback={null}>
+              <InstagramReels
+                storeId={store.id}
+                settings={store.instagram_reels_settings}
+                instagramUsername={store.instagram_username || undefined}
+              />
+            </Suspense>
           </section>
         )}
 
@@ -442,10 +449,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {store.google_reviews_enabled && (
           <section data-ai="section-reviews" className={`${sectionPy} bg-muted/30`}>
             <div className="container mx-auto px-4">
-              <GoogleReviewsSection
-                storeId={store.id}
-                autoPlay={true}
-              />
+              <Suspense fallback={null}>
+                <GoogleReviewsSection
+                  storeId={store.id}
+                  autoPlay={true}
+                />
+              </Suspense>
             </div>
           </section>
         )}
@@ -501,6 +510,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
       </main>
 
+      <Suspense fallback={null}>
       <StoreFooter
         storeName={store.name}
         storeDescription={store.description}
@@ -518,6 +528,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         socialLinks={store.social_links}
         policies={store.policies}
       />
+      </Suspense>
 
       {/* WhatsApp Float Button */}
       {store.whatsapp_float_enabled !== false && store.whatsapp_number && (

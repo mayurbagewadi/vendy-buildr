@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Search, Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import MiniCart from "@/components/customer/MiniCart";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AppLogo } from "@/components/ui/AppLogo";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +10,13 @@ import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { useStorefront } from "@/contexts/StoreContext";
+
+const MiniCart = lazy(() => import("@/components/customer/MiniCart"));
+const ThemeToggle = lazy(() =>
+  import("@/components/ui/theme-toggle").then((module) => ({
+    default: module.ThemeToggle,
+  }))
+);
 
 interface HeaderProps {
   storeSlug?: string;
@@ -185,8 +190,25 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
             >
               <Phone className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12 text-primary" />
             </Button>
-            <ThemeToggle />
-            <MiniCart />
+            <Suspense
+              fallback={
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-10 w-10 rounded-md border border-primary/60"
+                />
+              }
+            >
+              <ThemeToggle />
+            </Suspense>
+            <Suspense
+              fallback={
+                <Button variant="outline" size="icon" className="relative border-primary" disabled aria-label="Cart loading">
+                  <ShoppingCart className="w-4 h-4 text-primary" />
+                </Button>
+              }
+            >
+              <MiniCart />
+            </Suspense>
             
             <Button
               variant="ghost"
