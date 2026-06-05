@@ -647,7 +647,7 @@ const AdminSettings = () => {
           }
 
           try {
-            const compressed = await compressImage(processedFile, 1, 1600);
+            const compressed = await compressImage(processedFile, 0.7, 1600);
             console.log(`Banner optimized: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB WebP`);
             processedFile = compressed;
           } catch (compressError) {

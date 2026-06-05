@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { generateStoreImageAlt } from "@/lib/seo/altTags";
 import LazyImage from "@/components/ui/lazy-image";
@@ -23,11 +24,17 @@ const HeroBannerCarousel = ({
   logoUrl, 
   storeDescription 
 }: HeroBannerCarouselProps) => {
+  const [loadedBanners, setLoadedBanners] = useState<Record<number, boolean>>({});
+
   // Compute synchronously so the first render already has banner URLs —
   // this lets the browser preload scanner see fetchPriority="high" immediately
   const convertedBanners = bannerUrls
     .map(url => convertToDirectImageUrl(url) || url)
     .filter(Boolean);
+
+  const markBannerLoaded = (index: number) => {
+    setLoadedBanners(prev => ({ ...prev, [index]: true }));
+  };
 
   // If no banners, show gradient fallback
   if (!convertedBanners.length) {
@@ -68,7 +75,10 @@ const HeroBannerCarousel = ({
         <CarouselContent>
           {convertedBanners.map((bannerUrl, index) => (
             <CarouselItem key={index}>
-              <div className="relative h-[300px] md:h-[380px] lg:h-[450px]">
+              <div className="relative h-[300px] md:h-[380px] lg:h-[450px] overflow-hidden bg-muted">
+                {!loadedBanners[index] && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-muted via-muted/70 to-muted" />
+                )}
                 {index === 0 ? (
                   // First banner is LCP element — load eagerly with high priority
                   <img
@@ -78,10 +88,20 @@ const HeroBannerCarousel = ({
                       imageType: 'banner',
                       description: storeDescription || undefined
                     })}
-                    className="absolute inset-0 w-full h-full object-fill"
+                    className={`absolute inset-0 w-full h-full object-fill transition-opacity duration-500 ${
+                      loadedBanners[index] ? "opacity-100" : "opacity-0"
+                    }`}
                     loading="eager"
                     decoding="async"
                     fetchPriority="high"
+                    onLoad={(e) => {
+                      const image = e.currentTarget;
+                      if (image.decode) {
+                        image.decode().catch(() => undefined).finally(() => markBannerLoaded(index));
+                        return;
+                      }
+                      markBannerLoaded(index);
+                    }}
                     onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
                   />
                 ) : (
@@ -93,6 +113,9 @@ const HeroBannerCarousel = ({
                       description: storeDescription || undefined
                     })}
                     className="absolute inset-0 w-full h-full object-fill"
+                    priority={index === 1}
+                    preloadMargin="1200px 0px"
+                    onLoad={() => markBannerLoaded(index)}
                   />
                 )}
               </div>
