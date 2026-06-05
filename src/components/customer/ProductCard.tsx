@@ -22,9 +22,10 @@ interface ProductCardProps {
   images: string[];
   status: string;
   storeSlug?: string;
+  priorityImage?: boolean;
 }
 
-const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, stock, images, status, storeSlug }: ProductCardProps) => {
+const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePrice, base_price, offerPrice, offer_price, variants, stock, images, status, storeSlug, priorityImage = false }: ProductCardProps) => {
   const navigate = useNavigate();
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
@@ -120,6 +121,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
                 category: category || undefined
               })}
               className="w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-[1.02]"
+              priority={priorityImage}
             />
             {discountPct > 0 && (
               <div className="absolute top-2 left-2 bg-badge text-badge-foreground text-xs font-bold px-2 py-1 rounded-md">

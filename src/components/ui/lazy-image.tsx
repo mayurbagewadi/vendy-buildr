@@ -7,18 +7,33 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   alt: string;
   className?: string;
   fallback?: string;
+  priority?: boolean;
+  preloadMargin?: string;
 }
 
-const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...props }: LazyImageProps) => {
-  const [imageSrc, setImageSrc] = useState<string>(fallback);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInView, setIsInView] = useState(false);
+const LazyImage = ({
+  src,
+  alt,
+  className,
+  fallback = "/placeholder.svg",
+  priority = false,
+  preloadMargin = "900px 0px",
+  ...props
+}: LazyImageProps) => {
+  const directSrc = convertToDirectImageUrl(src) || src;
+  const [imageSrc, setImageSrc] = useState<string>(priority ? directSrc : fallback);
+  const [isLoading, setIsLoading] = useState(!priority);
+  const [isInView, setIsInView] = useState(priority);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Convert Google Drive share links to direct image URLs
-  const directSrc = convertToDirectImageUrl(src) || src;
-
   useEffect(() => {
+    if (priority) {
+      setImageSrc(directSrc);
+      setIsLoading(false);
+      setIsInView(true);
+      return;
+    }
+
     if (!imgRef.current) return;
 
     const observer = new IntersectionObserver(
@@ -31,7 +46,7 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
         });
       },
       {
-        rootMargin: "50px",
+        rootMargin: preloadMargin,
       }
     );
 
@@ -40,10 +55,11 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [directSrc, fallback, preloadMargin, priority]);
 
   useEffect(() => {
     if (!isInView) return;
+    if (priority) return;
 
     const img = new Image();
     img.src = directSrc;
@@ -69,7 +85,7 @@ const LazyImage = ({ src, alt, className, fallback = "/placeholder.svg", ...prop
         isLoading ? "opacity-50" : "opacity-100",
         className
       )}
-      loading="lazy"
+      loading={priority ? "eager" : "lazy"}
       decoding="async"
       {...props}
     />

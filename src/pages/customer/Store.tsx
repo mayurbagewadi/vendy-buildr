@@ -398,7 +398,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             </AnimateOnScroll>
             {featuredProducts.length > 0 ? (
               <div ref={featuredProductsGridRef} className={gridColsClass}>
-                {featuredProducts.map((product) => (
+                {featuredProducts.map((product, index) => (
                   <ProductCard
                     key={product.id}
                     id={product.id}
@@ -413,6 +413,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
+                    priorityImage={index < 4}
                   />
                 ))}
               </div>
