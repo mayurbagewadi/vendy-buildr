@@ -1,0 +1,81 @@
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import Header from "@/components/customer/Header";
+import StoreFooter from "@/components/customer/StoreFooter";
+import { useStorefront } from "@/contexts/StoreContext";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
+
+const About = () => {
+  const { store, profile, storeSlug, loading } = useStorefront();
+  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!store) return null;
+
+  const backLink = isStoreSpecificDomain() ? "/" : `/${storeSlug}`;
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+
+      <main className="container mx-auto mt-16 flex-1 px-4 py-8">
+        <Button variant="ghost" onClick={() => navigate(backLink)} className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Store
+        </Button>
+
+        <div className="mx-auto max-w-4xl space-y-8">
+          <div>
+            <h1 className="mb-2 text-4xl font-bold text-foreground">About {store.name}</h1>
+            <p className="text-muted-foreground">Learn more about this store and its story</p>
+          </div>
+
+          <section className="rounded-lg border border-border bg-card p-6">
+            {store.description ? (
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                {store.description}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                <Info className="h-10 w-10 text-muted-foreground/40" />
+                <p className="font-medium text-muted-foreground">
+                  This store hasn't added an About Us description yet.
+                </p>
+                <p className="text-sm text-muted-foreground/60">
+                  Check back later for more information about {store.name}.
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+
+      <StoreFooter
+        storeName={store.name}
+        storeDescription={store.description}
+        whatsappNumber={store.whatsapp_number}
+        phone={profile?.phone}
+        email={profile?.email}
+        address={store.address}
+        facebookUrl={store.facebook_url}
+        instagramUrl={store.instagram_url}
+        twitterUrl={store.twitter_url}
+        youtubeUrl={store.youtube_url}
+        linkedinUrl={store.linkedin_url}
+        socialLinks={store.social_links as any}
+        policies={store.policies as any}
+      />
+    </div>
+  );
+};
+
+export default About;
