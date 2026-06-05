@@ -6,6 +6,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Vendy-Buildr is a multi-tenant e-commerce platform built with React, TypeScript, and Vite. It supports multiple store types: admin dashboards (store owners), customer-facing storefronts, helper/referral system, and super-admin management. The platform uses Supabase for backend services and supports both subdomain-based (store.digitaldukandar.in) and path-based (digitaldukandar.in/store) routing.
 
+## Current Active Work Scope: New Storefront
+
+We are currently working on the **new storefront frontend**, not the old/customer storefront path unless explicitly requested.
+
+### New Storefront Purpose
+- Serves public customer stores for custom domains and store subdomains.
+- Must stay separated from admin, superadmin, helper, onboarding, and old platform UI work.
+- Focus areas: Shopify-level smoothness, storefront performance, image loading, cart/checkout UX, SEO, caching, and customer-facing speed.
+
+### New Storefront Build/Runtime Paths
+```text
+storefront.html                              # New storefront HTML entry
+src/storefront-main.tsx                      # New storefront React entry
+src/StorefrontApp.tsx                        # New storefront app/router, excludes admin/superadmin routes
+vite.storefront.config.ts                    # Dedicated storefront build config
+dist-storefront/                             # Generated storefront build output
+```
+
+### Shared Customer Source Paths
+```text
+src/pages/customer/                          # Shared customer storefront pages
+src/components/customer/                     # Shared customer UI components
+src/components/ui/lazy-image.tsx             # Shared image loading helper
+src/contexts/StoreContext.tsx                # Shared store/profile context
+```
+
+Important: `src/pages/customer/` and `src/components/customer/` are shared source folders. Do not call them new-storefront-only. A change here can affect both the new storefront build and old/path-based customer behavior unless the code path is verified.
+
+### Old/Full Platform Storefront Path
+```text
+index.html                                   # Full platform HTML entry
+src/main.tsx                                 # Full platform React entry
+src/App.tsx                                  # Full platform router with admin/superadmin and legacy/path-based customer routes
+vite.config.ts                               # Full platform build config
+dist/                                        # Generated full platform build output
+```
+
+### New Storefront Build
+```bash
+npm run build:storefront
+```
+
+This command builds the new storefront only. Use `npm run build` only when the full platform build is required.
+
+### Production Deployment Branches
+- Main development branch: `main`
+- Production branch/worktree: `production`
+- Production worktree path: `C:\Users\Administrator\Desktop\vendy-buildr-production`
+
+When a new storefront change is completed and approved for release:
+1. Commit and push on `main`.
+2. Cherry-pick the same commit into the `production` worktree.
+3. Run `npm run build:storefront` in production.
+4. Push `production`.
+
+### Do Not Touch Unless Explicitly Requested
+- Old platform landing/admin/superadmin work outside the storefront scope.
+- Google Drive upload behavior.
+- Existing admin/superadmin routes.
+- Checkout/payment logic unless the task is specifically about checkout/payment.
+- Nginx/server config unless the task is specifically routing/deployment.
+
+### New Storefront Debug Check
+The new storefront installs a lightweight runtime debug object only from `src/storefront-main.tsx`:
+
+```js
+window.__DD_STOREFRONT_DEBUG__
+```
+
+Manual browser check:
+```js
+window.__DD_STOREFRONT_DEBUG__.checkLoadedAssets()
+```
+
+Or enable console output with:
+```text
+?dd_storefront_debug=1
+```
+
+Expected result: `ok: true` and `suspiciousAssets: []`. This helps confirm admin/superadmin assets are not loaded in the new storefront runtime.
+
 ## Development Commands
 
 ### Setup & Running
@@ -13,6 +94,7 @@ Vendy-Buildr is a multi-tenant e-commerce platform built with React, TypeScript,
 npm install                          # Install dependencies
 npm run dev                          # Start dev server (localhost:8080)
 npm run build                        # Production build
+npm run build:storefront             # New storefront-only production build
 npm run build:dev                    # Development build
 npm run lint                         # Run ESLint on all files
 npm run preview                      # Preview production build locally
