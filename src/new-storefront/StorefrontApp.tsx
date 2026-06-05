@@ -12,7 +12,7 @@ import StorefrontLayout from "./StorefrontLayout";
 
 const Store = lazy(() => import("@/pages/customer/Store"));
 const CustomerProducts = lazy(() => import("./pages/Products"));
-const ProductDetail = lazy(() => import("@/pages/customer/ProductDetail"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const CustomerCategories = lazy(() => import("./pages/Categories"));
 const Cart = lazy(() => import("@/pages/customer/Cart"));
 const Checkout = lazy(() => import("@/pages/customer/Checkout"));
