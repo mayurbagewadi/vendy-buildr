@@ -7,8 +7,8 @@ import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import StorefrontLayout from "@/components/customer/StorefrontLayout";
 import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
+import StorefrontLayout from "./StorefrontLayout";
 
 const Store = lazy(() => import("@/pages/customer/Store"));
 const CustomerProducts = lazy(() => import("@/pages/customer/Products"));
