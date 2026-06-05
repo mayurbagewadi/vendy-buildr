@@ -68,25 +68,6 @@ When a new storefront change is completed and approved for release:
 - Checkout/payment logic unless the task is specifically about checkout/payment.
 - Nginx/server config unless the task is specifically routing/deployment.
 
-### New Storefront Debug Check
-The new storefront installs a lightweight runtime debug object only from `src/storefront-main.tsx`:
-
-```js
-window.__DD_STOREFRONT_DEBUG__
-```
-
-Manual browser check:
-```js
-window.__DD_STOREFRONT_DEBUG__.checkLoadedAssets()
-```
-
-Or enable console output with:
-```text
-?dd_storefront_debug=1
-```
-
-Expected result: `ok: true` and `suspiciousAssets: []`. This helps confirm admin/superadmin assets are not loaded in the new storefront runtime.
-
 ## Development Commands
 
 ### Setup & Running
