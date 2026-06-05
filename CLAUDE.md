@@ -20,6 +20,7 @@ We are currently working on the **new storefront frontend**, not the old/custome
 storefront.html                              # New storefront HTML entry
 src/new-storefront/main.tsx                  # New storefront React entry
 src/new-storefront/StorefrontApp.tsx         # New storefront app/router, excludes admin/superadmin routes
+src/new-storefront/StorefrontLayout.tsx      # New storefront layout/store context shell
 src/StorefrontApp.tsx                        # Legacy/shared storefront router retained during migration
 vite.storefront.config.ts                    # Dedicated storefront build config
 dist-storefront/                             # Generated storefront build output
@@ -35,7 +36,7 @@ src/contexts/StoreContext.tsx                # Shared store/profile context
 
 Important: `src/pages/customer/` and `src/components/customer/` are shared source folders. Do not call them new-storefront-only. A change here can affect both the new storefront build and old/path-based customer behavior unless the code path is verified.
 
-Migration status: `src/new-storefront/` owns the new storefront entry and router. Customer pages/components are still shared until a later migration phase.
+Migration status: `src/new-storefront/` owns the new storefront entry, router, and layout shell. Customer pages/components are still shared until a later migration phase.
 
 ### Old/Full Platform Storefront Path
 ```text
