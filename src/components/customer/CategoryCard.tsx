@@ -10,9 +10,10 @@ interface CategoryCardProps {
   image_url?: string | null;
   productCount?: number;
   slug?: string;
+  priorityImage?: boolean;
 }
 
-const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardProps) => {
+const CategoryCard = ({ name, image_url, productCount = 0, slug, priorityImage = false }: CategoryCardProps) => {
   const navigate = useNavigate();
 
   // On store-specific domains (subdomain/custom), don't include slug in URL
@@ -79,6 +80,7 @@ const CategoryCard = ({ name, image_url, productCount = 0, slug }: CategoryCardP
                 alt={generateCategoryImageAlt(name)}
                 data-ai="category-card-image"
                 className="w-full h-full object-cover brightness-90 motion-safe:transition-[transform,filter] motion-safe:duration-300 motion-safe:group-hover:scale-[1.03] group-hover:brightness-100"
+                priority={priorityImage}
               />
               {/* Gradient Overlay */}
               <div data-ai="category-card-overlay" className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-80 group-hover:opacity-70 transition-opacity duration-200" />

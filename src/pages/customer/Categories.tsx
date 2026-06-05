@@ -184,13 +184,14 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
             {/* Categories Grid */}
             <div data-ai="categories-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
-              {categories.map((category) => (
+              {categories.map((category, index) => (
                 <CategoryCard
                   key={category.id}
                   name={category.name}
                   image_url={category.image_url}
                   productCount={category.productCount}
                   slug={slug}
+                  priorityImage={index < 4}
                 />
               ))}
             </div>
