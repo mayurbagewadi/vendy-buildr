@@ -1,0 +1,1876 @@
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import Header from "@/components/customer/Header";
+import StoreFooter from "@/components/customer/StoreFooter";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
+import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
+import { LocationPicker } from "@/components/customer/LocationPicker";
+import { getAvailablePaymentMethods } from "@/lib/payment/methods";
+import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/types";
+import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
+import { type CartItem } from "@/lib/autoDiscountUtils";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const checkoutSchema = z.object({
+  fullName: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+  phone: z.string().trim().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit phone number"),
+  email: z.string().trim().email("Invalid email address").optional().or(z.literal("")),
+  address: z.string().trim().min(10, "Address must be at least 10 characters").max(200),
+  landmark: z.string().trim().max(100).optional(),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit PIN code"),
+  deliveryTime: z.enum(["morning", "evening", "anytime"], {
+    required_error: "Please select a delivery time",
+  }),
+});
+
+type CheckoutFormData = z.infer<typeof checkoutSchema>;
+
+interface CheckoutProps {
+  slug?: string;
+}
+
+const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
+  const { slug: slugParam } = useParams<{ slug?: string }>();
+  const slug = slugProp || slugParam;
+  const navigate = useNavigate();
+  const { cart, cartTotal, clearCart } = useCart();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [forceLocationSharing, setForceLocationSharing] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState(false);
+  const locationSectionRef = useRef<HTMLDivElement>(null);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
+  const [footerStore, setFooterStore] = useState<any>(null);
+  const [footerProfile, setFooterProfile] = useState<any>(null);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [notifModal, setNotifModal] = useState<{
+    open: boolean;
+    variant: 'error' | 'success' | 'warning';
+    title: string;
+    description: string;
+    primaryLabel?: string;
+    primaryAction?: () => void;
+    secondaryLabel?: string;
+    secondaryAction?: () => void;
+  }>({ open: false, variant: 'error', title: '', description: '' });
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [limitDetails, setLimitDetails] = useState<{
+    planName: string;
+    ordersUsed: number;
+    ordersLimit: number;
+    storeWhatsApp?: string;
+  } | null>(null);
+
+  // Payment-related state
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [paymentMode, setPaymentMode] = useState<'online_only' | 'online_and_cod'>('online_and_cod');
+  const [paymentCredentials, setPaymentCredentials] = useState<PaymentGatewayCredentials>({});
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Delivery fee state
+  const [deliveryMode, setDeliveryMode] = useState<'single' | 'multiple'>('single');
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
+  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
+  const [deliveryTiers, setDeliveryTiers] = useState<{ min: number; max: number | null; fee: number }[]>([]);
+
+  // Coupon-related state
+  const [couponCode, setCouponCode] = useState<string>('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string>('');
+
+  // Auto-discount related state
+  const [autoDiscountApplied, setAutoDiscountApplied] = useState<any>(null);
+  const [autoDiscountAmount, setAutoDiscountAmount] = useState<number>(0);
+  const [isLoadingAutoDiscount, setIsLoadingAutoDiscount] = useState(false);
+
+  const form = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: {
+      fullName: "",
+      phone: "",
+      email: "",
+      address: "",
+      landmark: "",
+      pincode: "",
+      deliveryTime: "anytime",
+    },
+  });
+
+  const showModal = (
+    variant: 'error' | 'success' | 'warning',
+    title: string,
+    description: string,
+    options?: {
+      primaryLabel?: string;
+      primaryAction?: () => void;
+      secondaryLabel?: string;
+      secondaryAction?: () => void;
+    }
+  ) => {
+    setNotifModal({ open: true, variant, title, description, ...options });
+  };
+
+  // Load payment settings from store
+  const loadPaymentSettings = async () => {
+    try {
+      if (cart.length === 0) return;
+
+      const storeId = cart[0].storeId;
+      const { data: store } = await supabase
+        .from('stores')
+        .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers')
+        .eq('id', storeId)
+        .maybeSingle();
+
+      if (store) {
+        const mode = (store.payment_mode as 'online_only' | 'online_and_cod') || 'online_and_cod';
+        const credentials = (store.payment_gateway_credentials as PaymentGatewayCredentials) || {};
+
+        setPaymentMode(mode);
+        setPaymentCredentials(credentials);
+
+        // Get available payment methods
+        const availableMethods = getAvailablePaymentMethods(credentials, mode);
+        setPaymentMethods(availableMethods);
+
+        // Set default payment method (first available)
+        if (availableMethods.length > 0) {
+          setSelectedPaymentMethod(availableMethods[0].id);
+        }
+
+        // Load delivery fee settings
+        setDeliveryMode((store.delivery_mode as 'single' | 'multiple') || 'single');
+        setDeliveryFeeAmount(store.delivery_fee_amount != null ? Number(store.delivery_fee_amount) : 0);
+        setFreeDeliveryAbove(store.free_delivery_above != null ? Number(store.free_delivery_above) : null);
+        setDeliveryTiers((store.delivery_tiers as { min: number; max: number | null; fee: number }[]) || []);
+      }
+    } catch (error) {
+      console.error('Error loading payment settings:', error);
+      // Default to COD if error
+      setPaymentMethods([{ id: 'cod', name: 'Cash on Delivery', icon: '💵', color: 'bg-gray-500', enabled: true }]);
+      setSelectedPaymentMethod('cod');
+    }
+  };
+
+  // Process Razorpay payment. The backend creates the draft order before Razorpay opens.
+  const processRazorpayPayment = async (params: {
+    orderNumber: string;
+    customerName: string;
+    customerEmail?: string;
+    customerPhone: string;
+    amount: number;           // client estimate — used only for fallback warning display
+    currency: string;
+    baseOrderRecord: Record<string, any>;
+    appliedCoupon: Coupon | null;
+    discountAmount: number;
+    storeId: string;
+    cartItems: { productId: string; quantity: number }[];
+    autoDiscountId?: string;
+  }) => {
+    try {
+      setIsProcessingPayment(true);
+      const {
+        openRazorpayCheckout,
+        createRazorpayOrder,
+        verifyRazorpayPayment,
+        markRazorpayPaymentFailed,
+      } = await import("@/lib/payment/razorpay");
+
+      if (!paymentCredentials.razorpay?.key_id) {
+        showModal(
+          'error',
+          'Online Payment Unavailable',
+          'This store has not configured online payment yet. Please use Cash on Delivery to place your order.',
+          {
+            primaryLabel: 'Use Cash on Delivery',
+            primaryAction: () => {
+              setSelectedPaymentMethod('cod');
+              setNotifModal(prev => ({ ...prev, open: false }));
+            },
+          }
+        );
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      // Step 1: Create Razorpay order server-side.
+      // Edge function fetches prices from DB, calculates all financials,
+      // and returns the server-verified total. Client amount is never used.
+      const {
+        orderId: razorpayOrderId,
+        dbOrderId,
+        verifiedTotal,
+        error: razorpayOrderError,
+      } = await createRazorpayOrder(
+        params.cartItems,
+        params.currency,
+        params.storeId,
+        params.appliedCoupon?.code,
+        params.autoDiscountId,
+        params.baseOrderRecord
+      );
+
+      if (razorpayOrderError) throw new Error(razorpayOrderError);
+      if (!dbOrderId) throw new Error('Could not start payment. Please try again.');
+      const paymentAttemptStartedAtMs = Date.now();
+      const paymentAttemptTrace = {
+        attemptId: `${dbOrderId}-${paymentAttemptStartedAtMs}`,
+        startedAt: new Date().toISOString(),
+        pagePath: window.location.pathname,
+        online: navigator.onLine,
+        visibilityState: document.visibilityState,
+        userAgent: navigator.userAgent,
+      };
+      const result = await openRazorpayCheckout(
+        {
+          orderId: razorpayOrderId,
+          orderNumber: params.orderNumber,
+          customerName: params.customerName,
+          customerEmail: params.customerEmail,
+          customerPhone: params.customerPhone,
+          amount: verifiedTotal,  // ← server-verified, not params.amount
+          currency: params.currency,
+        },
+        { key_id: paymentCredentials.razorpay.key_id },
+        {
+          onSuccess: async (response: any) => {
+            try {
+              const verification = await verifyRazorpayPayment(
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature,
+                params.storeId,
+                dbOrderId
+              );
+
+              if (!verification.verified) {
+                throw new Error(verification.error || 'Payment verification failed');
+              }
+
+              const finalOrderId = verification.orderId || dbOrderId;
+
+              clearCart();
+              setIsProcessingPayment(false);
+
+              const verifiedSuccessParams = new URLSearchParams({
+                gateway: 'razorpay',
+                orderId: finalOrderId,
+                storeId: params.storeId,
+                paymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                signature: response.razorpay_signature,
+                storeSlug: storeSlug || '',
+              });
+
+              window.location.href = `/payment-success?${verifiedSuccessParams.toString()}`;
+              return;
+            } catch (saveError: any) {
+              // Payment went through but DB save failed — critical, show payment ID so customer can contact support
+              console.error('Order save after payment failed:', saveError);
+              showModal(
+                'warning',
+                'Payment Received — Contact Support',
+                `Payment of ₹${params.amount} was successful (ID: ${response.razorpay_payment_id}). Your order could not be saved automatically. Please share this Payment ID with the store owner.`
+              );
+              setIsProcessingPayment(false);
+            }
+          },
+          onFailure: async (error: any) => {
+            await markRazorpayPaymentFailed(
+              params.storeId,
+              dbOrderId,
+              'payment_failed',
+              {
+                ...paymentAttemptTrace,
+                callbackAt: new Date().toISOString(),
+                elapsedMs: Date.now() - paymentAttemptStartedAtMs,
+                code: error.code,
+                description: error.description,
+                reason: error.reason,
+                metadata: error.metadata,
+              },
+              razorpayOrderId
+            );
+            showModal('error', 'Payment Failed', error.description || 'Your payment could not be processed. Please try again.');
+            setIsProcessingPayment(false);
+          },
+          onDismiss: async () => {
+            await markRazorpayPaymentFailed(
+              params.storeId,
+              dbOrderId,
+              'payment_window_closed',
+              {
+                ...paymentAttemptTrace,
+                callbackAt: new Date().toISOString(),
+                elapsedMs: Date.now() - paymentAttemptStartedAtMs,
+                source: 'razorpay_modal_dismiss',
+                onlineAtDismiss: navigator.onLine,
+                visibilityStateAtDismiss: document.visibilityState,
+              },
+              razorpayOrderId
+            );
+            showModal(
+              'error',
+              'Payment Not Completed',
+              'You closed the payment window. Your order has not been placed and no amount has been charged.',
+              {
+                primaryLabel: 'Try Again',
+                primaryAction: () => setNotifModal(prev => ({ ...prev, open: false })),
+                secondaryLabel: 'Go Back to Cart',
+                secondaryAction: () => {
+                  setNotifModal(prev => ({ ...prev, open: false }));
+                  navigate(storeSlug ? `/${storeSlug}/cart` : '/cart');
+                },
+              }
+            );
+            setIsProcessingPayment(false);
+          },
+        }
+      );
+
+      if (!result.success && result.error) {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      console.error('Razorpay payment error:', error);
+      showModal('error', 'Payment Failed', error.message || 'Failed to process payment. Please try again.');
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Process PhonePe payment
+  const processPhonePePayment = async (orderDetails: {
+    orderId: string;
+    orderNumber: string;
+    customerName: string;
+    customerEmail?: string;
+    customerPhone: string;
+    amount: number;
+    currency: string;
+  }) => {
+    try {
+      setIsProcessingPayment(true);
+      const { initiatePhonePePayment } = await import("@/lib/payment/phonepe");
+
+      const storeId = cart[0]?.storeId;
+      if (!storeId) {
+        throw new Error('Payment configuration error');
+      }
+
+      // Update order with pending payment status before redirect
+      await supabase
+        .from('orders')
+        .update({
+          payment_status: 'pending',
+          payment_gateway: 'phonepe',
+        })
+        .eq('id', orderDetails.orderId);
+
+      // Initiate PhonePe payment (will redirect)
+      const result = await initiatePhonePePayment(orderDetails, storeId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to initiate PhonePe payment');
+      }
+
+      // If we reach here, redirect didn't happen (shouldn't normally occur)
+      // The initiatePhonePePayment function handles the redirect
+    } catch (error: any) {
+      console.error('PhonePe payment error:', error);
+      showModal('error', 'Payment Failed', error.message || 'Failed to process payment. Please try again.');
+      setIsProcessingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    checkLocationFeature();
+    checkSubscriptionLimits();
+    loadPaymentSettings();
+
+    // Get store slug from URL or cart items
+    if (slug) {
+      setStoreSlug(slug);
+    } else if (cart.length > 0 && cart[0].storeId) {
+      const fetchStoreSlug = async () => {
+        const { data } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        if (data) {
+          setStoreSlug(data.slug);
+        }
+      };
+      fetchStoreSlug();
+    }
+  }, [slug, cart]);
+
+  // Isolated footer data fetch — works for both cart-has-items and empty-cart states
+  useEffect(() => {
+    const fetchFooterData = async () => {
+      let data: any = null;
+
+      if (cart.length > 0) {
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("id", cart[0].storeId)
+          .maybeSingle();
+        data = storeData;
+      } else if (slug) {
+        const normalizedSlug = slug.toLowerCase();
+        let query = supabase
+          .from("stores")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .eq("is_active", true);
+        if (normalizedSlug.includes('.')) {
+          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
+        } else {
+          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
+        }
+        const { data: storeResults } = await query.limit(1);
+        data = storeResults?.[0] ?? null;
+      }
+
+      if (!data) return;
+      setFooterStore(data);
+      if (data.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("phone, email")
+          .eq("user_id", data.user_id)
+          .maybeSingle();
+        if (profile) setFooterProfile(profile);
+      }
+    };
+    fetchFooterData();
+  }, [slug, cart]);
+
+  // Load auto discount when cart or payment method changes
+  useEffect(() => {
+    loadAutoDiscount();
+  }, [cart, selectedPaymentMethod, appliedCoupon, couponCode]);
+
+  const checkSubscriptionLimits = async () => {
+    try {
+      setIsCheckingSubscription(true);
+
+      // Get store ID from cart items
+      if (cart.length === 0) {
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const storeId = cart[0]?.storeId;
+
+      // Validate storeId exists and is not empty
+      if (!storeId || storeId.trim() === '') {
+        console.error('Cart storeId is invalid:', storeId);
+        setSubscriptionError("Unable to process your order. Please clear your cart and add products again from the store.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id, whatsapp_number")
+        .eq("id", storeId)
+        .maybeSingle();
+
+      if (!storeData) {
+        setSubscriptionError("Store not found.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check subscription status and limits (get active or trial subscription only)
+      const { data: subscriptions } = await supabase
+        .from("subscriptions")
+        .select(`
+          status,
+          whatsapp_orders_used,
+          website_orders_used,
+          current_period_end,
+          subscription_plans (
+            name,
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", storeData.user_id)
+        .in("status", ["active", "trial"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const subscription = subscriptions && subscriptions.length > 0 ? subscriptions[0] : null;
+
+      if (!subscription) {
+        setSubscriptionError("This store has no active subscription. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription is active or in trial
+      if (!['active', 'trial'].includes(subscription.status)) {
+        setSubscriptionError("This store's subscription is not active. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check if subscription has expired
+      const now = new Date();
+      const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+      
+      if (periodEnd && periodEnd < now) {
+        setSubscriptionError("This store's subscription has expired. Orders are currently unavailable.");
+        setIsCheckingSubscription(false);
+        return;
+      }
+
+      // Check order limits - store subscription info for later validation
+      if (subscription.subscription_plans) {
+        const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+        const whatsappUsed = subscription.whatsapp_orders_used || 0;
+        const websiteLimit = subscription.subscription_plans.website_orders_limit;
+        const websiteUsed = subscription.website_orders_used || 0;
+        
+        // Check if BOTH features are disabled - only then block orders entirely
+        if (whatsappLimit === null && websiteLimit === null) {
+          setSubscriptionError("Ordering is not available in this store's plan.");
+          setIsCheckingSubscription(false);
+          return;
+        }
+        
+        // Check WhatsApp limit if feature is enabled
+        const whatsappAvailable = whatsappLimit !== null && (whatsappLimit === 0 || whatsappUsed < whatsappLimit);
+        
+        // Check Website limit if feature is enabled  
+        const websiteAvailable = websiteLimit !== null && (websiteLimit === 0 || websiteUsed < websiteLimit);
+        
+        // If both features are enabled but both limits are reached, show modal
+        if (!whatsappAvailable && !websiteAvailable) {
+          // Determine which limit to show (WhatsApp or Website)
+          const limitType = whatsappLimit !== null ? 'whatsapp' : 'website';
+          const ordersUsed = limitType === 'whatsapp' ? whatsappUsed : websiteUsed;
+          const ordersLimit = limitType === 'whatsapp' ? whatsappLimit : websiteLimit;
+
+          setLimitDetails({
+            planName: subscription.subscription_plans.name || 'Current Plan',
+            ordersUsed,
+            ordersLimit: ordersLimit || 0,
+            storeWhatsApp: storeData.whatsapp_number
+          });
+          setLimitModalOpen(true);
+          setIsCheckingSubscription(false);
+          return;
+        }
+      }
+
+      // All checks passed
+      setSubscriptionError(null);
+      setIsCheckingSubscription(false);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      setSubscriptionError("Unable to verify store subscription. Please try again later.");
+      setIsCheckingSubscription(false);
+    }
+  };
+
+  const checkLocationFeature = async () => {
+    try {
+      // Get store ID from cart items if available
+      if (cart.length > 0 && cart[0].storeId) {
+        const storeId = cart[0].storeId;
+        
+        // Get store information
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("id, user_id, force_location_sharing")
+          .eq("id", storeId)
+          .maybeSingle();
+
+        if (!storeData) {
+          setLocationEnabled(true);
+          setForceLocationSharing(false);
+          console.log("No store found, enabling location by default");
+          return;
+        }
+
+        // Get the subscription plan for this store owner (active or trial only)
+        const { data: subscriptions } = await supabase
+          .from("subscriptions")
+          .select("plan_id, subscription_plans(enable_location_sharing)")
+          .eq("user_id", storeData.user_id)
+          .in("status", ["active", "trial"])
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const subscription = subscriptions && subscriptions.length > 0 ? subscriptions[0] : null;
+
+        const isEnabled = subscription?.subscription_plans?.enable_location_sharing || false;
+        const isForced = (storeData.force_location_sharing as boolean) || false;
+        setLocationEnabled(isEnabled);
+        setForceLocationSharing(isForced);
+        console.log("Location feature enabled:", isEnabled, "forced:", isForced, "for store:", storeData.id);
+      } else {
+        // Disable by default if no cart items
+        setLocationEnabled(false);
+      }
+    } catch (error) {
+      console.error("Error checking location feature:", error);
+      // Disable by default on error to respect subscription limits
+      setLocationEnabled(false);
+    }
+  };
+
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    setLocation({ latitude, longitude });
+    setLocationError(false); // Clear error when location is shared
+  };
+
+  // Load and evaluate automatic discounts via Edge Function
+  const loadAutoDiscount = async () => {
+    // Don't apply auto-discount if coupon is already applied
+    if (appliedCoupon || couponCode.trim()) {
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
+      return;
+    }
+
+    // Don't load if cart is empty or payment method not selected
+    if (cart.length === 0 || !selectedPaymentMethod) {
+      return;
+    }
+
+    try {
+      setIsLoadingAutoDiscount(true);
+      const storeId = cart[0].storeId;
+      const phone = form.getValues('phone');
+      const email = form.getValues('email');
+
+      // Convert cart items for Edge Function
+      const cartItems: CartItem[] = cart.map(item => ({
+        id: item.productId,
+        name: item.productName,
+        price: item.price,
+        quantity: item.quantity,
+        storeId: item.storeId,
+      }));
+
+      // Call Edge Function for server-side validation
+      const { data, error: autoDiscountError } = await supabase.functions.invoke('validate-auto-discount', {
+        body: {
+          storeId,
+          cartItems,
+          cartTotal,
+          selectedPaymentMethod,
+          customerPhone: phone,
+          customerEmail: email || undefined,
+        },
+      });
+
+      if (autoDiscountError) throw autoDiscountError;
+
+      if (data.applicable) {
+        setAutoDiscountApplied(data);
+        setAutoDiscountAmount(data.discount);
+      } else {
+        setAutoDiscountApplied(null);
+        setAutoDiscountAmount(0);
+      }
+    } catch (error) {
+      console.error('Error loading auto discount:', error);
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
+    } finally {
+      setIsLoadingAutoDiscount(false);
+    }
+  };
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError('');
+
+    try {
+      const storeId = cart[0]?.storeId;
+      if (!storeId) {
+        setCouponError('Store information not available');
+        setIsValidatingCoupon(false);
+        return;
+      }
+
+      // Get form values for customer info
+      const fullName = form.getValues('fullName');
+      const phone = form.getValues('phone');
+      const email = form.getValues('email');
+
+      // Call Edge Function for server-side validation
+      const { data, error: couponValidateError } = await supabase.functions.invoke('validate-coupon', {
+        body: {
+          couponCode,
+          storeId,
+          cartTotal,
+          customerPhone: phone,
+          customerEmail: email || undefined,
+        },
+      });
+
+      if (couponValidateError) throw couponValidateError;
+
+      if (!data.valid) {
+        setCouponError(data.error || 'Invalid coupon code');
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        setIsValidatingCoupon(false);
+        return;
+      }
+
+      // Store coupon info
+      setAppliedCoupon(data.coupon);
+      setDiscountAmount(data.discount);
+      setCouponError('');
+
+      // Clear auto-discount to prevent race condition
+      setAutoDiscountApplied(null);
+      setAutoDiscountAmount(0);
+
+      showModal('success', 'Coupon Applied', `Discount of ₹${data.discount.toFixed(2)} applied successfully!`);
+    } catch (error: any) {
+      setCouponError(error.message || 'Failed to apply coupon');
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponCode('');
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponError('');
+  };
+
+  if (isCheckingSubscription) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <p className="text-muted-foreground">Checking availability...</p>
+          </div>
+        </main>
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
+      </div>
+    );
+  }
+
+  if (subscriptionError) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
+            <h1 className="text-3xl font-bold mb-4">Orders Unavailable</h1>
+            <p className="text-muted-foreground mb-8">
+              {subscriptionError}
+            </p>
+            <Link to={storeSlug ? `/${storeSlug}` : "/home"}>
+              <Button size="lg">Back to Home</Button>
+            </Link>
+          </div>
+        </main>
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
+      </div>
+    );
+  }
+
+  if (cart.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header storeSlug={storeSlug} storeId={undefined} />
+        <main className="flex-1 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            {orderSuccess ? (
+              <>
+                <CheckCircle className="w-24 h-24 mx-auto mb-6 text-green-500" />
+                <h1 className="text-3xl font-bold mb-4">Order Received Successfully!</h1>
+                <p className="text-muted-foreground mb-8">
+                  We'll contact you shortly on WhatsApp to confirm your order.
+                </p>
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-muted-foreground" />
+                <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
+                <p className="text-muted-foreground mb-8">
+                  Add some products to proceed to checkout
+                </p>
+              </>
+            )}
+            <Button size="lg" onClick={() => { window.location.href = `https://${storeSlug}.digitaldukandar.in`; }}>
+              Go to Home
+            </Button>
+          </div>
+        </main>
+        <StoreFooter
+          storeName={footerStore?.name || storeSlug || "Store"}
+          storeDescription={footerStore?.description}
+          whatsappNumber={footerStore?.whatsapp_number}
+          phone={footerProfile?.phone}
+          email={footerProfile?.email}
+          address={footerStore?.address}
+          facebookUrl={footerStore?.facebook_url}
+          instagramUrl={footerStore?.instagram_url}
+          twitterUrl={footerStore?.twitter_url}
+          youtubeUrl={footerStore?.youtube_url}
+          linkedinUrl={footerStore?.linkedin_url}
+          socialLinks={footerStore?.social_links}
+          policies={footerStore?.policies}
+        />
+      </div>
+    );
+  }
+
+  const onSubmit = async (data: CheckoutFormData) => {
+    setIsSubmitting(true);
+
+    // Validate location if required
+    if (forceLocationSharing && !location) {
+      // Scroll to location section smoothly
+      locationSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      // Trigger highlight animation
+      setLocationError(true);
+
+      setIsSubmitting(false);
+      return;
+    }
+
+    const deliveryTimeText = {
+      morning: "Morning (9 AM - 12 PM)",
+      evening: "Evening (4 PM - 7 PM)",
+      anytime: "Anytime",
+    }[data.deliveryTime];
+
+    try {
+      // Guard: payment method must be selected
+      if (!selectedPaymentMethod) {
+        showModal('error', 'Select Payment Method', 'Please select a payment method before placing your order.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Guard: selected online gateway must have credentials configured
+      if (selectedPaymentMethod === 'razorpay' && !paymentCredentials.razorpay?.key_id) {
+        showModal(
+          'error',
+          'Online Payment Unavailable',
+          'This store has not configured online payment yet. Please select Cash on Delivery to place your order.',
+          {
+            primaryLabel: 'Use Cash on Delivery',
+            primaryAction: () => {
+              setSelectedPaymentMethod('cod');
+              setNotifModal(prev => ({ ...prev, open: false }));
+            },
+          }
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Get store ID from cart items
+      const storeId = cart[0]?.storeId;
+
+      if (!storeId || storeId.trim() === '') {
+        showModal('error', 'Cart Error', 'Your cart contains invalid items. Please clear your cart and add products again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("id, user_id")
+        .eq("id", storeId)
+        .maybeSingle();
+
+      if (!storeData) throw new Error("Store not found");
+
+      // Check subscription expiration and limits
+      const { data: subscriptions } = await supabase
+        .from("subscriptions")
+        .select(`
+          whatsapp_orders_used,
+          website_orders_used,
+          current_period_end,
+          status,
+          subscription_plans (
+            whatsapp_orders_limit,
+            website_orders_limit
+          )
+        `)
+        .eq("user_id", storeData.user_id)
+        .in("status", ["active", "trial"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const subscription = subscriptions && subscriptions.length > 0 ? subscriptions[0] : null;
+
+      // Check if subscription has expired
+      if (subscription) {
+        const now = new Date();
+        const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+
+        if (periodEnd && periodEnd < now) {
+          throw new Error("Your subscription has expired. Please upgrade your plan to continue accepting orders.");
+        }
+
+        // Determine if this is a website order (online payment) or WhatsApp order (COD)
+        const isOnlinePayment = selectedPaymentMethod !== 'cod';
+
+        if (subscription?.subscription_plans) {
+          if (isOnlinePayment) {
+            // Check website order limits for online payments
+            const websiteLimit = subscription.subscription_plans.website_orders_limit;
+            const websiteUsed = subscription.website_orders_used || 0;
+
+            if (websiteLimit === null) {
+              throw new Error("Online ordering is not available in your current plan.");
+            }
+
+            if (websiteLimit > 0 && websiteUsed >= websiteLimit) {
+              throw new Error("Website order limit reached for this month. Please contact the store or try COD.");
+            }
+          } else {
+            // Check WhatsApp order limits for COD
+            const whatsappLimit = subscription.subscription_plans.whatsapp_orders_limit;
+            const whatsappUsed = subscription.whatsapp_orders_used || 0;
+
+            if (whatsappLimit === null) {
+              throw new Error("WhatsApp ordering is not available in your current plan.");
+            }
+
+            if (whatsappLimit > 0 && whatsappUsed >= whatsappLimit) {
+              throw new Error("WhatsApp order limit reached for this month. Please try online payment.");
+            }
+          }
+        }
+      }
+
+      // Generate order number — timestamp (8 digits) + 4 crypto-random hex chars
+      // Prevents collisions when multiple customers submit within the same millisecond
+      const _randBytes = crypto.getRandomValues(new Uint8Array(2));
+      const _randSuffix = Array.from(_randBytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      const orderNumber = `ORD${Date.now().toString().slice(-8)}${_randSuffix}`;
+
+      // Calculate final total with discount (coupon takes priority, then auto-discount)
+      const appliedDiscountAmount = discountAmount > 0 ? discountAmount : autoDiscountAmount;
+      let orderDeliveryFee = 0;
+      if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
+        const matched = deliveryTiers.find(
+          (t) => cartTotal >= t.min && (t.max === null || cartTotal <= t.max)
+        );
+        orderDeliveryFee = matched ? matched.fee : 0;
+      } else if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
+        orderDeliveryFee = deliveryFeeAmount;
+      }
+      const finalTotal = cartTotal - appliedDiscountAmount + orderDeliveryFee;
+
+      // Prepare order for database
+      const orderRecord = {
+        store_id: storeData.id,
+        order_number: orderNumber,
+        customer_name: data.fullName,
+        customer_phone: data.phone,
+        customer_email: data.email || null,
+        delivery_address: data.address,
+        delivery_landmark: data.landmark || null,
+        delivery_pincode: data.pincode,
+        delivery_time: deliveryTimeText,
+        delivery_latitude: location?.latitude || null,
+        delivery_longitude: location?.longitude || null,
+        items: cart as any,
+        subtotal: cartTotal,
+        discount_amount: appliedDiscountAmount,
+        coupon_code: appliedCoupon?.code || null,
+        automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
+        delivery_charge: orderDeliveryFee,
+        total: finalTotal,
+        status: 'new',
+        payment_method: selectedPaymentMethod,
+        payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'awaiting_payment',
+        payment_gateway: selectedPaymentMethod === 'cod' ? 'cod' : selectedPaymentMethod,
+      };
+
+      // ── Razorpay: hand off to payment handler — DB insert happens inside onSuccess ──
+      // Nothing is written to the database until Razorpay confirms the payment.
+      if (selectedPaymentMethod === 'razorpay') {
+        await processRazorpayPayment({
+          orderNumber,
+          customerName: data.fullName,
+          customerEmail: data.email,
+          customerPhone: data.phone,
+          amount: finalTotal,   // client estimate — for fallback warning display only
+          currency: 'INR',
+          baseOrderRecord: orderRecord,
+          appliedCoupon,
+          discountAmount,
+          storeId: storeData.id,
+          cartItems: cart.map(item => ({ productId: item.productId, quantity: item.quantity, variant: item.variant })),
+          autoDiscountId: appliedCoupon ? undefined : (autoDiscountApplied?.id || undefined),
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ── Stock decrement — runs atomically before order insert ──
+      // Locks each product row, checks availability, decrements stock.
+      // Prevents two customers buying the same last item simultaneously.
+      const stockCheck = await supabase.rpc('decrement_stock_for_order', {
+        p_store_id: storeData.id,
+        p_items: cart.map(i => ({ product_id: i.productId, quantity: i.quantity, variant: i.variant })),
+      });
+
+      if (stockCheck.data?.success === false) {
+        const e = stockCheck.data;
+        throw new Error(
+          e.error === 'INSUFFICIENT_STOCK'
+            ? `"${e.name}" is out of stock (only ${e.available ?? 0} left). Please update your cart.`
+            : 'One or more items are no longer available. Please refresh and try again.'
+        );
+      }
+
+      // ── COD + PhonePe: save order to DB first, then handle payment/whatsapp ──
+      const { data: insertedOrder, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderRecord)
+        .select('id')
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Record coupon usage if coupon was applied
+      if (appliedCoupon && discountAmount > 0) {
+        try {
+          await supabase.functions.invoke('record-coupon-usage', {
+            body: {
+              couponCode: appliedCoupon.code,
+              storeId: storeId,
+              orderId: insertedOrder.id,
+              customerPhone: data.phone,
+              customerEmail: data.email || undefined,
+              discountApplied: discountAmount,
+            },
+          });
+        } catch (couponUsageError) {
+          console.error('Error recording coupon usage:', couponUsageError);
+          // Don't fail the order, just log the error
+        }
+      }
+
+      // Fire-and-forget — email failure must never block checkout
+      supabase.functions.invoke('send-order-email', {
+        body: { orderId: insertedOrder.id, storeId: storeId },
+      }).catch(err => console.error('Order email trigger failed:', err));
+
+      // Handle remaining payment methods (PhonePe, COD)
+      if (selectedPaymentMethod === 'phonepe') {
+        // Process PhonePe payment
+        await processPhonePePayment({
+          orderId: insertedOrder.id,
+          orderNumber,
+          customerName: data.fullName,
+          customerEmail: data.email,
+          customerPhone: data.phone,
+          amount: finalTotal,
+          currency: 'INR',
+        });
+      } else {
+        // COD - WhatsApp flow
+        // Prepare order details for WhatsApp
+        const orderDetails = {
+          customerName: data.fullName,
+          phone: data.phone,
+          email: data.email || undefined,
+          address: data.address,
+          landmark: data.landmark || undefined,
+          pincode: data.pincode,
+          deliveryTime: deliveryTimeText,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          cart: cart,
+          subtotal: cartTotal,
+          discount: discountAmount,
+          deliveryCharge: orderDeliveryFee,
+          total: finalTotal,
+        };
+
+        // Generate and send WhatsApp message
+        const message = generateOrderMessage(orderDetails);
+        const result = await openWhatsApp(message, undefined, storeId);
+
+        if (!result.success) {
+          showModal('warning', 'WhatsApp Not Configured', result.error || 'This store has not set up WhatsApp ordering yet.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        setOrderSuccess(true);
+        clearCart();
+      }
+
+      setIsSubmitting(false);
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      showModal('error', 'Order Failed', error.message || 'Failed to place order. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Compute delivery fee based on cart total and store settings
+  const computedDeliveryFee = (() => {
+    if (deliveryMode === 'multiple' && deliveryTiers.length > 0) {
+      const matched = deliveryTiers.find(
+        (t) => cartTotal >= t.min && (t.max === null || cartTotal <= t.max)
+      );
+      return matched ? matched.fee : 0;
+    }
+    // single mode
+    if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
+      return deliveryFeeAmount;
+    }
+    return 0;
+  })();
+
+  const homeLink = storeSlug ? `/${storeSlug}` : "/home";
+  const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
+
+      <main className="flex-1 container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <Link to={homeLink} className="hover:text-foreground">Home</Link>
+          <ChevronRight className="w-4 h-4" />
+          <Link to={cartLink} className="hover:text-foreground">Cart</Link>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-foreground">Checkout</span>
+        </nav>
+
+        <h1 data-ai="checkout-page-heading" className="text-3xl font-bold mb-8">Checkout</h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Customer Information Form */}
+          <div data-ai="checkout-form" className="lg:col-span-2">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <Card data-ai="customer-info-card">
+                  <CardContent className="p-6">
+                    <h2 data-ai="customer-info-heading" className="text-xl font-semibold mb-4">Customer Information</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel data-ai="checkout-field-label">Full Name *</FormLabel>
+                            <FormControl>
+                              <Input data-ai="checkout-field-input" placeholder="Enter your full name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel data-ai="checkout-field-label">Phone Number *</FormLabel>
+                            <FormControl>
+                              <Input data-ai="checkout-field-input" placeholder="10-digit mobile number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel data-ai="checkout-field-label">Email (Optional)</FormLabel>
+                            <FormControl>
+                              <Input data-ai="checkout-field-input" placeholder="your.email@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-ai="delivery-address-card">
+                  <CardContent className="p-6">
+                    <h2 data-ai="delivery-address-heading" className="text-xl font-semibold mb-4">Delivery Address</h2>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel data-ai="checkout-field-label">Complete Address *</FormLabel>
+                            <FormControl>
+                              <Input
+                                data-ai="checkout-field-input"
+                                placeholder="House/Flat No., Street, Area"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="landmark"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel data-ai="checkout-field-label">Landmark (Optional)</FormLabel>
+                              <FormControl>
+                                <Input data-ai="checkout-field-input" placeholder="Nearby location" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="pincode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel data-ai="checkout-field-label">PIN Code *</FormLabel>
+                              <FormControl>
+                                <Input data-ai="checkout-field-input" placeholder="6-digit PIN code" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="deliveryTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preferred Delivery Time *</FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="space-y-2"
+                              >
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                  <RadioGroupItem value="morning" id="morning" />
+                                  <Label htmlFor="morning" className="flex-1 cursor-pointer font-normal">
+                                    Morning (9 AM - 12 PM)
+                                  </Label>
+                                </div>
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                  <RadioGroupItem value="evening" id="evening" />
+                                  <Label htmlFor="evening" className="flex-1 cursor-pointer font-normal">
+                                    Evening (4 PM - 7 PM)
+                                  </Label>
+                                </div>
+                                <div data-ai="delivery-time-option" className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-accent transition-colors">
+                                  <RadioGroupItem value="anytime" id="anytime" />
+                                  <Label htmlFor="anytime" className="flex-1 cursor-pointer font-normal">
+                                    Anytime
+                                  </Label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Location Sharing (if enabled) */}
+                      {locationEnabled && (
+                        <div
+                          ref={locationSectionRef}
+                          className={`space-y-3 p-4 rounded-lg border transition-all duration-300 ${
+                            forceLocationSharing && !location ? 'animate-pulse-border' : ''
+                          } ${
+                            locationError ? 'animate-attention-shake border-destructive bg-destructive/5 shadow-lg shadow-destructive/20' : 'bg-card/50 backdrop-blur-sm hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Label className="text-base font-medium">Share Your Location</Label>
+                            {forceLocationSharing ? (
+                              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
+                                Required
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+                                Optional
+                              </span>
+                            )}
+                          </div>
+
+                          {forceLocationSharing && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              We need your location for accurate delivery
+                            </p>
+                          )}
+
+                          <LocationPicker
+                            onLocationSelect={handleLocationSelect}
+                            enabled={locationEnabled}
+                          />
+
+                          {location && (
+                            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Location captured successfully
+                            </div>
+                          )}
+
+                          {locationError && !location && (
+                            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              Please share your location to continue - it's required for delivery
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card data-ai="payment-method-card">
+                  <CardContent className="p-6">
+                    <h2 data-ai="payment-method-heading" className="text-xl font-semibold mb-4">Payment Method</h2>
+
+                    {paymentMethods.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Loading payment options...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {paymentMethods.map((method) => (
+                          <div
+                            data-ai="payment-option"
+                            key={method.id}
+                            className={`relative cursor-pointer rounded-xl border-2 transition-all duration-300 overflow-hidden ${
+                              selectedPaymentMethod === method.id
+                                ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/20'
+                                : 'border-border hover:border-primary/40 bg-card hover:shadow-md'
+                            }`}
+                            onClick={() => setSelectedPaymentMethod(method.id)}
+                          >
+                            <div className="flex items-center gap-4 p-4 sm:p-5">
+                              {/* Logo/Icon */}
+                              <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform duration-300 ${
+                                selectedPaymentMethod === method.id ? 'scale-105' : ''
+                              } ${method.color}`}>
+                                {method.id === 'razorpay' && <CreditCard className="w-7 h-7 sm:w-8 sm:h-8 text-white" />}
+                                {method.id === 'phonepe' && <Smartphone className="w-7 h-7 sm:w-8 sm:h-8 text-white" />}
+                                {method.id === 'cod' && <Wallet className="w-7 h-7 sm:w-8 sm:h-8 text-white" />}
+                              </div>
+
+                              {/* Method Details */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-bold text-base sm:text-lg tracking-tight">
+                                    {method.id === 'razorpay' && 'Paynow'}
+                                    {method.id === 'phonepe' && 'Paynow'}
+                                    {method.id === 'cod' && 'Cash on Delivery'}
+                                  </h3>
+                                  {(method.id === 'razorpay' || method.id === 'phonepe') && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                      </svg>
+                                      Secure
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
+                                  {method.id === 'razorpay' && 'Pay with cards, UPI, net banking & wallets'}
+                                  {method.id === 'phonepe' && 'Pay with UPI, cards & bank accounts'}
+                                  {method.id === 'cod' && 'Pay cash when your order arrives'}
+                                </p>
+                              </div>
+
+                              {/* Radio Button */}
+                              <div className="flex-shrink-0">
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                                  selectedPaymentMethod === method.id
+                                    ? 'border-primary bg-primary shadow-md'
+                                    : 'border-muted-foreground/30 hover:border-primary/50'
+                                }`}>
+                                  {selectedPaymentMethod === method.id && (
+                                    <div className="w-3 h-3 rounded-full bg-white" />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Selected indicator glow */}
+                            {selectedPaymentMethod === method.id && (
+                              <div className="absolute inset-0 rounded-xl border-2 border-primary pointer-events-none" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Payment info */}
+                    {selectedPaymentMethod && (
+                      <div className="mt-4 p-3 bg-accent/50 rounded-lg border border-border">
+                        <div className="flex items-start gap-2 text-sm">
+                          <svg className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          <span className="text-muted-foreground">
+                            {selectedPaymentMethod === 'cod' && 'No advance payment required. Pay cash when your order is delivered.'}
+                            {(selectedPaymentMethod === 'razorpay' || selectedPaymentMethod === 'phonepe') && 'Your payment is secure and encrypted. Complete payment to confirm your order.'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Button
+                  data-ai="place-order-button"
+                  type="submit"
+                  size="lg"
+                  className="w-full md:w-auto"
+                  disabled={isSubmitting || isProcessingPayment}
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Processing Payment...
+                    </>
+                  ) : (
+                    <>
+                      {selectedPaymentMethod === 'cod' ? (
+                        <>
+                          <MessageCircle className="w-5 h-5 mr-2" />
+                          Place Order via WhatsApp
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5 mr-2" />
+                          Proceed to Payment
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </div>
+
+          {/* Order Review */}
+          <div data-ai="checkout-summary" className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardContent className="p-6">
+                <h2 data-ai="order-summary-heading" className="text-xl font-bold mb-4">Order Summary</h2>
+
+                <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                  {cart.map((item) => (
+                    <div
+                      data-ai="order-item"
+                      key={`${item.productId}-${item.variant}`}
+                      className="flex gap-3 pb-3 border-b border-border last:border-0"
+                    >
+                      <img
+                        src={item.productImage}
+                        alt={item.productName}
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{item.productName}</h4>
+                        {item.variant && (
+                          <p className="text-xs text-muted-foreground">{item.variant}</p>
+                        )}
+                        <p className="text-sm font-semibold text-primary">
+                          ₹{item.price} × {item.quantity}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Coupon Section */}
+                <div data-ai="coupon-section" className="mb-4 pb-4 border-b border-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="w-4 h-4 text-primary" />
+                    <Label className="text-sm font-medium">Apply Coupon</Label>
+                  </div>
+
+                  {!appliedCoupon ? (
+                    <div className="flex gap-2">
+                      <Input
+                        data-ai="coupon-input"
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setCouponError('');
+                        }}
+                        disabled={isValidatingCoupon}
+                        className="text-sm"
+                      />
+                      <Button
+                        data-ai="apply-coupon-button"
+                        size="sm"
+                        variant="outline"
+                        onClick={applyCoupon}
+                        disabled={isValidatingCoupon || isLoadingAutoDiscount || !couponCode.trim()}
+                      >
+                        {isValidatingCoupon ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Apply'
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                          {appliedCoupon.code}
+                        </span>
+                      </div>
+                      <button
+                        onClick={removeCoupon}
+                        className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
+                      >
+                        <X className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      </button>
+                    </div>
+                  )}
+
+                  {couponError && (
+                    <p className="text-xs text-destructive">{couponError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 mb-4 pb-4 border-b border-border">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
+                    </span>
+                    <span data-ai="price-subtotal">₹{cartTotal.toFixed(2)}</span>
+                  </div>
+
+                  {(discountAmount > 0 || autoDiscountAmount > 0) && (
+                    <div data-ai="price-discount" className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {appliedCoupon ? 'Coupon Discount' : autoDiscountApplied ? 'Automatic Discount' : 'Discount'}
+                        {autoDiscountApplied && !appliedCoupon && (
+                          <span className="text-xs text-muted-foreground ml-1">({autoDiscountApplied.ruleName})</span>
+                        )}
+                      </span>
+                      <span className="text-destructive font-medium">
+                        -{(discountAmount > 0 ? discountAmount : autoDiscountAmount).toFixed(2)} ₹
+                        {appliedCoupon?.discount_type === 'percentage' && (
+                          <span className="text-xs ml-1">({appliedCoupon.discount_value}%)</span>
+                        )}
+                        {autoDiscountApplied && !appliedCoupon && autoDiscountApplied.discountType === 'percentage' && (
+                          <span className="text-xs ml-1">({autoDiscountApplied.discountPercentage}%)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Delivery</span>
+                    {computedDeliveryFee > 0 ? (
+                      <span data-ai="price-delivery">₹{computedDeliveryFee.toFixed(2)}</span>
+                    ) : (
+                      <span data-ai="price-delivery" className="text-success font-medium">FREE</span>
+                    )}
+                  </div>
+
+                  {computedDeliveryFee === 0 && freeDeliveryAbove !== null && deliveryFeeAmount > 0 && (
+                    <p className="text-xs text-success">
+                      You saved ₹{deliveryFeeAmount.toFixed(2)} on delivery!
+                    </p>
+                  )}
+
+                  {computedDeliveryFee > 0 && freeDeliveryAbove !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      Add ₹{(freeDeliveryAbove - cartTotal).toFixed(2)} more for free delivery
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-lg font-semibold">Total</span>
+                  <span data-ai="price-total" className="text-2xl font-bold text-primary">
+                    ₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount) + computedDeliveryFee).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="bg-accent p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {selectedPaymentMethod === 'razorpay' && (
+                      <>
+                        <CreditCard className="w-4 h-4 text-blue-500" />
+                        <p className="text-sm text-muted-foreground">
+                          Payment via Razorpay
+                        </p>
+                      </>
+                    )}
+                    {selectedPaymentMethod === 'phonepe' && (
+                      <>
+                        <Smartphone className="w-4 h-4 text-purple-500" />
+                        <p className="text-sm text-muted-foreground">
+                          Payment via PhonePe
+                        </p>
+                      </>
+                    )}
+                    {selectedPaymentMethod === 'cod' && (
+                      <>
+                        <Wallet className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Cash on Delivery
+                        </p>
+                      </>
+                    )}
+                    {!selectedPaymentMethod && (
+                      <p className="text-sm text-muted-foreground">
+                        Select payment method
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+
+      <StoreFooter
+        storeName={footerStore?.name || storeSlug || "Store"}
+        storeDescription={footerStore?.description}
+        whatsappNumber={footerStore?.whatsapp_number}
+        phone={footerProfile?.phone}
+        email={footerProfile?.email}
+        address={footerStore?.address}
+        facebookUrl={footerStore?.facebook_url}
+        instagramUrl={footerStore?.instagram_url}
+        twitterUrl={footerStore?.twitter_url}
+        youtubeUrl={footerStore?.youtube_url}
+        linkedinUrl={footerStore?.linkedin_url}
+        socialLinks={footerStore?.social_links}
+        policies={footerStore?.policies}
+      />
+
+      {/* Order Limit Modal */}
+      <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle>Order Limit Reached</DialogTitle>
+            </div>
+            <DialogDescription className="pt-3 space-y-3">
+              <p className="text-base">
+                This store has reached its monthly order limit
+              </p>
+              {limitDetails && (
+                <div className="bg-accent p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Plan:</span>
+                    <span className="font-semibold">{limitDetails.planName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Orders Used:</span>
+                    <span className="font-semibold">
+                      {limitDetails.ordersUsed} of {limitDetails.ordersLimit}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                The store owner needs to upgrade their plan to accept more orders.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {limitDetails?.storeWhatsApp && (
+              <Button
+                onClick={() => {
+                  window.open(`https://wa.me/${limitDetails.storeWhatsApp}`, '_blank');
+                }}
+                variant="default"
+                className="w-full sm:w-auto"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Contact Store Owner
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setLimitModalOpen(false);
+                navigate(storeSlug ? `/${storeSlug}` : '/');
+              }}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Back to Store
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unified Notification Modal — replaces all corner toasts */}
+      <Dialog open={notifModal.open} onOpenChange={(open) => setNotifModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-sm text-center">
+          <div className="flex flex-col items-center gap-4 pt-2">
+            <div className={`flex items-center justify-center w-16 h-16 rounded-full ${
+              notifModal.variant === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
+              notifModal.variant === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
+              'bg-destructive/10'
+            }`}>
+              {notifModal.variant === 'success' && <CheckCircle className="w-9 h-9 text-green-600" />}
+              {notifModal.variant === 'warning' && <AlertTriangle className="w-9 h-9 text-amber-600" />}
+              {notifModal.variant === 'error' && <XCircle className="w-9 h-9 text-destructive" />}
+            </div>
+            <div className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold">{notifModal.title}</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                {notifModal.description}
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 mt-2">
+            <Button
+              className="w-full"
+              onClick={notifModal.primaryAction ?? (() => setNotifModal(prev => ({ ...prev, open: false })))}
+            >
+              {notifModal.primaryLabel ?? 'OK'}
+            </Button>
+            {notifModal.secondaryLabel && notifModal.secondaryAction && (
+              <Button variant="outline" className="w-full" onClick={notifModal.secondaryAction}>
+                {notifModal.secondaryLabel}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <style>{`
+        @keyframes pulse-border {
+          0%, 100% { border-color: hsl(var(--border)); }
+          50% { border-color: hsl(var(--primary) / 0.5); }
+        }
+
+        @keyframes attention-shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        .animate-pulse-border {
+          animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        .animate-attention-shake {
+          animation: attention-shake 0.6s ease-in-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Checkout;
+
+
