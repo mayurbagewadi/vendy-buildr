@@ -14,6 +14,8 @@ We are currently working on the **new storefront frontend**, not the old/custome
 - Serves public customer stores for custom domains and store subdomains.
 - Must stay separated from admin, superadmin, helper, onboarding, and old platform UI work.
 - Focus areas: Shopify-level smoothness, storefront performance, image loading, cart/checkout UX, SEO, caching, and customer-facing speed.
+- Each store should have a unique theme structure and UI/UX within a controlled theme system.
+- Unique should come from layout presets, section order, tokens, and component variants, not separate codebases per store.
 
 ### New Storefront Build/Runtime Paths
 ```text
@@ -46,6 +48,12 @@ src/contexts/StoreContext.tsx                # Shared store/profile context
 Important: `src/pages/customer/` and `src/components/customer/` are shared source folders. Do not call them new-storefront-only. A change here can affect both the new storefront build and old/path-based customer behavior unless the code path is verified.
 
 Migration status: `src/new-storefront/` owns the new storefront entry, router, layout shell, About page, Policies page, Categories page, Products page, ProductDetail page, Cart page, Checkout page, PaymentSuccess page, and Store page.
+
+### Next Storefront Focus
+- Improve perceived speed on the new storefront.
+- Make image loading feel instant and avoid layout shift.
+- Keep the customer journey inside `src/new-storefront/`.
+- Build per-store theme presets and design tokens before adding new one-off features.
 
 ### Old/Full Platform Storefront Path
 ```text
