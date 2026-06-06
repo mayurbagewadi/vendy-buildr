@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HardDrive, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { waitForAuthenticatedSession } from "@/lib/authSession";
 
 const GoogleDriveSetup = () => {
   const navigate = useNavigate();
@@ -20,16 +21,16 @@ const GoogleDriveSetup = () => {
 
   const loadStore = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const session = await waitForAuthenticatedSession();
+      if (!session?.user) {
         navigate("/onboarding/store-setup");
         return;
       }
+      const user = session.user;
 
       // ✓ Capture new tokens from session after OAuth redirect
-      const { data: { session } } = await supabase.auth.getSession();
-      const providerToken = session?.provider_token;
-      const providerRefreshToken = session?.provider_refresh_token;
+      const providerToken = session.provider_token;
+      const providerRefreshToken = session.provider_refresh_token;
 
       // Load store from database
       const { data: store, error } = await supabase

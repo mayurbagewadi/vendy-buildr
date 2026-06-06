@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Phone, MessageCircle, Loader2, ArrowLeft, Sparkles, Check } from "lucide-react";
+import { waitForAuthenticatedSession } from "@/lib/authSession";
 
 const COUNTRIES = [
   { iso: "IN", flag: "🇮🇳", name: "India",              dialCode: "+91"  },
@@ -303,8 +304,9 @@ const BusinessDetails = () => {
   };
 
   const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/onboarding/store-setup"); return; }
+    const session = await waitForAuthenticatedSession();
+    if (!session?.user) { navigate("/onboarding/store-setup"); return; }
+    const user = session.user;
 
     const { data: store } = await supabase
       .from("stores")
