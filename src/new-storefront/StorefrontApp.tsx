@@ -16,7 +16,7 @@ const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const CustomerCategories = lazy(() => import("./pages/Categories"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
-const PaymentSuccess = lazy(() => import("@/pages/customer/PaymentSuccess"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const Policies = lazy(() => import("./pages/Policies"));
 const About = lazy(() => import("./pages/About"));
 const Toaster = lazy(() => import("@/components/ui/toaster").then((module) => ({ default: module.Toaster })));
