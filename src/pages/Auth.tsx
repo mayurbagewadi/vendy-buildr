@@ -8,6 +8,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, XCircle } from "lucide-react";
 import { AppLogo } from "@/components/ui/AppLogo";
 
+const AUTH_PENDING_KEY = 'dd_auth_pending_v1';
+const AUTH_PENDING_TTL_MS = 2 * 60 * 1000;
+
+const isAuthPending = () => {
+  const raw = sessionStorage.getItem(AUTH_PENDING_KEY);
+  if (!raw) return false;
+
+  const startedAt = Number(raw);
+  if (!Number.isFinite(startedAt)) {
+    sessionStorage.removeItem(AUTH_PENDING_KEY);
+    return false;
+  }
+
+  if (Date.now() - startedAt > AUTH_PENDING_TTL_MS) {
+    sessionStorage.removeItem(AUTH_PENDING_KEY);
+    return false;
+  }
+
+  return true;
+};
+
 export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,6 +39,8 @@ export default function Auth() {
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
 
   useEffect(() => {
+    const authPending = isAuthPending();
+
     // Capture referral code from URL and store in sessionStorage
     const refParam = searchParams.get('ref');
     if (refParam) {
@@ -36,11 +59,13 @@ export default function Auth() {
     // CRITICAL FIX: Detect if we're returning from OAuth callback
     // If URL has 'code' parameter, Supabase is processing OAuth - wait for onAuthStateChange
     const hasOAuthCode = searchParams.get('code') !== null;
-    if (hasOAuthCode) {
+    if (hasOAuthCode || authPending) {
       console.log('[Auth] OAuth callback detected - waiting for session to be established');
       setIsProcessingOAuth(true);
-      // Don't call getSession() yet - let onAuthStateChange handle it
-      return;
+      if (hasOAuthCode) {
+        // Don't call getSession() yet - let onAuthStateChange handle it
+        return;
+      }
     }
 
     // Check if user is already logged in (only when NOT processing OAuth callback)
@@ -55,11 +80,14 @@ export default function Auth() {
           console.log('[Auth] User verification failed - account may be deleted:', userError?.message);
           // Clear invalid session and redirect to landing page
           await supabase.auth.signOut();
+          sessionStorage.removeItem(AUTH_PENDING_KEY);
           window.location.href = '/?error=account_deleted';
           return;
         }
 
-        setHasSession(true);
+        if (!authPending) {
+          setHasSession(true);
+        }
 
         // First check if user is a helper
         console.log('[Auth] Checking for helper with ID:', session.user.id);
@@ -73,6 +101,7 @@ export default function Auth() {
 
         if (helperData) {
           console.log('[Auth] BDM found - redirecting to BDM dashboard');
+          sessionStorage.removeItem(AUTH_PENDING_KEY);
           navigate("/bdm/dashboard");
           setIsLoading(false);
           return;
@@ -90,6 +119,7 @@ export default function Auth() {
 
         if (!store) {
           console.log('[Auth] No store found - redirecting to onboarding');
+          sessionStorage.removeItem(AUTH_PENDING_KEY);
           navigate("/onboarding/store-setup");
         } else {
           console.log('[Auth] Redirecting to admin dashboard');
@@ -104,6 +134,7 @@ export default function Auth() {
             sessionStorage.setItem('welcomeShown', 'true');
           }
 
+          sessionStorage.removeItem(AUTH_PENDING_KEY);
           navigate("/admin/dashboard");
         }
         setIsLoading(false);
@@ -115,7 +146,11 @@ export default function Auth() {
       console.log('[Auth] Auth state changed:', event, session ? 'Session exists' : 'No session');
 
       if (event === 'SIGNED_IN' && session) {
-        setHasSession(true);
+        if (isAuthPending()) {
+          setIsProcessingOAuth(true);
+        } else {
+          setHasSession(true);
+        }
 
         // Defer database query to prevent auth deadlock
         setTimeout(async () => {
@@ -127,6 +162,7 @@ export default function Auth() {
               console.log('[Auth] SIGNED_IN - User verification failed - account may be deleted:', userError?.message);
               // Clear invalid session and redirect to landing page
               await supabase.auth.signOut();
+              sessionStorage.removeItem(AUTH_PENDING_KEY);
               window.location.href = '/?error=account_deleted';
               return;
             }
@@ -147,6 +183,7 @@ export default function Auth() {
                 title: "Welcome back!",
                 description: "Redirecting to your BDM dashboard.",
               });
+              sessionStorage.removeItem(AUTH_PENDING_KEY);
               navigate("/bdm/dashboard");
               return;
             }
@@ -188,6 +225,7 @@ export default function Auth() {
                 title: "Welcome!",
                 description: "Let's set up your store.",
               });
+              sessionStorage.removeItem(AUTH_PENDING_KEY);
               navigate("/onboarding/store-setup");
             } else {
               console.log('[Auth] Existing user - redirecting to admin dashboard');
@@ -202,6 +240,7 @@ export default function Auth() {
                 sessionStorage.setItem('welcomeShown', 'true');
               }
 
+              sessionStorage.removeItem(AUTH_PENDING_KEY);
               navigate("/admin/dashboard");
             }
           } catch (error) {
@@ -226,6 +265,7 @@ export default function Auth() {
     try {
       setIsLoading(true);
       console.log('[Auth] Starting Google sign in...');
+      sessionStorage.setItem(AUTH_PENDING_KEY, Date.now().toString());
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -237,6 +277,7 @@ export default function Auth() {
 
       if (error) {
         console.error('[Auth] Sign in error:', error);
+        sessionStorage.removeItem(AUTH_PENDING_KEY);
         toast({
           variant: "destructive",
           title: "Error",
@@ -247,6 +288,7 @@ export default function Auth() {
       }
     } catch (error) {
       console.error('[Auth] Unexpected error:', error);
+      sessionStorage.removeItem(AUTH_PENDING_KEY);
       toast({
         variant: "destructive",
         title: "Error",
@@ -264,6 +306,7 @@ export default function Auth() {
       if (error) throw error;
       
       sessionStorage.clear();
+      sessionStorage.removeItem(AUTH_PENDING_KEY);
 
       toast({
         title: "Signed out",
