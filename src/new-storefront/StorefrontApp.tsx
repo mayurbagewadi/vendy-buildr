@@ -10,7 +10,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 import StorefrontLayout from "./StorefrontLayout";
 
-const Store = lazy(() => import("@/pages/customer/Store"));
+const Store = lazy(() => import("./pages/Store"));
 const CustomerProducts = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const CustomerCategories = lazy(() => import("./pages/Categories"));
