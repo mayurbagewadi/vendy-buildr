@@ -413,7 +413,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
-                    priorityImage={index < 4}
+                    priorityImage={index < 6}
                   />
                 ))}
               </div>
@@ -501,6 +501,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     images={product.images}
                     status={product.status}
                     storeSlug={isSubdomain ? undefined : store.slug}
+                    priorityImage={index < 3}
                   />
                 ))}
               </div>

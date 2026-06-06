@@ -273,11 +273,11 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
                   {filteredProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
-                      {...product}
-                      storeSlug={isSubdomain ? undefined : slug}
-                      priorityImage={index < 6}
-                    />
-                  ))}
+                    {...product}
+                    storeSlug={isSubdomain ? undefined : slug}
+                    priorityImage={index < 8}
+                  />
+                ))}
                 </div>
               ) : (
                 <Card className="p-12 text-center">

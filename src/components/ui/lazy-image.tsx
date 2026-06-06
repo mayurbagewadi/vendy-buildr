@@ -17,7 +17,7 @@ const LazyImage = ({
   className,
   fallback = "/placeholder.svg",
   priority = false,
-  preloadMargin = "900px 0px",
+  preloadMargin = "1200px 0px",
   ...props
 }: LazyImageProps) => {
   const directSrc = convertToDirectImageUrl(src) || src;
@@ -81,7 +81,7 @@ const LazyImage = ({
       src={imageSrc}
       alt={alt}
       className={cn(
-        "transition-opacity duration-300",
+        "transition-[opacity,transform,filter] duration-500 ease-out",
         isLoading ? "opacity-50" : "opacity-100",
         className
       )}

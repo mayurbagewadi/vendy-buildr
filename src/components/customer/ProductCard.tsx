@@ -101,7 +101,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
       }}
       role="link"
       tabIndex={0}
-      className="cursor-pointer w-[90%] mx-auto mb-6 outline-none motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.55rem]"
+      className="cursor-pointer w-full outline-none motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.55rem]"
       data-ai="product-card"
     >
       <Card className="group overflow-hidden !rounded-[1.55rem] border-border/80 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-md">
