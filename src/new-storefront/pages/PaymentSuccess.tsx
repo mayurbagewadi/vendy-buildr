@@ -1,0 +1,388 @@
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { verifyRazorpayPayment } from "@/lib/payment/razorpay";
+import { generateOrderMessage, getWhatsAppNumber, formatWhatsAppNumber, isWhatsAppConfigured } from "@/lib/whatsappUtils";
+import { detectDomain } from "@/lib/domainUtils";
+import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink, Clock, Package, Truck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Enterprise Payment Success Page
+ *
+ * Professional UX Flow:
+ * 1. Verify payment in background
+ * 2. Show success UI with order details
+ * 3. Auto-redirect to WhatsApp on mobile (deep linking)
+ * 4. Fallback button if auto-redirect fails
+ */
+export default function PaymentSuccess() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [storeId, setStoreId] = useState('');
+  const [storeSlug, setStoreSlug] = useState('');
+  const [whatsappOpened, setWhatsappOpened] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
+  const autoRedirectAttempted = useRef(false);
+
+  // Detect if mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // Auto-open WhatsApp function with deep linking
+  const autoOpenWhatsApp = async (message: string, storeIdParam: string) => {
+    if (autoRedirectAttempted.current) return;
+    autoRedirectAttempted.current = true;
+
+    try {
+      // Check if WhatsApp is configured
+      const isConfigured = await isWhatsAppConfigured(storeIdParam);
+      if (!isConfigured) {
+        setShowFallback(true);
+        return;
+      }
+
+      const number = await getWhatsAppNumber(storeIdParam);
+      const formattedNumber = formatWhatsAppNumber(number);
+      const encodedMessage = encodeURIComponent(message);
+
+      if (isMobile) {
+        // ✅ MOBILE: Use intent:// for Android and whatsapp:// for iOS
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isAndroid) {
+          // Android Intent URL - most reliable for auto-open
+          const intentUrl = `intent://send/${formattedNumber}#Intent;scheme=whatsapp;package=com.whatsapp;action=android.intent.action.SENDTO;S.android.intent.extra.TEXT=${encodedMessage};end`;
+          
+          // Try intent first, fallback to whatsapp:// scheme
+          try {
+            window.location.href = intentUrl;
+          } catch {
+            window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+          }
+        } else if (isIOS) {
+          // iOS: Use whatsapp:// scheme directly
+          window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+        } else {
+          // Other mobile: Use whatsapp:// scheme
+          window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+        }
+
+        setWhatsappOpened(true);
+        
+        // Show fallback after 3 seconds if user is still on page
+        setTimeout(() => {
+          setShowFallback(true);
+        }, 3000);
+
+      } else {
+        // ✅ DESKTOP: Open wa.me in new tab (don't redirect page)
+        const waUrl = `https://wa.me/${formattedNumber}?text=${encodedMessage}`;
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+        setWhatsappOpened(true);
+        setShowFallback(true);
+      }
+    } catch (error) {
+      console.error('WhatsApp auto-open error:', error);
+      setShowFallback(true);
+    }
+  };
+
+  useEffect(() => {
+    const processPayment = async () => {
+      // Get gateway type from URL
+      const gateway = searchParams.get('gateway');
+      const orderId = searchParams.get('orderId');
+      const storeIdParam = searchParams.get('storeId');
+      const storeSlugParam = searchParams.get('storeSlug');
+
+      setStoreId(storeIdParam || '');
+      setStoreSlug(storeSlugParam || '');
+
+      // Validate required parameters
+      if (!gateway || !orderId || !storeIdParam) {
+        setStatus('failed');
+        return;
+      }
+
+      try {
+        let verified = false;
+        let paymentId = '';
+
+        // Handle Razorpay payment verification
+        if (gateway === 'razorpay') {
+          const razorpayOrderId = searchParams.get('razorpayOrderId');
+          const razorpayPaymentId = searchParams.get('paymentId');
+          const signature = searchParams.get('signature');
+
+          if (!razorpayOrderId || !razorpayPaymentId || !signature) {
+            throw new Error('Missing Razorpay payment details');
+          }
+
+          // Verify payment signature
+          const verifyResult = await verifyRazorpayPayment(
+            razorpayOrderId,
+            razorpayPaymentId,
+            signature,
+            storeIdParam
+          );
+
+          verified = verifyResult.verified;
+          paymentId = razorpayPaymentId;
+
+          // Order was already created with status 'new' + payment_status 'completed'
+          // inside the Razorpay onSuccess callback in Checkout.tsx.
+          // No DB update needed here — just use verified flag to drive the UI.
+        }
+
+        // Check if payment was verified
+        if (!verified) {
+          setStatus('failed');
+          return;
+        }
+
+        // Fetch complete order details
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+
+        if (orderError || !orderData) {
+          throw new Error('Failed to fetch order details');
+        }
+
+        // Prepare WhatsApp message
+        const message = generateOrderMessage({
+          customerName: orderData.customer_name,
+          phone: orderData.customer_phone,
+          email: orderData.customer_email,
+          address: orderData.delivery_address,
+          landmark: orderData.delivery_landmark,
+          pincode: orderData.delivery_pincode,
+          deliveryTime: orderData.delivery_time,
+          latitude: orderData.delivery_latitude,
+          longitude: orderData.delivery_longitude,
+          cart: orderData.items as any[],
+          subtotal: orderData.subtotal,
+          deliveryCharge: orderData.delivery_charge || 0,
+          total: orderData.total,
+          paymentMethod: 'online' as const,
+          paymentGateway: 'Razorpay',
+          transactionId: paymentId,
+          orderNumber: orderData.order_number,
+        });
+
+        setWhatsappMessage(message);
+        setOrderNumber(orderData.order_number);
+        setTransactionId(paymentId);
+        setStatus('success');
+
+        // ✅ IMMEDIATE AUTO-REDIRECT to WhatsApp (deep linking)
+        // Small delay to ensure UI renders first
+        setTimeout(() => {
+          autoOpenWhatsApp(message, storeIdParam);
+        }, 500);
+
+      } catch (error: any) {
+        console.error('Payment processing error:', error);
+        setStatus('failed');
+      }
+    };
+
+    processPayment();
+  }, [searchParams]);
+
+  // Handler for WhatsApp button click (manual fallback)
+  const handleOpenWhatsApp = async () => {
+    if (!whatsappMessage || !storeId) return;
+    
+    const number = await getWhatsAppNumber(storeId);
+    const formattedNumber = formatWhatsAppNumber(number);
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+
+    if (isMobile) {
+      // Mobile: Use deep link
+      window.location.href = `whatsapp://send?phone=${formattedNumber}&text=${encodedMessage}`;
+    } else {
+      // Desktop: Open in new tab
+      window.open(`https://wa.me/${formattedNumber}?text=${encodedMessage}`, '_blank');
+    }
+  };
+
+  // Handler for home navigation
+  // Works for all routing contexts: subdomain, custom domain, and path-based
+  const handleGoHome = () => {
+    const domainInfo = detectDomain();
+
+    if (domainInfo.isStoreSpecific) {
+      // Subdomain (store.digitaldukandar.in) or custom domain (mycustomdomain.com)
+      // Store root is always "/" — no slug prefix needed
+      navigate('/');
+    } else {
+      // Main platform (digitaldukandar.in) — path-based routing, slug required
+      navigate(storeSlug ? `/${storeSlug}` : '/');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 px-4 py-8">
+      <div className="max-w-md w-full">
+
+        {/* Verifying State */}
+        {status === 'verifying' && (
+          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
+            <Loader2 className="h-20 w-20 text-primary mx-auto animate-spin mb-6" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Verifying Payment</h2>
+            <p className="text-muted-foreground">Please wait while we confirm your payment...</p>
+          </div>
+        )}
+
+        {/* Success State - Redesigned for psychological engagement */}
+        {status === 'success' && (
+          <div className="bg-card rounded-3xl shadow-2xl overflow-hidden">
+            {/* Header - Orange/Amber to signal "pending action needed" */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center">
+              <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white mb-4">
+                <Clock className="h-12 w-12 text-amber-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-2">Payment Received</h2>
+              <p className="text-amber-100 text-lg">Confirm on WhatsApp to complete your order</p>
+            </div>
+
+            {/* Progress Stepper - Shows user is mid-journey, not finished */}
+            <div className="px-8 pt-6">
+              <div className="flex items-center justify-between relative">
+                {/* Step 1: Payment - Completed */}
+                <div className="flex flex-col items-center z-10">
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-xs mt-2 text-green-600 font-medium">Payment</span>
+                </div>
+
+                {/* Connector Line 1 */}
+                <div className="absolute left-[15%] right-[52%] top-5 h-1 bg-green-500"></div>
+
+                {/* Step 2: Confirm - Current/Active */}
+                <div className="flex flex-col items-center z-10">
+                  <div
+                    className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-200"
+                    style={{ animation: 'pop 2s ease-in-out infinite' }}
+                  >
+                    <Package className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-xs mt-2 text-amber-600 font-bold">Confirm</span>
+                </div>
+
+                {/* Connector Line 2 */}
+                <div className="absolute left-[52%] right-[15%] top-5 h-1 bg-muted"></div>
+
+                {/* Step 3: Shipped - Pending */}
+                <div className="flex flex-col items-center z-10">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs mt-2 text-muted-foreground font-medium">Shipped</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Details */}
+            <div className="p-8 space-y-5">
+              <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Order Number</span>
+                  <span className="text-foreground font-bold">{orderNumber}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Transaction ID</span>
+                  <span className="text-foreground font-mono text-sm">{transactionId.slice(0, 20)}...</span>
+                </div>
+              </div>
+
+              {/* Auto-redirect notice */}
+              {!showFallback && whatsappOpened && (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center justify-center gap-2 text-amber-800 font-medium">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Opening WhatsApp...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Primary CTA - WhatsApp Button with urgency */}
+              <div className="space-y-2">
+                <Button
+                  onClick={handleOpenWhatsApp}
+                  size="lg"
+                  className="w-full h-16 text-lg font-bold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200 animate-[pop_2s_ease-in-out_infinite]"
+                  style={{
+                    animation: 'pop 2s ease-in-out infinite',
+                  }}
+                >
+                  <svg viewBox="0 0 455.731 455.731" xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 rounded-full mr-3" aria-hidden="true">
+                    <circle cx="227.866" cy="227.866" r="227.866" fill="#1BD741"/>
+                    <path fill="#FFFFFF" d="M68.494,387.41l22.323-79.284c-14.355-24.387-21.913-52.134-21.913-80.638c0-87.765,71.402-159.167,159.167-159.167s159.166,71.402,159.166,159.167c0,87.765-71.401,159.167-159.166,159.167c-27.347,0-54.125-7-77.814-20.292L68.494,387.41z M154.437,337.406l4.872,2.975c20.654,12.609,44.432,19.274,68.762,19.274c72.877,0,132.166-59.29,132.166-132.167S300.948,95.321,228.071,95.321S95.904,154.611,95.904,227.488c0,25.393,7.217,50.052,20.869,71.311l3.281,5.109l-12.855,45.658L154.437,337.406z"/>
+                    <path fill="#FFFFFF" d="M183.359,153.407l-10.328-0.563c-3.244-0.177-6.426,0.907-8.878,3.037c-5.007,4.348-13.013,12.754-15.472,23.708c-3.667,16.333,2,36.333,16.667,56.333c14.667,20,42,52,90.333,65.667c15.575,4.404,27.827,1.435,37.28-4.612c7.487-4.789,12.648-12.476,14.508-21.166l1.649-7.702c0.524-2.448-0.719-4.932-2.993-5.98l-34.905-16.089c-2.266-1.044-4.953-0.384-6.477,1.591l-13.703,17.764c-1.035,1.342-2.807,1.874-4.407,1.312c-9.384-3.298-40.818-16.463-58.066-49.687c-0.748-1.441-0.562-3.19,0.499-4.419l13.096-15.15c1.338-1.547,1.676-3.722,0.872-5.602l-15.046-35.201C187.187,154.774,185.392,153.518,183.359,153.407z"/>
+                  </svg>
+                  Confirm My Order
+                </Button>
+
+                {/* Instruction text */}
+                <p className="text-center text-sm text-muted-foreground">
+                  Click to confirm order & send details via WhatsApp
+                </p>
+              </div>
+
+              {/* Pop animation keyframes */}
+              <style>{`
+                @keyframes pop {
+                  0%, 100% { transform: scale(1); }
+                  50% { transform: scale(1.03); }
+                }
+              `}</style>
+
+              {/* Minimized Home Link - just a text link, not a button */}
+              <div className="text-center pt-2">
+                <button
+                  onClick={handleGoHome}
+                  className="text-sm text-muted-foreground hover:text-foreground underline"
+                >
+                  Return to store
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Failed State */}
+        {status === 'failed' && (
+          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-destructive/10 mb-6">
+              <XCircle className="h-12 w-12 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Payment Verification Failed</h2>
+            <p className="text-muted-foreground mb-6">There was an issue verifying your payment.</p>
+            <p className="text-sm text-muted-foreground mb-8">
+              If the amount was deducted from your account, please contact our support with your transaction details.
+            </p>
+            <Button
+              onClick={handleGoHome}
+              size="lg"
+              variant="outline"
+              className="w-full"
+            >
+              <Home className="w-5 h-5 mr-2" />
+              Back to Home
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
