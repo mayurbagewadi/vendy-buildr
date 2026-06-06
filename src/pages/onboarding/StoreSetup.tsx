@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Store, Check, X, Loader2, XCircle } from "lucide-react";
 import { seedDemoDataForStore } from "@/lib/seedDemoData";
+import { waitForAuthenticatedSession } from "@/lib/authSession";
 
 const StoreSetup = () => {
   const navigate = useNavigate();
@@ -46,8 +47,8 @@ const StoreSetup = () => {
   }, [navigate]);
 
   const checkAuthAndLoadData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const session = await waitForAuthenticatedSession();
+    if (!session?.user) {
       toast({
         title: "Authentication required",
         description: "Please log in to continue with onboarding",
@@ -56,6 +57,7 @@ const StoreSetup = () => {
       navigate("/auth");
       return;
     }
+    const user = session.user;
 
     // Check if user is already a helper
     const { data: existingHelper } = await supabase
@@ -171,8 +173,9 @@ const StoreSetup = () => {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
+      const session = await waitForAuthenticatedSession();
+      if (!session?.user) throw new Error("Session not ready. Please wait a moment and try again.");
+      const user = session.user;
 
       if (existingStoreId) {
         // UPDATE path — store already exists (user came back from step 2)
@@ -195,9 +198,8 @@ const StoreSetup = () => {
         });
       } else {
         // INSERT path — new store creation
-        const { data: { session } } = await supabase.auth.getSession();
-        const providerToken = session?.provider_token;
-        const providerRefreshToken = session?.provider_refresh_token;
+        const providerToken = session.provider_token;
+        const providerRefreshToken = session.provider_refresh_token;
         const tokenExpiry = providerToken ? new Date(Date.now() + 3600 * 1000).toISOString() : null;
 
         const { data: storeData, error } = await supabase.from("stores").insert({

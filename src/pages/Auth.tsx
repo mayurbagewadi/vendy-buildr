@@ -114,9 +114,6 @@ export default function Auth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] Auth state changed:', event, session ? 'Session exists' : 'No session');
 
-      // Clear OAuth processing state once auth state changes
-      setIsProcessingOAuth(false);
-
       if (event === 'SIGNED_IN' && session) {
         setHasSession(true);
 
@@ -214,8 +211,11 @@ export default function Auth() {
               title: "Error",
               description: "Failed to verify account. Please try again.",
             });
+            setIsProcessingOAuth(false);
           }
         }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        setIsProcessingOAuth(false);
       }
     });
 
@@ -325,7 +325,7 @@ export default function Auth() {
             <div className="text-center space-y-4 py-4">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
               <p className="text-sm text-muted-foreground">
-                Processing sign in...
+                Please wait, we are setting up your account...
               </p>
             </div>
           ) : hasSession ? (
