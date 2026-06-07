@@ -1,7 +1,11 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -77,10 +81,26 @@ const sections = [
 interface Props {
   /** Pass a className to override the default trigger style */
   triggerClassName?: string;
+  triggerLabel?: string;
+  supportWhatsapp?: string | null;
 }
 
-export const InstagramPromoTermsModal = ({ triggerClassName }: Props) => {
+export const InstagramPromoTermsModal = ({ triggerClassName, triggerLabel, supportWhatsapp }: Props) => {
   const [open, setOpen] = useState(false);
+  const [instagramProfile, setInstagramProfile] = useState("");
+
+  const handleClaimSpot = () => {
+    const profile = instagramProfile.trim();
+    if (!profile || !supportWhatsapp) return;
+
+    const message = `Hi, I want to claim my free website for my Instagram business.\n\nInstagram profile: ${profile}\n\nI agree to the terms and conditions.`;
+    const encodedMessage = encodeURIComponent(message);
+    const cleanedNumber = supportWhatsapp.replace(/\D/g, "");
+
+    window.open(`https://wa.me/${cleanedNumber}?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+    setOpen(false);
+    setInstagramProfile("");
+  };
 
   return (
     <>
@@ -92,7 +112,7 @@ export const InstagramPromoTermsModal = ({ triggerClassName }: Props) => {
           "text-xs text-white/50 hover:text-white/70 underline underline-offset-2 transition-colors cursor-pointer bg-transparent border-0 p-0"
         }
       >
-        *Terms &amp; conditions apply
+        {triggerLabel ?? "*Terms &amp; conditions apply"}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -118,6 +138,31 @@ export const InstagramPromoTermsModal = ({ triggerClassName }: Props) => {
               </div>
             ))}
           </div>
+
+          <div className="mt-2 space-y-3 rounded-xl border bg-muted/30 p-4">
+            <div className="space-y-1">
+              <Label htmlFor="instagram-profile">Instagram Profile</Label>
+              <p className="text-xs text-muted-foreground">Paste your Instagram profile link or handle to claim the offer.</p>
+            </div>
+            <Input
+              id="instagram-profile"
+              value={instagramProfile}
+              onChange={(e) => setInstagramProfile(e.target.value)}
+              placeholder="https://instagram.com/yourprofile or @yourprofile"
+              autoComplete="off"
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              onClick={handleClaimSpot}
+              disabled={!instagramProfile.trim() || !supportWhatsapp}
+              className="w-full sm:w-auto"
+            >
+              Claim Your Spot
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

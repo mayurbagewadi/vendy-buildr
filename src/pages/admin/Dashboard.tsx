@@ -11,7 +11,6 @@ import {
   Users,
   Clock,
   Instagram,
-  ArrowRight
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getProducts, initializeProducts } from "@/lib/productData";
@@ -308,15 +307,13 @@ const AdminDashboard = () => {
                   <InstagramPromoTermsModal />
                 </div>
               </div>
-              <a
-                href={`https://wa.me/${supportWhatsapp}?text=${encodeURIComponent("Hi, I want to claim my free website for my Instagram business")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 inline-flex items-center gap-2 bg-white text-purple-700 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors shadow-lg"
-              >
-                Claim Your Spot
-                <ArrowRight className="w-4 h-4" />
-              </a>
+              <div className="flex-shrink-0">
+                <InstagramPromoTermsModal
+                  triggerLabel="Claim Your Spot"
+                  supportWhatsapp={supportWhatsapp}
+                  triggerClassName="inline-flex items-center gap-2 bg-white text-purple-700 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors shadow-lg"
+                />
+              </div>
             </div>
           </div>
         )}
