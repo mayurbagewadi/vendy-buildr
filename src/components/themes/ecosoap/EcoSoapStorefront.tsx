@@ -161,7 +161,7 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
   const showShop = activeTab === "shop";
 
   return (
-    <div className="min-h-screen bg-stone-50/20 text-stone-900 antialiased">
+    <div className="min-h-screen bg-[#fbfaf6] text-stone-900 antialiased">
       <header className="sticky top-0 z-40 w-full border-b border-stone-100 bg-white/95 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
@@ -226,7 +226,7 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
 
       {showShop ? (
         <main>
-          <section className="relative overflow-hidden bg-gradient-to-b from-stone-50 via-white to-stone-50/20 py-16 lg:py-24">
+          <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24">
             <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
                 <div className="space-y-6 text-left lg:col-span-6">
