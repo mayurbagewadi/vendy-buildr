@@ -277,10 +277,10 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
                 <div className="relative flex justify-center lg:col-span-6">
                   <div className="relative aspect-[4/3] w-full max-w-lg rotate-1 overflow-hidden rounded-2xl border-4 border-white shadow-2xl transition-transform duration-500 hover:rotate-0">
                     <img src="/themes/ecosoap/hero_soap_banner.png" alt="EcoSoap artisanal collection" className="h-full w-full object-cover" />
-                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-stone-900/60 via-transparent to-transparent p-6">
-                      <div className="text-left text-white">
-                        <span className="text-[10px] uppercase tracking-widest text-emerald-200">Featured Batch</span>
-                        <h3 className="font-serif text-lg font-medium">French Lavender & Oatmeal Meadow</h3>
+                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-emerald-50/85 via-white/20 to-transparent p-6">
+                      <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-left shadow-sm backdrop-blur-sm">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700">Featured Batch</span>
+                        <h3 className="font-serif text-lg font-medium text-stone-900">French Lavender & Oatmeal Meadow</h3>
                       </div>
                     </div>
                   </div>
