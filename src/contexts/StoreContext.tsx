@@ -136,18 +136,6 @@ const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 export function StoreProvider({ slug, children }: { slug?: string | null; children: ReactNode }) {
   const cached = slug ? readCache(slug) : null;
 
-  useEffect(() => {
-    console.info('[StoreContextDebug] provider init', {
-      slug,
-      cacheHit: Boolean(cached),
-      cachedStoreId: cached?.store?.id ?? null,
-      cachedTemplate: cached?.store?.storefront_template ?? null,
-      cachedTheme: cached?.store?.storefront_theme ?? null,
-      cachedPalette: cached?.store?.storefront_color_palette ?? null,
-      path: window.location.pathname,
-    });
-  }, [slug]);
-
   const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
   const [loading, setLoading] = useState(!cached);
@@ -222,39 +210,13 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
 
     (async () => {
       try {
-        console.info('[StoreContextDebug] lookup start', {
-          slug,
-          path: window.location.pathname,
-        });
-
         let query = supabase.from('stores').select('*').eq('is_active', true);
         query = slug.includes('.')
           ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
           : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
 
         const { data: storeData, error } = await query.maybeSingle();
-        if (cancelled) return;
-
-        if (error || !storeData) {
-          console.error('[StoreContextDebug] lookup failed', {
-            slug,
-            error,
-            hasStore: Boolean(storeData),
-            path: window.location.pathname,
-          });
-          return;
-        }
-
-        console.info('[StoreContextDebug] lookup success', {
-          slug,
-          storeId: storeData.id,
-          storeSlug: storeData.slug,
-          subdomain: storeData.subdomain,
-          template: storeData.storefront_template,
-          theme: storeData.storefront_theme,
-          palette: storeData.storefront_color_palette,
-          path: window.location.pathname,
-        });
+        if (cancelled || error || !storeData) return;
 
         const { data: profileData } = await supabase
           .from('profiles').select('phone, email')

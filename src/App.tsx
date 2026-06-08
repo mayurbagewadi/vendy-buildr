@@ -121,13 +121,6 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     return { hasError: true };
   }
   componentDidCatch(error: Error) {
-    console.error('[ChunkErrorBoundary] Caught route/runtime error', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      path: window.location.pathname,
-    });
-
     const isChunkError =
       error.name === 'ChunkLoadError' ||
       error.message.includes('Failed to fetch dynamically imported module') ||
@@ -139,22 +132,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     }
   }
   render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ minHeight: '100vh', padding: 24, background: '#fff', color: '#111827' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Frontend runtime error</h1>
-          <p style={{ marginBottom: 12 }}>
-            A route failed to render. Open browser console and check <code>[ChunkErrorBoundary]</code>.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ border: '1px solid #d1d5db', borderRadius: 8, padding: '8px 12px' }}
-          >
-            Reload
-          </button>
-        </div>
-      );
-    }
+    if (this.state.hasError) return null;
     return this.props.children;
   }
 }

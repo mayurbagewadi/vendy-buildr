@@ -143,17 +143,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   // Fires immediately once ctxStore.id is available (instant on cached sessions).
   // Previously: 4 sequential DB round-trips (store→profile→categories→products)
   // + 1 delayed AI design fetch. Now: 1 parallel batch of 3 queries.
-  const { data: pageData, isLoading: pageLoading, error: pageError, isError: pageIsError } = useQuery({
+  const { data: pageData, isLoading: pageLoading } = useQuery({
     queryKey: ['store-page', ctxStore?.id],
     queryFn: async () => {
       const storeId = ctxStore!.id;
-      console.info('[StoreHomeDebug] page query start', {
-        storeId,
-        slug,
-        template: (ctxStore as any)?.storefront_template ?? null,
-        path: window.location.pathname,
-      });
-
       const [categoriesResult, products, categoryCountsResult, designResult] = await Promise.all([
         supabase.from('categories').select('*').eq('store_id', storeId).order('name'),
         getPublishedProducts(storeId, 16),
@@ -164,17 +157,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           .eq('store_id', storeId)
           .maybeSingle(),
       ]);
-
-      console.info('[StoreHomeDebug] page query result', {
-        storeId,
-        categoriesCount: categoriesResult.data?.length ?? 0,
-        categoriesError: categoriesResult.error ?? null,
-        productsCount: products?.length ?? 0,
-        categoryCountsError: categoryCountsResult.error ?? null,
-        hasDesign: Boolean(designResult.data),
-        designError: designResult.error ?? null,
-        path: window.location.pathname,
-      });
 
       return {
         categories: (categoriesResult.data ?? []) as Category[],
@@ -197,34 +179,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   // Combined loading: wait for both store context AND page-specific data
   const loading = storeLoading || pageLoading;
-
-  useEffect(() => {
-    console.info('[StoreHomeDebug] render state', {
-      slug,
-      storeLoading,
-      pageLoading,
-      loading,
-      hasStore: Boolean(store),
-      storeId: store?.id ?? null,
-      template: store?.storefront_template ?? null,
-      pageIsError,
-      pageError,
-      categoriesCount: pageData?.categories?.length ?? 0,
-      productsCount: pageData?.products?.length ?? 0,
-      path: window.location.pathname,
-    });
-  }, [
-    slug,
-    storeLoading,
-    pageLoading,
-    loading,
-    store?.id,
-    store?.storefront_template,
-    pageIsError,
-    pageError,
-    pageData?.categories?.length,
-    pageData?.products?.length,
-  ]);
 
   // Derive display data from query results (no separate state needed)
   const categories       = pageData?.categories ?? [];
@@ -320,14 +274,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   // ── Layout classes derived from AI design ────────────────────────────────────
   if (store.storefront_template === "playful") {
-    console.info('[StoreHomeDebug] rendering EcoSoap template', {
-      storeId: store.id,
-      slug: store.slug,
-      productsCount: products.length,
-      categoriesCount: categories.length,
-      path: window.location.pathname,
-    });
-
     return (
       <>
         <SEOHead
