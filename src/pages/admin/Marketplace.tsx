@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Search, Plus, ArrowRight, CheckCircle2, Trash2 } from "lucide-react";
+import { Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Search, Plus, ArrowRight, CheckCircle2, Trash2, Palette, Puzzle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MarketplacePaymentModal } from "@/components/marketplace/MarketplacePaymentModal";
+import { ThemePreviewModal } from "@/components/marketplace/ThemePreviewModal";
 import { checkExistingPurchase, enableFreeFeature } from "@/lib/marketplace/paymentService";
+import { type PaletteId } from "@/lib/colorPalettes";
 
 interface MarketplaceFeature {
   id: string;
@@ -16,6 +18,7 @@ interface MarketplaceFeature {
   slug: string;
   description: string;
   icon: string;
+  item_type?: string | null;
   is_free: boolean;
   price: number;
   is_active: boolean;
@@ -30,6 +33,8 @@ const getIconComponent = (iconName: string) => {
     Mail,
     Target,
     Package,
+    Palette,
+    Puzzle,
   };
   return iconMap[iconName] || Package;
 };
@@ -48,10 +53,44 @@ const getFeatureRoute = (slug: string): string => {
 
 interface StoreData {
   id: string;
+  slug: string;
+  storefront_theme: string | null;
+  storefront_color_palette: string | null;
+  storefront_template: string | null;
   enabled_features: string[];
 }
 
 type FilterType = 'all' | 'free' | 'paid' | 'added';
+type MarketplaceItemTypeFilter = 'all' | 'feature' | 'theme' | 'plugin';
+
+type ThemePreset = {
+  theme: "dark" | "light" | "system";
+  palette: PaletteId;
+  heroTitle: string;
+  heroDescription: string;
+};
+
+const DEMO_THEME_PRESET: ThemePreset = {
+  theme: "dark",
+  palette: "forest",
+  heroTitle: "Nourish Your Barrier, Purely From Earth.",
+  heroDescription: "A premium, editorial-style storefront built for artisanal skincare brands with fast product discovery and strong above-the-fold trust signals.",
+};
+
+const DEMO_THEME_FEATURE: MarketplaceFeature & { theme_preset: ThemePreset; source: "demo" } = {
+  id: "demo-theme-ecosoap-boutique",
+  name: "EcoSoap Boutique",
+  slug: "ecosoap-boutique",
+  description: "A calm botanical storefront theme with editorial spacing, premium product cards, and conversion-focused visual hierarchy.",
+  icon: "Palette",
+  item_type: "theme",
+  is_free: true,
+  price: 0,
+  is_active: true,
+  menu_order: 0,
+  source: "demo",
+  theme_preset: DEMO_THEME_PRESET,
+};
 
 const AdminMarketplace = () => {
   const navigate = useNavigate();
@@ -64,8 +103,12 @@ const AdminMarketplace = () => {
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeItemTypeFilter, setActiveItemTypeFilter] = useState<MarketplaceItemTypeFilter>('all');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedFeatureForPayment, setSelectedFeatureForPayment] = useState<MarketplaceFeature | null>(null);
+  const [themePreviewOpen, setThemePreviewOpen] = useState(false);
+  const [selectedThemeForPreview, setSelectedThemeForPreview] = useState<(MarketplaceFeature & { theme_preset: ThemePreset; source?: "demo" }) | null>(null);
+  const [themeDebugLog, setThemeDebugLog] = useState<string[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [customerDetails, setCustomerDetails] = useState({
     name: '',
@@ -87,7 +130,7 @@ const AdminMarketplace = () => {
 
       const { data: store, error } = await supabase
         .from('stores')
-        .select('id, enabled_features')
+        .select('id, slug, storefront_theme, storefront_color_palette, storefront_template, enabled_features')
         .eq('user_id', session.user.id)
         .single();
 
@@ -96,6 +139,10 @@ const AdminMarketplace = () => {
       if (store) {
         setStoreData({
           id: store.id,
+          slug: store.slug,
+          storefront_theme: store.storefront_theme,
+          storefront_color_palette: store.storefront_color_palette,
+          storefront_template: store.storefront_template ?? "default",
           enabled_features: (store.enabled_features as string[]) || []
         });
         setEnabledFeatures((store.enabled_features as string[]) || []);
@@ -151,12 +198,42 @@ const AdminMarketplace = () => {
     return enabledFeatures.includes(slug);
   };
 
+  const bustStoreCache = () => {
+    if (storeData?.slug) {
+      sessionStorage.removeItem(`dd_sf_${storeData.slug}`);
+    }
+  };
+
+  const addThemeDebugLog = (message: string) => {
+    const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+    console.debug("[MarketplaceTheme]", line);
+    setThemeDebugLog((current) => [line, ...current].slice(0, 8));
+  };
+
+  const themeItems = useMemo(() => {
+    const merged = [DEMO_THEME_FEATURE, ...features];
+    const deduped = new Map<string, MarketplaceFeature | (MarketplaceFeature & { theme_preset: ThemePreset; source?: "demo" })>();
+
+    for (const feature of merged) {
+      deduped.set(feature.slug, feature as any);
+    }
+
+    return Array.from(deduped.values());
+  }, [features]);
+
+  const resolveThemePreset = (feature: MarketplaceFeature & { theme_preset?: ThemePreset }): ThemePreset => {
+    return feature.theme_preset || DEMO_THEME_PRESET;
+  };
+
   // Filter and search features
   const filteredFeatures = useMemo(() => {
-    return features.filter((feature) => {
+    return themeItems.filter((feature) => {
+      const itemType = (feature.item_type || 'feature') as MarketplaceItemTypeFilter;
       const matchesSearch = searchQuery === "" ||
         feature.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         feature.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesItemType = activeItemTypeFilter === 'all' || itemType === activeItemTypeFilter;
 
       let matchesFilter = true;
       switch (activeFilter) {
@@ -167,15 +244,27 @@ const AdminMarketplace = () => {
           matchesFilter = !feature.is_free;
           break;
         case 'added':
-          matchesFilter = enabledFeatures.includes(feature.slug);
+          matchesFilter = itemType === 'theme'
+            ? !!(feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset &&
+              storeData?.storefront_theme === (feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset?.theme &&
+              storeData?.storefront_color_palette === (feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset?.palette
+            : enabledFeatures.includes(feature.slug);
           break;
         default:
           matchesFilter = true;
       }
 
-      return matchesSearch && matchesFilter;
+      return matchesSearch && matchesFilter && matchesItemType;
     });
-  }, [features, searchQuery, activeFilter, enabledFeatures]);
+  }, [
+    themeItems,
+    searchQuery,
+    activeFilter,
+    activeItemTypeFilter,
+    enabledFeatures,
+    storeData?.storefront_theme,
+    storeData?.storefront_color_palette,
+  ]);
 
   const filterOptions: { value: FilterType; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -183,6 +272,10 @@ const AdminMarketplace = () => {
     { value: 'paid', label: 'Paid' },
     { value: 'added', label: 'Added' },
   ];
+
+  const toggleItemTypeFilter = (value: Exclude<MarketplaceItemTypeFilter, 'all'>) => {
+    setActiveItemTypeFilter((current) => (current === value ? 'all' : value));
+  };
 
   const handleAddFeature = async (feature: MarketplaceFeature) => {
     const isAdded = enabledFeatures.includes(feature.slug);
@@ -310,6 +403,127 @@ const AdminMarketplace = () => {
     }
   };
 
+  const handleThemePreview = (feature: MarketplaceFeature & { theme_preset?: ThemePreset }) => {
+    const preset = resolveThemePreset(feature);
+    addThemeDebugLog(`Preview opened for ${feature.slug} -> ${preset.theme}/${preset.palette}`);
+    setSelectedThemeForPreview({
+      ...feature,
+      theme_preset: preset,
+      source: feature.slug === DEMO_THEME_FEATURE.slug ? "demo" : undefined,
+    });
+    setThemePreviewOpen(true);
+  };
+
+  const handleInstallTheme = async (feature: MarketplaceFeature & { theme_preset?: ThemePreset }) => {
+    if (!storeData) {
+      toast({
+        title: "Error",
+        description: "Store data not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const preset = resolveThemePreset(feature);
+    addThemeDebugLog(
+      `Install clicked for ${feature.slug} current=${storeData.storefront_theme}/${storeData.storefront_color_palette}/${storeData.storefront_template} next=${preset.theme}/${preset.palette}/${
+        feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default"
+      }`
+    );
+    setAddingFeature(feature.slug);
+
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({
+          storefront_theme: preset.theme,
+          storefront_color_palette: preset.palette,
+          storefront_template: feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default",
+        })
+        .eq("id", storeData.id);
+
+      if (error) throw error;
+
+      setStoreData({
+        ...storeData,
+        storefront_theme: preset.theme,
+        storefront_color_palette: preset.palette,
+        storefront_template: feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default",
+      });
+
+      bustStoreCache();
+      addThemeDebugLog(`Install succeeded for ${feature.slug}`);
+      toast({
+        title: "Theme Applied",
+        description: `${feature.name} is now active on your store.`,
+      });
+      setThemePreviewOpen(false);
+    } catch (error: any) {
+      console.error("Failed to apply theme:", error);
+      addThemeDebugLog(`Install failed for ${feature.slug}: ${error?.message || "unknown error"}`);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to apply theme. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingFeature(null);
+    }
+  };
+
+  const handleUninstallTheme = async (feature: MarketplaceFeature & { theme_preset?: ThemePreset }) => {
+    if (!storeData) {
+      toast({
+        title: "Error",
+        description: "Store data not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addThemeDebugLog(
+      `Uninstall clicked for ${feature.slug} current=${storeData.storefront_theme}/${storeData.storefront_color_palette}/${storeData.storefront_template}`
+    );
+    setAddingFeature(feature.slug);
+
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({
+          storefront_theme: "dark",
+          storefront_color_palette: "default",
+          storefront_template: "default",
+        })
+        .eq("id", storeData.id);
+
+      if (error) throw error;
+
+      setStoreData({
+        ...storeData,
+        storefront_theme: "dark",
+        storefront_color_palette: "default",
+        storefront_template: "default",
+      });
+
+      bustStoreCache();
+      addThemeDebugLog(`Uninstall succeeded for ${feature.slug}`);
+      toast({
+        title: "Theme Reset",
+        description: "Storefront reverted to the default theme.",
+      });
+    } catch (error: any) {
+      console.error("Failed to uninstall theme:", error);
+      addThemeDebugLog(`Uninstall failed for ${feature.slug}: ${error?.message || "unknown error"}`);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset theme. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingFeature(null);
+    }
+  };
+
   const handlePaymentSuccess = async () => {
     if (!selectedFeatureForPayment || !storeData) return;
 
@@ -354,8 +568,27 @@ const AdminMarketplace = () => {
         <div>
           <h1 className="text-2xl font-bold">Marketplace</h1>
           <p className="text-muted-foreground">
-            Discover and add features to enhance your store
+            Discover and add marketplace items to enhance your store
           </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={activeItemTypeFilter === 'theme' ? "default" : "outline"}
+            size="sm"
+            onClick={() => toggleItemTypeFilter('theme')}
+          >
+            <Palette className="h-4 w-4 mr-2" />
+            Theme
+          </Button>
+          <Button
+            variant={activeItemTypeFilter === 'plugin' ? "default" : "outline"}
+            size="sm"
+            onClick={() => toggleItemTypeFilter('plugin')}
+          >
+            <Puzzle className="h-4 w-4 mr-2" />
+            Plugin
+          </Button>
         </div>
 
         {/* Search and Filter */}
@@ -404,6 +637,7 @@ const AdminMarketplace = () => {
                   onClick={() => {
                     setSearchQuery("");
                     setActiveFilter('all');
+                    setActiveItemTypeFilter('all');
                   }}
                 >
                   Clear filters
@@ -416,6 +650,16 @@ const AdminMarketplace = () => {
             {filteredFeatures.map((feature) => {
               const IconComponent = getIconComponent(feature.icon);
               const isAdded = isFeatureEnabled(feature.slug);
+              const itemType = (feature.item_type || 'feature').toLowerCase();
+              const isTheme = itemType === 'theme';
+              const isPlugin = itemType === 'plugin';
+              const itemTypeLabel = itemType.charAt(0).toUpperCase() + itemType.slice(1);
+              const themeFeature = feature as MarketplaceFeature & { theme_preset?: ThemePreset };
+              const preset = resolveThemePreset(themeFeature);
+              const isThemeApplied =
+                isTheme &&
+                storeData?.storefront_theme === preset.theme &&
+                storeData?.storefront_color_palette === preset.palette;
 
               return (
                 <Card
@@ -428,10 +672,19 @@ const AdminMarketplace = () => {
                         <IconComponent className="h-6 w-6" />
                       </div>
                       <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {itemTypeLabel}
+                        </Badge>
                         {isAdded && (
                           <Badge variant="outline" className="text-green-600 border-green-600">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             Added
+                          </Badge>
+                        )}
+                        {isThemeApplied && (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Applied
                           </Badge>
                         )}
                         {feature.is_free ? (
@@ -449,7 +702,77 @@ const AdminMarketplace = () => {
                         {feature.description}
                       </CardDescription>
                     </div>
-                    {isAdded ? (
+                    {isTheme ? (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleThemePreview(themeFeature)}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          disabled={addingFeature === feature.slug}
+                          onClick={() =>
+                            isThemeApplied
+                              ? handleUninstallTheme(themeFeature)
+                              : handleInstallTheme(themeFeature)
+                          }
+                        >
+                          {isThemeApplied
+                            ? addingFeature === feature.slug
+                              ? "Resetting..."
+                              : "Uninstall Theme"
+                            : addingFeature === feature.slug
+                              ? "Applying..."
+                              : "Install Theme"}
+                        </Button>
+                      </div>
+                    ) : isPlugin ? (
+                      isAdded ? (
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1"
+                            onClick={() => handleAddFeature(feature)}
+                            variant="outline"
+                          >
+                            Configure
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={(e) => handleRemoveFeature(feature, e)}
+                            disabled={removingFeature === feature.slug}
+                          >
+                            {removingFeature === feature.slug ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => handleAddFeature(feature)}
+                          className="w-full"
+                          disabled={addingFeature === feature.slug}
+                        >
+                          {addingFeature === feature.slug ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Adding...
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Plugin
+                            </>
+                          )}
+                        </Button>
+                      )
+                    ) : isAdded ? (
                       <div className="flex gap-2">
                         <Button
                           className="flex-1"
@@ -508,13 +831,38 @@ const AdminMarketplace = () => {
               <div>
                 <h3 className="font-semibold mb-1">How Marketplace Works</h3>
                 <p className="text-sm text-muted-foreground">
-                  Click "Add Feature" to add it to your store. Free features are added instantly.
-                  Paid features require payment before activation.
+                  Click "Add Feature" to add marketplace items to your store. Free items are added instantly.
+                  Paid items require payment before activation. Plugin items use the existing install flow; theme items now have a preview and install path for testing the storefront look.
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {import.meta.env.DEV && (
+          <Card className="border-dashed border-amber-300 bg-amber-50/50">
+            <CardContent className="pt-6 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold mb-1">Theme Debug</h3>
+                  <p className="text-sm text-muted-foreground">
+                    current={storeData?.storefront_theme ?? "unset"} | palette={storeData?.storefront_color_palette ?? "unset"} | template={storeData?.storefront_template ?? "unset"}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setThemeDebugLog([])}>
+                  Clear Log
+                </Button>
+              </div>
+              <div className="max-h-40 overflow-y-auto rounded-xl bg-background border p-3 text-xs font-mono space-y-1">
+                {themeDebugLog.length > 0 ? (
+                  themeDebugLog.map((line, index) => <div key={`${line}-${index}`}>{line}</div>)
+                ) : (
+                  <div className="text-muted-foreground">No theme actions logged yet.</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Payment Modal */}
         {selectedFeatureForPayment && storeData && userId && (
@@ -526,6 +874,16 @@ const AdminMarketplace = () => {
             userId={userId}
             customerDetails={customerDetails}
             onSuccess={handlePaymentSuccess}
+          />
+        )}
+
+        {selectedThemeForPreview && (
+          <ThemePreviewModal
+            open={themePreviewOpen}
+            onOpenChange={setThemePreviewOpen}
+            theme={selectedThemeForPreview}
+            onInstall={() => handleInstallTheme(selectedThemeForPreview)}
+            installing={addingFeature === selectedThemeForPreview.slug}
           />
         )}
       </div>

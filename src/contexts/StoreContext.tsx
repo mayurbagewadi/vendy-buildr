@@ -26,6 +26,7 @@ export interface StoreContextData {
   twitter_url: string | null;
   youtube_url: string | null;
   linkedin_url: string | null;
+  storefront_template: string | null;
   free_delivery_above: number | null;
   promo_bar_text: string | null;
   user_id: string;
@@ -122,12 +123,30 @@ function applyTheme(ownerTheme: string | null, slug?: string | null) {
   localStorage.setItem('theme', resolved);
 }
 
+function applyTemplate(templateId: string | null) {
+  const html = document.documentElement;
+  const resolved = templateId || 'default';
+  html.setAttribute('data-storefront-template', resolved);
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 
 export function StoreProvider({ slug, children }: { slug?: string | null; children: ReactNode }) {
   const cached = slug ? readCache(slug) : null;
+
+  useEffect(() => {
+    console.info('[StoreContextDebug] provider init', {
+      slug,
+      cacheHit: Boolean(cached),
+      cachedStoreId: cached?.store?.id ?? null,
+      cachedTemplate: cached?.store?.storefront_template ?? null,
+      cachedTheme: cached?.store?.storefront_theme ?? null,
+      cachedPalette: cached?.store?.storefront_color_palette ?? null,
+      path: window.location.pathname,
+    });
+  }, [slug]);
 
   const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
@@ -139,8 +158,9 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     if (store) {
       applyColorPalette(store.storefront_color_palette ?? null);
       applyTheme(store.storefront_theme ?? null, slug);
+      applyTemplate(store.storefront_template ?? null);
     }
-  }, [store?.storefront_theme, store?.storefront_color_palette, slug]);
+  }, [store?.storefront_theme, store?.storefront_color_palette, store?.storefront_template, slug]);
 
   // BUG-7 fix: when owner sets System theme, listen for OS dark/light changes
   // mid-session so the store updates without requiring a page reload.
@@ -162,6 +182,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
       document.documentElement.classList.remove('light');
       document.documentElement.classList.add('dark');
       document.documentElement.style.colorScheme = 'dark';
+      document.documentElement.removeAttribute('data-storefront-template');
       const paletteEl = document.getElementById('dd-palette-styles');
       if (paletteEl) paletteEl.remove();
     };
@@ -201,13 +222,39 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
 
     (async () => {
       try {
+        console.info('[StoreContextDebug] lookup start', {
+          slug,
+          path: window.location.pathname,
+        });
+
         let query = supabase.from('stores').select('*').eq('is_active', true);
         query = slug.includes('.')
           ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
           : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
 
         const { data: storeData, error } = await query.maybeSingle();
-        if (cancelled || error || !storeData) return;
+        if (cancelled) return;
+
+        if (error || !storeData) {
+          console.error('[StoreContextDebug] lookup failed', {
+            slug,
+            error,
+            hasStore: Boolean(storeData),
+            path: window.location.pathname,
+          });
+          return;
+        }
+
+        console.info('[StoreContextDebug] lookup success', {
+          slug,
+          storeId: storeData.id,
+          storeSlug: storeData.slug,
+          subdomain: storeData.subdomain,
+          template: storeData.storefront_template,
+          theme: storeData.storefront_theme,
+          palette: storeData.storefront_color_palette,
+          path: window.location.pathname,
+        });
 
         const { data: profileData } = await supabase
           .from('profiles').select('phone, email')

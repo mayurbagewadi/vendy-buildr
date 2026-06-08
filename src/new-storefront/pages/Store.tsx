@@ -486,7 +486,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                 </div>
               </AnimateOnScroll>
               <div ref={newArrivalsGridRef} className={gridColsClass}>
-                {newArrivals.map((product) => (
+                {newArrivals.map((product, index) => (
                   <ProductCard
                     key={product.id}
                     id={product.id}
