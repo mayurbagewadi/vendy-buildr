@@ -19,6 +19,8 @@ import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
+import EcoSoapStorefront from "@/components/themes/ecosoap/EcoSoapStorefront";
+import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -267,6 +269,24 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           <Button>Go Home</Button>
         </Link>
       </div>
+    );
+  }
+
+  // ── Marketplace theme renderer ───────────────────────────────────────────────
+  const activeMarketplaceTheme = getThemeByTemplate(store.storefront_template);
+  if (activeMarketplaceTheme?.id === ECOSOAP_THEME.id) {
+    return (
+      <>
+        <SEOHead
+          title={`${store.name} - Online Store | Shop Quality Products`}
+          description={store.description || `Browse ${store.name}'s collection of quality products.`}
+          canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain)}
+          image={store.logo_url || store.hero_banner_url || 'https://digitaldukandar.in/logo.png'}
+          keywords={categories.map(c => c.name).concat([store.name, 'online store', 'shop'])}
+          type="website"
+        />
+        <EcoSoapStorefront store={store} products={products as any} />
+      </>
     );
   }
 
