@@ -14,6 +14,7 @@ type ThemePreviewModalProps = {
       palette: string;
       theme: string;
     };
+    theme_version?: string;
   };
   onInstall: () => void;
   installing?: boolean;
@@ -221,7 +222,7 @@ export function ThemePreviewModal({
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <Badge variant="outline">{preset?.theme || "dark"}</Badge>
                   <Badge variant="outline">{preset?.palette || "forest"}</Badge>
-                  <Badge variant="outline">playful</Badge>
+                  {theme.theme_version && <Badge variant="outline">v{theme.theme_version}</Badge>}
                 </div>
               </div>
 

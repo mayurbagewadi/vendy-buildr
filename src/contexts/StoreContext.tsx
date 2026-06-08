@@ -129,6 +129,13 @@ function applyTemplate(templateId: string | null) {
   html.setAttribute('data-storefront-template', resolved);
 }
 
+function storeMatchesIdentifier(store: StoreContextData | null, identifier: string | null | undefined): boolean {
+  if (!store || !identifier) return false;
+  return identifier.includes('.')
+    ? store.custom_domain === identifier || store.subdomain === identifier
+    : store.subdomain === identifier || store.slug === identifier;
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
@@ -139,14 +146,20 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
   const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
   const [loading, setLoading] = useState(!cached);
+  const storeMatchesCurrentSlug = storeMatchesIdentifier(store, slug);
+  const activeStore = storeMatchesCurrentSlug ? store : null;
+  const activeProfile = storeMatchesCurrentSlug ? profile : null;
 
   // Apply theme synchronously before paint when we have cached data.
   // This fires before useEffect, so it wins on cached sessions (zero flash).
   useLayoutEffect(() => {
-    if (store) {
+    if (store && storeMatchesIdentifier(store, slug)) {
       applyColorPalette(store.storefront_color_palette ?? null);
       applyTheme(store.storefront_theme ?? null, slug);
       applyTemplate(store.storefront_template ?? null);
+    } else {
+      applyColorPalette(null);
+      applyTemplate(null);
     }
   }, [store?.storefront_theme, store?.storefront_color_palette, store?.storefront_template, slug]);
 
@@ -204,9 +217,25 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
 
   // Fetch store data. Runs once per slug. Background re-fetch keeps cache warm.
   useEffect(() => {
-    if (!slug) { setLoading(false); return; }
+    if (!slug) {
+      setStore(null);
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
+    const cachedForSlug = readCache(slug);
+
+    if (cachedForSlug) {
+      setStore(cachedForSlug.store);
+      setProfile(cachedForSlug.profile);
+      setLoading(false);
+    } else {
+      setStore(null);
+      setProfile(null);
+      setLoading(true);
+    }
 
     (async () => {
       try {
@@ -236,11 +265,11 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
   }, [slug]);
 
   const value: StoreContextValue = {
-    store,
-    profile,
-    storeId: store?.id ?? null,
-    storeSlug: store?.slug ?? slug ?? null,
-    loading,
+    store: activeStore,
+    profile: activeProfile,
+    storeId: activeStore?.id ?? null,
+    storeSlug: activeStore?.slug ?? slug ?? null,
+    loading: loading || Boolean(slug && store && !storeMatchesCurrentSlug),
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

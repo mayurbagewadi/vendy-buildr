@@ -20,6 +20,7 @@ import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import EcoSoapStorefront from "@/components/themes/ecosoap/EcoSoapStorefront";
+import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -273,7 +274,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   }
 
   // ── Layout classes derived from AI design ────────────────────────────────────
-  if (store.storefront_template === "playful") {
+  const activeMarketplaceTheme = getThemeByTemplate(store.storefront_template);
+  if (activeMarketplaceTheme?.id === ECOSOAP_THEME.id) {
     return (
       <>
         <SEOHead
