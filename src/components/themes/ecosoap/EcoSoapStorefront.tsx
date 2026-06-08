@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -128,18 +128,6 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
   const [sortBy, setSortBy] = useState("recommended");
 
   const ecoProducts = useMemo(() => adaptProducts(products), [products]);
-
-  useEffect(() => {
-    console.info("[EcoSoapDebug] renderer mounted", {
-      storeId: store.id,
-      storeSlug: store.slug,
-      productsCount: products.length,
-      adaptedProductsCount: ecoProducts.length,
-      themeImages: THEME_IMAGES,
-      heroImage: "/themes/ecosoap/hero_soap_banner.png",
-      path: window.location.pathname,
-    });
-  }, [store.id, store.slug, products.length, ecoProducts.length]);
 
   const filteredProducts = useMemo(() => {
     let result = [...ecoProducts];
