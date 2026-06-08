@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import webfontDownload from "vite-plugin-webfont-dl";
 
@@ -17,6 +17,10 @@ const storefrontPublicAssets = [
   "whatsapp-icon.png",
 ];
 
+const storefrontPublicDirectories = [
+  "themes",
+];
+
 function copyStorefrontPublicAssets() {
   return {
     name: "copy-storefront-public-assets",
@@ -30,6 +34,14 @@ function copyStorefrontPublicAssets() {
         if (!existsSync(source)) continue;
         mkdirSync(path.dirname(target), { recursive: true });
         copyFileSync(source, target);
+      }
+
+      for (const directory of storefrontPublicDirectories) {
+        const source = path.resolve(__dirname, "public", directory);
+        const target = path.resolve(outDir, directory);
+
+        if (!existsSync(source)) continue;
+        cpSync(source, target, { recursive: true });
       }
 
       writeFileSync(
