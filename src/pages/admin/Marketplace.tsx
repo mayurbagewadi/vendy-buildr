@@ -10,7 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { MarketplacePaymentModal } from "@/components/marketplace/MarketplacePaymentModal";
 import { ThemePreviewModal } from "@/components/marketplace/ThemePreviewModal";
 import { checkExistingPurchase, enableFreeFeature } from "@/lib/marketplace/paymentService";
-import { type PaletteId } from "@/lib/colorPalettes";
+import {
+  BUILT_IN_MARKETPLACE_THEMES,
+  DEFAULT_STOREFRONT_TEMPLATE,
+  resolveThemePreset,
+  resolveThemeTemplate,
+  type ThemePreset,
+} from "@/lib/themeRegistry";
 
 interface MarketplaceFeature {
   id: string;
@@ -63,34 +69,21 @@ interface StoreData {
 type FilterType = 'all' | 'free' | 'paid' | 'added';
 type MarketplaceItemTypeFilter = 'all' | 'feature' | 'theme' | 'plugin';
 
-type ThemePreset = {
-  theme: "dark" | "light" | "system";
-  palette: PaletteId;
-  heroTitle: string;
-  heroDescription: string;
-};
-
-const DEMO_THEME_PRESET: ThemePreset = {
-  theme: "dark",
-  palette: "forest",
-  heroTitle: "Nourish Your Barrier, Purely From Earth.",
-  heroDescription: "A premium, editorial-style storefront built for artisanal skincare brands with fast product discovery and strong above-the-fold trust signals.",
-};
-
-const DEMO_THEME_FEATURE: MarketplaceFeature & { theme_preset: ThemePreset; source: "demo" } = {
-  id: "demo-theme-ecosoap-boutique",
-  name: "EcoSoap Boutique",
-  slug: "ecosoap-boutique",
-  description: "A calm botanical storefront theme with editorial spacing, premium product cards, and conversion-focused visual hierarchy.",
-  icon: "Palette",
-  item_type: "theme",
-  is_free: true,
-  price: 0,
-  is_active: true,
-  menu_order: 0,
-  source: "demo",
-  theme_preset: DEMO_THEME_PRESET,
-};
+const BUILT_IN_THEME_FEATURES: Array<MarketplaceFeature & { theme_preset: ThemePreset; theme_version: string }> =
+  BUILT_IN_MARKETPLACE_THEMES.map((theme) => ({
+    id: `built-in-theme-${theme.id}`,
+    name: theme.name,
+    slug: theme.slug,
+    description: theme.description,
+    icon: theme.icon,
+    item_type: "theme",
+    is_free: theme.isFree,
+    price: theme.price,
+    is_active: true,
+    menu_order: 0,
+    theme_preset: theme.preset,
+    theme_version: theme.version,
+  }));
 
 const AdminMarketplace = () => {
   const navigate = useNavigate();
@@ -107,8 +100,7 @@ const AdminMarketplace = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedFeatureForPayment, setSelectedFeatureForPayment] = useState<MarketplaceFeature | null>(null);
   const [themePreviewOpen, setThemePreviewOpen] = useState(false);
-  const [selectedThemeForPreview, setSelectedThemeForPreview] = useState<(MarketplaceFeature & { theme_preset: ThemePreset; source?: "demo" }) | null>(null);
-  const [themeDebugLog, setThemeDebugLog] = useState<string[]>([]);
+  const [selectedThemeForPreview, setSelectedThemeForPreview] = useState<(MarketplaceFeature & { theme_preset: ThemePreset; theme_version?: string }) | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [customerDetails, setCustomerDetails] = useState({
     name: '',
@@ -204,15 +196,9 @@ const AdminMarketplace = () => {
     }
   };
 
-  const addThemeDebugLog = (message: string) => {
-    const line = `[${new Date().toLocaleTimeString()}] ${message}`;
-    console.debug("[MarketplaceTheme]", line);
-    setThemeDebugLog((current) => [line, ...current].slice(0, 8));
-  };
-
   const themeItems = useMemo(() => {
-    const merged = [DEMO_THEME_FEATURE, ...features];
-    const deduped = new Map<string, MarketplaceFeature | (MarketplaceFeature & { theme_preset: ThemePreset; source?: "demo" })>();
+    const merged = [...BUILT_IN_THEME_FEATURES, ...features];
+    const deduped = new Map<string, MarketplaceFeature | (MarketplaceFeature & { theme_preset: ThemePreset; theme_version?: string })>();
 
     for (const feature of merged) {
       deduped.set(feature.slug, feature as any);
@@ -220,10 +206,6 @@ const AdminMarketplace = () => {
 
     return Array.from(deduped.values());
   }, [features]);
-
-  const resolveThemePreset = (feature: MarketplaceFeature & { theme_preset?: ThemePreset }): ThemePreset => {
-    return feature.theme_preset || DEMO_THEME_PRESET;
-  };
 
   // Filter and search features
   const filteredFeatures = useMemo(() => {
@@ -244,11 +226,16 @@ const AdminMarketplace = () => {
           matchesFilter = !feature.is_free;
           break;
         case 'added':
-          matchesFilter = itemType === 'theme'
-            ? !!(feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset &&
-              storeData?.storefront_theme === (feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset?.theme &&
-              storeData?.storefront_color_palette === (feature as MarketplaceFeature & { theme_preset?: ThemePreset }).theme_preset?.palette
-            : enabledFeatures.includes(feature.slug);
+          if (itemType === 'theme') {
+            const themeFeature = feature as MarketplaceFeature & { theme_preset?: ThemePreset };
+            const preset = resolveThemePreset(themeFeature.slug, themeFeature.theme_preset);
+            matchesFilter =
+              storeData?.storefront_theme === preset.theme &&
+              storeData?.storefront_color_palette === preset.palette &&
+              storeData?.storefront_template === resolveThemeTemplate(themeFeature.slug);
+          } else {
+            matchesFilter = enabledFeatures.includes(feature.slug);
+          }
           break;
         default:
           matchesFilter = true;
@@ -264,6 +251,7 @@ const AdminMarketplace = () => {
     enabledFeatures,
     storeData?.storefront_theme,
     storeData?.storefront_color_palette,
+    storeData?.storefront_template,
   ]);
 
   const filterOptions: { value: FilterType; label: string }[] = [
@@ -404,12 +392,12 @@ const AdminMarketplace = () => {
   };
 
   const handleThemePreview = (feature: MarketplaceFeature & { theme_preset?: ThemePreset }) => {
-    const preset = resolveThemePreset(feature);
-    addThemeDebugLog(`Preview opened for ${feature.slug} -> ${preset.theme}/${preset.palette}`);
+    const preset = resolveThemePreset(feature.slug, feature.theme_preset);
+    const themeDefinition = BUILT_IN_MARKETPLACE_THEMES.find((theme) => theme.slug === feature.slug);
     setSelectedThemeForPreview({
       ...feature,
       theme_preset: preset,
-      source: feature.slug === DEMO_THEME_FEATURE.slug ? "demo" : undefined,
+      theme_version: themeDefinition?.version,
     });
     setThemePreviewOpen(true);
   };
@@ -424,12 +412,8 @@ const AdminMarketplace = () => {
       return;
     }
 
-    const preset = resolveThemePreset(feature);
-    addThemeDebugLog(
-      `Install clicked for ${feature.slug} current=${storeData.storefront_theme}/${storeData.storefront_color_palette}/${storeData.storefront_template} next=${preset.theme}/${preset.palette}/${
-        feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default"
-      }`
-    );
+    const preset = resolveThemePreset(feature.slug, feature.theme_preset);
+    const template = resolveThemeTemplate(feature.slug);
     setAddingFeature(feature.slug);
 
     try {
@@ -438,7 +422,7 @@ const AdminMarketplace = () => {
         .update({
           storefront_theme: preset.theme,
           storefront_color_palette: preset.palette,
-          storefront_template: feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default",
+          storefront_template: template,
         })
         .eq("id", storeData.id);
 
@@ -448,11 +432,10 @@ const AdminMarketplace = () => {
         ...storeData,
         storefront_theme: preset.theme,
         storefront_color_palette: preset.palette,
-        storefront_template: feature.slug === DEMO_THEME_FEATURE.slug ? "playful" : "default",
+        storefront_template: template,
       });
 
       bustStoreCache();
-      addThemeDebugLog(`Install succeeded for ${feature.slug}`);
       toast({
         title: "Theme Applied",
         description: `${feature.name} is now active on your store.`,
@@ -460,7 +443,6 @@ const AdminMarketplace = () => {
       setThemePreviewOpen(false);
     } catch (error: any) {
       console.error("Failed to apply theme:", error);
-      addThemeDebugLog(`Install failed for ${feature.slug}: ${error?.message || "unknown error"}`);
       toast({
         title: "Error",
         description: error.message || "Failed to apply theme. Please try again.",
@@ -481,9 +463,6 @@ const AdminMarketplace = () => {
       return;
     }
 
-    addThemeDebugLog(
-      `Uninstall clicked for ${feature.slug} current=${storeData.storefront_theme}/${storeData.storefront_color_palette}/${storeData.storefront_template}`
-    );
     setAddingFeature(feature.slug);
 
     try {
@@ -492,7 +471,7 @@ const AdminMarketplace = () => {
         .update({
           storefront_theme: "dark",
           storefront_color_palette: "default",
-          storefront_template: "default",
+          storefront_template: DEFAULT_STOREFRONT_TEMPLATE,
         })
         .eq("id", storeData.id);
 
@@ -502,18 +481,16 @@ const AdminMarketplace = () => {
         ...storeData,
         storefront_theme: "dark",
         storefront_color_palette: "default",
-        storefront_template: "default",
+        storefront_template: DEFAULT_STOREFRONT_TEMPLATE,
       });
 
       bustStoreCache();
-      addThemeDebugLog(`Uninstall succeeded for ${feature.slug}`);
       toast({
         title: "Theme Reset",
         description: "Storefront reverted to the default theme.",
       });
     } catch (error: any) {
       console.error("Failed to uninstall theme:", error);
-      addThemeDebugLog(`Uninstall failed for ${feature.slug}: ${error?.message || "unknown error"}`);
       toast({
         title: "Error",
         description: error.message || "Failed to reset theme. Please try again.",
@@ -655,11 +632,13 @@ const AdminMarketplace = () => {
               const isPlugin = itemType === 'plugin';
               const itemTypeLabel = itemType.charAt(0).toUpperCase() + itemType.slice(1);
               const themeFeature = feature as MarketplaceFeature & { theme_preset?: ThemePreset };
-              const preset = resolveThemePreset(themeFeature);
+              const preset = resolveThemePreset(themeFeature.slug, themeFeature.theme_preset);
+              const template = resolveThemeTemplate(themeFeature.slug);
               const isThemeApplied =
                 isTheme &&
                 storeData?.storefront_theme === preset.theme &&
-                storeData?.storefront_color_palette === preset.palette;
+                storeData?.storefront_color_palette === preset.palette &&
+                storeData?.storefront_template === template;
 
               return (
                 <Card
@@ -838,31 +817,6 @@ const AdminMarketplace = () => {
             </div>
           </CardContent>
         </Card>
-
-        {import.meta.env.DEV && (
-          <Card className="border-dashed border-amber-300 bg-amber-50/50">
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold mb-1">Theme Debug</h3>
-                  <p className="text-sm text-muted-foreground">
-                    current={storeData?.storefront_theme ?? "unset"} | palette={storeData?.storefront_color_palette ?? "unset"} | template={storeData?.storefront_template ?? "unset"}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setThemeDebugLog([])}>
-                  Clear Log
-                </Button>
-              </div>
-              <div className="max-h-40 overflow-y-auto rounded-xl bg-background border p-3 text-xs font-mono space-y-1">
-                {themeDebugLog.length > 0 ? (
-                  themeDebugLog.map((line, index) => <div key={`${line}-${index}`}>{line}</div>)
-                ) : (
-                  <div className="text-muted-foreground">No theme actions logged yet.</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Payment Modal */}
         {selectedFeatureForPayment && storeData && userId && (
