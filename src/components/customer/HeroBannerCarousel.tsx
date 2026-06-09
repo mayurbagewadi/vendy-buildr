@@ -88,7 +88,7 @@ const HeroBannerCarousel = ({
                       imageType: 'banner',
                       description: storeDescription || undefined
                     })}
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+                    className={`absolute inset-0 w-full h-full object-fill transition-opacity duration-500 ${
                       loadedBanners[index] ? "opacity-100" : "opacity-0"
                     }`}
                     loading="eager"
@@ -112,7 +112,7 @@ const HeroBannerCarousel = ({
                       imageType: 'banner',
                       description: storeDescription || undefined
                     })}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-fill"
                     priority={index === 1}
                     preloadMargin="1200px 0px"
                     onLoad={() => markBannerLoaded(index)}
