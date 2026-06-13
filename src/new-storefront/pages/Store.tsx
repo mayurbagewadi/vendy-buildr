@@ -285,7 +285,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           keywords={categories.map(c => c.name).concat([store.name, 'online store', 'shop'])}
           type="website"
         />
-        <EcoSoapStorefront store={store} products={products as any} />
+        <EcoSoapStorefront store={store} products={products as any} categories={categories} />
       </>
     );
   }
