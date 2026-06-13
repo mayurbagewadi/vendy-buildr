@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useCart } from "@/contexts/CartContext";
+import EcoSoapCartDrawer from "@/components/themes/ecosoap/EcoSoapCartDrawer";
 
 type PlatformProduct = {
   id: string;
@@ -128,8 +129,9 @@ const adaptProducts = (products: PlatformProduct[]): EcoSoapProduct[] =>
 
 export default function EcoSoapStorefront({ store, products, categories = [] }: EcoSoapStorefrontProps) {
   const navigate = useNavigate();
-  const { addToCart, cartCount } = useCart();
+  const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
   const [activeTab, setActiveTab] = useState("shop");
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
@@ -183,6 +185,9 @@ export default function EcoSoapStorefront({ store, products, categories = [] }: 
   };
 
   const showShop = activeTab === "shop";
+  const isSubdomain = isStoreSpecificDomain();
+  const cartLink = isSubdomain ? "/cart" : `/${store.slug}/cart`;
+  const checkoutLink = isSubdomain ? "/checkout" : `/${store.slug}/checkout`;
 
   return (
     <div className="min-h-screen bg-[#fbfaf6] text-stone-900 antialiased">
@@ -227,7 +232,7 @@ export default function EcoSoapStorefront({ store, products, categories = [] }: 
 
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate(isStoreSpecificDomain() ? "/cart" : `/${store.slug}/cart`)}
+                onClick={() => setIsCartDrawerOpen(true)}
                 className="relative rounded-full bg-stone-50 p-2.5 text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900"
                 aria-label="Open shopping cart"
                 data-cart-icon
@@ -247,6 +252,17 @@ export default function EcoSoapStorefront({ store, products, categories = [] }: 
           </div>
         </div>
       </header>
+
+      <EcoSoapCartDrawer
+        isOpen={isCartDrawerOpen}
+        cart={cart}
+        cartTotal={cartTotal}
+        cartLink={cartLink}
+        checkoutLink={checkoutLink}
+        onClose={() => setIsCartDrawerOpen(false)}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeItem}
+      />
 
       {showShop ? (
         <main>
