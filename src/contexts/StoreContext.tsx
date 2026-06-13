@@ -44,12 +44,16 @@ export interface StoreContextValue {
   storeId: string | null;
   storeSlug: string | null;
   loading: boolean;
+  errorType: 'connection_error' | 'not_found' | null;
 }
 
 // ─── Session cache (5-min TTL) ────────────────────────────────────────────────
 
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
+const RETRY_DELAY_MS = 700;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface CachedEntry {
   store: StoreContextData;
@@ -79,6 +83,37 @@ function writeCache(slug: string, store: StoreContextData, profile: StoreProfile
 }
 
 // ─── Theme application ────────────────────────────────────────────────────────
+
+async function retryStoreLookup(slug: string) {
+  const runLookup = async () => {
+    let query = supabase.from('stores').select('*').eq('is_active', true);
+    query = slug.includes('.')
+      ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
+      : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+
+    return query.maybeSingle();
+  };
+
+  let result;
+
+  try {
+    result = await runLookup();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  if (!result.error) return result;
+
+  await sleep(RETRY_DELAY_MS);
+
+  try {
+    result = await runLookup();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  return result;
+}
 
 function applyColorPalette(paletteId: string | null) {
   const palette = getPalette(paletteId);
@@ -146,6 +181,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
   const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
   const [loading, setLoading] = useState(!cached);
+  const [errorType, setErrorType] = useState<StoreContextValue['errorType']>(null);
   const storeMatchesCurrentSlug = storeMatchesIdentifier(store, slug);
   const activeStore = storeMatchesCurrentSlug ? store : null;
   const activeProfile = storeMatchesCurrentSlug ? profile : null;
@@ -220,6 +256,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     if (!slug) {
       setStore(null);
       setProfile(null);
+      setErrorType(null);
       setLoading(false);
       return;
     }
@@ -230,22 +267,30 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     if (cachedForSlug) {
       setStore(cachedForSlug.store);
       setProfile(cachedForSlug.profile);
+      setErrorType(null);
       setLoading(false);
     } else {
       setStore(null);
       setProfile(null);
+      setErrorType(null);
       setLoading(true);
     }
 
     (async () => {
       try {
-        let query = supabase.from('stores').select('*').eq('is_active', true);
-        query = slug.includes('.')
-          ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
-          : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
+        const { data: storeData, error } = await retryStoreLookup(slug);
+        if (cancelled) return;
 
-        const { data: storeData, error } = await query.maybeSingle();
-        if (cancelled || error || !storeData) return;
+        if (error) {
+          console.error('[StoreContext] Error loading store:', error);
+          setErrorType('connection_error');
+          return;
+        }
+
+        if (!storeData) {
+          setErrorType('not_found');
+          return;
+        }
 
         const { data: profileData } = await supabase
           .from('profiles').select('phone, email')
@@ -256,6 +301,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
         writeCache(slug, storeData as StoreContextData, profileData ?? null);
         setStore(storeData as StoreContextData);
         setProfile(profileData ?? null);
+        setErrorType(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -270,6 +316,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     storeId: activeStore?.id ?? null,
     storeSlug: activeStore?.slug ?? slug ?? null,
     loading: loading || Boolean(slug && store && !storeMatchesCurrentSlug),
+    errorType: activeStore ? null : errorType,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -278,5 +325,5 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
 // Returns safe defaults when called outside a StoreProvider (e.g. admin pages).
 export function useStorefront(): StoreContextValue {
   const ctx = useContext(StoreContext);
-  return ctx ?? { store: null, profile: null, storeId: null, storeSlug: null, loading: false };
+  return ctx ?? { store: null, profile: null, storeId: null, storeSlug: null, loading: false, errorType: null };
 }

@@ -9,7 +9,41 @@ interface StoreGuardProps {
   children: React.ReactNode;
 }
 
-type GuardStatus = "loading" | "ok" | "deleted";
+type GuardStatus = "loading" | "ok" | "deleted" | "connection_error";
+const CONNECTION_ERROR_MESSAGE = "Connection problem. Please check internet and try again.";
+const RETRY_DELAY_MS = 700;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const retryStoreCheck = async (userId: string) => {
+  let result;
+
+  try {
+    result = await supabase
+      .from("stores")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  if (!result.error) return result;
+
+  await sleep(RETRY_DELAY_MS);
+
+  try {
+    result = await supabase
+      .from("stores")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  return result;
+};
 
 export function StoreGuard({ children }: StoreGuardProps) {
   const navigate = useNavigate();
@@ -33,18 +67,14 @@ export function StoreGuard({ children }: StoreGuardProps) {
         console.log('[StoreGuard] Session found, checking store...');
 
         // Check if store exists for this user
-        const { data: store, error } = await supabase
-          .from("stores")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
+        const { data: store, error } = await retryStoreCheck(session.user.id);
 
         // If effect was cancelled, don't update state
         if (cancelled) return;
 
         if (error) {
           console.error('[StoreGuard] Error checking store:', error);
-          setStatus("deleted");
+          setStatus("connection_error");
           setHasChecked(true);
           return;
         }
@@ -62,7 +92,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
       } catch (error) {
         console.error('[StoreGuard] Error in checkStore:', error);
         if (!cancelled) {
-          setStatus("deleted");
+          setStatus("connection_error");
           setHasChecked(true);
         }
       }
@@ -83,6 +113,26 @@ export function StoreGuard({ children }: StoreGuardProps) {
         <div className="text-center space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
           <p className="text-muted-foreground">Loading your store...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Connection/API failure state
+  if (status === "connection_error" && hasChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <div className="w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm">
+          <div className="flex items-center justify-center mb-4">
+            <div className="rounded-full bg-red-100 p-3">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+          </div>
+          <h1 className="text-xl font-bold mb-3">Connection problem</h1>
+          <p className="text-muted-foreground mb-5">{CONNECTION_ERROR_MESSAGE}</p>
+          <Button onClick={() => window.location.reload()} className="w-full">
+            Try Again
+          </Button>
         </div>
       </div>
     );
