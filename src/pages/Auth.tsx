@@ -10,6 +10,70 @@ import { AppLogo } from "@/components/ui/AppLogo";
 
 const AUTH_PENDING_KEY = 'dd_auth_pending_v1';
 const AUTH_PENDING_TTL_MS = 2 * 60 * 1000;
+const CONNECTION_ERROR_MESSAGE = "Connection problem. Please check internet and try again.";
+const RETRY_DELAY_MS = 700;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getErrorMessage = (error: unknown) =>
+  error && typeof error === 'object' && 'message' in error
+    ? String((error as { message?: unknown }).message || '')
+    : '';
+
+const isConfirmedDeletedUserError = (error: unknown) => {
+  const status = error && typeof error === 'object' && 'status' in error
+    ? Number((error as { status?: unknown }).status)
+    : undefined;
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    (status === 403 || status === 404) &&
+    message.includes('user') &&
+    (message.includes('not found') || message.includes('does not exist') || message.includes('deleted'))
+  );
+};
+
+const verifyCurrentUser = async () => {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (!error && user) return { status: 'ok' as const, user };
+      if (isConfirmedDeletedUserError(error)) return { status: 'deleted' as const, error };
+
+      lastError = error;
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt === 0) await sleep(RETRY_DELAY_MS);
+  }
+
+  return { status: 'connection_error' as const, error: lastError };
+};
+
+const retryQuery = async <T,>(operation: () => Promise<{ data: T | null; error: unknown }>) => {
+  let result: { data: T | null; error: unknown };
+
+  try {
+    result = await operation();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  if (!result.error) return result;
+
+  await sleep(RETRY_DELAY_MS);
+
+  try {
+    result = await operation();
+  } catch (error) {
+    result = { data: null, error };
+  }
+
+  return result;
+};
 
 const isAuthPending = () => {
   const raw = sessionStorage.getItem(AUTH_PENDING_KEY);
@@ -37,6 +101,16 @@ export default function Auth() {
   const [hasSession, setHasSession] = useState(false);
   const [showDeletedAlert, setShowDeletedAlert] = useState(false);
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
+
+  const showConnectionError = () => {
+    toast({
+      variant: "destructive",
+      title: "Connection problem",
+      description: CONNECTION_ERROR_MESSAGE,
+    });
+    setIsProcessingOAuth(false);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     const authPending = isAuthPending();
@@ -74,14 +148,19 @@ export default function Auth() {
 
       if (session) {
         // CRITICAL: Verify user still exists in Supabase Auth (handles deleted accounts)
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const userVerification = await verifyCurrentUser();
 
-        if (userError || !user) {
-          console.log('[Auth] User verification failed - account may be deleted:', userError?.message);
-          // Clear invalid session and redirect to landing page
+        if (userVerification.status === 'deleted') {
+          console.log('[Auth] User verification confirmed account deleted:', getErrorMessage(userVerification.error));
           await supabase.auth.signOut();
           sessionStorage.removeItem(AUTH_PENDING_KEY);
           window.location.href = '/?error=account_deleted';
+          return;
+        }
+
+        if (userVerification.status === 'connection_error') {
+          console.log('[Auth] User verification failed due to connection/API issue:', getErrorMessage(userVerification.error));
+          showConnectionError();
           return;
         }
 
@@ -91,13 +170,20 @@ export default function Auth() {
 
         // First check if user is a helper
         console.log('[Auth] Checking for helper with ID:', session.user.id);
-        const { data: helperData, error: helperError } = await supabase
-          .from('helpers')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
+        const { data: helperData, error: helperError } = await retryQuery(() =>
+          supabase
+            .from('helpers')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle()
+        );
 
         console.log('[Auth] Helper query result:', { helperData, helperError });
+
+        if (helperError) {
+          showConnectionError();
+          return;
+        }
 
         if (helperData) {
           console.log('[Auth] BDM found - redirecting to BDM dashboard');
@@ -108,14 +194,21 @@ export default function Auth() {
         }
 
         // Check if user has a store
-        const { data: store, error } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
+        const { data: store, error } = await retryQuery(() =>
+          supabase
+            .from('stores')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle()
+        );
 
         console.log('[Auth] Store query error:', error);
         console.log('[Auth] Store found:', store ? 'Yes' : 'No', store);
+
+        if (error) {
+          showConnectionError();
+          return;
+        }
 
         if (!store) {
           console.log('[Auth] No store found - redirecting to onboarding');
@@ -156,26 +249,38 @@ export default function Auth() {
         setTimeout(async () => {
           try {
             // CRITICAL: Verify user still exists in Supabase Auth (handles deleted accounts)
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            const userVerification = await verifyCurrentUser();
 
-            if (userError || !user) {
-              console.log('[Auth] SIGNED_IN - User verification failed - account may be deleted:', userError?.message);
-              // Clear invalid session and redirect to landing page
+            if (userVerification.status === 'deleted') {
+              console.log('[Auth] SIGNED_IN - User verification confirmed account deleted:', getErrorMessage(userVerification.error));
               await supabase.auth.signOut();
               sessionStorage.removeItem(AUTH_PENDING_KEY);
               window.location.href = '/?error=account_deleted';
               return;
             }
 
+            if (userVerification.status === 'connection_error') {
+              console.log('[Auth] SIGNED_IN - User verification failed due to connection/API issue:', getErrorMessage(userVerification.error));
+              showConnectionError();
+              return;
+            }
+
             // First check if user is a helper
             console.log('[Auth] SIGNED_IN - Checking for helper with ID:', session.user.id);
-            const { data: helperData, error: helperError } = await supabase
-              .from('helpers')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
+            const { data: helperData, error: helperError } = await retryQuery(() =>
+              supabase
+                .from('helpers')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle()
+            );
 
             console.log('[Auth] SIGNED_IN - Helper query result:', { helperData, helperError });
+
+            if (helperError) {
+              showConnectionError();
+              return;
+            }
 
             if (helperData) {
               console.log('[Auth] BDM found - redirecting to BDM dashboard');
@@ -188,14 +293,21 @@ export default function Auth() {
               return;
             }
 
-            const { data: store, error } = await supabase
-              .from('stores')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
+            const { data: store, error } = await retryQuery(() =>
+              supabase
+                .from('stores')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle()
+            );
 
             console.log('[Auth] After sign in - Query error:', error);
             console.log('[Auth] After sign in - Store found:', store ? 'Yes' : 'No', store);
+
+            if (error) {
+              showConnectionError();
+              return;
+            }
 
             // Save Google Drive tokens if available
             const providerToken = session.provider_token;
