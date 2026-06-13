@@ -44,12 +44,18 @@ type StoreData = {
   address: string | null;
 };
 
+type StoreCategory = {
+  id: string;
+  name: string;
+};
+
 type EcoSoapProduct = {
   id: string;
   slug?: string;
   name: string;
   tagline: string;
-  category: "floral" | "citrus" | "earthy" | "unscented";
+  noteCategory: "floral" | "citrus" | "earthy" | "unscented";
+  storeCategory: string;
   price: number;
   priceLabel: string;
   rating: number;
@@ -63,6 +69,7 @@ type EcoSoapProduct = {
 type EcoSoapStorefrontProps = {
   store: StoreData;
   products: PlatformProduct[];
+  categories?: StoreCategory[];
 };
 
 const THEME_IMAGES = [
@@ -71,9 +78,7 @@ const THEME_IMAGES = [
   "/themes/ecosoap/activated_charcoal_soap.png",
 ];
 
-const categories = ["all", "floral", "citrus", "earthy", "unscented"] as const;
-
-const toEcoCategory = (category: string): EcoSoapProduct["category"] => {
+const toEcoNoteCategory = (category: string): EcoSoapProduct["noteCategory"] => {
   const value = category.toLowerCase();
   if (value.includes("flower") || value.includes("floral") || value.includes("lavender")) return "floral";
   if (value.includes("citrus") || value.includes("orange") || value.includes("lemon")) return "citrus";
@@ -101,46 +106,65 @@ const buildProductUrl = (storeSlug: string, product: PlatformProduct) => {
 const adaptProducts = (products: PlatformProduct[]): EcoSoapProduct[] =>
   products.map((product, index) => {
     const price = resolvePrice(product);
-    const category = toEcoCategory(product.category || "");
+    const storeCategory = product.category || "Uncategorized";
+    const noteCategory = toEcoNoteCategory(storeCategory);
     return {
       id: product.id,
       slug: product.slug,
       name: product.name,
       tagline: product.price_range || `${product.category || "Botanical"} formulation with a clean, handmade finish`,
-      category,
+      noteCategory,
+      storeCategory,
       price: price.value,
       priceLabel: price.label,
       rating: 4.7 + (index % 3) * 0.1,
       image: product.images?.[0] || THEME_IMAGES[index % THEME_IMAGES.length],
       ingredients: [product.category || "Botanical blend", "Cold process oils", "Natural extract"],
-      skinType: category === "unscented" ? ["Sensitive", "Baby"] : category === "citrus" ? ["Normal", "Dull"] : ["Dry", "Daily"],
+      skinType: noteCategory === "unscented" ? ["Sensitive", "Baby"] : noteCategory === "citrus" ? ["Normal", "Dull"] : ["Dry", "Daily"],
       description: product.price_range || "Handcrafted product prepared for a premium botanical storefront experience.",
       source: product,
     };
   });
 
-export default function EcoSoapStorefront({ store, products }: EcoSoapStorefrontProps) {
+export default function EcoSoapStorefront({ store, products, categories = [] }: EcoSoapStorefrontProps) {
   const navigate = useNavigate();
   const { addToCart, cartCount } = useCart();
   const [activeTab, setActiveTab] = useState("shop");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]>("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
 
   const ecoProducts = useMemo(() => adaptProducts(products), [products]);
+
+  const categoryOptions = useMemo(() => {
+    const productCategories = new Set(
+      products
+        .map((product) => product.category)
+        .filter((category): category is string => Boolean(category?.trim()))
+    );
+
+    const merchantCategories = categories
+      .map((category) => category.name)
+      .filter((name) => name && productCategories.has(name));
+
+    const fallbackCategories = Array.from(productCategories);
+    const uniqueCategories = Array.from(new Set(merchantCategories.length > 0 ? merchantCategories : fallbackCategories));
+
+    return ["all", ...uniqueCategories];
+  }, [categories, products]);
 
   const filteredProducts = useMemo(() => {
     let result = [...ecoProducts];
     const term = searchTerm.trim().toLowerCase();
     if (term) {
       result = result.filter((product) =>
-        [product.name, product.tagline, product.category, ...product.ingredients]
+        [product.name, product.tagline, product.storeCategory, product.noteCategory, ...product.ingredients]
           .join(" ")
           .toLowerCase()
           .includes(term)
       );
     }
-    if (selectedCategory !== "all") result = result.filter((product) => product.category === selectedCategory);
+    if (selectedCategory !== "all") result = result.filter((product) => product.storeCategory === selectedCategory);
     if (sortBy === "price-low") result.sort((a, b) => a.price - b.price);
     if (sortBy === "price-high") result.sort((a, b) => b.price - a.price);
     if (sortBy === "rating") result.sort((a, b) => b.rating - a.rating);
@@ -310,7 +334,7 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
 
               <div className="mb-10 flex flex-col gap-4 rounded-2xl border border-stone-100 bg-stone-50 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap gap-1.5">
-                  {categories.map((category) => (
+                  {categoryOptions.map((category) => (
                     <button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
@@ -367,7 +391,7 @@ export default function EcoSoapStorefront({ store, products }: EcoSoapStorefront
                       <div className="relative aspect-[4/3] overflow-hidden bg-stone-50">
                         <img src={product.image} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
-                          {product.category} note
+                          {product.noteCategory} note
                         </span>
                         <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-white/10 bg-stone-900/80 px-2.5 py-1.5 text-[10px] font-bold tracking-normal text-white shadow">
                           <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
