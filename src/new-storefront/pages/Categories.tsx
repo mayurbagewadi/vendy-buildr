@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import CategoryCard from "@/components/customer/CategoryCard";
-import Header from "@/components/customer/Header";
+import Header from "@/new-storefront/components/StorefrontHeader";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";

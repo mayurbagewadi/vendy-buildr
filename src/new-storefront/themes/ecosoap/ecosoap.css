@@ -1,0 +1,251 @@
+[data-storefront-theme="ecosoap-boutique"] {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgb(236 253 245 / 0.72), transparent 28rem),
+    linear-gradient(180deg, #fbfaf6 0%, #ffffff 42%, #f6f1e8 100%);
+  color: #1c1917;
+}
+
+[data-storefront-theme="ecosoap-boutique"] main.container,
+[data-storefront-theme="ecosoap-boutique"] main .container {
+  max-width: 80rem;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="header"] {
+  border-color: #f5f0e7;
+  background: rgb(255 255 255 / 0.96);
+  box-shadow: 0 10px 32px rgb(120 113 108 / 0.08);
+  backdrop-filter: blur(18px);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="header"] nav a {
+  color: #44403c;
+  font-weight: 600;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="header"] nav a:hover {
+  color: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="header"] input {
+  border-color: #e7dfd2;
+  background: #fbfaf6;
+  border-radius: 9999px;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="products-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="categories-hero-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-name"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="cart-page-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-page-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="more-products-heading"] {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #1c1917;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="products-count"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="categories-hero-subtitle"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-description"] {
+  color: #78716c;
+  line-height: 1.7;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="categories-page"] {
+  background: linear-gradient(180deg, rgb(245 241 232 / 0.85), #ffffff);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="filter-card"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="variant-selector"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="customer-info-card"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="delivery-address-card"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="payment-method-card"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] > .rounded-lg,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="cart-summary"] > .rounded-lg,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="cart-items"] .rounded-lg {
+  border-color: #eee7dc;
+  background: rgb(255 255 255 / 0.97);
+  box-shadow: 0 18px 48px rgb(120 113 108 / 0.10);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="filter-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="customer-info-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="delivery-address-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="payment-method-heading"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="order-summary-heading"] {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #292524;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] > .rounded-lg {
+  overflow: hidden;
+  border-color: #eee7dc;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgb(120 113 108 / 0.10);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"]:hover > .rounded-lg {
+  border-color: rgb(16 185 129 / 0.35);
+  box-shadow: 0 22px 54px rgb(120 113 108 / 0.16);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  color: #292524;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] p {
+  color: #78716c;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] .text-primary,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-price"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="cart-item-price"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="price-total"] {
+  color: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] button,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-button"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="place-order-button"] {
+  border-radius: 9999px;
+  background: #1c1917;
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgb(28 25 23 / 0.16);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-card"] button:hover,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-button"]:hover,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="place-order-button"]:hover {
+  background: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="sort-button"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-field-input"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="delivery-time-option"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="payment-option"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="quantity-buttons"] {
+  border-color: #e7dfd2;
+  background: #ffffff;
+  border-radius: 0.875rem;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="sort-button"]:focus,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-field-input"]:focus,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgb(5 150 105 / 0.14);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] label,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] label {
+  color: #57534e;
+  font-weight: 600;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] [data-ai="checkout-field-label"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] [data-ai="payment-option"] h3,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] .text-lg,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] .font-semibold {
+  color: #3f3a35;
+  font-weight: 600;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] [data-ai="delivery-time-option"] label,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] [data-ai="payment-option"] p,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] .text-muted-foreground {
+  color: #6f665d;
+  font-weight: 500;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] [data-ai="coupon-section"] label,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] [data-ai="price-subtotal"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] [data-ai="price-delivery"] {
+  color: #4b4540;
+  font-weight: 600;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"] {
+  color: #3f3a35;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  caret-color: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]::placeholder {
+  color: #78716c;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 1;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]:disabled {
+  color: #78716c;
+  opacity: 1;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]:-webkit-autofill,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]:-webkit-autofill:hover,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="coupon-input"]:-webkit-autofill:focus {
+  -webkit-text-fill-color: #3f3a35;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-form"] [data-ai="payment-option"] span,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="checkout-summary"] [data-ai="price-total"] {
+  color: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="filter-toggle-mobile"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="clear-filters-button"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="apply-coupon-button"] {
+  border-radius: 9999px;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="category-badge"] {
+  border: 1px solid #d1fae5;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-gallery"] .rounded-lg,
+[data-storefront-theme="ecosoap-boutique"] [data-ai="cart-item-image"],
+[data-storefront-theme="ecosoap-boutique"] [data-ai="order-item"] img {
+  border-radius: 1rem;
+  border-color: #eee7dc;
+  background: #fbfaf6;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="product-info"] {
+  border-radius: 1.5rem;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="related-products"] {
+  border-top: 1px solid #eee7dc;
+  padding-top: 3rem;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="mobile-add-to-cart"] {
+  border-color: #eee7dc;
+  background: rgb(255 255 255 / 0.96);
+  backdrop-filter: blur(16px);
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="section-footer"] {
+  border-color: #eee7dc;
+  background: #ffffff;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="section-footer"] h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #292524;
+}
+
+[data-storefront-theme="ecosoap-boutique"] [data-ai="section-footer"] a:hover {
+  color: #047857;
+}

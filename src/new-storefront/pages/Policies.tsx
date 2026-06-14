@@ -3,11 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import Header from "@/components/customer/Header";
+import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
+import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
 
 interface StoreData {
   id: string;
@@ -34,6 +35,7 @@ interface StoreData {
   twitter_url?: string | null;
   youtube_url?: string | null;
   linkedin_url?: string | null;
+  storefront_template?: string | null;
 }
 
 interface ProfileData {
@@ -118,58 +120,70 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
   if (!storeData) return null;
 
   const policies = storeData.policies || {};
+  const activeMarketplaceTheme = getThemeByTemplate(storeData.storefront_template);
+  const isEcoSoapTheme = activeMarketplaceTheme?.id === ECOSOAP_THEME.id;
+  const policyCardClass = isEcoSoapTheme
+    ? "rounded-2xl border border-stone-100 bg-white p-6 shadow-sm"
+    : "rounded-lg border border-border bg-card p-6";
+  const policyHeadingClass = isEcoSoapTheme
+    ? "mb-4 font-serif text-2xl font-semibold text-stone-950"
+    : "mb-4 text-2xl font-bold text-foreground";
+  const policyBodyClass = isEcoSoapTheme
+    ? "prose prose-sm max-w-none whitespace-pre-wrap leading-7 text-stone-600"
+    : "prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className={isEcoSoapTheme ? "flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900" : "flex min-h-screen flex-col"}>
       <Header storeSlug={slug} />
 
-      <main className="container mx-auto mt-16 flex-1 px-4 py-8">
+      <main className={isEcoSoapTheme ? "mx-auto mt-16 w-full max-w-5xl flex-1 px-4 py-10 sm:px-6 lg:px-8" : "container mx-auto mt-16 flex-1 px-4 py-8"}>
         <Button
           variant="ghost"
           onClick={() => navigate(isStoreSpecificDomain() ? "/" : `/${slug}`)}
-          className="mb-6"
+          className={isEcoSoapTheme ? "mb-6 rounded-full text-stone-600 hover:text-emerald-700" : "mb-6"}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Store
         </Button>
 
         <div className="mx-auto max-w-4xl space-y-12">
-          <div>
-            <h1 className="mb-2 text-4xl font-bold text-foreground">Store Policies</h1>
-            <p className="text-muted-foreground">Learn about our policies and terms of service</p>
+          <div className={isEcoSoapTheme ? "rounded-2xl border border-stone-100 bg-gradient-to-br from-white to-emerald-50/40 p-6 shadow-sm" : ""}>
+            {isEcoSoapTheme && <p className="mb-2 text-xs font-bold uppercase tracking-widest text-emerald-700">EcoSoap Care Notes</p>}
+            <h1 className={isEcoSoapTheme ? "font-serif text-4xl font-semibold text-stone-950" : "mb-2 text-4xl font-bold text-foreground"}>Store Policies</h1>
+            <p className={isEcoSoapTheme ? "mt-3 text-sm leading-relaxed text-stone-500" : "text-muted-foreground"}>Learn about our policies and terms of service</p>
           </div>
 
           <section id="terms" className="scroll-mt-20">
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">Terms & Conditions</h2>
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">
+            <div className={policyCardClass}>
+              <h2 className={policyHeadingClass}>Terms & Conditions</h2>
+              <div className={policyBodyClass}>
                 {policies.termsConditions || "Terms and conditions will be available soon."}
               </div>
             </div>
           </section>
 
           <section id="return-policy" className="scroll-mt-20">
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">Return Policy</h2>
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">
+            <div className={policyCardClass}>
+              <h2 className={policyHeadingClass}>Return Policy</h2>
+              <div className={policyBodyClass}>
                 {policies.returnPolicy || "Return policy will be available soon."}
               </div>
             </div>
           </section>
 
           <section id="shipping-policy" className="scroll-mt-20">
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">Shipping Policy</h2>
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">
+            <div className={policyCardClass}>
+              <h2 className={policyHeadingClass}>Shipping Policy</h2>
+              <div className={policyBodyClass}>
                 {policies.shippingPolicy || "Shipping policy will be available soon."}
               </div>
             </div>
           </section>
 
           <section id="privacy-policy" className="scroll-mt-20">
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-2xl font-bold text-foreground">Privacy Policy</h2>
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">
+            <div className={policyCardClass}>
+              <h2 className={policyHeadingClass}>Privacy Policy</h2>
+              <div className={policyBodyClass}>
                 {policies.privacyPolicy || "Privacy policy will be available soon."}
               </div>
             </div>
@@ -177,9 +191,9 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
 
           {policies.deliveryAreas && (
             <section id="delivery-areas" className="scroll-mt-20">
-              <div className="rounded-lg border border-border bg-card p-6">
-                <h2 className="mb-4 text-2xl font-bold text-foreground">Delivery Areas</h2>
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">
+              <div className={policyCardClass}>
+                <h2 className={policyHeadingClass}>Delivery Areas</h2>
+                <div className={policyBodyClass}>
                   {policies.deliveryAreas}
                 </div>
               </div>
@@ -188,9 +202,9 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
 
           {storeData.address && (
             <section id="address" className="scroll-mt-20">
-              <div className="rounded-lg border border-border bg-card p-6">
-                <h2 className="mb-4 text-2xl font-bold text-foreground">Store Address</h2>
-                <div className="prose prose-sm max-w-none text-muted-foreground">{storeData.address}</div>
+              <div className={policyCardClass}>
+                <h2 className={policyHeadingClass}>Store Address</h2>
+                <div className={isEcoSoapTheme ? "prose prose-sm max-w-none text-stone-600" : "prose prose-sm max-w-none text-muted-foreground"}>{storeData.address}</div>
               </div>
             </section>
           )}

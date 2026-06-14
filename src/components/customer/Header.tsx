@@ -21,9 +21,10 @@ const ThemeToggle = lazy(() =>
 interface HeaderProps {
   storeSlug?: string;
   storeId?: string;
+  cartVariant?: "default" | "ecosoap";
 }
 
-const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
+const Header = ({ storeSlug: slugProp, storeId: idProp, cartVariant = "default" }: HeaderProps) => {
   const { store, storeId: ctxStoreId, storeSlug: ctxStoreSlug } = useStorefront();
 
   // Promo bar: custom text takes priority; fall back to free-delivery threshold; hide if neither.
@@ -207,7 +208,7 @@ const Header = ({ storeSlug: slugProp, storeId: idProp }: HeaderProps) => {
                 </Button>
               }
             >
-              <MiniCart />
+              <MiniCart variant={cartVariant} />
             </Suspense>
             
             <Button
