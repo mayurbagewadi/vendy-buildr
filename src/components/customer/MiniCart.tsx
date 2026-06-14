@@ -1,5 +1,6 @@
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingCart, X } from "lucide-react";
+import { ShoppingBag, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,9 +11,16 @@ import LazyImage from "@/components/ui/lazy-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useStorefront } from "@/contexts/StoreContext";
 
-const MiniCart = () => {
-  const { cart, cartCount, cartTotal, removeItem } = useCart();
+const EcoSoapCartDrawer = lazy(() => import("@/components/themes/ecosoap/EcoSoapCartDrawer"));
+
+interface MiniCartProps {
+  variant?: "default" | "ecosoap";
+}
+
+const MiniCart = ({ variant = "default" }: MiniCartProps) => {
+  const { cart, cartCount, cartTotal, updateQuantity, removeItem } = useCart();
   const { storeSlug } = useStorefront();
+  const [isEcoSoapDrawerOpen, setIsEcoSoapDrawerOpen] = useState(false);
 
   // Check if we're on a store-specific domain (subdomain or custom domain)
   const isSubdomain = isStoreSpecificDomain();
@@ -23,6 +31,41 @@ const MiniCart = () => {
   const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
   const cartLink = isSubdomain ? "/cart" : (storeSlug ? `/${storeSlug}/cart` : "/cart");
   const checkoutLink = isSubdomain ? "/checkout" : (storeSlug ? `/${storeSlug}/checkout` : "/checkout");
+
+  if (variant === "ecosoap") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setIsEcoSoapDrawerOpen(true)}
+          className="relative rounded-full bg-stone-50 p-2.5 text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label="Open shopping cart"
+          data-cart-icon
+        >
+          <ShoppingBag className="h-5 w-5 stroke-[2]" />
+          {cartCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
+              {cartCount}
+            </span>
+          )}
+        </button>
+        {isEcoSoapDrawerOpen && (
+          <Suspense fallback={null}>
+            <EcoSoapCartDrawer
+              isOpen={isEcoSoapDrawerOpen}
+              cart={cart}
+              cartTotal={cartTotal}
+              cartLink={cartLink}
+              checkoutLink={checkoutLink}
+              onClose={() => setIsEcoSoapDrawerOpen(false)}
+              onUpdateQuantity={updateQuantity}
+              onRemoveItem={removeItem}
+            />
+          </Suspense>
+        )}
+      </>
+    );
+  }
 
   return (
     <Popover>

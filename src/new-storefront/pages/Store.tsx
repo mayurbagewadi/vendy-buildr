@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import Header from "@/components/customer/Header";
+import Header from "@/new-storefront/components/StorefrontHeader";
 import ProductCard from "@/components/customer/ProductCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
@@ -285,7 +285,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           keywords={categories.map(c => c.name).concat([store.name, 'online store', 'shop'])}
           type="website"
         />
-        <EcoSoapStorefront store={store} products={products as any} categories={categories} />
+        <Header storeSlug={store.slug} storeId={store.id} />
+        <EcoSoapStorefront store={store} products={products as any} categories={categories} showInternalHeader={false} />
       </>
     );
   }

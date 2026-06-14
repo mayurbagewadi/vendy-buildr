@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import Header from "@/components/customer/Header";
+import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useStorefront } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
 import { generateOrderMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { LocationPicker } from "@/components/customer/LocationPicker";
@@ -21,6 +22,7 @@ import { getAvailablePaymentMethods } from "@/lib/payment/methods";
 import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/types";
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
+import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
 import {
   Form,
   FormControl,
@@ -53,6 +55,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
+  const { store: ctxStore } = useStorefront();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -439,7 +442,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       if (cart.length > 0) {
         const { data: storeData } = await supabase
           .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
           .eq("id", cart[0].storeId)
           .maybeSingle();
         data = storeData;
@@ -447,7 +450,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         const normalizedSlug = slug.toLowerCase();
         let query = supabase
           .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id")
+          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
           .eq("is_active", true);
         if (normalizedSlug.includes('.')) {
           query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
@@ -782,11 +785,43 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     setCouponError('');
   };
 
+  const activeMarketplaceTheme = getThemeByTemplate((ctxStore as any)?.storefront_template ?? footerStore?.storefront_template);
+  const isEcoSoapTheme = activeMarketplaceTheme?.id === ECOSOAP_THEME.id;
+  const pageShellClass = isEcoSoapTheme
+    ? "min-h-screen flex flex-col bg-[#fbfaf6] text-stone-900"
+    : "min-h-screen flex flex-col";
+  const mainShellClass = isEcoSoapTheme
+    ? "flex-1 bg-gradient-to-b from-[#fbfaf6] via-white to-[#f6f1e8] px-4 py-8 sm:px-6 lg:px-8"
+    : "flex-1 container mx-auto px-4 py-8";
+  const centerMainClass = isEcoSoapTheme
+    ? "flex-1 bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] px-4 py-16"
+    : "flex-1 container mx-auto px-4 py-16";
+  const checkoutInnerClass = isEcoSoapTheme ? "mx-auto w-full max-w-7xl" : "";
+  const breadcrumbClass = isEcoSoapTheme
+    ? "mb-8 flex items-center gap-2 text-sm text-stone-500"
+    : "flex items-center gap-2 text-sm text-muted-foreground mb-6";
+  const heroClass = isEcoSoapTheme
+    ? "mb-8 overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm"
+    : "";
+  const heroInnerClass = isEcoSoapTheme
+    ? "bg-gradient-to-br from-white via-emerald-50/50 to-stone-50 p-6 sm:p-8"
+    : "";
+  const gridClass = isEcoSoapTheme
+    ? "grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]"
+    : "grid grid-cols-1 lg:grid-cols-3 gap-8";
+  const formColumnClass = isEcoSoapTheme ? "lg:col-span-1" : "lg:col-span-2";
+  const formStackClass = isEcoSoapTheme ? "space-y-5" : "space-y-6";
+  const ecoCardClass = isEcoSoapTheme ? "overflow-hidden rounded-2xl border-stone-100 bg-white shadow-sm" : "";
+  const ecoCardContentClass = isEcoSoapTheme ? "p-5 sm:p-6" : "p-6";
+  const ecoHeadingClass = isEcoSoapTheme ? "mb-4 font-serif text-2xl font-semibold text-stone-950" : "text-xl font-semibold mb-4";
+  const ecoSummaryCardClass = isEcoSoapTheme ? "sticky top-24 rounded-2xl border-stone-100 bg-white shadow-xl shadow-stone-200/50" : "sticky top-24";
+  const ecoMutedPanelClass = isEcoSoapTheme ? "rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2" : "bg-accent p-3 rounded-lg";
+
   if (isCheckingSubscription) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className={pageShellClass}>
         <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
-        <main className="flex-1 container mx-auto px-4 py-16">
+        <main className={centerMainClass}>
           <div className="max-w-md mx-auto text-center">
             <p className="text-muted-foreground">Checking availability...</p>
           </div>
@@ -812,9 +847,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
   if (subscriptionError) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className={pageShellClass}>
         <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
-        <main className="flex-1 container mx-auto px-4 py-16">
+        <main className={centerMainClass}>
           <div className="max-w-md mx-auto text-center">
             <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-destructive" />
             <h1 className="text-3xl font-bold mb-4">Orders Unavailable</h1>
@@ -847,9 +882,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className={pageShellClass}>
         <Header storeSlug={storeSlug} storeId={undefined} />
-        <main className="flex-1 container mx-auto px-4 py-16">
+        <main className={centerMainClass}>
           <div className="max-w-md mx-auto text-center">
             {orderSuccess ? (
               <>
@@ -1209,29 +1244,47 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={pageShellClass}>
       <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className={mainShellClass}>
+        <div className={checkoutInnerClass}>
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to={homeLink} className="hover:text-foreground">Home</Link>
+        <nav className={breadcrumbClass}>
+          <Link to={homeLink} className={isEcoSoapTheme ? "hover:text-emerald-700" : "hover:text-foreground"}>Home</Link>
           <ChevronRight className="w-4 h-4" />
-          <Link to={cartLink} className="hover:text-foreground">Cart</Link>
+          <Link to={cartLink} className={isEcoSoapTheme ? "hover:text-emerald-700" : "hover:text-foreground"}>Cart</Link>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-foreground">Checkout</span>
+          <span className={isEcoSoapTheme ? "text-stone-900" : "text-foreground"}>Checkout</span>
         </nav>
 
-        <h1 data-ai="checkout-page-heading" className="text-3xl font-bold mb-8">Checkout</h1>
+        <div className={heroClass}>
+          <div className={heroInnerClass}>
+            {isEcoSoapTheme && (
+              <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-700">
+                <ShoppingBag className="h-4 w-4" />
+                EcoSoap Checkout
+              </p>
+            )}
+            <h1 data-ai="checkout-page-heading" className={isEcoSoapTheme ? "font-serif text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl" : "text-3xl font-bold mb-8"}>
+              Checkout
+            </h1>
+            {isEcoSoapTheme && (
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 sm:text-base">
+                Complete delivery, payment, and order details for your handmade botanical basket.
+              </p>
+            )}
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className={gridClass}>
           {/* Customer Information Form */}
-          <div data-ai="checkout-form" className="lg:col-span-2">
+          <div data-ai="checkout-form" className={formColumnClass}>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <Card data-ai="customer-info-card">
-                  <CardContent className="p-6">
-                    <h2 data-ai="customer-info-heading" className="text-xl font-semibold mb-4">Customer Information</h2>
+              <form onSubmit={form.handleSubmit(onSubmit)} className={formStackClass}>
+                <Card data-ai="customer-info-card" className={ecoCardClass}>
+                  <CardContent className={ecoCardContentClass}>
+                    <h2 data-ai="customer-info-heading" className={ecoHeadingClass}>Customer Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -1278,9 +1331,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   </CardContent>
                 </Card>
 
-                <Card data-ai="delivery-address-card">
-                  <CardContent className="p-6">
-                    <h2 data-ai="delivery-address-heading" className="text-xl font-semibold mb-4">Delivery Address</h2>
+                <Card data-ai="delivery-address-card" className={ecoCardClass}>
+                  <CardContent className={ecoCardContentClass}>
+                    <h2 data-ai="delivery-address-heading" className={ecoHeadingClass}>Delivery Address</h2>
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
@@ -1371,10 +1424,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                       {locationEnabled && (
                         <div
                           ref={locationSectionRef}
-                          className={`space-y-3 p-4 rounded-lg border transition-all duration-300 ${
+                          className={`space-y-3 rounded-xl border p-4 transition-all duration-300 ${
                             forceLocationSharing && !location ? 'animate-pulse-border' : ''
                           } ${
-                            locationError ? 'animate-attention-shake border-destructive bg-destructive/5 shadow-lg shadow-destructive/20' : 'bg-card/50 backdrop-blur-sm hover:border-primary/50'
+                            locationError ? 'animate-attention-shake border-destructive bg-destructive/5 shadow-lg shadow-destructive/20' : (isEcoSoapTheme ? 'border-stone-100 bg-stone-50/70 hover:border-emerald-200' : 'bg-card/50 backdrop-blur-sm hover:border-primary/50')
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -1427,9 +1480,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   </CardContent>
                 </Card>
 
-                <Card data-ai="payment-method-card">
-                  <CardContent className="p-6">
-                    <h2 data-ai="payment-method-heading" className="text-xl font-semibold mb-4">Payment Method</h2>
+                <Card data-ai="payment-method-card" className={ecoCardClass}>
+                  <CardContent className={ecoCardContentClass}>
+                    <h2 data-ai="payment-method-heading" className={ecoHeadingClass}>Payment Method</h2>
 
                     {paymentMethods.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
@@ -1443,8 +1496,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                             key={method.id}
                             className={`relative cursor-pointer rounded-xl border-2 transition-all duration-300 overflow-hidden ${
                               selectedPaymentMethod === method.id
-                                ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/20'
-                                : 'border-border hover:border-primary/40 bg-card hover:shadow-md'
+                                ? (isEcoSoapTheme ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 via-white to-stone-50 shadow-lg shadow-emerald-100/80' : 'border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/20')
+                                : (isEcoSoapTheme ? 'border-stone-100 bg-white hover:border-emerald-200 hover:shadow-md' : 'border-border hover:border-primary/40 bg-card hover:shadow-md')
                             }`}
                             onClick={() => setSelectedPaymentMethod(method.id)}
                           >
@@ -1507,7 +1560,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
                     {/* Payment info */}
                     {selectedPaymentMethod && (
-                      <div className="mt-4 p-3 bg-accent/50 rounded-lg border border-border">
+                      <div className={isEcoSoapTheme ? "mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3" : "mt-4 p-3 bg-accent/50 rounded-lg border border-border"}>
                         <div className="flex items-start gap-2 text-sm">
                           <svg className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -1526,7 +1579,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   data-ai="place-order-button"
                   type="submit"
                   size="lg"
-                  className="w-full md:w-auto"
+                  className={isEcoSoapTheme ? "min-h-[52px] w-full rounded-full bg-stone-900 px-8 text-sm font-black uppercase tracking-widest text-white hover:bg-emerald-800 md:w-auto" : "w-full md:w-auto"}
                   disabled={isSubmitting || isProcessingPayment}
                 >
                   {isProcessingPayment ? (
@@ -1555,22 +1608,25 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           </div>
 
           {/* Order Review */}
-          <div data-ai="checkout-summary" className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardContent className="p-6">
-                <h2 data-ai="order-summary-heading" className="text-xl font-bold mb-4">Order Summary</h2>
+          <div data-ai="checkout-summary">
+            <Card className={ecoSummaryCardClass}>
+              <CardContent className={isEcoSoapTheme ? "p-5 sm:p-6" : "p-6"}>
+                <h2 data-ai="order-summary-heading" className={isEcoSoapTheme ? "mb-1 font-serif text-2xl font-semibold text-stone-950" : "text-xl font-bold mb-4"}>Order Summary</h2>
+                {isEcoSoapTheme && (
+                  <p className="mb-5 text-sm leading-relaxed text-stone-500">Review your botanical basket before payment.</p>
+                )}
 
                 <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                   {cart.map((item) => (
                     <div
                       data-ai="order-item"
                       key={`${item.productId}-${item.variant}`}
-                      className="flex gap-3 pb-3 border-b border-border last:border-0"
+                      className={isEcoSoapTheme ? "flex gap-3 border-b border-stone-100 pb-3 last:border-0" : "flex gap-3 pb-3 border-b border-border last:border-0"}
                     >
                       <img
                         src={item.productImage}
                         alt={item.productName}
-                        className="w-16 h-16 object-cover rounded"
+                        className={isEcoSoapTheme ? "h-16 w-16 rounded-xl border border-stone-100 object-cover" : "w-16 h-16 object-cover rounded"}
                       />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm truncate">{item.productName}</h4>
@@ -1586,7 +1642,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 </div>
 
                 {/* Coupon Section */}
-                <div data-ai="coupon-section" className="mb-4 pb-4 border-b border-border space-y-3">
+                <div data-ai="coupon-section" className={isEcoSoapTheme ? "mb-4 space-y-3 border-b border-stone-100 pb-4" : "mb-4 pb-4 border-b border-border space-y-3"}>
                   <div className="flex items-center gap-2">
                     <Ticket className="w-4 h-4 text-primary" />
                     <Label className="text-sm font-medium">Apply Coupon</Label>
@@ -1641,7 +1697,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   )}
                 </div>
 
-                <div className="space-y-2 mb-4 pb-4 border-b border-border">
+                <div className={isEcoSoapTheme ? "mb-4 space-y-2 border-b border-stone-100 pb-4" : "space-y-2 mb-4 pb-4 border-b border-border"}>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
@@ -1691,14 +1747,14 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center mb-4">
+                <div className={isEcoSoapTheme ? "mb-4 flex items-center justify-between rounded-xl bg-stone-50 px-4 py-3" : "flex justify-between items-center mb-4"}>
                   <span className="text-lg font-semibold">Total</span>
                   <span data-ai="price-total" className="text-2xl font-bold text-primary">
                     ₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount) + computedDeliveryFee).toFixed(2)}
                   </span>
                 </div>
 
-                <div className="bg-accent p-3 rounded-lg">
+                <div className={ecoMutedPanelClass}>
                   <div className="flex items-center gap-2">
                     {selectedPaymentMethod === 'razorpay' && (
                       <>
@@ -1734,6 +1790,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </main>
 

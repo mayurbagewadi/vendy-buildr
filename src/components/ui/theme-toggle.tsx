@@ -8,8 +8,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { visitorThemeKey, useStorefront } from "@/contexts/StoreContext";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  triggerClassName?: string;
+  contentClassName?: string;
+  itemClassName?: string;
+}
+
+export function ThemeToggle({ triggerClassName, contentClassName, itemClassName }: ThemeToggleProps = {}) {
   const { setTheme } = useTheme();
   const { storeSlug } = useStorefront();
 
@@ -25,23 +32,23 @@ export function ThemeToggle() {
         <Button
           variant="outline"
           size="icon"
-          className="transition-all duration-300 hover:scale-110 hover:rotate-12 border-primary"
+          className={cn("transition-all duration-300 hover:scale-110 hover:rotate-12 border-primary", triggerClassName)}
         >
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-primary" />
           <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-primary" />
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleSetTheme("light")}>
+      <DropdownMenuContent align="end" className={contentClassName}>
+        <DropdownMenuItem onClick={() => handleSetTheme("light")} className={itemClassName}>
           <Sun className="mr-2 h-4 w-4" />
           <span>Light</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSetTheme("dark")}>
+        <DropdownMenuItem onClick={() => handleSetTheme("dark")} className={itemClassName}>
           <Moon className="mr-2 h-4 w-4" />
           <span>Dark</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSetTheme("system")}>
+        <DropdownMenuItem onClick={() => handleSetTheme("system")} className={itemClassName}>
           <span className="mr-2 h-4 w-4">💻</span>
           <span>System</span>
         </DropdownMenuItem>
