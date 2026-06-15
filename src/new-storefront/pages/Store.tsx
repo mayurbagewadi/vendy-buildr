@@ -19,8 +19,7 @@ import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
-import EcoSoapStorefront from "@/components/themes/ecosoap/EcoSoapStorefront";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
+import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -273,8 +272,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   }
 
   // ── Marketplace theme renderer ───────────────────────────────────────────────
-  const activeMarketplaceTheme = getThemeByTemplate(store.storefront_template);
-  if (activeMarketplaceTheme?.id === ECOSOAP_THEME.id) {
+  const activeMarketplaceTheme = getStorefrontThemeByTemplate(store.storefront_template);
+  const ThemeStorefront = activeMarketplaceTheme?.components.Storefront;
+
+  if (ThemeStorefront) {
     return (
       <>
         <SEOHead
@@ -286,7 +287,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           type="website"
         />
         <Header storeSlug={store.slug} storeId={store.id} />
-        <EcoSoapStorefront store={store} products={products as any} categories={categories} showInternalHeader={false} />
+        <ThemeStorefront store={store as any} products={products as any} categories={categories} showInternalHeader={false} />
       </>
     );
   }

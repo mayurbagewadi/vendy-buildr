@@ -6,6 +6,8 @@ import { generateOrderMessage, getWhatsAppNumber, formatWhatsAppNumber, isWhatsA
 import { detectDomain } from "@/lib/domainUtils";
 import { CheckCircle2, XCircle, Loader2, MessageCircle, Home, ExternalLink, Clock, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useStorefront } from "@/contexts/StoreContext";
+import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 
 /**
  * Enterprise Payment Success Page
@@ -19,6 +21,7 @@ import { Button } from "@/components/ui/button";
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { store } = useStorefront();
   const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
   const [orderNumber, setOrderNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
@@ -229,29 +232,34 @@ export default function PaymentSuccess() {
     }
   };
 
+  const isEditorialPayment = getStorefrontPageVariant((store as any)?.storefront_template, "paymentSuccess") === "editorial-payment";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 px-4 py-8">
+    <div className={isEditorialPayment
+      ? "flex min-h-screen items-center justify-center bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] px-4 py-8 text-stone-900"
+      : "min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 px-4 py-8"
+    }>
       <div className="max-w-md w-full">
 
         {/* Verifying State */}
         {status === 'verifying' && (
-          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
-            <Loader2 className="h-20 w-20 text-primary mx-auto animate-spin mb-6" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">Verifying Payment</h2>
+          <div className={isEditorialPayment ? "rounded-2xl border border-stone-100 bg-white p-8 text-center shadow-2xl" : "bg-card rounded-3xl shadow-2xl p-8 text-center"}>
+            <Loader2 className={isEditorialPayment ? "mx-auto mb-6 h-20 w-20 animate-spin text-emerald-700" : "h-20 w-20 text-primary mx-auto animate-spin mb-6"} />
+            <h2 className={isEditorialPayment ? "mb-2 font-serif text-2xl font-semibold text-stone-950" : "text-2xl font-bold text-foreground mb-2"}>Verifying Payment</h2>
             <p className="text-muted-foreground">Please wait while we confirm your payment...</p>
           </div>
         )}
 
         {/* Success State - Redesigned for psychological engagement */}
         {status === 'success' && (
-          <div className="bg-card rounded-3xl shadow-2xl overflow-hidden">
+          <div className={isEditorialPayment ? "overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-2xl" : "bg-card rounded-3xl shadow-2xl overflow-hidden"}>
             {/* Header - Orange/Amber to signal "pending action needed" */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center">
+            <div className={isEditorialPayment ? "bg-gradient-to-br from-stone-900 to-emerald-900 p-8 text-center" : "bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center"}>
               <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white mb-4">
-                <Clock className="h-12 w-12 text-amber-600" />
+                <Clock className={isEditorialPayment ? "h-12 w-12 text-emerald-700" : "h-12 w-12 text-amber-600"} />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Payment Received</h2>
-              <p className="text-amber-100 text-lg">Confirm on WhatsApp to complete your order</p>
+              <h2 className={isEditorialPayment ? "mb-2 font-serif text-3xl font-semibold text-white" : "text-3xl font-bold text-white mb-2"}>Payment Received</h2>
+              <p className={isEditorialPayment ? "text-lg text-emerald-50" : "text-amber-100 text-lg"}>Confirm on WhatsApp to complete your order</p>
             </div>
 
             {/* Progress Stepper - Shows user is mid-journey, not finished */}
@@ -362,11 +370,11 @@ export default function PaymentSuccess() {
 
         {/* Failed State */}
         {status === 'failed' && (
-          <div className="bg-card rounded-3xl shadow-2xl p-8 text-center">
+          <div className={isEditorialPayment ? "rounded-2xl border border-stone-100 bg-white p-8 text-center shadow-2xl" : "bg-card rounded-3xl shadow-2xl p-8 text-center"}>
             <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-destructive/10 mb-6">
               <XCircle className="h-12 w-12 text-destructive" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-4">Payment Verification Failed</h2>
+            <h2 className={isEditorialPayment ? "mb-4 font-serif text-2xl font-semibold text-stone-950" : "text-2xl font-bold text-foreground mb-4"}>Payment Verification Failed</h2>
             <p className="text-muted-foreground mb-6">There was an issue verifying your payment.</p>
             <p className="text-sm text-muted-foreground mb-8">
               If the amount was deducted from your account, please contact our support with your transaction details.

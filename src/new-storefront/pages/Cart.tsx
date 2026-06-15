@@ -10,7 +10,7 @@ import { useCart } from "@/contexts/CartContext";
 import LazyImage from "@/components/ui/lazy-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useStorefront } from "@/contexts/StoreContext";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
+import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface CartStockInfo {
   stock: number | null;
@@ -52,8 +52,8 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const freeDeliveryAbove = ctxStore?.free_delivery_above ?? null;
 
   const isSubdomain = isStoreSpecificDomain();
-  const activeMarketplaceTheme = getThemeByTemplate(footerStore?.storefront_template);
-  const isEcoSoapTheme = activeMarketplaceTheme?.id === ECOSOAP_THEME.id;
+  const cartPageVariant = getStorefrontPageVariant(footerStore?.storefront_template, "cart");
+  const isEditorialCart = cartPageVariant === "editorial-cart";
 
   // Only fetch the 3 delivery columns not covered by StoreContext.
   // Triggered once per store resolution — NOT on every cart change.
@@ -174,7 +174,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   );
 
   if (cart.length === 0) {
-    if (isEcoSoapTheme) {
+    if (isEditorialCart) {
       return (
         <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900">
           <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
@@ -222,7 +222,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
     );
   }
 
-  if (isEcoSoapTheme) {
+  if (isEditorialCart) {
     return (
       <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900">
         <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />

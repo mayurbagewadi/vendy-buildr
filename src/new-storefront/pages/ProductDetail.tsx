@@ -31,7 +31,7 @@ import {
 import { useSEOProduct } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getProductCanonicalUrl } from "@/lib/seo/canonicalUrl";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
+import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface Variant {
   name: string;
@@ -392,8 +392,8 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   // Use store-specific routes if storeSlug is available
   const homeLink = storeSlug ? `/${storeSlug}` : "/home";
   const productsLink = storeSlug ? `/${storeSlug}/products` : "/products";
-  const activeMarketplaceTheme = getThemeByTemplate(storeData?.storefront_template);
-  const isEcoSoapTheme = activeMarketplaceTheme?.id === ECOSOAP_THEME.id;
+  const productDetailVariant = getStorefrontPageVariant(storeData?.storefront_template, "productDetail");
+  const isEditorialProduct = productDetailVariant === "editorial-product";
 
   if (import.meta.env.DEV || localStorage.getItem("dd_theme_debug") === "1") {
     console.info("[STOREFRONT_THEME_DEBUG][product-detail]", {
@@ -402,8 +402,8 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       storeId,
       storeSlug,
       storefront_template: storeData?.storefront_template,
-      resolvedThemeId: activeMarketplaceTheme?.id || null,
-      isEcoSoapTheme,
+      productDetailVariant,
+      isEditorialProduct,
       htmlTheme: document.documentElement.getAttribute("data-storefront-theme"),
       htmlTemplate: document.documentElement.getAttribute("data-storefront-template"),
     });
@@ -553,7 +553,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
     }
   };
 
-  if (isEcoSoapTheme) {
+  if (isEditorialProduct) {
     const ecoBenefits = [
       product.category ? `${product.category} formulation` : "Botanical formulation",
       isOutOfStock ? "Currently curing" : "Ready to dispatch",

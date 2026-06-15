@@ -19,7 +19,7 @@ import { useStorefront } from "@/contexts/StoreContext";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getPublishedProducts, type Product } from "@/lib/productData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
+import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface ProductsProps {
   slug?: string;
@@ -42,8 +42,8 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const [showFilters, setShowFilters] = useState(false);
 
   const isSubdomain = isStoreSpecificDomain();
-  const activeMarketplaceTheme = getThemeByTemplate(storeAny?.storefront_template);
-  const isEcoSoapTheme = activeMarketplaceTheme?.id === ECOSOAP_THEME.id;
+  const productsPageVariant = getStorefrontPageVariant(storeAny?.storefront_template, "products");
+  const isEditorialCatalog = productsPageVariant === "editorial-catalog";
 
   const {
     data: allProducts = [],
@@ -64,8 +64,8 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
       storeId: store?.id,
       storeSlug: storeAny?.slug,
       storefront_template: storeAny?.storefront_template,
-      resolvedThemeId: activeMarketplaceTheme?.id || null,
-      isEcoSoapTheme,
+      productsPageVariant,
+      isEditorialCatalog,
       productsCount: allProducts.length,
     });
   }
@@ -180,7 +180,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
     return price ? `Rs. ${Number(price).toFixed(2)}` : product.priceRange || product.price_range || "Price on request";
   };
 
-  if (isEcoSoapTheme) {
+  if (isEditorialCatalog) {
     return (
       <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900">
         {store && (
