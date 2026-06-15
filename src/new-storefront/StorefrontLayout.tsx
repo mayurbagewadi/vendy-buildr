@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StoreProvider, useStorefront } from "@/contexts/StoreContext";
 import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
+import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
 
 interface StorefrontLayoutProps {
   // Provided by StorefrontApp for subdomain/custom-domain routes where the slug
@@ -33,8 +33,8 @@ const StorefrontDesignLoader = () => {
 const StorefrontThemeScope = () => {
   const { store, storeSlug, loading, errorType } = useStorefront();
   const location = useLocation();
-  const activeTheme = getThemeByTemplate(store?.storefront_template as string | null | undefined);
-  const themeId = activeTheme?.id === ECOSOAP_THEME.id ? ECOSOAP_THEME.id : undefined;
+  const activeTheme = getStorefrontThemeByTemplate(store?.storefront_template as string | null | undefined);
+  const themeId = activeTheme?.cssScope;
   const debugEnabled =
     import.meta.env.DEV ||
     new URLSearchParams(location.search).get("themeDebug") === "1" ||
@@ -50,7 +50,7 @@ const StorefrontThemeScope = () => {
       storefront_template: store?.storefront_template,
       storefront_theme: store?.storefront_theme,
       storefront_color_palette: store?.storefront_color_palette,
-      resolvedThemeId: themeId,
+      resolvedThemeId: activeTheme?.id ?? null,
       htmlTemplate: document.documentElement.getAttribute("data-storefront-template"),
     });
   }

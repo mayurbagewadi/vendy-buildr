@@ -13,6 +13,7 @@ import { checkExistingPurchase, enableFreeFeature } from "@/lib/marketplace/paym
 import {
   BUILT_IN_MARKETPLACE_THEMES,
   DEFAULT_STOREFRONT_TEMPLATE,
+  getThemeByTemplate,
   resolveThemePreset,
   resolveThemeTemplate,
   type ThemePreset,
@@ -229,10 +230,11 @@ const AdminMarketplace = () => {
           if (itemType === 'theme') {
             const themeFeature = feature as MarketplaceFeature & { theme_preset?: ThemePreset };
             const preset = resolveThemePreset(themeFeature.slug, themeFeature.theme_preset);
+            const currentTheme = getThemeByTemplate(storeData?.storefront_template);
             matchesFilter =
               storeData?.storefront_theme === preset.theme &&
               storeData?.storefront_color_palette === preset.palette &&
-              storeData?.storefront_template === resolveThemeTemplate(themeFeature.slug);
+              currentTheme?.slug === themeFeature.slug;
           } else {
             matchesFilter = enabledFeatures.includes(feature.slug);
           }
@@ -633,12 +635,12 @@ const AdminMarketplace = () => {
               const itemTypeLabel = itemType.charAt(0).toUpperCase() + itemType.slice(1);
               const themeFeature = feature as MarketplaceFeature & { theme_preset?: ThemePreset };
               const preset = resolveThemePreset(themeFeature.slug, themeFeature.theme_preset);
-              const template = resolveThemeTemplate(themeFeature.slug);
+              const currentTheme = getThemeByTemplate(storeData?.storefront_template);
               const isThemeApplied =
                 isTheme &&
                 storeData?.storefront_theme === preset.theme &&
                 storeData?.storefront_color_palette === preset.palette &&
-                storeData?.storefront_template === template;
+                currentTheme?.slug === themeFeature.slug;
 
               return (
                 <Card

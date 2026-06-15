@@ -1,7 +1,8 @@
 import type { PaletteId } from "@/lib/colorPalettes";
+import { ecosoapBoutiqueTheme } from "@/new-storefront/themes/ecosoap-boutique/theme";
 
 export type StorefrontThemeMode = "dark" | "light" | "system";
-export type StorefrontTemplateId = "default" | "playful";
+export type StorefrontTemplateId = string;
 
 export type ThemePreset = {
   theme: StorefrontThemeMode;
@@ -18,6 +19,7 @@ export type MarketplaceThemeDefinition = {
   icon: string;
   version: string;
   template: StorefrontTemplateId;
+  legacyTemplates?: StorefrontTemplateId[];
   preset: ThemePreset;
   isFree: boolean;
   price: number;
@@ -25,25 +27,7 @@ export type MarketplaceThemeDefinition = {
 
 export const DEFAULT_STOREFRONT_TEMPLATE: StorefrontTemplateId = "default";
 
-export const ECOSOAP_THEME: MarketplaceThemeDefinition = {
-  id: "ecosoap-boutique",
-  slug: "ecosoap-boutique",
-  name: "EcoSoap Boutique",
-  description:
-    "A calm botanical storefront theme with editorial spacing, premium product cards, and conversion-focused visual hierarchy.",
-  icon: "Palette",
-  version: "1.0.0",
-  template: "playful",
-  isFree: true,
-  price: 0,
-  preset: {
-    theme: "dark",
-    palette: "forest",
-    heroTitle: "Nourish Your Barrier, Purely From Earth.",
-    heroDescription:
-      "A premium, editorial-style storefront built for artisanal skincare brands with fast product discovery and strong above-the-fold trust signals.",
-  },
-};
+export const ECOSOAP_THEME: MarketplaceThemeDefinition = ecosoapBoutiqueTheme;
 
 export const BUILT_IN_MARKETPLACE_THEMES = [ECOSOAP_THEME] as const;
 
@@ -51,7 +35,11 @@ export const getThemeBySlug = (slug: string) =>
   BUILT_IN_MARKETPLACE_THEMES.find((theme) => theme.slug === slug) ?? null;
 
 export const getThemeByTemplate = (template: string | null | undefined) =>
-  BUILT_IN_MARKETPLACE_THEMES.find((theme) => theme.template === template) ?? null;
+  BUILT_IN_MARKETPLACE_THEMES.find(
+    (theme) =>
+      theme.template === template ||
+      theme.legacyTemplates?.includes(template ?? "")
+  ) ?? null;
 
 export const resolveThemeTemplate = (slug: string): StorefrontTemplateId =>
   getThemeBySlug(slug)?.template ?? DEFAULT_STOREFRONT_TEMPLATE;

@@ -1,7 +1,5 @@
 import Header from "@/components/customer/Header";
-import { useStorefront } from "@/contexts/StoreContext";
-import { ECOSOAP_THEME, getThemeByTemplate } from "@/lib/themeRegistry";
-import EcoSoapHeader from "./EcoSoapHeader";
+import { useActiveStorefrontTheme } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface StorefrontHeaderProps {
   storeSlug?: string;
@@ -9,13 +7,14 @@ interface StorefrontHeaderProps {
 }
 
 const StorefrontHeader = (props: StorefrontHeaderProps) => {
-  const { store } = useStorefront();
-  const activeTheme = getThemeByTemplate(store?.storefront_template);
-  if (activeTheme?.id === ECOSOAP_THEME.id) {
-    return <EcoSoapHeader {...props} />;
+  const activeTheme = useActiveStorefrontTheme();
+  const ThemeHeader = activeTheme?.components.Header;
+
+  if (ThemeHeader) {
+    return <ThemeHeader {...props} />;
   }
 
-  const cartVariant = activeTheme?.id === ECOSOAP_THEME.id ? "ecosoap" : "default";
+  const cartVariant = activeTheme?.cartVariant ?? "default";
 
   return <Header {...props} cartVariant={cartVariant} />;
 };
