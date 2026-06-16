@@ -9,6 +9,7 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
 
 interface Category {
   id: string;
@@ -144,6 +145,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
   const loading = storeLoading || categoriesLoading;
   const storeName = storeAny?.name || "Store";
+  const ThemeCategories = getStorefrontThemeByTemplate(storeAny?.storefront_template)?.components.Categories;
 
   if (loading) {
     return (
@@ -153,6 +155,20 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
           <LoadingSpinner size="lg" text="Loading categories..." />
         </div>
         <StoreFooter storeName={storeName} />
+      </>
+    );
+  }
+
+  if (store && ThemeCategories) {
+    return (
+      <>
+        <Header storeSlug={slug} storeId={store.id} />
+        <ThemeCategories
+          store={store}
+          profile={profile}
+          storeSlug={storeAny?.slug || slug}
+          categories={categories}
+        />
       </>
     );
   }

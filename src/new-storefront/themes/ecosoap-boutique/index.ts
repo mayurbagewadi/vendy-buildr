@@ -3,6 +3,7 @@ import { ecosoapBoutiqueTheme } from "./theme";
 import Storefront from "./Storefront";
 import Header from "./Header";
 import Preview from "./Preview";
+import Categories from "./Categories";
 export { ecosoapBoutiqueAssets } from "./assets";
 
 export const ecosoapBoutiqueRuntimeTheme: StorefrontThemeRuntimeDefinition = {
@@ -24,6 +25,7 @@ export const ecosoapBoutiqueRuntimeTheme: StorefrontThemeRuntimeDefinition = {
     Storefront,
     Header,
     Preview,
+    Categories,
   },
 };
 
