@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { StoreContextData } from "@/contexts/StoreContext";
+import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
 import type { Product } from "@/lib/productData";
 import type { ThemePreset } from "@/lib/themeRegistry";
 
@@ -33,10 +33,27 @@ export type ThemePreviewProps = {
   installing?: boolean;
 };
 
+export type ThemeCategory = {
+  id: string;
+  name: string;
+  image_url?: string | null;
+  display_order?: number;
+  store_id?: string;
+  productCount?: number;
+};
+
+export type ThemeCategoriesProps = {
+  store: StoreContextData;
+  profile: StoreProfileData | null;
+  storeSlug?: string;
+  categories: ThemeCategory[];
+};
+
 export type StorefrontThemeComponents = {
   Storefront?: ComponentType<ThemeStorefrontProps>;
   Header?: ComponentType<ThemeHeaderProps>;
   Preview?: ComponentType<ThemePreviewProps>;
+  Categories?: ComponentType<ThemeCategoriesProps>;
 };
 
 export type StorefrontThemePageVariants = {
