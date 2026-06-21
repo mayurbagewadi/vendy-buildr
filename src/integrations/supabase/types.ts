@@ -1158,6 +1158,7 @@ export type Database = {
           description: string | null
           icon: string
           id: string
+          item_type: string
           is_active: boolean | null
           is_free: boolean | null
           menu_order: number | null
@@ -1179,6 +1180,7 @@ export type Database = {
           description?: string | null
           icon?: string
           id?: string
+          item_type?: string
           is_active?: boolean | null
           is_free?: boolean | null
           menu_order?: number | null
@@ -1200,6 +1202,7 @@ export type Database = {
           description?: string | null
           icon?: string
           id?: string
+          item_type?: string
           is_active?: boolean | null
           is_free?: boolean | null
           menu_order?: number | null
@@ -2085,6 +2088,9 @@ export type Database = {
           state: string | null
           storage_limit_mb: number | null
           storage_used_mb: number | null
+          storefront_color_palette: string | null
+          storefront_template: string
+          storefront_theme: string | null
           street_address: string | null
           subdomain: string | null
           twitter_url: string | null
@@ -2161,6 +2167,9 @@ export type Database = {
           state?: string | null
           storage_limit_mb?: number | null
           storage_used_mb?: number | null
+          storefront_color_palette?: string | null
+          storefront_template?: string
+          storefront_theme?: string | null
           street_address?: string | null
           subdomain?: string | null
           twitter_url?: string | null
@@ -2237,6 +2246,9 @@ export type Database = {
           state?: string | null
           storage_limit_mb?: number | null
           storage_used_mb?: number | null
+          storefront_color_palette?: string | null
+          storefront_template?: string
+          storefront_theme?: string | null
           street_address?: string | null
           subdomain?: string | null
           twitter_url?: string | null
