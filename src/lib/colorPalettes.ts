@@ -6,6 +6,8 @@ export interface ColorPalette {
   swatches: string[];
   light: Record<string, string>;
   dark: Record<string, string>;
+  fontImport?: string;
+  fonts?: { heading: string; body: string };
 }
 
 export const COLOR_PALETTES: ColorPalette[] = [
@@ -232,5 +234,17 @@ export function buildPaletteCSS(palette: ColorPalette): string {
     .map(([k, v]) => `  --${k}: ${v};`)
     .join('\n');
 
-  return `:root {\n${lightVars}\n}\n.dark {\n${darkVars}\n}`;
+  let css = `:root {\n${lightVars}\n}\n.dark {\n${darkVars}\n}`;
+
+  if (palette.fonts) {
+    css += `\nbody { font-family: ${palette.fonts.body}; }`;
+    css += `\nh1,h2,h3,h4,h5,h6,button { font-family: ${palette.fonts.heading}; }`;
+  }
+
+  // Font import must be first — browsers reject @import after any rule
+  if (palette.fontImport) {
+    css = `@import url('${palette.fontImport}');\n` + css;
+  }
+
+  return css;
 }

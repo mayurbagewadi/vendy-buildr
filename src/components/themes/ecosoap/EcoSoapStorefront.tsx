@@ -15,10 +15,11 @@ import {
   Star,
 } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
-import { useCart } from "@/contexts/CartContext";
 import EcoSoapCartDrawer from "@/components/themes/ecosoap/EcoSoapCartDrawer";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
+import type { CartItem } from "@/lib/cartUtils";
+import type { ThemeStorefrontActions, ThemeStorefrontUrls } from "@/new-storefront/theme-engine/types";
 
 const ThemeToggle = lazy(() =>
   import("@/components/ui/theme-toggle").then((module) => ({
@@ -78,6 +79,11 @@ type EcoSoapStorefrontProps = {
   products: PlatformProduct[];
   categories?: StoreCategory[];
   showInternalHeader?: boolean;
+  cart?: CartItem[];
+  cartCount?: number;
+  cartTotal?: number;
+  urls?: ThemeStorefrontUrls;
+  actions?: ThemeStorefrontActions;
 };
 
 const THEME_IMAGES = [
@@ -134,11 +140,20 @@ const adaptProducts = (products: PlatformProduct[]): EcoSoapProduct[] =>
     };
   });
 
-export default function EcoSoapStorefront({ store, products, categories = [], showInternalHeader = true }: EcoSoapStorefrontProps) {
+export default function EcoSoapStorefront({
+  store,
+  products,
+  categories = [],
+  showInternalHeader = true,
+  cart = [],
+  cartCount = 0,
+  cartTotal = 0,
+  urls,
+  actions,
+}: EcoSoapStorefrontProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
   const [activeTab, setActiveTab] = useState("shop");
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -183,7 +198,7 @@ export default function EcoSoapStorefront({ store, products, categories = [], sh
   }, [ecoProducts, searchTerm, selectedCategory, sortBy]);
 
   const handleAddToCart = (product: EcoSoapProduct) => {
-    addToCart({
+    actions?.addToCart({
       productId: product.source.id,
       productName: product.source.name,
       productImage: product.image,
@@ -195,12 +210,14 @@ export default function EcoSoapStorefront({ store, products, categories = [], sh
 
   const showShop = activeTab === "shop";
   const isSubdomain = isStoreSpecificDomain();
-  const homeLink = isSubdomain ? "/" : `/${store.slug}`;
-  const productsLink = isSubdomain ? "/products" : `/${store.slug}/products`;
-  const categoriesLink = isSubdomain ? "/categories" : `/${store.slug}/categories`;
-  const aboutLink = isSubdomain ? "/about" : `/${store.slug}/about`;
-  const cartLink = isSubdomain ? "/cart" : `/${store.slug}/cart`;
-  const checkoutLink = isSubdomain ? "/checkout" : `/${store.slug}/checkout`;
+  const homeLink = urls?.home ?? (isSubdomain ? "/" : `/${store.slug}`);
+  const productsLink = urls?.products ?? (isSubdomain ? "/products" : `/${store.slug}/products`);
+  const categoriesLink = urls?.categories ?? (isSubdomain ? "/categories" : `/${store.slug}/categories`);
+  const aboutLink = urls?.about ?? (isSubdomain ? "/about" : `/${store.slug}/about`);
+  const cartLink = urls?.cart ?? (isSubdomain ? "/cart" : `/${store.slug}/cart`);
+  const checkoutLink = urls?.checkout ?? (isSubdomain ? "/checkout" : `/${store.slug}/checkout`);
+  const updateCartQuantity = actions?.updateQuantity ?? (() => undefined);
+  const removeCartItem = actions?.removeItem ?? (() => undefined);
   const navItems = [
     {
       href: homeLink,
@@ -338,8 +355,8 @@ export default function EcoSoapStorefront({ store, products, categories = [], sh
             cartLink={cartLink}
             checkoutLink={checkoutLink}
             onClose={() => setIsCartDrawerOpen(false)}
-            onUpdateQuantity={updateQuantity}
-            onRemoveItem={removeItem}
+            onUpdateQuantity={updateCartQuantity}
+            onRemoveItem={removeCartItem}
           />
         </>
       )}
@@ -495,7 +512,7 @@ export default function EcoSoapStorefront({ store, products, categories = [], sh
                         </div>
                         <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-stone-900/70 to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
-                            onClick={() => navigate(buildProductUrl(store.slug, product.source))}
+                            onClick={() => navigate(urls?.product(product.source) ?? buildProductUrl(store.slug, product.source))}
                             className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold text-stone-900 shadow-md hover:bg-stone-50"
                           >
                             <Eye className="h-3.5 w-3.5 text-stone-700" />
@@ -524,7 +541,7 @@ export default function EcoSoapStorefront({ store, products, categories = [], sh
                           </div>
                           <div className="flex gap-1.5">
                             <button
-                              onClick={() => navigate(buildProductUrl(store.slug, product.source))}
+                              onClick={() => navigate(urls?.product(product.source) ?? buildProductUrl(store.slug, product.source))}
                               className="rounded-xl border border-stone-200/50 bg-stone-50 p-2.5 text-stone-500 transition-all hover:bg-stone-100 hover:text-stone-800 md:hidden"
                               aria-label="View product details"
                             >

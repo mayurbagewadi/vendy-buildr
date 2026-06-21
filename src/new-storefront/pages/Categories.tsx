@@ -9,7 +9,7 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
-import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
+import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface Category {
   id: string;
@@ -72,6 +72,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
   const { store, profile, loading: storeLoading } = useStorefront();
+  const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
   const storeAny = store as any;
 
   const loadCategoryCounts = async (storeIdToUse: string): Promise<Map<string, number>> => {
@@ -145,7 +146,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
   const loading = storeLoading || categoriesLoading;
   const storeName = storeAny?.name || "Store";
-  const ThemeCategories = getStorefrontThemeByTemplate(storeAny?.storefront_template)?.components.Categories;
+  const ThemeCategories = activeMarketplaceTheme?.components.Categories;
 
   if (loading) {
     return (
