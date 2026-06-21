@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, Dispatch, RefObject, SetStateAction } from "react";
 import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
@@ -92,8 +92,105 @@ export type ThemeProductsProps = {
   getProductUrl: (product: Product) => string;
   navigateToProduct: (product: Product) => void;
 };
-export type ThemeProductDetailProps = Record<string, unknown>;
-export type ThemeCartProps = Record<string, unknown>;
+export type ThemeCartStockInfo = {
+  stock: number | null;
+  unavailable: boolean;
+};
+
+export type ThemeCartProps = {
+  store: StoreContextData | null;
+  profile: StoreProfileData | null;
+  storeSlug?: string;
+  cart: CartItem[];
+  cartTotal: number;
+  computedDeliveryFee: number;
+  stockLoading: boolean;
+  cartStock: Record<string, ThemeCartStockInfo>;
+  hasStockIssue: boolean;
+  links: {
+    home: string;
+    products: string;
+    checkout: string;
+  };
+  cartStockKey: (productId: string, variant?: string) => string;
+  updateQuantity: (productId: string, variant: string | undefined, quantity: number) => void;
+  removeItem: (productId: string, variant?: string) => void;
+};
+
+export type ThemeProductDetailVariant = {
+  name: string;
+  price: number;
+  sku?: string;
+  offer_price?: number;
+  stock?: number | string | null;
+};
+
+export type ThemeProductDetailProduct = {
+  id: string;
+  slug?: string;
+  name: string;
+  description: string;
+  category: string;
+  images: string[];
+  videoUrl?: string;
+  video_url?: string;
+  basePrice?: number;
+  base_price?: number;
+  offerPrice?: number;
+  offer_price?: number;
+  baseSku?: string;
+  sku?: string;
+  variants?: ThemeProductDetailVariant[];
+  priceRange?: string;
+  price_range?: string;
+  stock?: number | string | null;
+  status: string;
+  storeId?: string;
+  store_id?: string;
+};
+
+export type ThemeProductDetailProps = {
+  store: StoreContextData | null;
+  profile: StoreProfileData | null;
+  storeSlug?: string;
+  isSubdomain: boolean;
+  product: ThemeProductDetailProduct;
+  relatedProducts: Product[];
+  currentVariant?: ThemeProductDetailVariant;
+  selectedVariant: string;
+  setSelectedVariant: Dispatch<SetStateAction<string>>;
+  quantity: number;
+  selectedImage: number;
+  setSelectedImage: Dispatch<SetStateAction<number>>;
+  showConfirmationModal: boolean;
+  setShowConfirmationModal: Dispatch<SetStateAction<boolean>>;
+  isDescriptionExpanded: boolean;
+  setIsDescriptionExpanded: Dispatch<SetStateAction<boolean>>;
+  images: string[];
+  videoUrl?: string;
+  videoThumbnail: string | null;
+  baseSku?: string;
+  hasVariants: boolean;
+  needsVariantSelection: boolean;
+  currentPrice: number;
+  availableStock: number | null;
+  isOutOfStock: boolean;
+  stockLabel: string;
+  isSeoAvailable: boolean;
+  shouldCollapseDescription: boolean;
+  shouldShowDescriptionToggle: boolean;
+  mainImageRef: RefObject<HTMLImageElement>;
+  variantSectionRef: RefObject<HTMLDivElement>;
+  descriptionRef: RefObject<HTMLParagraphElement>;
+  links: {
+    home: string;
+    products: string;
+    cart: string;
+  };
+  handleQuantityChange: (delta: number) => void;
+  handleAddToCart: () => void;
+  handleShare: () => void;
+};
 export type ThemeContentProps = Record<string, unknown>;
 
 export type StorefrontThemeComponents = {

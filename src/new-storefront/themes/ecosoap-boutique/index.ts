@@ -3,6 +3,8 @@ import { ecosoapBoutiqueTheme } from "./theme";
 import "./theme.css";
 import Storefront from "./Storefront";
 import Products from "./Products";
+import Cart from "./Cart";
+import ProductDetail from "./ProductDetail";
 import Header from "./Header";
 import Preview from "./Preview";
 import Categories from "./Categories";
@@ -13,6 +15,8 @@ const ecosoapBoutiqueComponents = {
   Home: Storefront,
   Storefront,
   Products,
+  Cart,
+  ProductDetail,
   Header,
   Preview,
   Categories,
@@ -52,8 +56,8 @@ export const ecosoapBoutiqueRuntimeTheme: StorefrontThemeRuntimeDefinition = {
     Home: "theme",
     Products: "theme",
     Categories: "theme",
-    ProductDetail: "core-fallback",
-    Cart: "core-fallback",
+    ProductDetail: "theme",
+    Cart: "theme",
     About: "core-fallback",
     Policies: "core-fallback",
   },
