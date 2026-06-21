@@ -58,7 +58,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
     gcTime: 5 * 60 * 1000,
   });
 
-  if (import.meta.env.DEV || localStorage.getItem("dd_theme_debug") === "1") {
+  if (import.meta.env.DEV) {
     console.info("[STOREFRONT_THEME_DEBUG][products]", {
       slug,
       storeId: store?.id,

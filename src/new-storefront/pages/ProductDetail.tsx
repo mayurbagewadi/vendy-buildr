@@ -395,7 +395,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
   const cartLink = isSubdomain ? "/cart" : (storeSlug ? `/${storeSlug}/cart` : "/cart");
 
-  if (import.meta.env.DEV || localStorage.getItem("dd_theme_debug") === "1") {
+  if (import.meta.env.DEV) {
     console.info("[STOREFRONT_THEME_DEBUG][product-detail]", {
       productSlug,
       productName: product.name,

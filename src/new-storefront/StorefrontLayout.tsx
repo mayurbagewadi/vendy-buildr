@@ -35,10 +35,7 @@ const StorefrontThemeScope = () => {
   const location = useLocation();
   const activeTheme = getStorefrontThemeByTemplate(store?.storefront_template as string | null | undefined);
   const themeId = activeTheme?.cssScope;
-  const debugEnabled =
-    import.meta.env.DEV ||
-    new URLSearchParams(location.search).get("themeDebug") === "1" ||
-    localStorage.getItem("dd_theme_debug") === "1";
+  const debugEnabled = import.meta.env.DEV;
 
   if (debugEnabled) {
     console.info("[STOREFRONT_THEME_DEBUG][layout]", {
@@ -78,16 +75,6 @@ const StorefrontThemeScope = () => {
 
   return (
     <div data-storefront-theme={themeId}>
-      {debugEnabled && (
-        <div className="fixed bottom-3 left-3 z-[9999] max-w-[min(92vw,420px)] rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-[11px] leading-5 text-amber-950 shadow-xl">
-          <div className="font-bold">Theme Debug</div>
-          <div>path: {location.pathname}</div>
-          <div>store: {store?.slug || storeSlug || "none"}</div>
-          <div>template: {String(store?.storefront_template || "null")}</div>
-          <div>resolved: {themeId || "default"}</div>
-          <div>html: {document.documentElement.getAttribute("data-storefront-template") || "none"}</div>
-        </div>
-      )}
       <Outlet />
     </div>
   );
