@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
@@ -54,17 +54,24 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
 
   const isSubdomain = isStoreSpecificDomain();
   const ThemeCart = activeTheme?.components.Cart;
+  const deliveryStoreId = ctxStore?.id ?? cart[0]?.storeId ?? null;
+  const cartStockSignature = useMemo(
+    () =>
+      [...new Set(cart.map((item) => cartStockKey(item.productId, item.variant)))]
+        .sort()
+        .join("|"),
+    [cart]
+  );
 
   // Only fetch the 3 delivery columns not covered by StoreContext.
   // Triggered once per store resolution — NOT on every cart change.
   useEffect(() => {
-    const resolvedStoreId = ctxStore?.id ?? (cart.length > 0 ? cart[0].storeId : null);
-    if (!resolvedStoreId) return;
+    if (!deliveryStoreId) return;
 
     supabase
       .from("stores")
       .select("delivery_mode, delivery_fee_amount, delivery_tiers")
-      .eq("id", resolvedStoreId)
+      .eq("id", deliveryStoreId)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
@@ -72,7 +79,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
         setDeliveryFeeAmount(data.delivery_fee_amount != null ? Number(data.delivery_fee_amount) : 0);
         setDeliveryTiers((data.delivery_tiers as { min: number | null; max: number | null; fee: number | null }[]) || []);
       });
-  }, [ctxStore?.id, cart[0]?.storeId]);
+  }, [deliveryStoreId]);
 
   useEffect(() => {
     const productIds = [...new Set(cart.map((item) => item.productId))];
@@ -129,7 +136,7 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
     return () => {
       cancelled = true;
     };
-  }, [cart]);
+  }, [cartStockSignature]);
 
   // Compute delivery fee
   const computedDeliveryFee = (() => {

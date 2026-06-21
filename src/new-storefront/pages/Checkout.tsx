@@ -111,6 +111,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [autoDiscountApplied, setAutoDiscountApplied] = useState<any>(null);
   const [autoDiscountAmount, setAutoDiscountAmount] = useState<number>(0);
   const [isLoadingAutoDiscount, setIsLoadingAutoDiscount] = useState(false);
+  const cartStoreId = cart[0]?.storeId ?? null;
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -144,7 +145,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     try {
       if (cart.length === 0) return;
 
-      const storeId = cart[0].storeId;
+      const storeId = cartStoreId;
+      if (!storeId) return;
+
       const { data: store } = await supabase
         .from('stores')
         .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers')
@@ -419,12 +422,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     // Get store slug from URL or cart items
     if (slug) {
       setStoreSlug(slug);
-    } else if (cart.length > 0 && cart[0].storeId) {
+    } else if (cartStoreId) {
       const fetchStoreSlug = async () => {
         const { data } = await supabase
           .from("stores")
           .select("slug")
-          .eq("id", cart[0].storeId)
+          .eq("id", cartStoreId)
           .maybeSingle();
         if (data) {
           setStoreSlug(data.slug);
@@ -432,18 +435,18 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       };
       fetchStoreSlug();
     }
-  }, [slug, cart]);
+  }, [slug, cartStoreId]);
 
   // Isolated footer data fetch — works for both cart-has-items and empty-cart states
   useEffect(() => {
     const fetchFooterData = async () => {
       let data: any = null;
 
-      if (cart.length > 0) {
+      if (cartStoreId) {
         const { data: storeData } = await supabase
           .from("stores")
           .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
-          .eq("id", cart[0].storeId)
+          .eq("id", cartStoreId)
           .maybeSingle();
         data = storeData;
       } else if (slug) {
@@ -473,7 +476,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       }
     };
     fetchFooterData();
-  }, [slug, cart]);
+  }, [slug, cartStoreId]);
 
   // Load auto discount when cart or payment method changes
   useEffect(() => {

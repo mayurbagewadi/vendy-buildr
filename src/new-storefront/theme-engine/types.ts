@@ -1,4 +1,4 @@
-import type { ComponentType, Dispatch, RefObject, SetStateAction } from "react";
+import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateAction } from "react";
 import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
@@ -193,17 +193,21 @@ export type ThemeProductDetailProps = {
 };
 export type ThemeContentProps = Record<string, unknown>;
 
+type StorefrontThemeComponent<Props> =
+  | ComponentType<Props>
+  | LazyExoticComponent<ComponentType<Props>>;
+
 export type StorefrontThemeComponents = {
-  Home?: ComponentType<ThemeStorefrontProps>;
-  Products?: ComponentType<ThemeProductsProps>;
-  ProductDetail?: ComponentType<ThemeProductDetailProps>;
-  Cart?: ComponentType<ThemeCartProps>;
-  Storefront?: ComponentType<ThemeStorefrontProps>;
-  Header?: ComponentType<ThemeHeaderProps>;
-  Preview?: ComponentType<ThemePreviewProps>;
-  Categories?: ComponentType<ThemeCategoriesProps>;
-  About?: ComponentType<ThemeContentProps>;
-  Policies?: ComponentType<ThemeContentProps>;
+  Home?: StorefrontThemeComponent<ThemeStorefrontProps>;
+  Products?: StorefrontThemeComponent<ThemeProductsProps>;
+  ProductDetail?: StorefrontThemeComponent<ThemeProductDetailProps>;
+  Cart?: StorefrontThemeComponent<ThemeCartProps>;
+  Storefront?: StorefrontThemeComponent<ThemeStorefrontProps>;
+  Header?: StorefrontThemeComponent<ThemeHeaderProps>;
+  Preview?: StorefrontThemeComponent<ThemePreviewProps>;
+  Categories?: StorefrontThemeComponent<ThemeCategoriesProps>;
+  About?: StorefrontThemeComponent<ThemeContentProps>;
+  Policies?: StorefrontThemeComponent<ThemeContentProps>;
 };
 
 export type RequiredThemePage = "Home" | "Products" | "Categories" | "ProductDetail" | "Cart";
