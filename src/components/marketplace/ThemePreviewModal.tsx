@@ -1,6 +1,11 @@
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getStorefrontThemeBySlug } from "@/new-storefront/theme-engine/registry";
+import {
+  getStorefrontThemeBySlug,
+  loadStorefrontThemeRuntime,
+} from "@/new-storefront/theme-engine/registry";
+import type { StorefrontThemeRuntimeDefinition } from "@/new-storefront/theme-engine/types";
 import type { ThemePreset } from "@/lib/themeRegistry";
 
 type ThemePreviewModalProps = {
@@ -25,7 +30,23 @@ export function ThemePreviewModal({
   installing = false,
 }: ThemePreviewModalProps) {
   const activeTheme = getStorefrontThemeBySlug(theme.slug);
-  const Preview = activeTheme?.components.Preview;
+  const [runtime, setRuntime] = useState<StorefrontThemeRuntimeDefinition | null>(null);
+  const Preview = runtime?.components.Preview;
+
+  useEffect(() => {
+    let cancelled = false;
+    setRuntime(null);
+
+    if (!open || !activeTheme) return;
+
+    loadStorefrontThemeRuntime(activeTheme.template).then((loadedRuntime) => {
+      if (!cancelled) setRuntime(loadedRuntime);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTheme, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

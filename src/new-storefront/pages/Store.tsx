@@ -18,8 +18,9 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useCart } from "@/contexts/CartContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
-import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
+import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -128,6 +129,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const { store: ctxStore, profile, loading: storeLoading } = useStorefront();
   // Cast to StoreData — safe because StoreContext uses select('*')
   const store = ctxStore as unknown as StoreData | null;
+  const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
+  const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
 
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
@@ -137,7 +140,16 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const newArrivalsGridRef      = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
 
   const isSubdomain  = isStoreSpecificDomain();
+  const homeLink = isSubdomain ? "/" : `/${slug}`;
   const productsLink = isSubdomain ? '/products' : `/${slug}/products`;
+  const categoriesLink = isSubdomain ? "/categories" : `/${slug}/categories`;
+  const aboutLink = isSubdomain ? "/about" : `/${slug}/about`;
+  const cartLink = isSubdomain ? "/cart" : `/${slug}/cart`;
+  const checkoutLink = isSubdomain ? "/checkout" : `/${slug}/checkout`;
+  const buildProductLink = (product: { id: string; slug?: string | null }) => {
+    const productIdentifier = product.slug || product.id;
+    return isSubdomain ? `/products/${productIdentifier}` : `/${slug}/products/${productIdentifier}`;
+  };
 
   // ── Page data: categories + products + AI design — all in parallel ──────────
   // Fires immediately once ctxStore.id is available (instant on cached sessions).
@@ -272,7 +284,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   }
 
   // ── Marketplace theme renderer ───────────────────────────────────────────────
-  const activeMarketplaceTheme = getStorefrontThemeByTemplate(store.storefront_template);
   const ThemeStorefront = activeMarketplaceTheme?.components.Storefront;
 
   if (ThemeStorefront) {
@@ -287,7 +298,29 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           type="website"
         />
         <Header storeSlug={store.slug} storeId={store.id} />
-        <ThemeStorefront store={store as any} products={products as any} categories={categories} showInternalHeader={false} />
+        <ThemeStorefront
+          store={store as any}
+          products={products as any}
+          categories={categories}
+          showInternalHeader={false}
+          cart={cart}
+          cartCount={cartCount}
+          cartTotal={cartTotal}
+          urls={{
+            home: homeLink,
+            products: productsLink,
+            categories: categoriesLink,
+            about: aboutLink,
+            cart: cartLink,
+            checkout: checkoutLink,
+            product: buildProductLink,
+          }}
+          actions={{
+            addToCart,
+            updateQuantity,
+            removeItem,
+          }}
+        />
       </>
     );
   }

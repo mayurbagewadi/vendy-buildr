@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import { copyFileSync, cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import webfontDownload from "vite-plugin-webfont-dl";
 
@@ -59,7 +59,43 @@ function copyStorefrontPublicAssets() {
   };
 }
 
+function storefrontSpaFallback() {
+  return {
+    name: "storefront-spa-fallback",
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.method !== "GET") return next();
+
+        const url = req.url || "/";
+        const acceptsHtml = req.headers.accept?.includes("text/html");
+        const isViteInternal = url.startsWith("/@vite") || url.startsWith("/@react-refresh");
+        const isSourceOrAsset =
+          url.startsWith("/src/") ||
+          url.startsWith("/node_modules/") ||
+          url.startsWith("/themes/") ||
+          /\.(js|mjs|ts|tsx|css|map|json|svg|png|jpg|jpeg|webp|gif|ico|txt|xml|webmanifest|woff2?)($|\?)/i.test(url);
+
+        if (!acceptsHtml || isViteInternal || isSourceOrAsset || url === "/storefront.html") {
+          return next();
+        }
+
+        try {
+          const templatePath = path.resolve(__dirname, "storefront.html");
+          const template = readFileSync(templatePath, "utf-8");
+          const html = await server.transformIndexHtml(url, template);
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/html");
+          res.end(html);
+        } catch (error) {
+          next(error);
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
+  appType: "custom",
   server: {
     host: "::",
     port: 8081,
@@ -70,6 +106,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    storefrontSpaFallback(),
     webfontDownload([
       "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap",
     ]),

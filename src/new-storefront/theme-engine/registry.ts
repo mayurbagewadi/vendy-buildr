@@ -1,5 +1,6 @@
 export {
-  STOREFRONT_THEMES,
+  STOREFRONT_THEME_MANIFESTS,
   getStorefrontThemeBySlug,
   getStorefrontThemeByTemplate,
+  loadStorefrontThemeRuntime,
 } from "@/new-storefront/themes/registry";

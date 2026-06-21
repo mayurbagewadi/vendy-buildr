@@ -7,18 +7,18 @@ import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import StorefrontLayout from "@/components/customer/StorefrontLayout";
+import StorefrontLayout from "@/new-storefront/StorefrontLayout";
 import { detectDomain, getStoreIdentifier } from "@/lib/domainUtils";
 
-const Store = lazy(() => import("@/pages/customer/Store"));
-const CustomerProducts = lazy(() => import("@/pages/customer/Products"));
-const ProductDetail = lazy(() => import("@/pages/customer/ProductDetail"));
-const CustomerCategories = lazy(() => import("@/pages/customer/Categories"));
-const Cart = lazy(() => import("@/pages/customer/Cart"));
-const Checkout = lazy(() => import("@/pages/customer/Checkout"));
-const PaymentSuccess = lazy(() => import("@/pages/customer/PaymentSuccess"));
-const Policies = lazy(() => import("@/pages/customer/Policies"));
-const About = lazy(() => import("@/pages/customer/About"));
+const Store = lazy(() => import("@/new-storefront/pages/Store"));
+const CustomerProducts = lazy(() => import("@/new-storefront/pages/Products"));
+const ProductDetail = lazy(() => import("@/new-storefront/pages/ProductDetail"));
+const CustomerCategories = lazy(() => import("@/new-storefront/pages/Categories"));
+const Cart = lazy(() => import("@/new-storefront/pages/Cart"));
+const Checkout = lazy(() => import("@/new-storefront/pages/Checkout"));
+const PaymentSuccess = lazy(() => import("@/new-storefront/pages/PaymentSuccess"));
+const Policies = lazy(() => import("@/new-storefront/pages/Policies"));
+const About = lazy(() => import("@/new-storefront/pages/About"));
 const Toaster = lazy(() => import("@/components/ui/toaster").then((module) => ({ default: module.Toaster })));
 const Sonner = lazy(() => import("@/components/ui/sonner").then((module) => ({ default: module.Toaster })));
 

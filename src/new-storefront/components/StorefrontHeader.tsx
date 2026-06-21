@@ -1,5 +1,8 @@
 import Header from "@/components/customer/Header";
-import { useActiveStorefrontTheme } from "@/new-storefront/theme-engine/resolveTheme";
+import {
+  useActiveStorefrontTheme,
+  useActiveStorefrontThemeRuntime,
+} from "@/new-storefront/theme-engine/resolveTheme";
 
 interface StorefrontHeaderProps {
   storeSlug?: string;
@@ -8,7 +11,8 @@ interface StorefrontHeaderProps {
 
 const StorefrontHeader = (props: StorefrontHeaderProps) => {
   const activeTheme = useActiveStorefrontTheme();
-  const ThemeHeader = activeTheme?.components.Header;
+  const { runtime } = useActiveStorefrontThemeRuntime();
+  const ThemeHeader = runtime?.components.Header;
 
   if (ThemeHeader) {
     return <ThemeHeader {...props} />;

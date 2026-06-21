@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Truck, BarChart3, MessageSquare, Mail, Target, Loader2, Palette, Puzzle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -43,6 +43,7 @@ interface MarketplaceFeature {
   slug: string;
   description: string;
   icon: string;
+  item_type?: string | null;
   is_free: boolean;
   price: number;
   is_active: boolean;
@@ -65,6 +66,8 @@ const iconOptions = [
   { value: "Mail", label: "Mail (Email)", icon: Mail },
   { value: "Target", label: "Target (Ads)", icon: Target },
   { value: "Package", label: "Package (Default)", icon: Package },
+  { value: "Palette", label: "Palette (Theme)", icon: Palette },
+  { value: "Puzzle", label: "Puzzle (Plugin)", icon: Puzzle },
 ];
 
 const getIconComponent = (iconName: string) => {
@@ -75,9 +78,33 @@ const getIconComponent = (iconName: string) => {
     Mail,
     Target,
     Package,
+    Palette,
+    Puzzle,
   };
   return iconMap[iconName] || Package;
 };
+
+type MarketplaceItemType = "feature" | "theme" | "plugin";
+
+const createDefaultFormData = (itemType: MarketplaceItemType = "feature") => ({
+  name: "",
+  slug: "",
+  description: "",
+  icon: itemType === "theme" ? "Palette" : itemType === "plugin" ? "Puzzle" : "Package",
+  item_type: itemType,
+  is_free: true,
+  price: 0,
+  is_active: true,
+  menu_order: 0,
+  pricing_model: "onetime",
+  price_onetime: 0,
+  price_monthly: 0,
+  price_yearly: 0,
+  quota_onetime: 15,
+  quota_monthly: 30,
+  quota_yearly: 50,
+  quota_period: "monthly",
+});
 
 const SuperadminMarketplace = () => {
   const navigate = useNavigate();
@@ -91,24 +118,7 @@ const SuperadminMarketplace = () => {
   const [featureToDelete, setFeatureToDelete] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    icon: "Package",
-    is_free: true,
-    price: 0,
-    is_active: true,
-    menu_order: 0,
-    pricing_model: "onetime",
-    price_onetime: 0,
-    price_monthly: 0,
-    price_yearly: 0,
-    quota_onetime: 15,
-    quota_monthly: 30,
-    quota_yearly: 50,
-    quota_period: "monthly",
-  });
+  const [formData, setFormData] = useState(createDefaultFormData());
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -160,29 +170,21 @@ const SuperadminMarketplace = () => {
     }
   };
 
-  const handleAddFeature = () => {
+  const openCreateDialog = (itemType: MarketplaceItemType = "feature") => {
     setDialogMode("add");
     setSelectedFeature(null);
     setFormData({
-      name: "",
-      slug: "",
-      description: "",
-      icon: "Package",
-      is_free: true,
-      price: 0,
-      is_active: true,
+      ...createDefaultFormData(itemType),
       menu_order: features.length + 1,
-      pricing_model: "onetime",
-      price_onetime: 0,
-      price_monthly: 0,
-      price_yearly: 0,
-      quota_onetime: 15,
-      quota_monthly: 30,
-      quota_yearly: 50,
-      quota_period: "monthly",
     });
     setDialogOpen(true);
   };
+
+  const handleAddFeature = () => openCreateDialog("feature");
+
+  const handleThemeButtonClick = () => openCreateDialog("theme");
+
+  const handlePluginButtonClick = () => openCreateDialog("plugin");
 
   const handleEditFeature = (feature: MarketplaceFeature) => {
     setDialogMode("edit");
@@ -192,6 +194,7 @@ const SuperadminMarketplace = () => {
       slug: feature.slug,
       description: feature.description || "",
       icon: feature.icon,
+      item_type: (feature.item_type || "feature") as MarketplaceItemType,
       is_free: feature.is_free,
       price: feature.price,
       is_active: feature.is_active,
@@ -228,6 +231,7 @@ const SuperadminMarketplace = () => {
             slug: formData.slug.toLowerCase().replace(/\s+/g, '-'),
             description: formData.description,
             icon: formData.icon,
+            item_type: formData.item_type,
             is_free: formData.is_free,
             price: formData.is_free ? 0 : formData.price,
             is_active: formData.is_active,
@@ -246,7 +250,7 @@ const SuperadminMarketplace = () => {
 
         toast({
           title: "Success",
-          description: "Feature added to marketplace",
+          description: "Marketplace item added",
         });
       } else {
         const { error } = await supabase
@@ -256,6 +260,7 @@ const SuperadminMarketplace = () => {
             slug: formData.slug.toLowerCase().replace(/\s+/g, '-'),
             description: formData.description,
             icon: formData.icon,
+            item_type: formData.item_type,
             is_free: formData.is_free,
             price: formData.is_free ? 0 : formData.price,
             is_active: formData.is_active,
@@ -275,7 +280,7 @@ const SuperadminMarketplace = () => {
 
         toast({
           title: "Success",
-          description: "Feature updated successfully",
+          description: "Marketplace item updated successfully",
         });
       }
 
@@ -284,7 +289,7 @@ const SuperadminMarketplace = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to save feature",
+        description: error.message || "Failed to save marketplace item",
         variant: "destructive",
       });
     } finally {
@@ -305,7 +310,7 @@ const SuperadminMarketplace = () => {
 
       toast({
         title: "Success",
-        description: "Feature deleted from marketplace",
+        description: "Marketplace item deleted",
       });
 
       setDeleteDialogOpen(false);
@@ -314,7 +319,7 @@ const SuperadminMarketplace = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete feature",
+        description: error.message || "Failed to delete marketplace item",
         variant: "destructive",
       });
     }
@@ -330,14 +335,22 @@ const SuperadminMarketplace = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">Marketplace Features</h1>
-            <p className="text-sm text-muted-foreground">Manage features available to store owners</p>
+            <h1 className="text-xl font-bold">Marketplace Items</h1>
+            <p className="text-sm text-muted-foreground">Manage themes, plugins, and store features for store owners</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={handleThemeButtonClick}>
+              <Palette className="h-4 w-4 mr-2" />
+              Theme
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePluginButtonClick}>
+              <Puzzle className="h-4 w-4 mr-2" />
+              Plugin
+            </Button>
             <ThemeToggle />
             <Button onClick={handleAddFeature}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Feature
+              Add Item
             </Button>
           </div>
         </div>
@@ -353,11 +366,11 @@ const SuperadminMarketplace = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No features yet</h3>
-              <p className="text-muted-foreground mb-4">Add your first marketplace feature</p>
+              <h3 className="text-lg font-semibold mb-2">No items yet</h3>
+              <p className="text-muted-foreground mb-4">Add your first marketplace item</p>
               <Button onClick={handleAddFeature}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Feature
+                Add Item
               </Button>
             </CardContent>
           </Card>
@@ -400,6 +413,9 @@ const SuperadminMarketplace = () => {
                     <p className="text-sm text-muted-foreground mb-4">{feature.description}</p>
                     <div className="flex items-center justify-between">
                       <div className="flex gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {(feature.item_type || "feature").toLowerCase()}
+                        </Badge>
                         {feature.is_free ? (
                           <Badge variant="secondary">Free</Badge>
                         ) : (
@@ -425,14 +441,14 @@ const SuperadminMarketplace = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{dialogMode === "add" ? "Add Feature" : "Edit Feature"}</DialogTitle>
+            <DialogTitle>{dialogMode === "add" ? "Add Marketplace Item" : "Edit Marketplace Item"}</DialogTitle>
             <DialogDescription>
-              {dialogMode === "add" ? "Add a new feature to the marketplace" : "Update feature details"}
+              {dialogMode === "add" ? "Add a new item to the marketplace" : "Update marketplace item details"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Feature Name</Label>
+              <Label htmlFor="name">Item Name</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -445,6 +461,22 @@ const SuperadminMarketplace = () => {
                 }}
                 placeholder="e.g., Shipping"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item_type">Item Type</Label>
+              <Select
+                value={formData.item_type}
+                onValueChange={(value) => setFormData({ ...formData, item_type: value as MarketplaceItemType })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select item type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="feature">Feature</SelectItem>
+                  <SelectItem value="theme">Theme</SelectItem>
+                  <SelectItem value="plugin">Plugin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Slug (URL identifier)</Label>
@@ -625,7 +657,7 @@ const SuperadminMarketplace = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveFeature} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {dialogMode === "add" ? "Add Feature" : "Save Changes"}
+              {dialogMode === "add" ? "Add Item" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -635,7 +667,7 @@ const SuperadminMarketplace = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Feature?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Marketplace Item?</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove the feature from the marketplace. Store owners who have enabled this feature will lose access.
             </AlertDialogDescription>
