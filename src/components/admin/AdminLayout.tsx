@@ -401,6 +401,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           current: location.pathname === "/admin/settings",
         },
         {
+          name: "Payments",
+          href: "/admin/settings/payments",
+          icon: CreditCard,
+          current: location.pathname === "/admin/settings/payments",
+        },
+        {
           name: "Delivery Charges",
           href: "/admin/settings/delivery",
           icon: Truck,
