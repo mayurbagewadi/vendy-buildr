@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Leaf, Minus, Plus, ShieldCheck, ShoppingBag, X } from "lucide-react";
 
 import StoreFooter from "@/components/customer/StoreFooter";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ThemeCartProps } from "@/new-storefront/theme-engine/types";
@@ -114,9 +114,10 @@ const EcoSoapCart = ({
                   return (
                     <article key={`${item.productId}-${item.variant}`} className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
                       <div className="flex flex-col gap-5 p-4 sm:flex-row sm:p-6">
-                        <LazyImage
+                        <StorefrontImage
                           src={item.productImage}
                           alt={item.productName}
+                          purpose="cart-thumb"
                           className="aspect-square w-full rounded-xl object-cover sm:h-32 sm:w-32"
                         />
 

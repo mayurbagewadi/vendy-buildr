@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useStorefront } from "@/contexts/StoreContext";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
@@ -257,10 +257,11 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
                   <CardContent className="p-4 md:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}
-                      <LazyImage
+                      <StorefrontImage
                         data-ai="cart-item-image"
                         src={item.productImage}
                         alt={item.productName}
+                        purpose="cart-thumb"
                         className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg flex-shrink-0"
                       />
 

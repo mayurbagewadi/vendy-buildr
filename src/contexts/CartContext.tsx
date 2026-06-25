@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CartItem, getCart, addToCart as addToCartUtil, updateCartItemQuantity, removeFromCart, clearCart, getCartTotal, getCartItemCount } from '@/lib/cartUtils';
 import FlyingImage, { FlyAnimationState } from '@/components/customer/FlyingImage';
+import { getImageUrl, type StorefrontImageSource } from '@/lib/responsiveImages';
 
 interface CartContextType {
   cart: CartItem[];
@@ -10,7 +11,7 @@ interface CartContextType {
   updateQuantity: (productId: string, variant: string | undefined, quantity: number) => void;
   removeItem: (productId: string, variant?: string) => void;
   clearCart: () => void;
-  triggerFlyAnimation: (imageSrc: string, sourceElement: HTMLElement) => void;
+  triggerFlyAnimation: (imageSrc: StorefrontImageSource, sourceElement: HTMLElement) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -28,7 +29,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart(updatedCart);
   };
 
-  const triggerFlyAnimation = (imageSrc: string, sourceElement: HTMLElement) => {
+  const triggerFlyAnimation = (imageSrc: StorefrontImageSource, sourceElement: HTMLElement) => {
     // Get source image position
     const startRect = sourceElement.getBoundingClientRect();
 
@@ -44,7 +45,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     // Trigger animation
     setAnimationState({
-      imageSrc,
+      imageSrc: getImageUrl(imageSrc),
       startRect,
       endRect,
     });

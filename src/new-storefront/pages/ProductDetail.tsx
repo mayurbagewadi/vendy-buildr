@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import StorefrontImage from "@/components/ui/storefront-image";
+import { getImageUrl } from "@/lib/responsiveImages";
 
 import { getProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
@@ -567,7 +568,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           storeData?.subdomain,
           storeData?.custom_domain
         )}
-        image={images[0]}
+        image={getImageUrl(images[0])}
         type="product"
         price={currentVariant?.price || product.base_price}
         availability={isSeoAvailable ? 'in stock' : 'out of stock'}

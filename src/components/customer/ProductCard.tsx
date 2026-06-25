@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StorefrontImage from "@/components/ui/storefront-image";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
+import type { StorefrontImageSource } from "@/lib/responsiveImages";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
 interface ProductCardProps {
@@ -19,7 +20,7 @@ interface ProductCardProps {
   offer_price?: number;
   variants?: Array<{ name: string; price: number; offer_price?: number; stock?: number | string | null }>;
   stock?: number | null;
-  images: string[];
+  images: StorefrontImageSource[];
   status: string;
   storeSlug?: string;
   priorityImage?: boolean;

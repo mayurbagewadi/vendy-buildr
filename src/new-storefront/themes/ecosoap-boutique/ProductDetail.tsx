@@ -16,11 +16,11 @@ import {
 import ProductCard from "@/components/customer/ProductCard";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
-import LazyImage from "@/components/ui/lazy-image";
 import StorefrontImage from "@/components/ui/storefront-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getImageUrl } from "@/lib/responsiveImages";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import { getProductCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import type { ThemeProductDetailProps } from "@/new-storefront/theme-engine/types";
@@ -90,7 +90,7 @@ const EcoSoapProductDetail = ({
           storeAny?.subdomain,
           storeAny?.custom_domain
         )}
-        image={images[0]}
+        image={getImageUrl(images[0])}
         type="product"
         price={currentVariant?.price || product.base_price}
         availability={isSeoAvailable ? "in stock" : "out of stock"}
@@ -149,13 +149,14 @@ const EcoSoapProductDetail = ({
                       }`}
                       aria-label={`View image ${index + 1}`}
                     >
-                      <LazyImage
+                      <StorefrontImage
                         src={image}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: index,
                         })}
+                        purpose="cart-thumb"
                         className="h-full w-full object-cover"
                       />
                     </button>

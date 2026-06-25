@@ -23,6 +23,7 @@ import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/typ
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
+import StorefrontImage from "@/components/ui/storefront-image";
 import {
   Form,
   FormControl,
@@ -1626,9 +1627,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                       key={`${item.productId}-${item.variant}`}
                       className={isEditorialCheckout ? "flex gap-3 border-b border-stone-100 pb-3 last:border-0" : "flex gap-3 pb-3 border-b border-border last:border-0"}
                     >
-                      <img
+                      <StorefrontImage
                         src={item.productImage}
                         alt={item.productName}
+                        purpose="cart-thumb"
                         className={isEditorialCheckout ? "h-16 w-16 rounded-xl border border-stone-100 object-cover" : "w-16 h-16 object-cover rounded"}
                       />
                       <div className="flex-1 min-w-0">

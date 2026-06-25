@@ -1,5 +1,7 @@
 // Product data utility using Supabase database
 import { supabase } from '@/integrations/supabase/client';
+import { getImageUrl } from '@/lib/responsiveImages';
+import type { StorefrontImageSource } from '@/lib/responsiveImages';
 
 export interface Variant {
   name: string;
@@ -24,7 +26,7 @@ export interface Product {
   stock?: number | null;
   sku?: string;
   status: 'published' | 'draft' | 'inactive';
-  images: string[];
+  images: StorefrontImageSource[];
   videoUrl?: string;
   video_url?: string;
   variants?: Variant[];
@@ -255,7 +257,7 @@ export const deleteProduct = async (id: string): Promise<void> => {
   // 2. Delete all product images from VPS and media library
   if (product?.images && Array.isArray(product.images)) {
     await Promise.all(
-      product.images.map((imageUrl: string) => deleteImageFromVPSAndMediaLibrary(imageUrl))
+      product.images.map((imageUrl) => deleteImageFromVPSAndMediaLibrary(getImageUrl(imageUrl)))
     );
   }
 

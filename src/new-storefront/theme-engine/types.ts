@@ -2,6 +2,7 @@ import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateA
 import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
+import type { StorefrontImageSource } from "@/lib/responsiveImages";
 import type { ThemePreset } from "@/lib/themeRegistry";
 
 export type ThemeStorefrontUrls = {
@@ -131,7 +132,7 @@ export type ThemeProductDetailProduct = {
   name: string;
   description: string;
   category: string;
-  images: string[];
+  images: StorefrontImageSource[];
   videoUrl?: string;
   video_url?: string;
   basePrice?: number;
@@ -166,7 +167,7 @@ export type ThemeProductDetailProps = {
   setShowConfirmationModal: Dispatch<SetStateAction<boolean>>;
   isDescriptionExpanded: boolean;
   setIsDescriptionExpanded: Dispatch<SetStateAction<boolean>>;
-  images: string[];
+  images: StorefrontImageSource[];
   videoUrl?: string;
   videoThumbnail: string | null;
   baseSku?: string;
