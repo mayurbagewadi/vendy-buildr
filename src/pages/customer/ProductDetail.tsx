@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 
 import { getProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
@@ -577,14 +577,16 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                       <Card className="overflow-hidden">
                         <CardContent className="p-0">
                           <div className="aspect-square bg-muted">
-                            <LazyImage
+                            <StorefrontImage
                               src={image}
                               alt={generateProductImageAlt({
                                 productName: product.name,
                                 category: product.category,
                                 imageIndex: index
                               })}
+                              purpose="product-detail"
                               className="w-full h-full object-contain"
+                              priority={index === 0}
                             />
                           </div>
                         </CardContent>
@@ -651,14 +653,16 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 <CardContent className="p-0">
                   <div ref={mainImageRef} className="aspect-square bg-muted">
                     {selectedImage < images.length ? (
-                      <LazyImage
+                      <StorefrontImage
                         src={images[selectedImage]}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: selectedImage
                         })}
+                        purpose="product-detail"
                         className="w-full h-full object-contain"
+                        priority
                       />
                     ) : (
                       /* Video View */
@@ -689,13 +693,14 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                           : "border-transparent hover:border-border"
                       }`}
                     >
-                      <LazyImage
+                      <StorefrontImage
                         src={image}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: index
                         })}
+                        purpose="cart-thumb"
                         className="w-full h-full object-contain"
                       />
                     </button>
@@ -1043,15 +1048,15 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             {/* Product Image and Details */}
             <div className="flex gap-4 pb-4 border-b border-border">
               <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                <img
+                <StorefrontImage
                   src={images[0]}
                   alt={generateProductImageAlt({
                     productName: product.name,
                     category: product.category,
                     imageIndex: 0
                   })}
+                  purpose="cart-thumb"
                   className="w-full h-full object-cover"
-                  loading="lazy"
                 />
               </div>
               <div className="flex-1 min-w-0">

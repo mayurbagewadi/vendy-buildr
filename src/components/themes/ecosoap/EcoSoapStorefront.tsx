@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import EcoSoapCartDrawer from "@/components/themes/ecosoap/EcoSoapCartDrawer";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 import type { CartItem } from "@/lib/cartUtils";
@@ -413,7 +414,13 @@ export default function EcoSoapStorefront({
 
                 <div className="relative flex justify-center lg:col-span-6">
                   <div className="relative aspect-[4/3] w-full max-w-lg rotate-1 overflow-hidden rounded-2xl border-4 border-white shadow-2xl transition-transform duration-500 hover:rotate-0">
-                    <img src="/themes/ecosoap/hero_soap_banner.png" alt="EcoSoap artisanal collection" className="h-full w-full object-cover" />
+                    <StorefrontImage
+                      src="/themes/ecosoap/hero_soap_banner.png"
+                      alt="EcoSoap artisanal collection"
+                      purpose="hero-banner"
+                      className="h-full w-full object-cover"
+                      priority
+                    />
                     <div className="absolute inset-0 flex items-end bg-gradient-to-t from-emerald-50/85 via-white/20 to-transparent p-6">
                       <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-left shadow-sm backdrop-blur-sm">
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700">Featured Batch</span>
@@ -496,13 +503,19 @@ export default function EcoSoapStorefront({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredProducts.map((product) => (
+                  {filteredProducts.map((product, index) => (
                     <article
                       key={product.id}
                       className="group flex flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white text-left shadow-sm transition-all duration-300 hover:shadow-md"
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-stone-50">
-                        <img src={product.image} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <StorefrontImage
+                          src={product.image}
+                          alt={product.name}
+                          purpose="product-card"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          priority={index < 3}
+                        />
                         <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
                           {product.noteCategory} note
                         </span>

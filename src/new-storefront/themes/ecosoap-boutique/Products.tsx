@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import type { Product } from "@/lib/productData";
 import type { ThemeProductsProps } from "@/new-storefront/theme-engine/types";
@@ -223,11 +224,12 @@ const EcoSoapProducts = ({
                                 onClick={() => navigateToProduct(product)}
                                 className="relative aspect-[4/3] overflow-hidden bg-stone-50 text-left"
                               >
-                                <img
+                                <StorefrontImage
                                   src={image}
                                   alt={product.name}
+                                  purpose="product-card"
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                  loading={index < 6 ? "eager" : "lazy"}
+                                  priority={index < 3}
                                 />
                                 <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
                                   {ecoCategory} note

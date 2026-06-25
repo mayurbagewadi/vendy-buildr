@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 
@@ -113,13 +113,14 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
         */}
         <CardContent className="p-0">
           <div className="relative aspect-[5/4] overflow-hidden bg-muted">
-            <LazyImage
+            <StorefrontImage
               src={imageUrl}
               alt={generateProductImageAlt({
                 productName: name,
                 storeName: storeSlug,
                 category: category || undefined
               })}
+              purpose="product-card"
               className="w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-[1.02]"
               priority={priorityImage}
             />

@@ -17,6 +17,7 @@ import ProductCard from "@/components/customer/ProductCard";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
 import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -111,7 +112,7 @@ const EcoSoapProductDetail = ({
               <div className="overflow-hidden rounded-2xl border-4 border-white bg-stone-50 shadow-2xl">
                 <div className="aspect-[4/3]">
                   {selectedImage < images.length ? (
-                    <img
+                    <StorefrontImage
                       ref={mainImageRef}
                       src={images[selectedImage]}
                       alt={generateProductImageAlt({
@@ -119,9 +120,9 @@ const EcoSoapProductDetail = ({
                         category: product.category,
                         imageIndex: selectedImage,
                       })}
+                      purpose="product-detail"
                       className="h-full w-full object-cover"
-                      loading="eager"
-                      decoding="async"
+                      priority
                     />
                   ) : (
                     <div className="relative h-full w-full bg-stone-100">
@@ -441,7 +442,12 @@ const EcoSoapProductDetail = ({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex gap-4 border-b border-stone-100 pb-4">
-              <img src={images[0]} alt={product.name} className="h-16 w-16 rounded-xl object-cover" loading="lazy" />
+              <StorefrontImage
+                src={images[0]}
+                alt={product.name}
+                purpose="cart-thumb"
+                className="h-16 w-16 rounded-xl object-cover"
+              />
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-serif text-lg font-semibold text-stone-900">{product.name}</h3>
                 {selectedVariant && <p className="text-sm text-stone-500">Batch: {selectedVariant}</p>}
