@@ -16,10 +16,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useStorefront } from "@/contexts/StoreContext";
-import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getPublishedProducts, type Product } from "@/lib/productData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
+import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 
 interface ProductsProps {
   slug?: string;
@@ -34,6 +36,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const { store, profile, loading: storeLoading } = useStorefront();
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
   const storeAny = store as any;
+  const storefrontUrls = buildStorefrontUrls({ slug });
 
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -41,8 +44,8 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const [priceRange, setPriceRange] = useState<number[]>([0, 10000]);
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showFilters, setShowFilters] = useState(false);
+  const [themeRenderFailed, setThemeRenderFailed] = useState(false);
 
-  const isSubdomain = isStoreSpecificDomain();
   const ThemeProducts = activeTheme?.components.Products;
 
   const {
@@ -70,6 +73,10 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   }
 
   const loading = storeLoading || productsLoading;
+
+  useEffect(() => {
+    setThemeRenderFailed(false);
+  }, [activeTheme?.id, activeTheme?.version]);
 
   useEffect(() => {
     const unique = [...new Set(allProducts.map((p: Product) => p.category))].filter(Boolean) as string[];
@@ -158,37 +165,39 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   };
 
   const getProductUrl = (product: Product) => {
-    const productIdentifier = (product as any).slug || product.id;
-    return isSubdomain
-      ? `/products/${productIdentifier}`
-      : `/${slug}/products/${productIdentifier}`;
+    return storefrontUrls.product(product);
   };
 
-  if (store && ThemeProducts) {
+  if (store && ThemeProducts && !themeRenderFailed) {
     return (
       <>
         <Header storeSlug={slug} storeId={store?.id || undefined} />
-        <ThemeProducts
-          store={store}
-          profile={profile}
-          storeSlug={slug}
-          products={filteredProducts}
-          categories={categories}
-          selectedCategories={selectedCategories}
-          priceRange={priceRange}
-          sortBy={sortBy}
-          showFilters={showFilters}
-          loading={loading}
-          isError={isError}
-          onRetry={refetch}
-          onCategoryToggle={handleCategoryToggle}
-          onClearFilters={clearFilters}
-          onPriceRangeChange={setPriceRange}
-          onSortChange={setSortBy}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          getProductUrl={getProductUrl}
-          navigateToProduct={(product) => navigate(getProductUrl(product))}
-        />
+        <ThemeRenderBoundary onError={() => setThemeRenderFailed(true)}>
+          <ThemeProducts
+            store={store}
+            profile={profile}
+            storeSlug={slug}
+            products={filteredProducts}
+            categories={categories}
+            selectedCategories={selectedCategories}
+            priceRange={priceRange}
+            sortBy={sortBy}
+            showFilters={showFilters}
+            loading={loading}
+            isError={isError}
+            onRetry={refetch}
+            onCategoryToggle={handleCategoryToggle}
+            onClearFilters={clearFilters}
+            onPriceRangeChange={setPriceRange}
+            onSortChange={setSortBy}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            getProductUrl={getProductUrl}
+            navigateToProduct={(product) => navigate(getProductUrl(product))}
+            urls={storefrontUrls}
+            runtime={buildThemeRuntimeContext(activeTheme)}
+            page={{ page: "products" }}
+          />
+        </ThemeRenderBoundary>
       </>
     );
   }

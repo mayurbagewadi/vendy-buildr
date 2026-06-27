@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
@@ -20,7 +20,6 @@ import { getImageUrl } from "@/lib/responsiveImages";
 import { getProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import ProductCard from "@/components/customer/ProductCard";
-import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import {
   Carousel,
   CarouselContent,
@@ -31,7 +30,10 @@ import {
 import { useSEOProduct } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getProductCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
+import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 
 interface Variant {
   name: string;
@@ -109,7 +111,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   // ── StoreContext: store + profile already resolved — no separate fetch needed
   const { store: ctxStore, profile: ctxProfile, loading: storeLoading } = useStorefront();
-  const storeData    = ctxStore as any;   // all columns present (select('*'))
+  const storeData    = ctxStore as any;   // public storefront fields from StoreContext
   const profileData  = ctxProfile as any;
   // storeId and storeSlug derived from context; fall back to route prop during load
   const storeId   = ctxStore?.id   ?? null;
@@ -127,6 +129,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
+  const [themeRenderFailed, setThemeRenderFailed] = useState(false);
 
   // Combined loading: wait for context + product data
   const loading = storeLoading || productLoading;
@@ -135,10 +138,14 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const shouldShowDescriptionToggle = shouldLimitDescriptionByLength || isDescriptionOverflowing;
   const shouldCollapseDescription = shouldShowDescriptionToggle && !isDescriptionExpanded;
 
-  // Determine if we're on a store-specific domain (subdomain or custom domain)
-  const isSubdomain = isStoreSpecificDomain();
+  const storefrontUrls = useMemo(() => buildStorefrontUrls({ slug: storeSlug }), [storeSlug]);
+  const isSubdomain = storefrontUrls.home === "/";
   const isSeoAvailable = product ? isProductAvailableForSeo(product) : false;
   const ThemeProductDetail = activeTheme?.components.ProductDetail;
+
+  useEffect(() => {
+    setThemeRenderFailed(false);
+  }, [activeTheme?.id, activeTheme?.version]);
 
   useEffect(() => {
     // Wait for StoreContext to resolve before fetching the product.
@@ -175,11 +182,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           data = await getProductById(productSlug);
           // Found by UUID → redirect to slug URL (SEO 301)
           if (data && data.slug) {
-            const newUrl = isSubdomain
-              ? `/products/${data.slug}`
-              : storeSlug
-                ? `/${storeSlug}/products/${data.slug}`
-                : `/products/${data.slug}`;
+            const newUrl = storefrontUrls.product({ id: data.id, slug: data.slug });
             navigate(newUrl, { replace: true });
             return;
           }
@@ -191,7 +194,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             description: "This product doesn't exist or has been removed.",
             variant: "destructive",
           });
-          navigate("/products");
+          navigate(storefrontUrls.products);
           return;
         }
 
@@ -217,14 +220,14 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           description: "Failed to load product details",
           variant: "destructive",
         });
-        navigate("/products");
+        navigate(storefrontUrls.products);
       } finally {
         setProductLoading(false);
       }
     };
 
     loadProduct();
-  }, [productSlug, storeId, storeLoading, navigate, toast, isSubdomain]);
+  }, [productSlug, storeId, storeLoading, navigate, toast, storefrontUrls]);
 
   // Remove pulse animation when variant is selected
   useEffect(() => {
@@ -298,15 +301,11 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           breadcrumbs: [
             {
               name: 'Home',
-              url: isSubdomain
-                ? window.location.origin
-                : `${window.location.origin}/${storeSlug}`
+              url: `${window.location.origin}${storefrontUrls.home === "/" ? "" : storefrontUrls.home}`
             },
             {
               name: 'Products',
-              url: isSubdomain
-                ? `${window.location.origin}/products`
-                : `${window.location.origin}/${storeSlug}/products`
+              url: `${window.location.origin}${storefrontUrls.products}`
             },
             {
               name: product.name,
@@ -391,10 +390,9 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const videoId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
   const videoThumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
   
-  // Use store-specific routes if storeSlug is available
-  const homeLink = isSubdomain ? "/" : (storeSlug ? `/${storeSlug}` : "/home");
-  const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
-  const cartLink = isSubdomain ? "/cart" : (storeSlug ? `/${storeSlug}/cart` : "/cart");
+  const homeLink = storefrontUrls.home;
+  const productsLink = storefrontUrls.products;
+  const cartLink = storefrontUrls.cart;
 
   if (import.meta.env.DEV) {
     console.info("[STOREFRONT_THEME_DEBUG][product-detail]", {
@@ -507,52 +505,57 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
     }
   };
 
-  if (ThemeProductDetail) {
+  if (ThemeProductDetail && !themeRenderFailed) {
     return (
       <>
         <Header storeSlug={storeSlug} storeId={product.store_id || product.storeId} />
-        <ThemeProductDetail
-          store={ctxStore}
-          profile={ctxProfile}
-          storeSlug={storeSlug}
-          isSubdomain={isSubdomain}
-          product={product}
-          relatedProducts={relatedProducts}
-          currentVariant={currentVariant}
-          selectedVariant={selectedVariant}
-          setSelectedVariant={setSelectedVariant}
-          quantity={quantity}
-          selectedImage={selectedImage}
-          setSelectedImage={setSelectedImage}
-          showConfirmationModal={showConfirmationModal}
-          setShowConfirmationModal={setShowConfirmationModal}
-          isDescriptionExpanded={isDescriptionExpanded}
-          setIsDescriptionExpanded={setIsDescriptionExpanded}
-          images={images}
-          videoUrl={videoUrl}
-          videoThumbnail={videoThumbnail}
-          baseSku={baseSku}
-          hasVariants={Boolean(hasVariants)}
-          needsVariantSelection={Boolean(needsVariantSelection)}
-          currentPrice={currentPrice}
-          availableStock={availableStock}
-          isOutOfStock={isOutOfStock}
-          stockLabel={stockLabel}
-          isSeoAvailable={isSeoAvailable}
-          shouldCollapseDescription={shouldCollapseDescription}
-          shouldShowDescriptionToggle={shouldShowDescriptionToggle}
-          mainImageRef={mainImageRef}
-          variantSectionRef={variantSectionRef}
-          descriptionRef={descriptionRef}
-          links={{
-            home: homeLink,
-            products: productsLink,
-            cart: cartLink,
-          }}
-          handleQuantityChange={handleQuantityChange}
-          handleAddToCart={handleAddToCart}
-          handleShare={handleShare}
-        />
+        <ThemeRenderBoundary onError={() => setThemeRenderFailed(true)}>
+          <ThemeProductDetail
+            store={ctxStore}
+            profile={ctxProfile}
+            storeSlug={storeSlug}
+            isSubdomain={isSubdomain}
+            product={product}
+            relatedProducts={relatedProducts}
+            currentVariant={currentVariant}
+            selectedVariant={selectedVariant}
+            setSelectedVariant={setSelectedVariant}
+            quantity={quantity}
+            selectedImage={selectedImage}
+            setSelectedImage={setSelectedImage}
+            showConfirmationModal={showConfirmationModal}
+            setShowConfirmationModal={setShowConfirmationModal}
+            isDescriptionExpanded={isDescriptionExpanded}
+            setIsDescriptionExpanded={setIsDescriptionExpanded}
+            images={images}
+            videoUrl={videoUrl}
+            videoThumbnail={videoThumbnail}
+            baseSku={baseSku}
+            hasVariants={Boolean(hasVariants)}
+            needsVariantSelection={Boolean(needsVariantSelection)}
+            currentPrice={currentPrice}
+            availableStock={availableStock}
+            isOutOfStock={isOutOfStock}
+            stockLabel={stockLabel}
+            isSeoAvailable={isSeoAvailable}
+            shouldCollapseDescription={shouldCollapseDescription}
+            shouldShowDescriptionToggle={shouldShowDescriptionToggle}
+            mainImageRef={mainImageRef}
+            variantSectionRef={variantSectionRef}
+            descriptionRef={descriptionRef}
+            links={{
+              home: homeLink,
+              products: productsLink,
+              cart: cartLink,
+            }}
+            handleQuantityChange={handleQuantityChange}
+            handleAddToCart={handleAddToCart}
+            handleShare={handleShare}
+            urls={storefrontUrls}
+            runtime={buildThemeRuntimeContext(activeTheme)}
+            page={{ page: "product-detail" }}
+          />
+        </ThemeRenderBoundary>
       </>
     );
   }
@@ -1114,7 +1117,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
               <Button
                 onClick={() => {
                   setShowConfirmationModal(false);
-                  navigate(isSubdomain ? '/cart' : `/${storeSlug}/cart`);
+                  navigate(storefrontUrls.cart);
                 }}
                 className="w-full min-h-[48px] font-semibold"
               >

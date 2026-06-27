@@ -8,9 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import StorefrontImage from "@/components/ui/storefront-image";
-import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useStorefront } from "@/contexts/StoreContext";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
+import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 
 interface CartStockInfo {
   stock: number | null;
@@ -48,11 +50,12 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const [deliveryTiers, setDeliveryTiers]     = useState<{ min: number | null; max: number | null; fee: number | null }[]>([]);
   const [cartStock, setCartStock] = useState<Record<string, CartStockInfo>>({});
   const [stockLoading, setStockLoading] = useState(false);
+  const [themeRenderFailed, setThemeRenderFailed] = useState(false);
 
   // free_delivery_above IS in StoreContext — use it directly
   const freeDeliveryAbove = ctxStore?.free_delivery_above ?? null;
 
-  const isSubdomain = isStoreSpecificDomain();
+  const storefrontUrls = buildStorefrontUrls({ slug: storeSlug });
   const ThemeCart = activeTheme?.components.Cart;
   const deliveryStoreId = ctxStore?.id ?? cart[0]?.storeId ?? null;
   const cartStockSignature = useMemo(
@@ -62,6 +65,10 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
         .join("|"),
     [cart]
   );
+
+  useEffect(() => {
+    setThemeRenderFailed(false);
+  }, [activeTheme?.id, activeTheme?.version]);
 
   // Only fetch the 3 delivery columns not covered by StoreContext.
   // Triggered once per store resolution — NOT on every cart change.
@@ -152,11 +159,9 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
     return 0;
   })();
 
-  // Generate store-aware links
-  // On subdomain: /checkout, on main domain: /:slug/checkout
-  const homeLink = isSubdomain ? "/" : (storeSlug ? `/${storeSlug}` : "/home");
-  const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
-  const checkoutLink = isSubdomain ? "/checkout" : (storeSlug ? `/${storeSlug}/checkout` : "/checkout");
+  const homeLink = storefrontUrls.home;
+  const productsLink = storefrontUrls.products;
+  const checkoutLink = storefrontUrls.checkout;
   const hasStockIssue = cart.some((item) => {
     const info = cartStock[cartStockKey(item.productId, item.variant)];
     return !!info && (info.unavailable || (info.stock !== null && item.quantity > info.stock));
@@ -180,29 +185,34 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
     />
   );
 
-  if (ThemeCart) {
+  if (ThemeCart && !themeRenderFailed) {
     return (
       <>
         <Header storeSlug={storeSlug} storeId={cart[0]?.storeId} />
-        <ThemeCart
-          store={ctxStore}
-          profile={ctxProfile}
-          storeSlug={storeSlug}
-          cart={cart}
-          cartTotal={cartTotal}
-          computedDeliveryFee={computedDeliveryFee}
-          stockLoading={stockLoading}
-          cartStock={cartStock}
-          hasStockIssue={hasStockIssue}
-          links={{
-            home: homeLink,
-            products: productsLink,
-            checkout: checkoutLink,
-          }}
-          cartStockKey={cartStockKey}
-          updateQuantity={updateQuantity}
-          removeItem={removeItem}
-        />
+        <ThemeRenderBoundary onError={() => setThemeRenderFailed(true)}>
+          <ThemeCart
+            store={ctxStore}
+            profile={ctxProfile}
+            storeSlug={storeSlug}
+            cart={cart}
+            cartTotal={cartTotal}
+            computedDeliveryFee={computedDeliveryFee}
+            stockLoading={stockLoading}
+            cartStock={cartStock}
+            hasStockIssue={hasStockIssue}
+            links={{
+              home: homeLink,
+              products: productsLink,
+              checkout: checkoutLink,
+            }}
+            cartStockKey={cartStockKey}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            urls={storefrontUrls}
+            runtime={buildThemeRuntimeContext(activeTheme)}
+            page={{ page: "cart" }}
+          />
+        </ThemeRenderBoundary>
       </>
     );
   }

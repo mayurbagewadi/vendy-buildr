@@ -1,4 +1,5 @@
 import Header from "@/components/customer/Header";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import {
   useActiveStorefrontTheme,
   useActiveStorefrontThemeRuntime,
@@ -13,14 +14,18 @@ const StorefrontHeader = (props: StorefrontHeaderProps) => {
   const activeTheme = useActiveStorefrontTheme();
   const { runtime } = useActiveStorefrontThemeRuntime();
   const ThemeHeader = runtime?.components.Header;
+  const cartVariant = activeTheme?.cartVariant ?? "default";
+  const fallbackHeader = <Header {...props} cartVariant={cartVariant} />;
 
   if (ThemeHeader) {
-    return <ThemeHeader {...props} />;
+    return (
+      <ThemeRenderBoundary fallback={fallbackHeader}>
+        <ThemeHeader {...props} />
+      </ThemeRenderBoundary>
+    );
   }
 
-  const cartVariant = activeTheme?.cartVariant ?? "default";
-
-  return <Header {...props} cartVariant={cartVariant} />;
+  return fallbackHeader;
 };
 
 export default StorefrontHeader;
