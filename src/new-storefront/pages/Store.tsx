@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
-import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
@@ -20,7 +19,11 @@ import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { useCart } from "@/contexts/CartContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
+import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
+import type { ThemeStorefrontProps } from "@/new-storefront/theme-engine/types";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -43,9 +46,7 @@ interface Product {
 }
 
 /**
- * StoreData mirrors the stores DB row for type-safe field access.
- * StoreContext uses select('*') so all columns are present at runtime;
- * we cast ctxStore to this shape after receiving it.
+ * StoreData mirrors the public storefront fields exposed by StoreContext.
  */
 interface StoreData {
   id: string;
@@ -127,29 +128,25 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   // ── StoreContext: store + profile served from 5-min session cache.
   // On return visits this is instant (zero DB round trip).
   const { store: ctxStore, profile, loading: storeLoading } = useStorefront();
-  // Cast to StoreData — safe because StoreContext uses select('*')
+  // Cast to StoreData because StoreContext exposes this public storefront shape.
   const store = ctxStore as unknown as StoreData | null;
   const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
   const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
 
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [themeRenderFailed, setThemeRenderFailed] = useState(false);
 
   // Scroll animations (unchanged)
   const categoriesGridRef       = useScrollAnimation({ animation: 'slideUp',     duration: 0.6, stagger: 0.1,  delay: 0.2 });
   const featuredProductsGridRef = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
   const newArrivalsGridRef      = useScrollAnimation({ animation: 'fadeSlideUp', duration: 0.6, stagger: 0.08, delay: 0.2 });
 
-  const isSubdomain  = isStoreSpecificDomain();
-  const homeLink = isSubdomain ? "/" : `/${slug}`;
-  const productsLink = isSubdomain ? '/products' : `/${slug}/products`;
-  const categoriesLink = isSubdomain ? "/categories" : `/${slug}/categories`;
-  const aboutLink = isSubdomain ? "/about" : `/${slug}/about`;
-  const cartLink = isSubdomain ? "/cart" : `/${slug}/cart`;
-  const checkoutLink = isSubdomain ? "/checkout" : `/${slug}/checkout`;
-  const buildProductLink = (product: { id: string; slug?: string | null }) => {
-    const productIdentifier = product.slug || product.id;
-    return isSubdomain ? `/products/${productIdentifier}` : `/${slug}/products/${productIdentifier}`;
-  };
+  const storefrontUrls = buildStorefrontUrls({ slug });
+  const isSubdomain = storefrontUrls.home === "/";
+
+  useEffect(() => {
+    setThemeRenderFailed(false);
+  }, [activeMarketplaceTheme?.id, activeMarketplaceTheme?.version]);
 
   // ── Page data: categories + products + AI design — all in parallel ──────────
   // Fires immediately once ctxStore.id is available (instant on cached sessions).
@@ -285,8 +282,29 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   // ── Marketplace theme renderer ───────────────────────────────────────────────
   const ThemeStorefront = activeMarketplaceTheme?.components.Storefront;
+  const themeStorefrontProps: ThemeStorefrontProps | null = activeMarketplaceTheme
+    ? {
+        store: store as any,
+        products: products as any,
+        categories,
+        showInternalHeader: false,
+        cart,
+        cartCount,
+        cartTotal,
+        urls: storefrontUrls,
+        actions: {
+          addToCart,
+          updateQuantity,
+          removeItem,
+        },
+        runtime: buildThemeRuntimeContext(activeMarketplaceTheme),
+        page: {
+          page: "home",
+        },
+      }
+    : null;
 
-  if (ThemeStorefront) {
+  if (ThemeStorefront && themeStorefrontProps && !themeRenderFailed) {
     return (
       <>
         <SEOHead
@@ -298,29 +316,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           type="website"
         />
         <Header storeSlug={store.slug} storeId={store.id} />
-        <ThemeStorefront
-          store={store as any}
-          products={products as any}
-          categories={categories}
-          showInternalHeader={false}
-          cart={cart}
-          cartCount={cartCount}
-          cartTotal={cartTotal}
-          urls={{
-            home: homeLink,
-            products: productsLink,
-            categories: categoriesLink,
-            about: aboutLink,
-            cart: cartLink,
-            checkout: checkoutLink,
-            product: buildProductLink,
-          }}
-          actions={{
-            addToCart,
-            updateQuantity,
-            removeItem,
-          }}
-        />
+        <ThemeRenderBoundary onError={() => setThemeRenderFailed(true)}>
+          <ThemeStorefront {...themeStorefrontProps} />
+        </ThemeRenderBoundary>
       </>
     );
   }
@@ -443,7 +441,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                   <h2 className="text-3xl font-bold text-foreground mb-2">Featured Products</h2>
                   <p className="text-muted-foreground">Check out our top picks for you</p>
                 </div>
-                <Link to={productsLink}>
+                <Link to={storefrontUrls.products}>
                   <Button variant="outline" className="border-primary text-primary">
                     See All
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -532,7 +530,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
                     </h2>
                     <p className="text-muted-foreground">Fresh products just for you</p>
                   </div>
-                  <Link to={productsLink}>
+                  <Link to={storefrontUrls.products}>
                     <Button variant="outline" className="border-primary text-primary">
                       See All
                       <ArrowRight className="w-4 h-4 ml-2" />

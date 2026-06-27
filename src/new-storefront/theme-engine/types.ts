@@ -11,6 +11,7 @@ export type ThemeStorefrontUrls = {
   about: string;
   cart: string;
   checkout: string;
+  paymentSuccess: string;
   product: (product: { id: string; slug?: string | null }) => string;
 };
 
@@ -18,6 +19,34 @@ export type ThemeStorefrontActions = {
   addToCart: (item: CartItem) => void;
   updateQuantity: (productId: string, variant: string | undefined, quantity: number) => void;
   removeItem: (productId: string, variant?: string) => void;
+};
+
+export type ThemeSectionBlock = {
+  id: string;
+  type: string;
+  settings?: Record<string, unknown>;
+};
+
+export type ThemeSectionInstance = {
+  id: string;
+  type: string;
+  order: number;
+  visible: boolean;
+  settings?: Record<string, unknown>;
+  blocks?: ThemeSectionBlock[];
+};
+
+export type ThemeRuntimeContext = {
+  themeId: string;
+  themeSlug: string;
+  themeVersion: string;
+  template: string;
+};
+
+export type ThemePageData = {
+  page: "home" | "products" | "categories" | "product-detail" | "cart" | "about" | "policies";
+  sections?: ThemeSectionInstance[];
+  settings?: Record<string, unknown>;
 };
 
 export type ThemeStorefrontProps = {
@@ -35,6 +64,10 @@ export type ThemeStorefrontProps = {
   cartTotal?: number;
   urls?: ThemeStorefrontUrls;
   actions?: ThemeStorefrontActions;
+  runtime?: ThemeRuntimeContext;
+  page?: ThemePageData;
+  settings?: Record<string, unknown>;
+  sections?: ThemeSectionInstance[];
 };
 
 export type ThemeHeaderProps = {
@@ -69,6 +102,9 @@ export type ThemeCategoriesProps = {
   profile: StoreProfileData | null;
   storeSlug?: string;
   categories: ThemeCategory[];
+  urls?: ThemeStorefrontUrls;
+  runtime?: ThemeRuntimeContext;
+  page?: ThemePageData;
 };
 
 export type ThemeProductsProps = {
@@ -91,6 +127,9 @@ export type ThemeProductsProps = {
   onToggleFilters: () => void;
   getProductUrl: (product: Product) => string;
   navigateToProduct: (product: Product) => void;
+  urls?: ThemeStorefrontUrls;
+  runtime?: ThemeRuntimeContext;
+  page?: ThemePageData;
 };
 export type ThemeCartStockInfo = {
   stock: number | null;
@@ -115,6 +154,9 @@ export type ThemeCartProps = {
   cartStockKey: (productId: string, variant?: string) => string;
   updateQuantity: (productId: string, variant: string | undefined, quantity: number) => void;
   removeItem: (productId: string, variant?: string) => void;
+  urls?: ThemeStorefrontUrls;
+  runtime?: ThemeRuntimeContext;
+  page?: ThemePageData;
 };
 
 export type ThemeProductDetailVariant = {
@@ -190,6 +232,9 @@ export type ThemeProductDetailProps = {
   handleQuantityChange: (delta: number) => void;
   handleAddToCart: () => void;
   handleShare: () => void;
+  urls?: ThemeStorefrontUrls;
+  runtime?: ThemeRuntimeContext;
+  page?: ThemePageData;
 };
 export type ThemeContentProps = Record<string, unknown>;
 

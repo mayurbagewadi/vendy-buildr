@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import CategoryCard from "@/components/customer/CategoryCard";
@@ -9,7 +10,10 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
+import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 
 interface Category {
   id: string;
@@ -74,6 +78,12 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const { store, profile, loading: storeLoading } = useStorefront();
   const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
   const storeAny = store as any;
+  const storefrontUrls = buildStorefrontUrls({ slug: storeAny?.slug || slug });
+  const [themeRenderFailed, setThemeRenderFailed] = useState(false);
+
+  useEffect(() => {
+    setThemeRenderFailed(false);
+  }, [activeMarketplaceTheme?.id, activeMarketplaceTheme?.version]);
 
   const loadCategoryCounts = async (storeIdToUse: string): Promise<Map<string, number>> => {
     const { data: rpcCounts, error: rpcError } = await (supabase as any)
@@ -160,16 +170,21 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
     );
   }
 
-  if (store && ThemeCategories) {
+  if (store && ThemeCategories && !themeRenderFailed) {
     return (
       <>
         <Header storeSlug={slug} storeId={store.id} />
-        <ThemeCategories
-          store={store}
-          profile={profile}
-          storeSlug={storeAny?.slug || slug}
-          categories={categories}
-        />
+        <ThemeRenderBoundary onError={() => setThemeRenderFailed(true)}>
+          <ThemeCategories
+            store={store}
+            profile={profile}
+            storeSlug={storeAny?.slug || slug}
+            categories={categories}
+            urls={storefrontUrls}
+            runtime={buildThemeRuntimeContext(activeMarketplaceTheme)}
+            page={{ page: "categories" }}
+          />
+        </ThemeRenderBoundary>
       </>
     );
   }
