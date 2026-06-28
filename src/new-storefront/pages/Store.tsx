@@ -45,64 +45,6 @@ interface Product {
   created_at?: string;
 }
 
-/**
- * StoreData mirrors the public storefront fields exposed by StoreContext.
- */
-interface StoreData {
-  id: string;
-  name: string;
-  slug: string;
-  subdomain: string | null;
-  custom_domain: string | null;
-  description: string | null;
-  logo_url: string | null;
-  hero_banner_url: string | null;
-  hero_banner_urls: string[] | null;
-  whatsapp_number: string | null;
-  address: string | null;
-  ai_voice_embed_code: string | null;
-  social_links: {
-    facebook?: string | null;
-    instagram?: string | null;
-    twitter?: string | null;
-  } | null;
-  policies: {
-    returnPolicy?: string | null;
-    shippingPolicy?: string | null;
-    termsConditions?: string | null;
-    deliveryAreas?: string | null;
-  } | null;
-  alternate_names: string | null;
-  seo_description: string | null;
-  business_phone: string | null;
-  business_email: string | null;
-  street_address: string | null;
-  city: string | null;
-  state: string | null;
-  postal_code: string | null;
-  country: string | null;
-  opening_hours: string | null;
-  facebook_url: string | null;
-  instagram_url: string | null;
-  twitter_url: string | null;
-  youtube_url: string | null;
-  linkedin_url: string | null;
-  price_range: string | null;
-  instagram_reels_settings: {
-    enabled: boolean;
-    display_mode: string;
-    max_reels: number;
-    manual_reels: { url: string; thumbnail_url?: string; caption?: string }[];
-    show_on_homepage: boolean;
-    section_title: string;
-  } | null;
-  instagram_username: string | null;
-  google_reviews_enabled: boolean | null;
-  whatsapp_float_enabled: boolean | null;
-  storefront_theme: string | null;
-  storefront_template: string;
-}
-
 interface Category {
   id: string;
   name: string;
@@ -128,8 +70,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   // ── StoreContext: store + profile served from 5-min session cache.
   // On return visits this is instant (zero DB round trip).
   const { store: ctxStore, profile, loading: storeLoading } = useStorefront();
-  // Cast to StoreData because StoreContext exposes this public storefront shape.
-  const store = ctxStore as unknown as StoreData | null;
+  const store = ctxStore;
   const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
   const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
 
@@ -284,8 +225,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const ThemeStorefront = activeMarketplaceTheme?.components.Storefront;
   const themeStorefrontProps: ThemeStorefrontProps | null = activeMarketplaceTheme
     ? {
-        store: store as any,
-        products: products as any,
+        store,
+        products,
         categories,
         showInternalHeader: false,
         cart,

@@ -63,9 +63,6 @@ const EcoSoapProductDetail = ({
   handleAddToCart,
   handleShare,
 }: ThemeProductDetailProps) => {
-  const storeAny = store as any;
-  const profileAny = profile as any;
-
   const ecoBenefits = [
     product.category ? `${product.category} formulation` : "Botanical formulation",
     isOutOfStock ? "Currently curing" : "Ready to dispatch",
@@ -82,19 +79,19 @@ const EcoSoapProductDetail = ({
   return (
     <div className="min-h-screen bg-[#fbfaf6] text-stone-900">
       <SEOHead
-        title={`${product.name} - ${storeAny?.name || "Store"} | Buy Online`}
-        description={product.description?.slice(0, 160) || `Shop ${product.name} from ${storeAny?.name}. ${currentVariant ? `Price: Rs. ${currentVariant.price}` : product.base_price ? `Starting from Rs. ${product.base_price}` : ""}`}
+        title={`${product.name} - ${store?.name || "Store"} | Buy Online`}
+        description={product.description?.slice(0, 160) || `Shop ${product.name} from ${store?.name}. ${currentVariant ? `Price: Rs. ${currentVariant.price}` : product.base_price ? `Starting from Rs. ${product.base_price}` : ""}`}
         canonical={getProductCanonicalUrl(
           storeSlug || "",
           product.id,
-          storeAny?.subdomain,
-          storeAny?.custom_domain
+          store?.subdomain,
+          store?.custom_domain
         )}
         image={getImageUrl(images[0])}
         type="product"
         price={currentVariant?.price || product.base_price}
         availability={isSeoAvailable ? "in stock" : "out of stock"}
-        keywords={[product.name, product.category, storeAny?.name || "store", "buy online"]}
+        keywords={[product.name, product.category, store?.name || "store", "buy online"]}
       />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-8 pb-32 sm:px-6 lg:px-8 md:pb-10">
@@ -477,21 +474,21 @@ const EcoSoapProductDetail = ({
         </div>
       )}
 
-      {storeAny ? (
+      {store ? (
         <StoreFooter
-          storeName={storeAny.name}
-          storeDescription={storeAny.description}
-          whatsappNumber={storeAny.whatsapp_number}
-          phone={profileAny?.phone}
-          email={profileAny?.email}
-          address={storeAny.address}
-          facebookUrl={storeAny.facebook_url}
-          instagramUrl={storeAny.instagram_url}
-          twitterUrl={storeAny.twitter_url}
-          youtubeUrl={storeAny.youtube_url}
-          linkedinUrl={storeAny.linkedin_url}
-          socialLinks={storeAny.social_links}
-          policies={storeAny.policies}
+          storeName={store.name}
+          storeDescription={store.description}
+          whatsappNumber={store.whatsapp_number}
+          phone={profile?.phone}
+          email={profile?.email}
+          address={store.address}
+          facebookUrl={store.facebook_url}
+          instagramUrl={store.instagram_url}
+          twitterUrl={store.twitter_url}
+          youtubeUrl={store.youtube_url}
+          linkedinUrl={store.linkedin_url}
+          socialLinks={store.social_links}
+          policies={store.policies}
         />
       ) : null}
     </div>

@@ -23,7 +23,7 @@ const About = () => {
   if (!store) return null;
 
   const backLink = isStoreSpecificDomain() ? "/" : `/${storeSlug}`;
-  const isEditorialContent = getStorefrontPageVariant((store as any).storefront_template, "content") === "editorial-content";
+  const isEditorialContent = getStorefrontPageVariant(store.storefront_template, "content") === "editorial-content";
 
   return (
     <div className={isEditorialContent ? "flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900" : "flex min-h-screen flex-col"}>
@@ -76,8 +76,8 @@ const About = () => {
         twitterUrl={store.twitter_url}
         youtubeUrl={store.youtube_url}
         linkedinUrl={store.linkedin_url}
-        socialLinks={store.social_links as any}
-        policies={store.policies as any}
+        socialLinks={store.social_links}
+        policies={store.policies}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateAction } from "react";
-import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
+import type { PublicStorefrontConfig, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
 import type { StorefrontImageSource } from "@/lib/responsiveImages";
@@ -51,7 +51,7 @@ export type ThemePageData = {
 };
 
 export type ThemeStorefrontProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   products: Product[];
   categories?: Array<{
     id: string;
@@ -99,7 +99,7 @@ export type ThemeCategory = {
 };
 
 export type ThemeCategoriesProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   profile: StoreProfileData | null;
   storeSlug?: string;
   categories: ThemeCategory[];
@@ -109,7 +109,7 @@ export type ThemeCategoriesProps = {
 };
 
 export type ThemeProductsProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   profile: StoreProfileData | null;
   storeSlug?: string;
   products: Product[];
@@ -138,7 +138,7 @@ export type ThemeCartStockInfo = {
 };
 
 export type ThemeCartProps = {
-  store: StoreContextData | null;
+  store: PublicStorefrontConfig | null;
   profile: StoreProfileData | null;
   storeSlug?: string;
   cart: CartItem[];
@@ -193,7 +193,7 @@ export type ThemeProductDetailProduct = {
 };
 
 export type ThemeProductDetailProps = {
-  store: StoreContextData | null;
+  store: PublicStorefrontConfig | null;
   profile: StoreProfileData | null;
   storeSlug?: string;
   isSubdomain: boolean;
@@ -238,6 +238,67 @@ export type ThemeProductDetailProps = {
   page?: ThemePageData;
 };
 export type ThemeContentProps = Record<string, unknown>;
+
+export type ThemeSettingFieldType =
+  | "text"
+  | "textarea"
+  | "image"
+  | "color"
+  | "select"
+  | "boolean"
+  | "number"
+  | "product-reference"
+  | "collection-reference";
+
+export type ThemeSettingOption = {
+  label: string;
+  value: string;
+};
+
+export type ThemeSettingField = {
+  id: string;
+  type: ThemeSettingFieldType;
+  label: string;
+  description?: string;
+  defaultValue?: string | number | boolean | null;
+  placeholder?: string;
+  options?: ThemeSettingOption[];
+  min?: number;
+  max?: number;
+  step?: number;
+  required?: boolean;
+};
+
+export type ThemeSettingGroup = {
+  id: string;
+  label: string;
+  fields: string[];
+};
+
+export type ThemeSettingsSchema = {
+  version: string;
+  fields: ThemeSettingField[];
+  groups?: ThemeSettingGroup[];
+};
+
+export type ThemeBlockSchema = {
+  type: string;
+  label: string;
+  description?: string;
+  settings?: ThemeSettingField[];
+  maxInstances?: number;
+};
+
+export type ThemeSectionSchema = {
+  page: ThemePageData["page"];
+  type: string;
+  label: string;
+  description?: string;
+  settings?: ThemeSettingField[];
+  allowedBlocks?: string[];
+  maxBlocks?: number;
+  defaultBlocks?: string[];
+};
 
 type StorefrontThemeComponent<Props> =
   | ComponentType<Props>
@@ -297,7 +358,9 @@ export type ThemePluginManifest = {
   preset: ThemePreset;
 };
 
-export type ThemePluginConfigSchema = Record<string, unknown>;
+export type ThemePluginConfigSchema = ThemeSettingsSchema;
+export type ThemePluginSectionSchema = ThemeSectionSchema[];
+export type ThemePluginBlockSchema = ThemeBlockSchema[];
 export type ThemePluginAssets = Record<string, unknown>;
 
 export type ThemePlugin = {
@@ -307,6 +370,9 @@ export type ThemePlugin = {
   compatibility: ThemeCompatibility;
   manifest: ThemePluginManifest;
   configSchema: ThemePluginConfigSchema;
+  sectionSchema: ThemePluginSectionSchema;
+  blockSchema: ThemePluginBlockSchema;
+  defaultSettings: Record<string, unknown>;
   assets: ThemePluginAssets;
   components: StorefrontThemeComponents;
   pages: ThemePluginPages;

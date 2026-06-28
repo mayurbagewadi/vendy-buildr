@@ -389,6 +389,20 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       current: location.pathname === "/admin/marketplace",
     },
     {
+      name: "Online Store",
+      icon: MonitorSmartphone,
+      isDropdown: true,
+      current: location.pathname.startsWith("/admin/online-store"),
+      subItems: [
+        {
+          name: "Themes",
+          href: "/admin/online-store/themes",
+          icon: Palette,
+          current: location.pathname === "/admin/online-store/themes",
+        },
+      ],
+    },
+    {
       name: "Settings",
       icon: Settings,
       isDropdown: true,

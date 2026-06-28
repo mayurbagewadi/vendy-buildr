@@ -35,7 +35,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
   const { store, profile, loading: storeLoading } = useStorefront();
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
-  const storeAny = store as any;
+  const storeId = store?.id ?? null;
   const storefrontUrls = buildStorefrontUrls({ slug });
 
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -55,21 +55,21 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
     refetch,
   } = useQuery({
     queryKey: ["store-products", store?.id],
-    queryFn: () => getPublishedProducts((store as any).id, 50),
-    enabled: !!store?.id,
+    queryFn: () => getPublishedProducts(storeId!, 50),
+    enabled: !!storeId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
   if (import.meta.env.DEV) {
-    console.info("[STOREFRONT_THEME_DEBUG][products]", {
-      slug,
-      storeId: store?.id,
-      storeSlug: storeAny?.slug,
-      storefront_template: storeAny?.storefront_template,
-      themeProducts: Boolean(ThemeProducts),
-      productsCount: allProducts.length,
-    });
+      console.info("[STOREFRONT_THEME_DEBUG][products]", {
+        slug,
+        storeId: store?.id,
+        storeSlug: store?.slug,
+        storefront_template: store?.storefront_template,
+        themeProducts: Boolean(ThemeProducts),
+        productsCount: allProducts.length,
+      });
   }
 
   const loading = storeLoading || productsLoading;
@@ -205,11 +205,11 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   return (
     <div className="flex min-h-screen flex-col">
       {store && (
-        <SEOHead
-          title={`Products | ${storeAny.name}`}
-          description={storeAny.description || `Shop all products at ${storeAny.name}. Browse our full collection with easy WhatsApp ordering.`}
-          canonical={getStoreCanonicalUrl(storeAny.slug, storeAny.subdomain, storeAny.custom_domain) + "/products"}
-          image={storeAny.logo_url || undefined}
+      <SEOHead
+          title={`Products | ${store.name}`}
+          description={store.description || `Shop all products at ${store.name}. Browse our full collection with easy WhatsApp ordering.`}
+          canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain) + "/products"}
+          image={store.logo_url || undefined}
         />
       )}
       <Header storeSlug={slug} storeId={store?.id || undefined} />
@@ -354,19 +354,19 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
 
       {store ? (
         <StoreFooter
-          storeName={storeAny.name}
-          storeDescription={storeAny.description}
-          whatsappNumber={storeAny.whatsapp_number}
+          storeName={store.name}
+          storeDescription={store.description}
+          whatsappNumber={store.whatsapp_number}
           phone={profile?.phone}
           email={profile?.email}
-          address={storeAny.address}
-          facebookUrl={storeAny.facebook_url}
-          instagramUrl={storeAny.instagram_url}
-          twitterUrl={storeAny.twitter_url}
-          youtubeUrl={storeAny.youtube_url}
-          linkedinUrl={storeAny.linkedin_url}
-          socialLinks={storeAny.social_links}
-          policies={storeAny.policies}
+          address={store.address}
+          facebookUrl={store.facebook_url}
+          instagramUrl={store.instagram_url}
+          twitterUrl={store.twitter_url}
+          youtubeUrl={store.youtube_url}
+          linkedinUrl={store.linkedin_url}
+          socialLinks={store.social_links}
+          policies={store.policies}
         />
       ) : (
         <footer className="border-t border-border bg-muted">

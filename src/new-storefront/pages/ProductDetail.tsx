@@ -111,8 +111,8 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   // ── StoreContext: store + profile already resolved — no separate fetch needed
   const { store: ctxStore, profile: ctxProfile, loading: storeLoading } = useStorefront();
-  const storeData    = ctxStore as any;   // public storefront fields from StoreContext
-  const profileData  = ctxProfile as any;
+  const storeData = ctxStore;
+  const profileData = ctxProfile;
   // storeId and storeSlug derived from context; fall back to route prop during load
   const storeId   = ctxStore?.id   ?? null;
   const storeSlug = ctxStore?.slug ?? storeSlugFromRoute;

@@ -3,7 +3,13 @@ import type {
   StorefrontThemeRuntimeDefinition,
   StorefrontThemeRuntimeLoader,
 } from "@/new-storefront/theme-engine/types";
-import { ecosoapBoutiqueTheme } from "./ecosoap-boutique/theme";
+import {
+  ecosoapBoutiqueTheme,
+  ecosoapBoutiqueThemeBlockSchema,
+  ecosoapBoutiqueThemeDefaultSettings,
+  ecosoapBoutiqueThemeSectionSchema,
+  ecosoapBoutiqueThemeSettingsSchema,
+} from "./ecosoap-boutique/theme";
 
 export const STOREFRONT_THEME_MANIFESTS: StorefrontThemeManifest[] = [
   {
@@ -29,7 +35,10 @@ export const STOREFRONT_THEME_MANIFESTS: StorefrontThemeManifest[] = [
       price: ecosoapBoutiqueTheme.price,
       preset: ecosoapBoutiqueTheme.preset,
     },
-    configSchema: {},
+    configSchema: ecosoapBoutiqueThemeSettingsSchema,
+    sectionSchema: ecosoapBoutiqueThemeSectionSchema,
+    blockSchema: ecosoapBoutiqueThemeBlockSchema,
+    defaultSettings: ecosoapBoutiqueThemeDefaultSettings,
     assets: {},
     pages: {
       required: ["Home", "Products", "Categories", "ProductDetail", "Cart"],

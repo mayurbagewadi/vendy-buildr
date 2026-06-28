@@ -41,6 +41,7 @@ const AdminSettings             = lazy(() => import("./pages/admin/Settings"));
 const PaymentSettings           = lazy(() => import("./pages/admin/PaymentSettings"));
 const DeliverySettings          = lazy(() => import("./pages/admin/DeliverySettings"));
 const ThemeSettings             = lazy(() => import("./pages/admin/ThemeSettings"));
+const OnlineStoreThemes         = lazy(() => import("./pages/admin/OnlineStoreThemes"));
 const Products                  = lazy(() => import("./pages/admin/Products"));
 const AddProduct                = lazy(() => import("./pages/admin/AddProduct"));
 const EditProduct               = lazy(() => import("./pages/admin/EditProduct"));
@@ -217,6 +218,7 @@ const App = () => {
                           <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/payments" element={<StoreGuard><AdminLayout><PaymentSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
@@ -279,6 +281,7 @@ const App = () => {
                           <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/payments" element={<StoreGuard><AdminLayout><PaymentSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />

@@ -51,15 +51,13 @@ const EcoSoapProducts = ({
   getProductUrl,
   navigateToProduct,
 }: ThemeProductsProps) => {
-  const storeAny = store as any;
-
   return (
     <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900">
       <SEOHead
-        title={`Botanicals | ${storeAny.name}`}
-        description={storeAny.description || `Shop handcrafted botanical collections at ${storeAny.name}.`}
-        canonical={getStoreCanonicalUrl(storeAny.slug, storeAny.subdomain, storeAny.custom_domain) + "/products"}
-        image={storeAny.logo_url || undefined}
+        title={`Botanicals | ${store.name}`}
+        description={store.description || `Shop handcrafted botanical collections at ${store.name}.`}
+        canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain) + "/products"}
+        image={store.logo_url || undefined}
       />
 
       <main className="flex-1">
@@ -289,19 +287,19 @@ const EcoSoapProducts = ({
       </main>
 
       <StoreFooter
-        storeName={storeAny.name}
-        storeDescription={storeAny.description}
-        whatsappNumber={storeAny.whatsapp_number}
+        storeName={store.name}
+        storeDescription={store.description}
+        whatsappNumber={store.whatsapp_number}
         phone={profile?.phone}
         email={profile?.email}
-        address={storeAny.address}
-        facebookUrl={storeAny.facebook_url}
-        instagramUrl={storeAny.instagram_url}
-        twitterUrl={storeAny.twitter_url}
-        youtubeUrl={storeAny.youtube_url}
-        linkedinUrl={storeAny.linkedin_url}
-        socialLinks={storeAny.social_links}
-        policies={storeAny.policies}
+        address={store.address}
+        facebookUrl={store.facebook_url}
+        instagramUrl={store.instagram_url}
+        twitterUrl={store.twitter_url}
+        youtubeUrl={store.youtube_url}
+        linkedinUrl={store.linkedin_url}
+        socialLinks={store.social_links}
+        policies={store.policies}
       />
     </div>
   );

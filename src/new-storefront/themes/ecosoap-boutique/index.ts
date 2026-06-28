@@ -1,6 +1,12 @@
 import { lazy } from "react";
 import type { StorefrontThemeRuntimeDefinition } from "@/new-storefront/theme-engine/types";
-import { ecosoapBoutiqueTheme } from "./theme";
+import {
+  ecosoapBoutiqueTheme,
+  ecosoapBoutiqueThemeBlockSchema,
+  ecosoapBoutiqueThemeDefaultSettings,
+  ecosoapBoutiqueThemeSectionSchema,
+  ecosoapBoutiqueThemeSettingsSchema,
+} from "./theme";
 import "./theme.css";
 import { ecosoapBoutiqueAssets } from "./assets";
 export { ecosoapBoutiqueAssets };
@@ -47,7 +53,10 @@ export const ecosoapBoutiqueRuntimeTheme: StorefrontThemeRuntimeDefinition = {
     price: ecosoapBoutiqueTheme.price,
     preset: ecosoapBoutiqueTheme.preset,
   },
-  configSchema: {},
+  configSchema: ecosoapBoutiqueThemeSettingsSchema,
+  sectionSchema: ecosoapBoutiqueThemeSectionSchema,
+  blockSchema: ecosoapBoutiqueThemeBlockSchema,
+  defaultSettings: ecosoapBoutiqueThemeDefaultSettings,
   assets: ecosoapBoutiqueAssets,
   pages: {
     required: ["Home", "Products", "Categories", "ProductDetail", "Cart"],

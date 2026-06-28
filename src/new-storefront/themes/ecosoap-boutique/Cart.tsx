@@ -22,24 +22,21 @@ const EcoSoapCart = ({
   updateQuantity,
   removeItem,
 }: ThemeCartProps) => {
-  const storeAny = store as any;
-  const profileAny = profile as any;
-
   const footer = (
     <StoreFooter
-      storeName={storeAny?.name || storeSlug || "Store"}
-      storeDescription={storeAny?.description}
-      whatsappNumber={storeAny?.whatsapp_number}
-      phone={profileAny?.phone}
-      email={profileAny?.email}
-      address={storeAny?.address}
-      facebookUrl={storeAny?.facebook_url}
-      instagramUrl={storeAny?.instagram_url}
-      twitterUrl={storeAny?.twitter_url}
-      youtubeUrl={storeAny?.youtube_url}
-      linkedinUrl={storeAny?.linkedin_url}
-      socialLinks={storeAny?.social_links}
-      policies={storeAny?.policies}
+      storeName={store?.name || storeSlug || "Store"}
+      storeDescription={store?.description}
+      whatsappNumber={store?.whatsapp_number}
+      phone={profile?.phone}
+      email={profile?.email}
+      address={store?.address}
+      facebookUrl={store?.facebook_url}
+      instagramUrl={store?.instagram_url}
+      twitterUrl={store?.twitter_url}
+      youtubeUrl={store?.youtube_url}
+      linkedinUrl={store?.linkedin_url}
+      socialLinks={store?.social_links}
+      policies={store?.policies}
     />
   );
 

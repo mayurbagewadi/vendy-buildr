@@ -56,7 +56,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
-  const { store: ctxStore } = useStorefront();
+  const { store: ctxStore, profile } = useStorefront();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -67,8 +67,6 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const locationSectionRef = useRef<HTMLDivElement>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
-  const [footerStore, setFooterStore] = useState<any>(null);
-  const [footerProfile, setFooterProfile] = useState<any>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [notifModal, setNotifModal] = useState<{
     open: boolean;
@@ -113,6 +111,8 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [autoDiscountAmount, setAutoDiscountAmount] = useState<number>(0);
   const [isLoadingAutoDiscount, setIsLoadingAutoDiscount] = useState(false);
   const cartStoreId = cart[0]?.storeId ?? null;
+  const footerStore = ctxStore;
+  const footerProfile = profile;
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -420,65 +420,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     checkSubscriptionLimits();
     loadPaymentSettings();
 
-    // Get store slug from URL or cart items
-    if (slug) {
-      setStoreSlug(slug);
-    } else if (cartStoreId) {
-      const fetchStoreSlug = async () => {
-        const { data } = await supabase
-          .from("stores")
-          .select("slug")
-          .eq("id", cartStoreId)
-          .maybeSingle();
-        if (data) {
-          setStoreSlug(data.slug);
-        }
-      };
-      fetchStoreSlug();
-    }
-  }, [slug, cartStoreId]);
+    // Use the route slug first; fall back to the public store context when available.
+    setStoreSlug(slug || ctxStore?.slug || undefined);
+  }, [slug, cartStoreId, ctxStore?.slug]);
 
   // Isolated footer data fetch — works for both cart-has-items and empty-cart states
-  useEffect(() => {
-    const fetchFooterData = async () => {
-      let data: any = null;
-
-      if (cartStoreId) {
-        const { data: storeData } = await supabase
-          .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
-          .eq("id", cartStoreId)
-          .maybeSingle();
-        data = storeData;
-      } else if (slug) {
-        const normalizedSlug = slug.toLowerCase();
-        let query = supabase
-          .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
-          .eq("is_active", true);
-        if (normalizedSlug.includes('.')) {
-          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-        } else {
-          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-        }
-        const { data: storeResults } = await query.limit(1);
-        data = storeResults?.[0] ?? null;
-      }
-
-      if (!data) return;
-      setFooterStore(data);
-      if (data.user_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone, email")
-          .eq("user_id", data.user_id)
-          .maybeSingle();
-        if (profile) setFooterProfile(profile);
-      }
-    };
-    fetchFooterData();
-  }, [slug, cartStoreId]);
-
   // Load auto discount when cart or payment method changes
   useEffect(() => {
     loadAutoDiscount();
@@ -789,7 +735,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     setCouponError('');
   };
 
-  const checkoutPageVariant = getStorefrontPageVariant((ctxStore as any)?.storefront_template ?? footerStore?.storefront_template, "checkout");
+  const checkoutPageVariant = getStorefrontPageVariant(footerStore?.storefront_template ?? null, "checkout");
   const isEditorialCheckout = checkoutPageVariant === "editorial-checkout";
   const pageShellClass = isEditorialCheckout
     ? "min-h-screen flex flex-col bg-[#fbfaf6] text-stone-900"

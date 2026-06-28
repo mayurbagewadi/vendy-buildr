@@ -1,47 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { useStorefront } from "@/contexts/StoreContext";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
-
-interface StoreData {
-  id: string;
-  name: string;
-  description: string | null;
-  whatsapp_number: string | null;
-  logo_url: string | null;
-  hero_banner_url: string | null;
-  policies: {
-    returnPolicy?: string | null;
-    shippingPolicy?: string | null;
-    termsConditions?: string | null;
-    deliveryAreas?: string | null;
-    privacyPolicy?: string | null;
-  } | null;
-  address: string | null;
-  social_links: {
-    facebook?: string | null;
-    instagram?: string | null;
-    twitter?: string | null;
-  } | null;
-  facebook_url?: string | null;
-  instagram_url?: string | null;
-  twitter_url?: string | null;
-  youtube_url?: string | null;
-  linkedin_url?: string | null;
-  storefront_template?: string | null;
-}
-
-interface ProfileData {
-  phone: string | null;
-  email: string | null;
-}
 
 interface PoliciesProps {
   slug?: string;
@@ -51,13 +17,7 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [storeData, setStoreData] = useState<StoreData | null>(null);
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
-
-  useEffect(() => {
-    loadStoreData();
-  }, [slug]);
+  const { store, profile, storeSlug, loading } = useStorefront();
 
   useEffect(() => {
     if (window.location.hash) {
@@ -70,45 +30,6 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
     }
   }, [loading]);
 
-  const loadStoreData = async () => {
-    try {
-      setLoading(true);
-      const normalizedSlug = (slug ?? "").toLowerCase();
-      let storeQuery = supabase.from("stores").select("*").eq("is_active", true);
-      if (normalizedSlug.includes(".")) {
-        storeQuery = storeQuery.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-      } else {
-        storeQuery = storeQuery.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-      }
-
-      const { data: storeResults, error: storeError } = await storeQuery.limit(1);
-      const store = storeResults?.[0] ?? null;
-
-      if (storeError || !store) {
-        toast.error("Store not found");
-        navigate("/");
-        return;
-      }
-
-      setStoreData(store as StoreData);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("phone, email")
-        .eq("user_id", store.user_id)
-        .single();
-
-      if (profile) {
-        setProfileData(profile);
-      }
-    } catch (error) {
-      console.error("Error loading store:", error);
-      toast.error("Failed to load store information");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -117,10 +38,10 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
     );
   }
 
-  if (!storeData) return null;
+  if (!store) return null;
 
-  const policies = storeData.policies || {};
-  const isEditorialContent = getStorefrontPageVariant(storeData.storefront_template, "content") === "editorial-content";
+  const policies = store.policies || {};
+  const isEditorialContent = getStorefrontPageVariant(store.storefront_template, "content") === "editorial-content";
   const policyCardClass = isEditorialContent
     ? "rounded-2xl border border-stone-100 bg-white p-6 shadow-sm"
     : "rounded-lg border border-border bg-card p-6";
@@ -138,7 +59,7 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
       <main className={isEditorialContent ? "mx-auto mt-16 w-full max-w-5xl flex-1 px-4 py-10 sm:px-6 lg:px-8" : "container mx-auto mt-16 flex-1 px-4 py-8"}>
         <Button
           variant="ghost"
-          onClick={() => navigate(isStoreSpecificDomain() ? "/" : `/${slug}`)}
+          onClick={() => navigate(isStoreSpecificDomain() ? "/" : `/${storeSlug || slug}`)}
           className={isEditorialContent ? "mb-6 rounded-full text-stone-600 hover:text-emerald-700" : "mb-6"}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -183,7 +104,7 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
             <div className={policyCardClass}>
               <h2 className={policyHeadingClass}>Privacy Policy</h2>
               <div className={policyBodyClass}>
-                {policies.privacyPolicy || "Privacy policy will be available soon."}
+              {policies.privacyPolicy || "Privacy policy will be available soon."}
               </div>
             </div>
           </section>
@@ -199,31 +120,31 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
             </section>
           )}
 
-          {storeData.address && (
+          {store.address && (
             <section id="address" className="scroll-mt-20">
               <div className={policyCardClass}>
                 <h2 className={policyHeadingClass}>Store Address</h2>
-                <div className={isEditorialContent ? "prose prose-sm max-w-none text-stone-600" : "prose prose-sm max-w-none text-muted-foreground"}>{storeData.address}</div>
+                <div className={isEditorialContent ? "prose prose-sm max-w-none text-stone-600" : "prose prose-sm max-w-none text-muted-foreground"}>{store.address}</div>
               </div>
             </section>
           )}
         </div>
       </main>
 
-      <StoreFooter
-        storeName={storeData.name}
-        storeDescription={storeData.description}
-        whatsappNumber={storeData.whatsapp_number}
-        phone={profileData?.phone}
-        email={profileData?.email}
-        address={storeData.address}
-        facebookUrl={storeData.facebook_url}
-        instagramUrl={storeData.instagram_url}
-        twitterUrl={storeData.twitter_url}
-        youtubeUrl={storeData.youtube_url}
-        linkedinUrl={storeData.linkedin_url}
-        socialLinks={storeData.social_links}
-        policies={storeData.policies}
+        <StoreFooter
+        storeName={store.name}
+        storeDescription={store.description}
+        whatsappNumber={store.whatsapp_number}
+        phone={profile?.phone}
+        email={profile?.email}
+        address={store.address}
+        facebookUrl={store.facebook_url}
+        instagramUrl={store.instagram_url}
+        twitterUrl={store.twitter_url}
+        youtubeUrl={store.youtube_url}
+        linkedinUrl={store.linkedin_url}
+        socialLinks={store.social_links}
+        policies={store.policies}
       />
     </div>
   );

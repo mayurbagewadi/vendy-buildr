@@ -4,7 +4,38 @@ import { getPalette, buildPaletteCSS } from '@/lib/colorPalettes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface StoreContextData {
+export interface StoreSocialLinks {
+  facebook?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
+  youtube?: string | null;
+  linkedin?: string | null;
+  [key: string]: string | null | undefined;
+}
+
+export interface StorePolicies {
+  returnPolicy?: string | null;
+  shippingPolicy?: string | null;
+  termsConditions?: string | null;
+  deliveryAreas?: string | null;
+  privacyPolicy?: string | null;
+  [key: string]: string | null | undefined;
+}
+
+export interface InstagramReelsSettings {
+  enabled: boolean;
+  display_mode: string;
+  max_reels: number;
+  manual_reels: Array<{
+    url: string;
+    thumbnail_url?: string;
+    caption?: string;
+  }>;
+  show_on_homepage: boolean;
+  section_title: string;
+}
+
+export interface PublicStorefrontConfig {
   id: string;
   name: string;
   slug: string;
@@ -19,8 +50,8 @@ export interface StoreContextData {
   address: string | null;
   storefront_theme: string | null;
   storefront_color_palette: string | null;
-  social_links: Record<string, string | null> | null;
-  policies: Record<string, string | null> | null;
+  social_links: StoreSocialLinks | null;
+  policies: StorePolicies | null;
   facebook_url: string | null;
   instagram_url: string | null;
   twitter_url: string | null;
@@ -29,8 +60,25 @@ export interface StoreContextData {
   storefront_template: string | null;
   free_delivery_above: number | null;
   promo_bar_text: string | null;
-  [key: string]: unknown;
+  ai_voice_embed_code: string | null;
+  alternate_names: string | null;
+  seo_description: string | null;
+  business_phone: string | null;
+  business_email: string | null;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  opening_hours: string | null;
+  price_range: string | null;
+  instagram_reels_settings: InstagramReelsSettings | null;
+  instagram_username: string | null;
+  google_reviews_enabled: boolean | null;
+  ga_measurement_id: string | null;
 }
+
+export type StoreContextData = PublicStorefrontConfig;
 
 export interface StoreProfileData {
   phone: string | null;
@@ -38,7 +86,7 @@ export interface StoreProfileData {
 }
 
 export interface StoreContextValue {
-  store: StoreContextData | null;
+  store: PublicStorefrontConfig | null;
   profile: StoreProfileData | null;
   storeId: string | null;
   storeSlug: string | null;
@@ -97,12 +145,12 @@ const PUBLIC_STOREFRONT_STORE_COLUMNS = `
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-type StoreLookupRow = StoreContextData & {
+type StoreLookupRow = PublicStorefrontConfig & {
   user_id?: string | null;
 };
 
 interface CachedEntry {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   profile: StoreProfileData | null;
   cachedAt: number;
 }
@@ -122,7 +170,7 @@ function readCache(slug: string): CachedEntry | null {
   }
 }
 
-function writeCache(slug: string, store: StoreContextData, profile: StoreProfileData | null) {
+function writeCache(slug: string, store: PublicStorefrontConfig, profile: StoreProfileData | null) {
   try {
     sessionStorage.setItem(CACHE_PREFIX + slug, JSON.stringify({ store, profile, cachedAt: Date.now() }));
   } catch { /* storage full or disabled — degrade gracefully */ }
@@ -164,9 +212,9 @@ async function retryStoreLookup(slug: string) {
   return result;
 }
 
-function toPublicStoreContextData(store: StoreLookupRow): StoreContextData {
+function toPublicStoreContextData(store: StoreLookupRow): PublicStorefrontConfig {
   const { user_id: _userId, ...publicStore } = store;
-  return publicStore as StoreContextData;
+  return publicStore as PublicStorefrontConfig;
 }
 
 function applyColorPalette(paletteId: string | null) {
@@ -232,7 +280,7 @@ const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 export function StoreProvider({ slug, children }: { slug?: string | null; children: ReactNode }) {
   const cached = slug ? readCache(slug) : null;
 
-  const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
+  const [store, setStore] = useState<PublicStorefrontConfig | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
   const [loading, setLoading] = useState(!cached);
   const [errorType, setErrorType] = useState<StoreContextValue['errorType']>(null);
