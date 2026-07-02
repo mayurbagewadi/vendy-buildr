@@ -66,12 +66,20 @@ export const saveDraftThemeState = async ({
   themeVersion,
   settings,
   pageLayout = {},
+  initialPublishedThemeId = "default",
+  initialPublishedThemeVersion = null,
+  initialPublishedSettings = {},
+  initialPublishedPageLayout = {},
 }: {
   storeId: string;
   themeId: string;
   themeVersion: string | null;
   settings: Record<string, unknown>;
   pageLayout?: Record<string, unknown>;
+  initialPublishedThemeId?: string;
+  initialPublishedThemeVersion?: string | null;
+  initialPublishedSettings?: Record<string, unknown>;
+  initialPublishedPageLayout?: Record<string, unknown>;
 }): Promise<StoreThemeState> => {
   const draftPatch = {
     draft_theme_id: themeId,
@@ -97,10 +105,10 @@ export const saveDraftThemeState = async ({
     .insert({
       store_id: storeId,
       ...draftPatch,
-      published_theme_id: themeId,
-      published_theme_version: themeVersion,
-      published_settings: settings,
-      published_page_layout: pageLayout,
+      published_theme_id: initialPublishedThemeId,
+      published_theme_version: initialPublishedThemeVersion,
+      published_settings: initialPublishedSettings,
+      published_page_layout: initialPublishedPageLayout,
       version: 0,
     })
     .select(STORE_THEME_STATE_COLUMNS)

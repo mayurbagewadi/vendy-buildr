@@ -14,6 +14,7 @@ import {
   getStorefrontThemeByTemplate,
   STOREFRONT_THEME_MANIFESTS,
 } from "@/new-storefront/theme-engine/registry";
+import { sanitizeThemeSettings } from "@/new-storefront/theme-engine/settings";
 import type { StorefrontThemeManifest, ThemeSettingField } from "@/new-storefront/theme-engine/types";
 import {
   loadStoreThemeSnapshots,
@@ -146,6 +147,7 @@ const OnlineStoreThemes = () => {
   const hasCustomTheme = Boolean(publishedTheme);
   const hasUnsavedDraft = settingsKey(draftSettings) !== savedDraftKey;
   const previewPath = store?.slug ? `/${store.slug}` : "/";
+  const draftPreviewPath = "/admin/online-store/themes/preview";
 
   const bustStoreCache = () => {
     if (store?.slug) sessionStorage.removeItem(CACHE_PREFIX + store.slug);
@@ -163,16 +165,26 @@ const OnlineStoreThemes = () => {
 
     setIsSaving(true);
     try {
+      const sanitizedSettings = sanitizeThemeSettings(
+        draftTheme.configSchema,
+        draftSettings,
+        draftTheme.defaultSettings
+      );
       const saved = await saveDraftThemeState({
         storeId: store.id,
         themeId: draftTheme.id,
         themeVersion: draftTheme.version,
-        settings: draftSettings,
+        settings: sanitizedSettings,
         pageLayout: themeState?.draft_page_layout ?? {},
+        initialPublishedThemeId: publishedTheme?.id ?? "default",
+        initialPublishedThemeVersion: publishedTheme?.version ?? null,
+        initialPublishedSettings: themeState?.published_settings ?? publishedTheme?.defaultSettings ?? {},
+        initialPublishedPageLayout: themeState?.published_page_layout ?? {},
       });
 
       setThemeState(saved);
-      setSavedDraftKey(settingsKey(draftSettings));
+      setDraftSettings(sanitizedSettings);
+      setSavedDraftKey(settingsKey(sanitizedSettings));
       toast({ title: "Draft saved", description: "Theme changes are saved as draft only." });
       return saved;
     } catch (error: any) {
@@ -189,6 +201,7 @@ const OnlineStoreThemes = () => {
 
   const publishDraft = async () => {
     if (!store?.id || !draftTheme) return;
+    if (!window.confirm("Publish these draft theme changes to the live storefront?")) return;
 
     setIsPublishing(true);
     try {
@@ -231,6 +244,10 @@ const OnlineStoreThemes = () => {
         themeVersion: theme.version,
         settings: nextSettings,
         pageLayout: {},
+        initialPublishedThemeId: publishedTheme?.id ?? "default",
+        initialPublishedThemeVersion: publishedTheme?.version ?? null,
+        initialPublishedSettings: themeState?.published_settings ?? publishedTheme?.defaultSettings ?? {},
+        initialPublishedPageLayout: themeState?.published_page_layout ?? {},
       });
 
       setThemeState(saved);
@@ -249,6 +266,7 @@ const OnlineStoreThemes = () => {
 
   const rollbackSnapshot = async (snapshot: StoreThemeSnapshot) => {
     if (!store?.id || !draftTheme) return;
+    if (!window.confirm(`Rollback live storefront to version ${snapshot.version}?`)) return;
 
     setIsRollingBack(snapshot.id);
     try {
@@ -398,6 +416,12 @@ const OnlineStoreThemes = () => {
                 <Link to={previewPath}>
                   <Eye className="mr-2 h-4 w-4" />
                   View Live
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={draftPreviewPath}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview Draft
                 </Link>
               </Button>
               <Button onClick={saveDraft} disabled={!draftTheme || isSaving || !hasUnsavedDraft}>
