@@ -99,7 +99,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_STORE_COLUMNS = `
+const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   id,
   name,
   slug,
@@ -139,15 +139,10 @@ const PUBLIC_STOREFRONT_STORE_COLUMNS = `
   instagram_reels_settings,
   instagram_username,
   google_reviews_enabled,
-  ga_measurement_id,
-  user_id
+  ga_measurement_id
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-type StoreLookupRow = PublicStorefrontConfig & {
-  user_id?: string | null;
-};
 
 interface CachedEntry {
   store: PublicStorefrontConfig;
@@ -180,10 +175,9 @@ function writeCache(slug: string, store: PublicStorefrontConfig, profile: StoreP
 
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
-    let query = supabase
-      .from('stores')
-      .select(PUBLIC_STOREFRONT_STORE_COLUMNS)
-      .eq('is_active', true);
+    let query = (supabase as any)
+      .from('public_storefront_config')
+      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -212,9 +206,11 @@ async function retryStoreLookup(slug: string) {
   return result;
 }
 
-function toPublicStoreContextData(store: StoreLookupRow): PublicStorefrontConfig {
-  const { user_id: _userId, ...publicStore } = store;
-  return publicStore as PublicStorefrontConfig;
+function toPublicStoreProfile(store: PublicStorefrontConfig): StoreProfileData {
+  return {
+    phone: store.business_phone ?? store.whatsapp_number ?? null,
+    email: store.business_email ?? null,
+  };
 }
 
 function applyColorPalette(paletteId: string | null) {
@@ -394,19 +390,11 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
           return;
         }
 
-        const lookupStore = storeData as StoreLookupRow;
-        const { data: profileData } = lookupStore.user_id
-          ? await supabase
-              .from('profiles').select('phone, email')
-              .eq('user_id', lookupStore.user_id).maybeSingle()
-          : { data: null };
-
-        if (cancelled) return;
-
-        const publicStore = toPublicStoreContextData(lookupStore);
-        writeCache(slug, publicStore, profileData ?? null);
+        const publicStore = storeData as PublicStorefrontConfig;
+        const profileData = toPublicStoreProfile(publicStore);
+        writeCache(slug, publicStore, profileData);
         setStore(publicStore);
-        setProfile(profileData ?? null);
+        setProfile(profileData);
         setErrorType(null);
       } finally {
         if (!cancelled) setLoading(false);

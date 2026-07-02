@@ -22,6 +22,7 @@ import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
+import { resolveThemeSettings } from "@/new-storefront/theme-engine/settings";
 import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 import type { ThemeStorefrontProps } from "@/new-storefront/theme-engine/types";
 
@@ -239,8 +240,10 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           removeItem,
         },
         runtime: buildThemeRuntimeContext(activeMarketplaceTheme),
+        settings: resolveThemeSettings(activeMarketplaceTheme),
         page: {
           page: "home",
+          settings: resolveThemeSettings(activeMarketplaceTheme),
         },
       }
     : null;
