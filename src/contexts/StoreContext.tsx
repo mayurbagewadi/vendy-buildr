@@ -35,6 +35,16 @@ export interface InstagramReelsSettings {
   section_title: string;
 }
 
+export interface PublicStorefrontThemeState {
+  store_id: string;
+  published_theme_id: string | null;
+  published_theme_version: string | null;
+  published_settings: Record<string, unknown> | null;
+  published_page_layout: Record<string, unknown> | null;
+  version: number | null;
+  published_at: string | null;
+}
+
 export interface PublicStorefrontConfig {
   id: string;
   name: string;
@@ -76,6 +86,7 @@ export interface PublicStorefrontConfig {
   instagram_username: string | null;
   google_reviews_enabled: boolean | null;
   ga_measurement_id: string | null;
+  theme_state?: PublicStorefrontThemeState | null;
 }
 
 export type StoreContextData = PublicStorefrontConfig;
@@ -142,6 +153,16 @@ const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   ga_measurement_id
 `;
 
+const PUBLIC_STOREFRONT_THEME_STATE_COLUMNS = `
+  store_id,
+  published_theme_id,
+  published_theme_version,
+  published_settings,
+  published_page_layout,
+  version,
+  published_at
+`;
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface CachedEntry {
@@ -204,6 +225,26 @@ async function retryStoreLookup(slug: string) {
   }
 
   return result;
+}
+
+async function loadPublishedThemeState(storeId: string): Promise<PublicStorefrontThemeState | null> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('public_storefront_theme_state')
+      .select(PUBLIC_STOREFRONT_THEME_STATE_COLUMNS)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[StoreContext] Published theme state unavailable, using legacy theme columns:', error);
+      return null;
+    }
+
+    return (data ?? null) as PublicStorefrontThemeState | null;
+  } catch (error) {
+    console.warn('[StoreContext] Published theme state lookup failed, using legacy theme columns:', error);
+    return null;
+  }
 }
 
 function toPublicStoreProfile(store: PublicStorefrontConfig): StoreProfileData {
@@ -391,6 +432,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
         }
 
         const publicStore = storeData as PublicStorefrontConfig;
+        publicStore.theme_state = await loadPublishedThemeState(publicStore.id);
         const profileData = toPublicStoreProfile(publicStore);
         writeCache(slug, publicStore, profileData);
         setStore(publicStore);

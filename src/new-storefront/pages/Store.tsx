@@ -62,6 +62,11 @@ interface StoreProps {
   slug?: string;
 }
 
+const getPublishedThemeSections = (pageLayout: Record<string, unknown> | null | undefined) => {
+  const sections = pageLayout?.sections;
+  return Array.isArray(sections) ? sections : undefined;
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Store = ({ slug: slugProp }: StoreProps = {}) => {
@@ -224,6 +229,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   // ── Marketplace theme renderer ───────────────────────────────────────────────
   const ThemeStorefront = activeMarketplaceTheme?.components.Storefront;
+  const publishedThemeSettings = store.theme_state?.published_settings ?? null;
+  const publishedPageLayout = store.theme_state?.published_page_layout ?? null;
+  const resolvedThemeSettings = activeMarketplaceTheme
+    ? resolveThemeSettings(activeMarketplaceTheme, publishedThemeSettings)
+    : {};
+  const publishedSections = getPublishedThemeSections(publishedPageLayout) as ThemeStorefrontProps["sections"];
   const themeStorefrontProps: ThemeStorefrontProps | null = activeMarketplaceTheme
     ? {
         store,
@@ -240,10 +251,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           removeItem,
         },
         runtime: buildThemeRuntimeContext(activeMarketplaceTheme),
-        settings: resolveThemeSettings(activeMarketplaceTheme),
+        settings: resolvedThemeSettings,
+        sections: publishedSections,
         page: {
           page: "home",
-          settings: resolveThemeSettings(activeMarketplaceTheme),
+          settings: resolvedThemeSettings,
+          sections: publishedSections,
         },
       }
     : null;

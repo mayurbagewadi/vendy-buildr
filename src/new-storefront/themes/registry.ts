@@ -107,6 +107,9 @@ const validateThemeRuntime = (
 export const getStorefrontThemeBySlug = (slug: string | null | undefined) =>
   STOREFRONT_THEME_MANIFESTS.find((theme) => theme.slug === slug) ?? null;
 
+export const getStorefrontThemeById = (id: string | null | undefined) =>
+  STOREFRONT_THEME_MANIFESTS.find((theme) => theme.id === id) ?? null;
+
 export const getStorefrontThemeByTemplate = (template: string | null | undefined) => {
   if (!template || template === "default") return null;
 
@@ -138,4 +141,13 @@ export const loadStorefrontThemeRuntime = (
 
   runtimeCache.set(manifest.template, runtime);
   return runtime;
+};
+
+export const loadStorefrontThemeRuntimeById = (
+  id: string | null | undefined
+): Promise<StorefrontThemeRuntimeDefinition | null> => {
+  const manifest = getStorefrontThemeById(id);
+  if (!manifest) return Promise.resolve(null);
+
+  return loadStorefrontThemeRuntime(manifest.template);
 };
