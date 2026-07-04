@@ -20,7 +20,11 @@ import StorefrontImage from "@/components/ui/storefront-image";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
 import type { CartItem } from "@/lib/cartUtils";
-import type { ThemeStorefrontActions, ThemeStorefrontUrls } from "@/new-storefront/theme-engine/types";
+import type {
+  ThemeSectionInstance,
+  ThemeStorefrontActions,
+  ThemeStorefrontUrls,
+} from "@/new-storefront/theme-engine/types";
 
 const ThemeToggle = lazy(() =>
   import("@/components/ui/theme-toggle").then((module) => ({
@@ -86,6 +90,7 @@ type EcoSoapStorefrontProps = {
   urls?: ThemeStorefrontUrls;
   actions?: ThemeStorefrontActions;
   settings?: Record<string, unknown>;
+  sections?: ThemeSectionInstance[];
 };
 
 const THEME_IMAGES = [
@@ -158,6 +163,7 @@ export default function EcoSoapStorefront({
   urls,
   actions,
   settings,
+  sections,
 }: EcoSoapStorefrontProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -263,6 +269,8 @@ export default function EcoSoapStorefront({
     footerPrivacyLabel: settingText(settings, "footer_privacy_label", "Privacy Charter"),
     footerSustainabilityLabel: settingText(settings, "footer_sustainability_label", "Zero Waste Vow"),
   };
+  const shouldRenderSection = (type: string) =>
+    !sections?.length || sections.some((section) => section.type === type && section.visible);
   const navItems = [
     {
       href: homeLink,
@@ -313,7 +321,7 @@ export default function EcoSoapStorefront({
 
   return (
     <div className="min-h-screen bg-[#fbfaf6] text-stone-900 antialiased">
-      {showInternalHeader && (
+      {showInternalHeader && shouldRenderSection("header") && (
         <>
           <header className="sticky top-0 z-40 w-full border-b border-stone-100 bg-white/95 backdrop-blur-md">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -408,6 +416,7 @@ export default function EcoSoapStorefront({
 
       {showShop ? (
         <main>
+          {shouldRenderSection("hero") && (
           <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24">
             <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
@@ -485,7 +494,9 @@ export default function EcoSoapStorefront({
               </div>
             </div>
           </section>
+          )}
 
+          {shouldRenderSection("featured-products") && (
           <section className="bg-white py-16" id="ecosoap-products">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="mx-auto mb-12 max-w-2xl text-center">
@@ -619,6 +630,7 @@ export default function EcoSoapStorefront({
               )}
             </div>
           </section>
+          )}
         </main>
       ) : (
         <main className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -638,6 +650,7 @@ export default function EcoSoapStorefront({
         </main>
       )}
 
+      {shouldRenderSection("footer") && (
       <footer className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 text-left md:grid-cols-4">
@@ -682,6 +695,7 @@ export default function EcoSoapStorefront({
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 }

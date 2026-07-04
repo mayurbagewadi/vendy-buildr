@@ -13,6 +13,7 @@ import {
   loadStorefrontThemeRuntime,
   loadStorefrontThemeRuntimeById,
 } from "@/new-storefront/theme-engine/registry";
+import { normalizeThemePageLayout } from "@/new-storefront/theme-engine/layout";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
 import { resolveThemeSettings } from "@/new-storefront/theme-engine/settings";
 import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
@@ -152,6 +153,7 @@ const ThemeDraftPreview = () => {
     getStorefrontThemeByTemplate(store.storefront_template);
   const ThemeStorefront = runtime.components.Storefront;
   const draftSettings = resolveThemeSettings(runtime, themeState?.draft_settings ?? manifest?.defaultSettings ?? {});
+  const draftSections = normalizeThemePageLayout(runtime, "home", themeState?.draft_page_layout).sections;
   const storefrontUrls = buildStorefrontUrls({ slug: store.slug });
   const props: ThemeStorefrontProps = {
     store,
@@ -169,9 +171,11 @@ const ThemeDraftPreview = () => {
     },
     runtime: buildThemeRuntimeContext(runtime),
     settings: draftSettings,
+    sections: draftSections,
     page: {
       page: "home",
       settings: draftSettings,
+      sections: draftSections,
     },
   };
 

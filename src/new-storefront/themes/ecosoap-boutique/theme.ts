@@ -309,6 +309,7 @@ export const ecosoapBoutiqueThemeSectionSchema: ThemeSectionSchema[] = [
     type: "announcement-bar",
     label: "Announcement bar",
     description: "Top strip for promos and shipping updates.",
+    defaultVisible: false,
     settings: [
       { id: "text", type: "text", label: "Message", defaultValue: "Free shipping over Rs. 999" },
       { id: "enabled", type: "boolean", label: "Enabled", defaultValue: true },
@@ -341,6 +342,7 @@ export const ecosoapBoutiqueThemeSectionSchema: ThemeSectionSchema[] = [
     type: "featured-categories",
     label: "Featured categories",
     description: "Curated category list for fast browsing.",
+    defaultVisible: false,
     settings: [
       { id: "limit", type: "number", label: "Category count", defaultValue: 6, min: 3, max: 12, step: 1 },
     ],
@@ -361,6 +363,7 @@ export const ecosoapBoutiqueThemeSectionSchema: ThemeSectionSchema[] = [
     type: "reviews",
     label: "Reviews",
     description: "Social proof from customers.",
+    defaultVisible: false,
     allowedBlocks: ["testimonial"],
   },
   {
@@ -368,6 +371,7 @@ export const ecosoapBoutiqueThemeSectionSchema: ThemeSectionSchema[] = [
     type: "instagram-reels",
     label: "Instagram reels",
     description: "Social content strip for discovery.",
+    defaultVisible: false,
     allowedBlocks: ["image", "badge"],
   },
   {

@@ -14,8 +14,13 @@ import {
   getStorefrontThemeByTemplate,
   STOREFRONT_THEME_MANIFESTS,
 } from "@/new-storefront/theme-engine/registry";
+import { normalizeThemePageLayout } from "@/new-storefront/theme-engine/layout";
 import { sanitizeThemeSettings } from "@/new-storefront/theme-engine/settings";
-import type { StorefrontThemeManifest, ThemeSettingField } from "@/new-storefront/theme-engine/types";
+import type {
+  StorefrontThemeManifest,
+  ThemeSectionInstance,
+  ThemeSettingField,
+} from "@/new-storefront/theme-engine/types";
 import {
   loadStoreThemeSnapshots,
   loadStoreThemeState,
@@ -27,6 +32,8 @@ import {
 } from "@/lib/storeThemeState";
 import {
   CheckCircle2,
+  ArrowDown,
+  ArrowUp,
   Eye,
   LayoutTemplate,
   Loader2,
@@ -56,7 +63,10 @@ const formatDateTime = (value: string | null | undefined) => {
   }).format(new Date(value));
 };
 
-const settingsKey = (settings: Record<string, unknown>) => JSON.stringify(settings);
+const draftKey = (
+  settings: Record<string, unknown>,
+  pageLayout: Record<string, unknown>
+) => JSON.stringify({ settings, pageLayout });
 
 const mergeThemeSettings = (
   theme: StorefrontThemeManifest | null,
@@ -76,6 +86,7 @@ const OnlineStoreThemes = () => {
   const [themeState, setThemeState] = useState<StoreThemeState | null>(null);
   const [snapshots, setSnapshots] = useState<StoreThemeSnapshot[]>([]);
   const [draftSettings, setDraftSettings] = useState<Record<string, unknown>>({});
+  const [draftPageLayout, setDraftPageLayout] = useState<Record<string, unknown>>({});
   const [savedDraftKey, setSavedDraftKey] = useState("{}");
   const [draftThemeId, setDraftThemeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,10 +126,15 @@ const OnlineStoreThemes = () => {
 
       const nextDraftThemeId = draftTheme?.id ?? publishedTheme?.id ?? null;
       const nextDraftSettings = mergeThemeSettings(draftTheme, loadedThemeState?.draft_settings);
+      const nextDraftPageLayout = draftTheme
+        ? normalizeThemePageLayout(draftTheme, "home", loadedThemeState?.draft_page_layout).sections
+        : [];
+      const nextDraftLayout = { sections: nextDraftPageLayout };
 
       setDraftThemeId(nextDraftThemeId);
       setDraftSettings(nextDraftSettings);
-      setSavedDraftKey(settingsKey(nextDraftSettings));
+      setDraftPageLayout(nextDraftLayout);
+      setSavedDraftKey(draftKey(nextDraftSettings, nextDraftLayout));
       setSnapshots(await loadStoreThemeSnapshots(storeData.id));
     } catch (error: any) {
       console.error("Failed to load online store theme state:", error);
@@ -143,9 +159,14 @@ const OnlineStoreThemes = () => {
     () => getStorefrontThemeById(draftThemeId) ?? publishedTheme,
     [draftThemeId, publishedTheme]
   );
+  const normalizedDraftPageLayout = useMemo(
+    () => draftTheme ? { sections: normalizeThemePageLayout(draftTheme, "home", draftPageLayout).sections } : { sections: [] },
+    [draftTheme, draftPageLayout]
+  );
+  const draftSections = normalizedDraftPageLayout.sections;
 
   const hasCustomTheme = Boolean(publishedTheme);
-  const hasUnsavedDraft = settingsKey(draftSettings) !== savedDraftKey;
+  const hasUnsavedDraft = draftKey(draftSettings, normalizedDraftPageLayout) !== savedDraftKey;
   const previewPath = store?.slug ? `/${store.slug}` : "/";
   const draftPreviewPath = "/admin/online-store/themes/preview";
 
@@ -160,6 +181,36 @@ const OnlineStoreThemes = () => {
     }));
   };
 
+  const updateDraftSections = (sections: ThemeSectionInstance[]) => {
+    setDraftPageLayout({
+      sections: sections.map((section, index) => ({
+        ...section,
+        order: index,
+      })),
+    });
+  };
+
+  const toggleSectionVisibility = (sectionId: string, visible: boolean) => {
+    updateDraftSections(
+      draftSections.map((section) =>
+        section.id === sectionId ? { ...section, visible } : section
+      )
+    );
+  };
+
+  const moveSection = (sectionId: string, direction: "up" | "down") => {
+    const currentIndex = draftSections.findIndex((section) => section.id === sectionId);
+    if (currentIndex < 0) return;
+
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= draftSections.length) return;
+
+    const nextSections = [...draftSections];
+    const [movedSection] = nextSections.splice(currentIndex, 1);
+    nextSections.splice(nextIndex, 0, movedSection);
+    updateDraftSections(nextSections);
+  };
+
   const saveDraft = async () => {
     if (!store?.id || !draftTheme) return null;
 
@@ -170,12 +221,15 @@ const OnlineStoreThemes = () => {
         draftSettings,
         draftTheme.defaultSettings
       );
+      const sanitizedPageLayout = {
+        sections: normalizeThemePageLayout(draftTheme, "home", draftPageLayout).sections,
+      };
       const saved = await saveDraftThemeState({
         storeId: store.id,
         themeId: draftTheme.id,
         themeVersion: draftTheme.version,
         settings: sanitizedSettings,
-        pageLayout: themeState?.draft_page_layout ?? {},
+        pageLayout: sanitizedPageLayout,
         initialPublishedThemeId: publishedTheme?.id ?? "default",
         initialPublishedThemeVersion: publishedTheme?.version ?? null,
         initialPublishedSettings: themeState?.published_settings ?? publishedTheme?.defaultSettings ?? {},
@@ -184,7 +238,8 @@ const OnlineStoreThemes = () => {
 
       setThemeState(saved);
       setDraftSettings(sanitizedSettings);
-      setSavedDraftKey(settingsKey(sanitizedSettings));
+      setDraftPageLayout(sanitizedPageLayout);
+      setSavedDraftKey(draftKey(sanitizedSettings, sanitizedPageLayout));
       toast({ title: "Draft saved", description: "Theme changes are saved as draft only." });
       return saved;
     } catch (error: any) {
@@ -211,10 +266,15 @@ const OnlineStoreThemes = () => {
       }
 
       const published = await publishDraftThemeState(store.id);
+      const nextSettings = mergeThemeSettings(draftTheme, published.draft_settings);
+      const nextLayout = {
+        sections: normalizeThemePageLayout(draftTheme, "home", published.draft_page_layout).sections,
+      };
       setThemeState(published);
       setDraftThemeId(published.draft_theme_id);
-      setDraftSettings(mergeThemeSettings(draftTheme, published.draft_settings));
-      setSavedDraftKey(settingsKey(mergeThemeSettings(draftTheme, published.draft_settings)));
+      setDraftSettings(nextSettings);
+      setDraftPageLayout(nextLayout);
+      setSavedDraftKey(draftKey(nextSettings, nextLayout));
       setSnapshots(await loadStoreThemeSnapshots(store.id));
       bustStoreCache();
       toast({ title: "Published", description: "Live storefront now uses the published theme draft." });
@@ -233,8 +293,12 @@ const OnlineStoreThemes = () => {
     if (!store?.id) return;
 
     const nextSettings = mergeThemeSettings(theme, {});
+    const nextLayout = {
+      sections: normalizeThemePageLayout(theme, "home", {}).sections,
+    };
     setDraftThemeId(theme.id);
     setDraftSettings(nextSettings);
+    setDraftPageLayout(nextLayout);
     setIsSaving(true);
 
     try {
@@ -243,7 +307,7 @@ const OnlineStoreThemes = () => {
         themeId: theme.id,
         themeVersion: theme.version,
         settings: nextSettings,
-        pageLayout: {},
+        pageLayout: nextLayout,
         initialPublishedThemeId: publishedTheme?.id ?? "default",
         initialPublishedThemeVersion: publishedTheme?.version ?? null,
         initialPublishedSettings: themeState?.published_settings ?? publishedTheme?.defaultSettings ?? {},
@@ -251,7 +315,7 @@ const OnlineStoreThemes = () => {
       });
 
       setThemeState(saved);
-      setSavedDraftKey(settingsKey(nextSettings));
+      setSavedDraftKey(draftKey(nextSettings, nextLayout));
       toast({ title: "Installed as draft", description: "Publish when you are ready to make it live." });
     } catch (error: any) {
       toast({
@@ -273,11 +337,15 @@ const OnlineStoreThemes = () => {
       const rolledBack = await rollbackStoreThemeSnapshot(store.id, snapshot.id);
       const rollbackTheme = getStorefrontThemeById(rolledBack.published_theme_id) ?? draftTheme;
       const nextSettings = mergeThemeSettings(rollbackTheme, rolledBack.draft_settings);
+      const nextLayout = {
+        sections: normalizeThemePageLayout(rollbackTheme, "home", rolledBack.draft_page_layout).sections,
+      };
 
       setThemeState(rolledBack);
       setDraftThemeId(rolledBack.draft_theme_id);
       setDraftSettings(nextSettings);
-      setSavedDraftKey(settingsKey(nextSettings));
+      setDraftPageLayout(nextLayout);
+      setSavedDraftKey(draftKey(nextSettings, nextLayout));
       setSnapshots(await loadStoreThemeSnapshots(store.id));
       bustStoreCache();
       toast({ title: "Rollback published", description: `Restored version ${snapshot.version}.` });
@@ -466,6 +534,76 @@ const OnlineStoreThemes = () => {
           </div>
         </CardContent>
       </Card>
+
+      {draftTheme && (
+        <Card className="admin-card">
+          <CardHeader>
+            <CardTitle className="text-base">Homepage Sections</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Control draft section order and visibility. Live storefront changes only after publish.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {draftSections.map((section, index) => {
+              const schema = draftTheme.sectionSchema.find(
+                (item) => item.page === "home" && item.type === section.type
+              );
+
+              return (
+                <div
+                  key={section.id}
+                  className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{schema?.label ?? section.type}</span>
+                      <Badge variant={section.visible ? "default" : "secondary"}>
+                        {section.visible ? "Visible" : "Hidden"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                    </div>
+                    {schema?.description && (
+                      <p className="mt-1 text-sm text-muted-foreground">{schema.description}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={index === 0}
+                      onClick={() => moveSection(section.id, "up")}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                      <span className="sr-only">Move up</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={index === draftSections.length - 1}
+                      onClick={() => moveSection(section.id, "down")}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      <span className="sr-only">Move down</span>
+                    </Button>
+                    <div className="flex h-9 items-center gap-2 rounded-md border px-3">
+                      <Switch
+                        checked={section.visible}
+                        onCheckedChange={(checked) => toggleSectionVisibility(section.id, checked)}
+                        aria-label={`Toggle ${schema?.label ?? section.type}`}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {section.visible ? "Shown" : "Hidden"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {draftTheme && (
         <Card className="admin-card">

@@ -20,6 +20,7 @@ import { useStorefront } from "@/contexts/StoreContext";
 import { useCart } from "@/contexts/CartContext";
 import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
+import { normalizeThemePageLayout } from "@/new-storefront/theme-engine/layout";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
 import { resolveThemeSettings } from "@/new-storefront/theme-engine/settings";
@@ -61,11 +62,6 @@ interface CategoryProductCount {
 interface StoreProps {
   slug?: string;
 }
-
-const getPublishedThemeSections = (pageLayout: Record<string, unknown> | null | undefined) => {
-  const sections = pageLayout?.sections;
-  return Array.isArray(sections) ? sections : undefined;
-};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -234,7 +230,9 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const resolvedThemeSettings = activeMarketplaceTheme
     ? resolveThemeSettings(activeMarketplaceTheme, publishedThemeSettings)
     : {};
-  const publishedSections = getPublishedThemeSections(publishedPageLayout) as ThemeStorefrontProps["sections"];
+  const publishedSections = activeMarketplaceTheme
+    ? normalizeThemePageLayout(activeMarketplaceTheme, "home", publishedPageLayout).sections
+    : undefined;
   const themeStorefrontProps: ThemeStorefrontProps | null = activeMarketplaceTheme
     ? {
         store,

@@ -298,6 +298,7 @@ export type ThemeSectionSchema = {
   allowedBlocks?: string[];
   maxBlocks?: number;
   defaultBlocks?: string[];
+  defaultVisible?: boolean;
 };
 
 type StorefrontThemeComponent<Props> =
