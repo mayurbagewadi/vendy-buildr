@@ -35,6 +35,12 @@ export interface Product {
   store_id?: string;
 }
 
+const PRODUCT_CARD_COLUMNS =
+  'id, slug, name, category, base_price, offer_price, price_range, stock, sku, status, images, variants, created_at, store_id';
+
+const PUBLIC_PRODUCT_DETAIL_COLUMNS =
+  'id, slug, name, description, category, base_price, offer_price, price_range, stock, sku, status, images, video_url, variants, created_at, updated_at, store_id';
+
 // Get current store ID from session
 const getStoreId = async (): Promise<string | null> => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -85,7 +91,7 @@ export const getPublishedProducts = async (storeId?: string, limit = 200): Promi
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, slug, name, category, base_price, offer_price, price_range, stock, sku, status, images, variants, created_at, store_id')
+    .select(PRODUCT_CARD_COLUMNS)
     .eq('store_id', storeId)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
@@ -130,6 +136,51 @@ export const getProductBySlug = async (slug: string, storeId?: string): Promise<
 
   if (error) {
     console.error('Error fetching product by slug:', error);
+    return null;
+  }
+
+  return data as unknown as Product | null;
+};
+
+// Get published product detail by slug for public storefront pages.
+// Uses a narrow column list and published-only filter to avoid exposing admin-only row data.
+export const getPublishedProductBySlug = async (slug: string, storeId?: string): Promise<Product | null> => {
+  let query = supabase
+    .from('products')
+    .select(PUBLIC_PRODUCT_DETAIL_COLUMNS)
+    .eq('slug', slug)
+    .eq('status', 'published');
+
+  if (storeId) {
+    query = query.eq('store_id', storeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error('Error fetching published product by slug:', error);
+    return null;
+  }
+
+  return data as unknown as Product | null;
+};
+
+// Backward-compatible public UUID lookup for old storefront product URLs.
+export const getPublishedProductById = async (id: string, storeId?: string): Promise<Product | null> => {
+  let query = supabase
+    .from('products')
+    .select(PUBLIC_PRODUCT_DETAIL_COLUMNS)
+    .eq('id', id)
+    .eq('status', 'published');
+
+  if (storeId) {
+    query = query.eq('store_id', storeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error('Error fetching published product by id:', error);
     return null;
   }
 
