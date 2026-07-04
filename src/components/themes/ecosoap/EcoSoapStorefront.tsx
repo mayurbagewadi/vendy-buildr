@@ -1,5 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Award,
@@ -7,7 +7,6 @@ import {
   Filter,
   HelpCircle,
   Leaf,
-  Phone,
   Search,
   ShieldAlert,
   ShoppingBag,
@@ -15,17 +14,16 @@ import {
   Star,
 } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
-import EcoSoapCartDrawer from "@/components/themes/ecosoap/EcoSoapCartDrawer";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
+import HeaderSection from "@/new-storefront/themes/ecosoap-boutique/sections/HeaderSection";
 import type { CartItem } from "@/lib/cartUtils";
-import type { ThemeStorefrontActions, ThemeStorefrontUrls } from "@/new-storefront/theme-engine/types";
-
-const ThemeToggle = lazy(() =>
-  import("@/components/ui/theme-toggle").then((module) => ({
-    default: module.ThemeToggle,
-  }))
-);
+import type {
+  ThemeSectionInstance,
+  ThemeStorefrontActions,
+  ThemeStorefrontUrls,
+} from "@/new-storefront/theme-engine/types";
 
 type PlatformProduct = {
   id: string;
@@ -84,6 +82,8 @@ type EcoSoapStorefrontProps = {
   cartTotal?: number;
   urls?: ThemeStorefrontUrls;
   actions?: ThemeStorefrontActions;
+  settings?: Record<string, unknown>;
+  sections?: ThemeSectionInstance[];
 };
 
 const THEME_IMAGES = [
@@ -91,6 +91,8 @@ const THEME_IMAGES = [
   "/themes/ecosoap/citrus_calendula_soap.png",
   "/themes/ecosoap/activated_charcoal_soap.png",
 ];
+
+const IMPLEMENTED_SECTION_ORDER = ["header", "hero", "featured-products", "footer"] as const;
 
 const toEcoNoteCategory = (category: string): EcoSoapProduct["noteCategory"] => {
   const value = category.toLowerCase();
@@ -115,6 +117,11 @@ const buildProductUrl = (storeSlug: string, product: PlatformProduct) => {
   return isStoreSpecificDomain()
     ? `/products/${productIdentifier}`
     : `/${storeSlug}/products/${productIdentifier}`;
+};
+
+const settingText = (settings: Record<string, unknown> | undefined, key: string, fallback: string) => {
+  const value = settings?.[key];
+  return typeof value === "string" && value.trim() ? value : fallback;
 };
 
 const adaptProducts = (products: PlatformProduct[]): EcoSoapProduct[] =>
@@ -150,12 +157,13 @@ export default function EcoSoapStorefront({
   cartTotal = 0,
   urls,
   actions,
+  settings,
+  sections,
 }: EcoSoapStorefrontProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("shop");
-  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
@@ -218,6 +226,58 @@ export default function EcoSoapStorefront({
   const checkoutLink = urls?.checkout ?? (isSubdomain ? "/checkout" : `/${store.slug}/checkout`);
   const updateCartQuantity = actions?.updateQuantity ?? (() => undefined);
   const removeCartItem = actions?.removeItem ?? (() => undefined);
+  const copy = {
+    headerBadge: settingText(settings, "header_badge_text", "Handcrafted Organic"),
+    headerTrust: settingText(settings, "header_trust_text", "100% Zero Plastic"),
+    heroBadge: settingText(settings, "hero_badge_text", "Cold-Processed & Cured for 6 Weeks"),
+    heroTitle: settingText(settings, "hero_title", "Nourish Your Barrier"),
+    heroHighlight: settingText(settings, "hero_highlight_text", "Purely From Earth."),
+    heroDescription: settingText(
+      settings,
+      "hero_description",
+      store.description ||
+        "Inspired by classic botanical recipes. We hand-craft soap bars using zero synthetic chemicals, biodegradable fats, and active bio-extracts."
+    ),
+    heroPrimaryCta: settingText(settings, "hero_primary_cta", "Explore Soap Catalog"),
+    heroSecondaryCta: settingText(settings, "hero_secondary_cta", "Launch Virtual Soap Lab"),
+    heroImage: settingText(settings, "hero_image", "/themes/ecosoap/hero_soap_banner.png"),
+    heroFeaturedBadge: settingText(settings, "hero_featured_badge", "Featured Batch"),
+    heroFeaturedTitle: settingText(settings, "hero_featured_title", "French Lavender & Oatmeal Meadow"),
+    heroSideBadgeTop: settingText(settings, "hero_side_badge_top", "Cure Batch #942 Fully Aged"),
+    heroSideBadgeBottom: settingText(settings, "hero_side_badge_bottom", "Plastic-Free Shipping"),
+    productsHeading: settingText(settings, "products_heading", "Handcrafted Scent Collections"),
+    productsSubheading: settingText(
+      settings,
+      "products_subheading",
+      "Every bar is crafted in cold processes, cured for at least six weeks, and presented with a premium botanical catalog experience."
+    ),
+    emptyProductsTitle: settingText(settings, "empty_products_title", "No Botanicals Found"),
+    emptyProductsDescription: settingText(settings, "empty_products_description", "Try searching another herb or clearing filters."),
+    footerDescription: settingText(
+      settings,
+      "footer_description",
+      "Dedicated to botanical skincare, premium store presentation, and a shared commerce backend built for repeatable storefront themes."
+    ),
+    footerMenuTitle: settingText(settings, "footer_menu_title", "The Saponary"),
+    footerAssurancesTitle: settingText(settings, "footer_assurances_title", "Green Assurances"),
+    footerPrivacyLabel: settingText(settings, "footer_privacy_label", "Privacy Charter"),
+    footerSustainabilityLabel: settingText(settings, "footer_sustainability_label", "Zero Waste Vow"),
+  };
+  const shouldRenderSection = (type: string) =>
+    !sections?.length || sections.some((section) => section.type === type && section.visible);
+  const sectionOrder = useMemo(() => {
+    const fallback = new Map(IMPLEMENTED_SECTION_ORDER.map((type, index) => [type, index]));
+    if (!sections?.length) return fallback;
+
+    const ordered = new Map<string, number>();
+    sections
+      .filter((section) => IMPLEMENTED_SECTION_ORDER.includes(section.type as typeof IMPLEMENTED_SECTION_ORDER[number]))
+      .sort((a, b) => a.order - b.order)
+      .forEach((section, index) => ordered.set(section.type, index));
+
+    return ordered;
+  }, [sections]);
+  const getSectionOrder = (type: string) => sectionOrder.get(type) ?? IMPLEMENTED_SECTION_ORDER.length;
   const navItems = [
     {
       href: homeLink,
@@ -267,131 +327,59 @@ export default function EcoSoapStorefront({
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf6] text-stone-900 antialiased">
-      {showInternalHeader && (
-        <>
-          <header className="sticky top-0 z-40 w-full border-b border-stone-100 bg-white/95 backdrop-blur-md">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex h-20 items-center justify-between">
-                <Link to={homeLink} className="group flex items-center gap-2.5 text-left">
-                  <span className="rounded-full bg-emerald-50 p-2.5 text-emerald-700 transition-transform duration-300 group-hover:rotate-12">
-                    <Leaf className="h-6 w-6 stroke-[2.2]" />
-                  </span>
-                  <span>
-                    <span className="font-serif text-2xl font-semibold tracking-normal text-stone-900">
-                      {store.name || "EcoSoap"}
-                    </span>
-                    <span className="-mt-1 block text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
-                      Handcrafted Organic
-                    </span>
-                  </span>
-                </Link>
-
-                <nav className="hidden space-x-1 md:flex lg:space-x-2">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      to={item.href}
-                      className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium tracking-wide transition-all ${
-                        item.active
-                          ? item.activeClass
-                          : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
-                      }`}
-                    >
-                      {item.icon && <item.icon className={`h-4 w-4 ${item.iconClass}`} />}
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleWhatsApp}
-                    className="hidden rounded-full bg-stone-50 p-2.5 text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900 sm:inline-flex"
-                    aria-label="Contact on WhatsApp"
-                  >
-                    <Phone className="h-5 w-5 stroke-[2]" />
-                  </button>
-                  <Suspense
-                    fallback={
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex h-10 w-10 rounded-full border border-stone-100 bg-stone-50"
-                      />
-                    }
-                  >
-                    <ThemeToggle
-                      triggerClassName="h-10 w-10 rounded-full border-stone-100 bg-stone-50 text-stone-700 shadow-none hover:bg-stone-100 hover:text-stone-900 [&_svg]:text-stone-700"
-                      contentClassName="rounded-2xl border-stone-100 bg-white p-2 text-stone-700 shadow-xl shadow-stone-200/60"
-                      itemClassName="rounded-xl px-3 py-2 text-sm font-medium text-stone-700 focus:bg-emerald-50 focus:text-emerald-800"
-                    />
-                  </Suspense>
-                  <button
-                    onClick={() => setIsCartDrawerOpen(true)}
-                    className="relative rounded-full bg-stone-50 p-2.5 text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                    aria-label="Open shopping cart"
-                    data-cart-icon
-                  >
-                    <ShoppingBag className="h-5 w-5 stroke-[2]" />
-                    {cartCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
-                        {cartCount}
-                      </span>
-                    )}
-                  </button>
-                  <div className="hidden items-center gap-1.5 rounded-full border border-emerald-100/50 bg-emerald-50 px-3 py-1 lg:flex">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-medium uppercase tracking-normal text-emerald-800">100% Zero Plastic</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <EcoSoapCartDrawer
-            isOpen={isCartDrawerOpen}
-            cart={cart}
-            cartTotal={cartTotal}
-            cartLink={cartLink}
-            checkoutLink={checkoutLink}
-            onClose={() => setIsCartDrawerOpen(false)}
-            onUpdateQuantity={updateCartQuantity}
-            onRemoveItem={removeCartItem}
-          />
-        </>
+    <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900 antialiased">
+      {showInternalHeader && shouldRenderSection("header") && (
+        <HeaderSection
+          store={store}
+          homeLink={homeLink}
+          cartLink={cartLink}
+          checkoutLink={checkoutLink}
+          navItems={navItems}
+          copy={copy}
+          cart={cart}
+          cartCount={cartCount}
+          cartTotal={cartTotal}
+          order={getSectionOrder("header")}
+          onWhatsApp={handleWhatsApp}
+          updateCartQuantity={updateCartQuantity}
+          removeCartItem={removeCartItem}
+        />
       )}
 
       {showShop ? (
-        <main>
-          <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24">
+        <main className="contents">
+          {shouldRenderSection("hero") && (
+          <section
+            className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24"
+            style={{ order: getSectionOrder("hero") }}
+          >
             <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
                 <div className="space-y-6 text-left lg:col-span-6">
                   <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-emerald-900">
                     <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider">Cold-Processed & Cured for 6 Weeks</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider">{copy.heroBadge}</span>
                   </div>
                   <h1 className="font-serif text-4xl font-medium leading-[1.12] text-stone-900 sm:text-5xl lg:text-6xl">
-                    Nourish Your Barrier, <br />
-                    <span className="font-normal italic text-emerald-800">Purely From Earth.</span>
+                    {copy.heroTitle} <br />
+                    <span className="font-normal italic text-emerald-800">{copy.heroHighlight}</span>
                   </h1>
                   <p className="max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
-                    {store.description ||
-                      "Inspired by classic botanical recipes. We hand-craft soap bars using zero synthetic chemicals, biodegradable fats, and active bio-extracts."}
+                    {copy.heroDescription}
                   </p>
                   <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                     <button
                       onClick={() => document.getElementById("ecosoap-products")?.scrollIntoView({ behavior: "smooth" })}
                       className="group flex items-center justify-center gap-2 rounded-full bg-stone-900 px-7 py-4 text-sm font-medium tracking-normal text-white shadow-sm transition-all hover:bg-emerald-800"
                     >
-                      Explore Soap Catalog
+                      {copy.heroPrimaryCta}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </button>
                     <button
                       onClick={() => setActiveTab("soap-lab")}
                       className="flex items-center justify-center rounded-full border border-stone-200 px-7 py-4 text-sm font-medium tracking-normal text-stone-800 transition-all hover:border-stone-400 hover:bg-stone-50"
                     >
-                      Launch Virtual Soap Lab
+                      {copy.heroSecondaryCta}
                     </button>
                   </div>
                   <div className="grid grid-cols-3 gap-4 border-t border-stone-100 pt-8">
@@ -413,11 +401,17 @@ export default function EcoSoapStorefront({
 
                 <div className="relative flex justify-center lg:col-span-6">
                   <div className="relative aspect-[4/3] w-full max-w-lg rotate-1 overflow-hidden rounded-2xl border-4 border-white shadow-2xl transition-transform duration-500 hover:rotate-0">
-                    <img src="/themes/ecosoap/hero_soap_banner.png" alt="EcoSoap artisanal collection" className="h-full w-full object-cover" />
+                    <StorefrontImage
+                      src={copy.heroImage}
+                      alt="EcoSoap artisanal collection"
+                      purpose="hero-banner"
+                      className="h-full w-full object-cover"
+                      priority
+                    />
                     <div className="absolute inset-0 flex items-end bg-gradient-to-t from-emerald-50/85 via-white/20 to-transparent p-6">
                       <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-left shadow-sm backdrop-blur-sm">
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700">Featured Batch</span>
-                        <h3 className="font-serif text-lg font-medium text-stone-900">French Lavender & Oatmeal Meadow</h3>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700">{copy.heroFeaturedBadge}</span>
+                        <h3 className="font-serif text-lg font-medium text-stone-900">{copy.heroFeaturedTitle}</h3>
                       </div>
                     </div>
                   </div>
@@ -426,22 +420,28 @@ export default function EcoSoapStorefront({
                       <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
                     </span>
-                    <p className="text-xs font-semibold text-stone-800">Cure Batch #942 Fully Aged</p>
+                    <p className="text-xs font-semibold text-stone-800">{copy.heroSideBadgeTop}</p>
                   </div>
                   <div className="absolute -bottom-6 -left-2 rotate-2 rounded-full bg-emerald-500 px-5 py-3 text-white shadow-lg transition-transform hover:rotate-0 sm:left-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider">Plastic-Free Shipping</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider">{copy.heroSideBadgeBottom}</p>
                   </div>
                 </div>
               </div>
             </div>
           </section>
+          )}
 
-          <section className="bg-white py-16" id="ecosoap-products">
+          {shouldRenderSection("featured-products") && (
+          <section
+            className="bg-white py-16"
+            id="ecosoap-products"
+            style={{ order: getSectionOrder("featured-products") }}
+          >
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="mx-auto mb-12 max-w-2xl text-center">
-                <h2 className="font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">Handcrafted Scent Collections</h2>
+                <h2 className="font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">{copy.productsHeading}</h2>
                 <p className="mt-3 text-sm leading-relaxed text-stone-500 sm:text-base">
-                  Every bar is crafted in cold processes, cured for at least six weeks, and presented with a premium botanical catalog experience.
+                  {copy.productsSubheading}
                 </p>
               </div>
 
@@ -491,18 +491,24 @@ export default function EcoSoapStorefront({
               {filteredProducts.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 py-20 text-center">
                   <HelpCircle className="mx-auto mb-4 h-12 w-12 text-stone-400" />
-                  <h3 className="font-serif text-lg font-medium text-stone-800">No Botanicals Found</h3>
-                  <p className="mt-2 text-sm text-stone-500">Try searching another herb or clearing filters.</p>
+                  <h3 className="font-serif text-lg font-medium text-stone-800">{copy.emptyProductsTitle}</h3>
+                  <p className="mt-2 text-sm text-stone-500">{copy.emptyProductsDescription}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredProducts.map((product) => (
+                  {filteredProducts.map((product, index) => (
                     <article
                       key={product.id}
                       className="group flex flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white text-left shadow-sm transition-all duration-300 hover:shadow-md"
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-stone-50">
-                        <img src={product.image} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <StorefrontImage
+                          src={product.image}
+                          alt={product.name}
+                          purpose="product-card"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          priority={index < 3}
+                        />
                         <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
                           {product.noteCategory} note
                         </span>
@@ -563,6 +569,7 @@ export default function EcoSoapStorefront({
               )}
             </div>
           </section>
+          )}
         </main>
       ) : (
         <main className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -582,7 +589,11 @@ export default function EcoSoapStorefront({
         </main>
       )}
 
-      <footer className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16">
+      {shouldRenderSection("footer") && (
+      <footer
+        className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16"
+        style={{ order: getSectionOrder("footer") }}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 text-left md:grid-cols-4">
             <div className="space-y-4 md:col-span-2">
@@ -593,11 +604,11 @@ export default function EcoSoapStorefront({
                 <span className="font-serif text-xl font-bold text-stone-900">{store.name || "EcoSoap"}</span>
               </div>
               <p className="max-w-sm text-xs leading-relaxed text-stone-500 sm:text-sm">
-                Dedicated to botanical skincare, premium store presentation, and a shared commerce backend built for repeatable storefront themes.
+                {copy.footerDescription}
               </p>
             </div>
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">The Saponary</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">{copy.footerMenuTitle}</h4>
               <ul className="space-y-1.5 text-xs font-medium text-stone-500">
                 <li><button onClick={() => setActiveTab("shop")} className="hover:text-emerald-700">Artisanal Shop</button></li>
                 <li><button onClick={() => setActiveTab("soap-lab")} className="hover:text-emerald-700">Experimental Soap Lab</button></li>
@@ -606,7 +617,7 @@ export default function EcoSoapStorefront({
               </ul>
             </div>
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">Green Assurances</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">{copy.footerAssurancesTitle}</h4>
               <ul className="space-y-1.5 text-xs text-stone-500">
                 {["100% Vegan & Cruelty-Free", "Rainforest Alliance Palm Oil", "Sustainably Sourced Wood Trays"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
@@ -620,12 +631,13 @@ export default function EcoSoapStorefront({
           <div className="mt-10 flex flex-col justify-between border-t border-stone-100 pt-8 text-left text-xs text-stone-400 sm:flex-row">
             <p>(c) {new Date().getFullYear()} {store.name || "EcoSoap Studio"}. All Rights Reserved.</p>
             <div className="mt-2 flex gap-4 sm:mt-0">
-              <a href="#" className="hover:text-stone-600">Privacy Charter</a>
-              <a href="#" className="hover:text-stone-600">Zero Waste Vow</a>
+              <a href="#" className="hover:text-stone-600">{copy.footerPrivacyLabel}</a>
+              <a href="#" className="hover:text-stone-600">{copy.footerSustainabilityLabel}</a>
             </div>
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 }
