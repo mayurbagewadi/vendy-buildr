@@ -99,6 +99,8 @@ const THEME_IMAGES = [
   "/themes/ecosoap/activated_charcoal_soap.png",
 ];
 
+const IMPLEMENTED_SECTION_ORDER = ["header", "hero", "featured-products", "footer"] as const;
+
 const toEcoNoteCategory = (category: string): EcoSoapProduct["noteCategory"] => {
   const value = category.toLowerCase();
   if (value.includes("flower") || value.includes("floral") || value.includes("lavender")) return "floral";
@@ -271,6 +273,19 @@ export default function EcoSoapStorefront({
   };
   const shouldRenderSection = (type: string) =>
     !sections?.length || sections.some((section) => section.type === type && section.visible);
+  const sectionOrder = useMemo(() => {
+    const fallback = new Map(IMPLEMENTED_SECTION_ORDER.map((type, index) => [type, index]));
+    if (!sections?.length) return fallback;
+
+    const ordered = new Map<string, number>();
+    sections
+      .filter((section) => IMPLEMENTED_SECTION_ORDER.includes(section.type as typeof IMPLEMENTED_SECTION_ORDER[number]))
+      .sort((a, b) => a.order - b.order)
+      .forEach((section, index) => ordered.set(section.type, index));
+
+    return ordered;
+  }, [sections]);
+  const getSectionOrder = (type: string) => sectionOrder.get(type) ?? IMPLEMENTED_SECTION_ORDER.length;
   const navItems = [
     {
       href: homeLink,
@@ -320,9 +335,9 @@ export default function EcoSoapStorefront({
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf6] text-stone-900 antialiased">
+    <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900 antialiased">
       {showInternalHeader && shouldRenderSection("header") && (
-        <>
+        <div style={{ order: getSectionOrder("header") }}>
           <header className="sticky top-0 z-40 w-full border-b border-stone-100 bg-white/95 backdrop-blur-md">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex h-20 items-center justify-between">
@@ -411,13 +426,16 @@ export default function EcoSoapStorefront({
             onUpdateQuantity={updateCartQuantity}
             onRemoveItem={removeCartItem}
           />
-        </>
+        </div>
       )}
 
       {showShop ? (
-        <main>
+        <main className="contents">
           {shouldRenderSection("hero") && (
-          <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24">
+          <section
+            className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24"
+            style={{ order: getSectionOrder("hero") }}
+          >
             <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
                 <div className="space-y-6 text-left lg:col-span-6">
@@ -497,7 +515,11 @@ export default function EcoSoapStorefront({
           )}
 
           {shouldRenderSection("featured-products") && (
-          <section className="bg-white py-16" id="ecosoap-products">
+          <section
+            className="bg-white py-16"
+            id="ecosoap-products"
+            style={{ order: getSectionOrder("featured-products") }}
+          >
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="mx-auto mb-12 max-w-2xl text-center">
                 <h2 className="font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">{copy.productsHeading}</h2>
@@ -651,7 +673,10 @@ export default function EcoSoapStorefront({
       )}
 
       {shouldRenderSection("footer") && (
-      <footer className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16">
+      <footer
+        className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16"
+        style={{ order: getSectionOrder("footer") }}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 text-left md:grid-cols-4">
             <div className="space-y-4 md:col-span-2">
