@@ -1,23 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  Award,
-  Eye,
-  Filter,
-  HelpCircle,
-  Leaf,
-  Search,
-  ShieldAlert,
-  ShoppingBag,
-  Smile,
-  Star,
-} from "lucide-react";
+import { Filter, HelpCircle, Leaf } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
-import StorefrontImage from "@/components/ui/storefront-image";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
+import FeaturedProductsSection from "@/new-storefront/themes/ecosoap-boutique/sections/FeaturedProductsSection";
+import FooterSection from "@/new-storefront/themes/ecosoap-boutique/sections/FooterSection";
 import HeaderSection from "@/new-storefront/themes/ecosoap-boutique/sections/HeaderSection";
+import HeroSection from "@/new-storefront/themes/ecosoap-boutique/sections/HeroSection";
 import PageRenderer from "@/new-storefront/theme-engine/PageRenderer";
 import type { CartItem } from "@/lib/cartUtils";
 import type {
@@ -336,272 +326,29 @@ export default function EcoSoapStorefront({
     }
 
     if (section.type === "hero") {
-      return (
-        <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfaf6] via-white to-[#f5f1e8] py-16 lg:py-24">
-          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
-              <div className="space-y-6 text-left lg:col-span-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-emerald-900">
-                  <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">{copy.heroBadge}</span>
-                </div>
-                <h1 className="font-serif text-4xl font-medium leading-[1.12] text-stone-900 sm:text-5xl lg:text-6xl">
-                  {copy.heroTitle} <br />
-                  <span className="font-normal italic text-emerald-800">{copy.heroHighlight}</span>
-                </h1>
-                <p className="max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
-                  {copy.heroDescription}
-                </p>
-                <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                  <button
-                    onClick={() => document.getElementById("ecosoap-products")?.scrollIntoView({ behavior: "smooth" })}
-                    className="group flex items-center justify-center gap-2 rounded-full bg-stone-900 px-7 py-4 text-sm font-medium tracking-normal text-white shadow-sm transition-all hover:bg-emerald-800"
-                  >
-                    {copy.heroPrimaryCta}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("soap-lab")}
-                    className="flex items-center justify-center rounded-full border border-stone-200 px-7 py-4 text-sm font-medium tracking-normal text-stone-800 transition-all hover:border-stone-400 hover:bg-stone-50"
-                  >
-                    {copy.heroSecondaryCta}
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-4 border-t border-stone-100 pt-8">
-                  {[
-                    [ShieldAlert, "100% Native", "Zero Sulfates or Parabens"],
-                    [Award, "Eco-Conscious", "Completely Bio-Degradable"],
-                    [Smile, "Deep Curing", "Gentle Lather Structure"],
-                  ].map(([Icon, title, text]) => (
-                    <div key={title as string} className="space-y-1">
-                      <div className="flex items-center gap-1.5 font-serif text-sm font-semibold text-stone-900">
-                        <Icon className="h-4 w-4 shrink-0 text-emerald-600" />
-                        <span>{title as string}</span>
-                      </div>
-                      <p className="text-xs text-stone-500">{text as string}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative flex justify-center lg:col-span-6">
-                <div className="relative aspect-[4/3] w-full max-w-lg rotate-1 overflow-hidden rounded-2xl border-4 border-white shadow-2xl transition-transform duration-500 hover:rotate-0">
-                  <StorefrontImage
-                    src={copy.heroImage}
-                    alt="EcoSoap artisanal collection"
-                    purpose="hero-banner"
-                    className="h-full w-full object-cover"
-                    priority
-                  />
-                  <div className="absolute inset-0 flex items-end bg-gradient-to-t from-emerald-50/85 via-white/20 to-transparent p-6">
-                    <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-left shadow-sm backdrop-blur-sm">
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-700">{copy.heroFeaturedBadge}</span>
-                      <h3 className="font-serif text-lg font-medium text-stone-900">{copy.heroFeaturedTitle}</h3>
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute -top-4 -right-2 flex -rotate-3 items-center gap-2 rounded-xl border border-stone-50 bg-white px-4 py-2 shadow-lg transition-transform hover:rotate-0 sm:right-6">
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-                  </span>
-                  <p className="text-xs font-semibold text-stone-800">{copy.heroSideBadgeTop}</p>
-                </div>
-                <div className="absolute -bottom-6 -left-2 rotate-2 rounded-full bg-emerald-500 px-5 py-3 text-white shadow-lg transition-transform hover:rotate-0 sm:left-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider">{copy.heroSideBadgeBottom}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      );
+      return <HeroSection copy={copy} onOpenSoapLab={() => setActiveTab("soap-lab")} />;
     }
 
     if (section.type === "featured-products") {
       return (
-        <section className="bg-white py-16" id="ecosoap-products">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto mb-12 max-w-2xl text-center">
-              <h2 className="font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">{copy.productsHeading}</h2>
-              <p className="mt-3 text-sm leading-relaxed text-stone-500 sm:text-base">
-                {copy.productsSubheading}
-              </p>
-            </div>
-
-            <div className="mb-10 flex flex-col gap-4 rounded-2xl border border-stone-100 bg-stone-50 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-1.5">
-                {categoryOptions.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-normal transition-all sm:text-sm ${
-                      selectedCategory === category
-                        ? "bg-stone-900 text-white shadow"
-                        : "border border-stone-200/60 bg-white text-stone-600 hover:text-stone-900"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-              <div className="flex max-w-xl grow flex-col gap-3 sm:flex-row lg:justify-end">
-                <div className="relative grow">
-                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search ingredients..."
-                    className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value)}
-                    className="w-full cursor-pointer appearance-none rounded-xl border border-stone-200 bg-white py-2.5 pl-4 pr-10 text-sm font-medium text-stone-700 transition-all focus:border-emerald-500 focus:outline-none sm:w-48"
-                  >
-                    <option value="recommended">Best Match</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="rating">Top Rated</option>
-                  </select>
-                  <Filter className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
-                </div>
-              </div>
-            </div>
-
-            {filteredProducts.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 py-20 text-center">
-                <HelpCircle className="mx-auto mb-4 h-12 w-12 text-stone-400" />
-                <h3 className="font-serif text-lg font-medium text-stone-800">{copy.emptyProductsTitle}</h3>
-                <p className="mt-2 text-sm text-stone-500">{copy.emptyProductsDescription}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {filteredProducts.map((product, index) => (
-                  <article
-                    key={product.id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white text-left shadow-sm transition-all duration-300 hover:shadow-md"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-stone-50">
-                      <StorefrontImage
-                        src={product.image}
-                        alt={product.name}
-                        purpose="product-card"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        priority={index < 3}
-                      />
-                      <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
-                        {product.noteCategory} note
-                      </span>
-                      <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-white/10 bg-stone-900/80 px-2.5 py-1.5 text-[10px] font-bold tracking-normal text-white shadow">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        <span>{product.rating.toFixed(1)}</span>
-                      </div>
-                      <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-stone-900/70 to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={() => navigate(urls?.product(product.source) ?? buildProductUrl(store.slug, product.source))}
-                          className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold text-stone-900 shadow-md hover:bg-stone-50"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-stone-700" />
-                          View Recipe
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex grow flex-col justify-between p-6">
-                      <div>
-                        <div className="mb-2.5 flex flex-wrap gap-1">
-                          {product.skinType.map((skin) => (
-                            <span key={skin} className="rounded-md border border-stone-100 bg-stone-50 px-2 py-0.5 text-[10px] font-medium text-stone-600">
-                              {skin} Skin
-                            </span>
-                          ))}
-                        </div>
-                        <h3 className="font-serif text-lg font-medium text-stone-900 transition-colors group-hover:text-emerald-800 sm:text-xl">
-                          {product.name}
-                        </h3>
-                        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-stone-500 sm:text-sm">{product.tagline}</p>
-                      </div>
-                      <div className="mt-6 flex items-center justify-between border-t border-stone-50 pt-5">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-widest text-stone-400">Price</p>
-                          <p className="font-serif text-lg font-semibold text-stone-950">{product.priceLabel}</p>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => navigate(urls?.product(product.source) ?? buildProductUrl(store.slug, product.source))}
-                            className="rounded-xl border border-stone-200/50 bg-stone-50 p-2.5 text-stone-500 transition-all hover:bg-stone-100 hover:text-stone-800 md:hidden"
-                            aria-label="View product details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleAddToCart(product)}
-                            className="flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-800 transition-all hover:bg-emerald-600 hover:text-white"
-                          >
-                            <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-                            Add Bar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        <FeaturedProductsSection
+          copy={copy}
+          categoryOptions={categoryOptions}
+          selectedCategory={selectedCategory}
+          searchTerm={searchTerm}
+          sortBy={sortBy}
+          products={filteredProducts}
+          onSelectCategory={setSelectedCategory}
+          onSearchChange={setSearchTerm}
+          onSortChange={setSortBy}
+          onViewProduct={(product) => navigate(urls?.product(product.source) ?? buildProductUrl(store.slug, product.source))}
+          onAddToCart={handleAddToCart}
+        />
       );
     }
 
     if (section.type === "footer") {
-      return (
-        <footer className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 gap-8 text-left md:grid-cols-4">
-              <div className="space-y-4 md:col-span-2">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-emerald-50 p-1.5 text-emerald-700">
-                    <Leaf className="h-5 w-5" />
-                  </div>
-                  <span className="font-serif text-xl font-bold text-stone-900">{store.name || "EcoSoap"}</span>
-                </div>
-                <p className="max-w-sm text-xs leading-relaxed text-stone-500 sm:text-sm">
-                  {copy.footerDescription}
-                </p>
-              </div>
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">{copy.footerMenuTitle}</h4>
-                <ul className="space-y-1.5 text-xs font-medium text-stone-500">
-                  <li><button onClick={() => setActiveTab("shop")} className="hover:text-emerald-700">Artisanal Shop</button></li>
-                  <li><button onClick={() => setActiveTab("soap-lab")} className="hover:text-emerald-700">Experimental Soap Lab</button></li>
-                  <li><button onClick={() => setActiveTab("skin-guide")} className="hover:text-emerald-700">AI Botanical Assessment</button></li>
-                  <li><button onClick={() => setActiveTab("sustainability")} className="hover:text-emerald-700">Footprint Trackers</button></li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">{copy.footerAssurancesTitle}</h4>
-                <ul className="space-y-1.5 text-xs text-stone-500">
-                  {["100% Vegan & Cruelty-Free", "Rainforest Alliance Palm Oil", "Sustainably Sourced Wood Trays"].map((item) => (
-                    <li key={item} className="flex items-center gap-1.5">
-                      <span className="h-1 w-1 rounded-full bg-emerald-600" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            <div className="mt-10 flex flex-col justify-between border-t border-stone-100 pt-8 text-left text-xs text-stone-400 sm:flex-row">
-              <p>(c) {new Date().getFullYear()} {store.name || "EcoSoap Studio"}. All Rights Reserved.</p>
-              <div className="mt-2 flex gap-4 sm:mt-0">
-                <a href="#" className="hover:text-stone-600">{copy.footerPrivacyLabel}</a>
-                <a href="#" className="hover:text-stone-600">{copy.footerSustainabilityLabel}</a>
-              </div>
-            </div>
-          </div>
-        </footer>
-      );
+      return <FooterSection store={store} copy={copy} onSelectTab={setActiveTab} />;
     }
 
     return null;
