@@ -3,9 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { useStorefront } from "@/contexts/StoreContext";
-import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -156,25 +154,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       try {
         setProductLoading(true);
 
-        // Inject AI design CSS early (skip if already applied from prev page)
-        const aiDesignPromise = !document.getElementById('ai-layer2-styles') && storeId
-          ? supabase
-              .from('store_design_state')
-              .select('current_design, ai_full_css, mode')
-              .eq('store_id', storeId)
-              .maybeSingle()
-          : Promise.resolve({ data: null });
-
-        // Fetch product + AI design in parallel (store/profile come from context)
-        const [productData, designResult] = await Promise.all([
-          getPublishedProductBySlug(productSlug, storeId || undefined),
-          aiDesignPromise,
-        ]);
-
-        // Apply AI design CSS if not already injected
-        if (designResult.data) {
-          applyStoreDesignCSS(designResult.data);
-        }
+        const productData = await getPublishedProductBySlug(productSlug, storeId || undefined);
 
         // Fallback: try by UUID for backward compatibility
         let data = productData;

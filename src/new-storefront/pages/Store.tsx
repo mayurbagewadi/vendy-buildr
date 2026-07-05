@@ -8,17 +8,16 @@ import CategoryCard from "@/components/customer/CategoryCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { getPublishedProducts } from "@/lib/productData";
+import { getPublicStoreCategories } from "@/lib/storefrontCategoryData";
 import HeroBannerCarousel from "@/components/customer/HeroBannerCarousel";
 import { useSEOStore } from "@/hooks/useSEO";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import { AnimateOnScroll } from "@/components/animations/AnimateOnScroll";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { AIDesignResult } from "@/lib/aiDesigner";
 import WhatsAppFloat from "@/components/customer/WhatsAppFloat";
 import { useStorefront } from "@/contexts/StoreContext";
 import { useCart } from "@/contexts/CartContext";
-import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { normalizeThemePageLayout } from "@/new-storefront/theme-engine/layout";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
@@ -91,26 +90,21 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     setThemeRenderFailed(false);
   }, [activeMarketplaceTheme?.id, activeMarketplaceTheme?.version]);
 
-  // ── Page data: categories + products + AI design — all in parallel ──────────
+  // ── Page data: categories + products — shared storefront data layer ─────────
   // Fires immediately once ctxStore.id is available (instant on cached sessions).
   // Previously: 4 sequential DB round-trips (store→profile→categories→products)
-  // + 1 delayed AI design fetch. Now: 1 parallel batch of 3 queries.
+  // Theme design comes from published theme state, not legacy live CSS injection.
   const { data: pageData, isLoading: pageLoading } = useQuery({
     queryKey: ['store-page', ctxStore?.id],
     queryFn: async () => {
       const storeId = ctxStore!.id;
-      const [categoriesResult, products, categoryCountsResult, designResult] = await Promise.all([
-        supabase.from('categories').select('*').eq('store_id', storeId).order('name'),
+      const [categoriesResult, products, categoryCountsResult] = await Promise.all([
+        getPublicStoreCategories(storeId, 50),
         getPublishedProducts(storeId, 16),
         (supabase as any).rpc('get_category_product_counts', { p_store_id: storeId }),
-        supabase
-          .from('store_design_state')
-          .select('current_design, ai_full_css, mode')
-          .eq('store_id', storeId)
-          .maybeSingle(),
       ]);
       return {
-        categories: (categoriesResult.data ?? []) as Category[],
+        categories: categoriesResult as Category[],
         products:   products as Product[],
         categoryCounts: !categoryCountsResult.error && categoryCountsResult.data
           ? new Map(
@@ -120,7 +114,6 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
               ])
             )
           : new Map<string, number>(),
-        design:     designResult.data ?? null,
       };
     },
     enabled:   !!ctxStore?.id,
@@ -140,14 +133,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
     .slice(0, 4);
 
-  // Derive AI design for layout calculations
-  const aiDesign = (pageData?.design?.current_design as unknown as AIDesignResult | null) ?? null;
-
-  // ── Apply AI design CSS whenever page data arrives ───────────────────────────
-  useEffect(() => {
-    applyStoreDesignCSS(pageData?.design ?? null);
-  }, [pageData?.design]);
-
+  // Runtime themes receive published settings/layout through theme state.
   // ── ElevenLabs AI Voice Widget — loaded on demand ───────────────────────────
   useEffect(() => {
     if (!store?.ai_voice_embed_code) return;
@@ -278,31 +264,16 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     );
   }
 
-  // ── Layout classes derived from AI design ────────────────────────────────────
-  const gridColsClass = (() => {
-    const cols = aiDesign?.layout?.product_grid_cols;
-    if (cols === "2") return "grid grid-cols-2 sm:grid-cols-2 gap-6";
-    if (cols === "3") return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6";
-    return "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6";
-  })();
+  // ── Default fallback layout classes ──────────────────────────────────────────
+  const gridColsClass = "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6";
 
-  const sectionPy = (() => {
-    const p = aiDesign?.layout?.section_padding;
-    if (p === "compact")  return "py-8";
-    if (p === "spacious") return "py-24";
-    return "py-16";
-  })();
+  const sectionPy = "py-16";
 
   const showInstagramReels = store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage;
   const showGoogleReviews  = store.google_reviews_enabled;
   const hasMiddleSections  = showInstagramReels || showGoogleReviews;
 
-  const sectionPyLarge = (() => {
-    const p = aiDesign?.layout?.section_padding;
-    if (p === "compact")  return "py-10";
-    if (p === "spacious") return "py-28";
-    return "py-20";
-  })();
+  const sectionPyLarge = "py-20";
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -321,7 +292,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ HERO BANNER SECTION ═══
             Purpose: Large banner at top of page with store name and logo
             Content: Carousel of banner images, store description, CTA buttons
-            AI Can Change: Background colors, text colors, spacing, gradients, shadows, button styles
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-hero"] - affects entire hero section
         */}
         <section data-ai="section-hero">
@@ -340,7 +311,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ CATEGORIES SECTION ═══
             Purpose: Horizontal scrollable list of product categories
             Content: Category name, image, product count for each category
-            AI Can Change: Background colors, gradients, section padding, card spacing, border radius, shadows, text colors, heading styles
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-categories"] - entire section | [data-ai="category-card"] - individual cards
         */}
         {categories.length > 0 && (
@@ -385,7 +356,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ FEATURED PRODUCTS SECTION ═══
             Purpose: Grid display of top/featured products
             Content: Product cards with image, name, price range, "See All" button
-            AI Can Change: Grid layout (columns), card backgrounds, shadows, border radius, product spacing, heading styles, button colors
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-featured"] - entire section | [data-ai="product-card"] - individual product cards
         */}
         <section data-ai="section-featured" className={`py-16 ${hasMiddleSections ? 'pb-16' : 'pb-4'} bg-background`}>
@@ -434,7 +405,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ INSTAGRAM REELS SECTION ═══
             Purpose: Display Instagram reels/videos in a grid or carousel
             Content: Video thumbnails, play buttons, captions
-            AI Can Change: Section background, grid spacing, thumbnail borders, shadows, spacing, heading colors
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-reels"] - entire reels section
         */}
         {store.instagram_reels_settings?.enabled && store.instagram_reels_settings?.show_on_homepage && (
@@ -452,7 +423,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ GOOGLE REVIEWS SECTION ═══
             Purpose: Display customer reviews from Google with ratings
             Content: Review text, star ratings, reviewer names, profile pictures
-            AI Can Change: Background colors, review card styles, spacing, border radius, text colors, heading styles, shadows
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-reviews"] - entire reviews section
         */}
         {store.google_reviews_enabled && (
@@ -471,7 +442,7 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         {/* ═══ NEW ARRIVALS SECTION ═══
             Purpose: Showcase recently added/new products
             Content: Product grid with new products, images, names, prices, "See All" button
-            AI Can Change: Grid columns, card backgrounds, shadows, spacing, border radius, heading styles, button colors
+            Runtime themes should control design through schema-backed settings.
             Selectors: [data-ai="section-new-arrivals"] - entire section | [data-ai="product-card"] - individual product cards
         */}
         {newArrivals.length > 0 && (

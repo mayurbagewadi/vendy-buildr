@@ -110,7 +110,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
+const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
   id,
   name,
   slug,
@@ -150,17 +150,8 @@ const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   instagram_reels_settings,
   instagram_username,
   google_reviews_enabled,
-  ga_measurement_id
-`;
-
-const PUBLIC_STOREFRONT_THEME_STATE_COLUMNS = `
-  store_id,
-  published_theme_id,
-  published_theme_version,
-  published_settings,
-  published_page_layout,
-  version,
-  published_at
+  ga_measurement_id,
+  theme_state
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -197,8 +188,8 @@ function writeCache(slug: string, store: PublicStorefrontConfig, profile: StoreP
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
     let query = (supabase as any)
-      .from('public_storefront_config')
-      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
+      .from('public_storefront_bootstrap')
+      .select(PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -225,26 +216,6 @@ async function retryStoreLookup(slug: string) {
   }
 
   return result;
-}
-
-async function loadPublishedThemeState(storeId: string): Promise<PublicStorefrontThemeState | null> {
-  try {
-    const { data, error } = await (supabase as any)
-      .from('public_storefront_theme_state')
-      .select(PUBLIC_STOREFRONT_THEME_STATE_COLUMNS)
-      .eq('store_id', storeId)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('[StoreContext] Published theme state unavailable, using legacy theme columns:', error);
-      return null;
-    }
-
-    return (data ?? null) as PublicStorefrontThemeState | null;
-  } catch (error) {
-    console.warn('[StoreContext] Published theme state lookup failed, using legacy theme columns:', error);
-    return null;
-  }
 }
 
 function toPublicStoreProfile(store: PublicStorefrontConfig): StoreProfileData {
@@ -432,7 +403,6 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
         }
 
         const publicStore = storeData as PublicStorefrontConfig;
-        publicStore.theme_state = await loadPublishedThemeState(publicStore.id);
         const profileData = toPublicStoreProfile(publicStore);
         writeCache(slug, publicStore, profileData);
         setStore(publicStore);
