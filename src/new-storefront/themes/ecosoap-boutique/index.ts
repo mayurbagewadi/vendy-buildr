@@ -1,15 +1,23 @@
+import { lazy } from "react";
 import type { StorefrontThemeRuntimeDefinition } from "@/new-storefront/theme-engine/types";
-import { ecosoapBoutiqueTheme } from "./theme";
+import {
+  ecosoapBoutiqueTheme,
+  ecosoapBoutiqueThemeBlockSchema,
+  ecosoapBoutiqueThemeDefaultSettings,
+  ecosoapBoutiqueThemeSectionSchema,
+  ecosoapBoutiqueThemeSettingsSchema,
+} from "./theme";
 import "./theme.css";
-import Storefront from "./Storefront";
-import Products from "./Products";
-import Cart from "./Cart";
-import ProductDetail from "./ProductDetail";
-import Header from "./Header";
-import Preview from "./Preview";
-import Categories from "./Categories";
 import { ecosoapBoutiqueAssets } from "./assets";
 export { ecosoapBoutiqueAssets };
+
+const Storefront = lazy(() => import("./Storefront"));
+const Products = lazy(() => import("./Products"));
+const Cart = lazy(() => import("./Cart"));
+const ProductDetail = lazy(() => import("./ProductDetail"));
+const Header = lazy(() => import("./Header"));
+const Preview = lazy(() => import("./Preview"));
+const Categories = lazy(() => import("./Categories"));
 
 const ecosoapBoutiqueComponents = {
   Home: Storefront,
@@ -45,7 +53,10 @@ export const ecosoapBoutiqueRuntimeTheme: StorefrontThemeRuntimeDefinition = {
     price: ecosoapBoutiqueTheme.price,
     preset: ecosoapBoutiqueTheme.preset,
   },
-  configSchema: {},
+  configSchema: ecosoapBoutiqueThemeSettingsSchema,
+  sectionSchema: ecosoapBoutiqueThemeSectionSchema,
+  blockSchema: ecosoapBoutiqueThemeBlockSchema,
+  defaultSettings: ecosoapBoutiqueThemeDefaultSettings,
   assets: ecosoapBoutiqueAssets,
   pages: {
     required: ["Home", "Products", "Categories", "ProductDetail", "Cart"],

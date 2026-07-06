@@ -1,4 +1,4 @@
-import type { ComponentType, Dispatch, RefObject, SetStateAction } from "react";
+﻿import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateAction } from "react";
 import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
@@ -238,17 +238,82 @@ export type ThemeProductDetailProps = {
 };
 export type ThemeContentProps = Record<string, unknown>;
 
+export type ThemeSettingFieldType =
+  | "text"
+  | "textarea"
+  | "image"
+  | "color"
+  | "select"
+  | "boolean"
+  | "number"
+  | "product-reference"
+  | "collection-reference";
+
+export type ThemeSettingOption = {
+  label: string;
+  value: string;
+};
+
+export type ThemeSettingField = {
+  id: string;
+  type: ThemeSettingFieldType;
+  label: string;
+  description?: string;
+  defaultValue?: string | number | boolean | null;
+  placeholder?: string;
+  options?: ThemeSettingOption[];
+  min?: number;
+  max?: number;
+  step?: number;
+  required?: boolean;
+};
+
+export type ThemeSettingGroup = {
+  id: string;
+  label: string;
+  fields: string[];
+};
+
+export type ThemeSettingsSchema = {
+  version: string;
+  fields: ThemeSettingField[];
+  groups?: ThemeSettingGroup[];
+};
+
+export type ThemeBlockSchema = {
+  type: string;
+  label: string;
+  description?: string;
+  settings?: ThemeSettingField[];
+  maxInstances?: number;
+};
+
+export type ThemeSectionSchema = {
+  page: ThemePageData["page"];
+  type: string;
+  label: string;
+  description?: string;
+  settings?: ThemeSettingField[];
+  allowedBlocks?: string[];
+  maxBlocks?: number;
+  defaultBlocks?: string[];
+  defaultVisible?: boolean;
+};
+
+type StorefrontThemeComponent<Props> =
+  | ComponentType<Props>
+  | LazyExoticComponent<ComponentType<Props>>;
 export type StorefrontThemeComponents = {
-  Home?: ComponentType<ThemeStorefrontProps>;
-  Products?: ComponentType<ThemeProductsProps>;
-  ProductDetail?: ComponentType<ThemeProductDetailProps>;
-  Cart?: ComponentType<ThemeCartProps>;
-  Storefront?: ComponentType<ThemeStorefrontProps>;
-  Header?: ComponentType<ThemeHeaderProps>;
-  Preview?: ComponentType<ThemePreviewProps>;
-  Categories?: ComponentType<ThemeCategoriesProps>;
-  About?: ComponentType<ThemeContentProps>;
-  Policies?: ComponentType<ThemeContentProps>;
+  Home?: StorefrontThemeComponent<ThemeStorefrontProps>;
+  Products?: StorefrontThemeComponent<ThemeProductsProps>;
+  ProductDetail?: StorefrontThemeComponent<ThemeProductDetailProps>;
+  Cart?: StorefrontThemeComponent<ThemeCartProps>;
+  Storefront?: StorefrontThemeComponent<ThemeStorefrontProps>;
+  Header?: StorefrontThemeComponent<ThemeHeaderProps>;
+  Preview?: StorefrontThemeComponent<ThemePreviewProps>;
+  Categories?: StorefrontThemeComponent<ThemeCategoriesProps>;
+  About?: StorefrontThemeComponent<ThemeContentProps>;
+  Policies?: StorefrontThemeComponent<ThemeContentProps>;
 };
 
 export type RequiredThemePage = "Home" | "Products" | "Categories" | "ProductDetail" | "Cart";
@@ -292,7 +357,9 @@ export type ThemePluginManifest = {
   preset: ThemePreset;
 };
 
-export type ThemePluginConfigSchema = Record<string, unknown>;
+export type ThemePluginConfigSchema = ThemeSettingsSchema;
+export type ThemePluginSectionSchema = ThemeSectionSchema[];
+export type ThemePluginBlockSchema = ThemeBlockSchema[];
 export type ThemePluginAssets = Record<string, unknown>;
 
 export type ThemePlugin = {
@@ -302,6 +369,9 @@ export type ThemePlugin = {
   compatibility: ThemeCompatibility;
   manifest: ThemePluginManifest;
   configSchema: ThemePluginConfigSchema;
+  sectionSchema: ThemePluginSectionSchema;
+  blockSchema: ThemePluginBlockSchema;
+  defaultSettings: Record<string, unknown>;
   assets: ThemePluginAssets;
   components: StorefrontThemeComponents;
   pages: ThemePluginPages;
@@ -332,3 +402,4 @@ export type StorefrontThemeRuntimeLoader = () => Promise<{
   default?: StorefrontThemeRuntimeDefinition;
   storefrontThemeRuntime?: StorefrontThemeRuntimeDefinition;
 }>;
+
