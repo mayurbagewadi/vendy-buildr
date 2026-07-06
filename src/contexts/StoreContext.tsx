@@ -51,7 +51,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_STORE_COLUMNS = `
+const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   id,
   name,
   slug,
@@ -92,14 +92,17 @@ const PUBLIC_STOREFRONT_STORE_COLUMNS = `
   instagram_username,
   google_reviews_enabled,
   ga_measurement_id,
-  user_id
+  published_version_id,
+  published_theme_id,
+  published_theme_version,
+  published_theme_settings,
+  published_theme_layout,
+  published_theme_assets,
+  theme_published_at,
+  public_feature_flags
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-type StoreLookupRow = StoreContextData & {
-  user_id?: string | null;
-};
 
 interface CachedEntry {
   store: StoreContextData;
@@ -132,10 +135,9 @@ function writeCache(slug: string, store: StoreContextData, profile: StoreProfile
 
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
-    let query = supabase
-      .from('stores')
-      .select(PUBLIC_STOREFRONT_STORE_COLUMNS)
-      .eq('is_active', true);
+    let query = (supabase as any)
+      .from('public_storefront_config')
+      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -164,9 +166,14 @@ async function retryStoreLookup(slug: string) {
   return result;
 }
 
-function toPublicStoreContextData(store: StoreLookupRow): StoreContextData {
-  const { user_id: _userId, ...publicStore } = store;
-  return publicStore as StoreContextData;
+const stringOrNull = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value : null;
+
+function toPublicStoreProfile(store: StoreContextData): StoreProfileData {
+  return {
+    phone: stringOrNull(store.business_phone) ?? store.whatsapp_number ?? null,
+    email: stringOrNull(store.business_email),
+  };
 }
 
 function applyColorPalette(paletteId: string | null) {
@@ -346,17 +353,9 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
           return;
         }
 
-        const lookupStore = storeData as StoreLookupRow;
-        const { data: profileData } = lookupStore.user_id
-          ? await supabase
-              .from('profiles').select('phone, email')
-              .eq('user_id', lookupStore.user_id).maybeSingle()
-          : { data: null };
-
-        if (cancelled) return;
-
-        const publicStore = toPublicStoreContextData(lookupStore);
-        writeCache(slug, publicStore, profileData ?? null);
+        const publicStore = storeData as StoreContextData;
+        const profileData = toPublicStoreProfile(publicStore);
+        writeCache(slug, publicStore, profileData);
         setStore(publicStore);
         setProfile(profileData ?? null);
         setErrorType(null);

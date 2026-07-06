@@ -9,6 +9,7 @@ import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicStoreCategories } from "@/lib/storefrontCategoryData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
@@ -77,8 +78,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const slug = slugProp || slugParam;
   const { store, profile, loading: storeLoading } = useStorefront();
   const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
-  const storeAny = store as any;
-  const storefrontUrls = buildStorefrontUrls({ slug: storeAny?.slug || slug });
+  const storefrontUrls = buildStorefrontUrls({ slug: store?.slug || slug });
   const [themeRenderFailed, setThemeRenderFailed] = useState(false);
 
   useEffect(() => {
@@ -125,17 +125,11 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
       try {
         const storeIdToUse = store!.id;
         const [categoriesResult, productCounts] = await Promise.all([
-          supabase
-            .from("categories")
-            .select("*")
-            .eq("store_id", storeIdToUse)
-            .order("created_at", { ascending: true }),
+          getPublicStoreCategories(storeIdToUse, 50),
           loadCategoryCounts(storeIdToUse),
         ]);
 
-        if (categoriesResult.error) throw categoriesResult.error;
-
-        const categoriesWithCounts: Category[] = (categoriesResult.data || []).map((cat: any) => ({
+        const categoriesWithCounts: Category[] = categoriesResult.map((cat) => ({
           id: cat.id,
           name: cat.name,
           image_url: cat.image_url,
@@ -155,7 +149,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   });
 
   const loading = storeLoading || categoriesLoading;
-  const storeName = storeAny?.name || "Store";
+  const storeName = store?.name || "Store";
   const ThemeCategories = activeMarketplaceTheme?.components.Categories;
 
   if (loading) {
@@ -178,7 +172,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
           <ThemeCategories
             store={store}
             profile={profile}
-            storeSlug={storeAny?.slug || slug}
+            storeSlug={store?.slug || slug}
             categories={categories}
             urls={storefrontUrls}
             runtime={buildThemeRuntimeContext(activeMarketplaceTheme)}
@@ -194,7 +188,7 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
       <SEOHead
         title={`Categories - ${storeName} | Browse Our Collections`}
         description={`Explore all product categories at ${storeName}. Find exactly what you're looking for in our organized collections.`}
-        canonical={`${getStoreCanonicalUrl(storeAny?.slug || slug || "", storeAny?.subdomain, storeAny?.custom_domain)}/categories`}
+        canonical={`${getStoreCanonicalUrl(store?.slug || slug || "", store?.subdomain, store?.custom_domain)}/categories`}
         keywords={categories.map((c) => c.name).concat([storeName, "categories", "shop by category"])}
         type="website"
       />
@@ -230,18 +224,18 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
 
       <StoreFooter
         storeName={storeName}
-        storeDescription={storeAny?.description}
-        whatsappNumber={storeAny?.whatsapp_number}
+        storeDescription={store?.description}
+        whatsappNumber={store?.whatsapp_number}
         phone={profile?.phone}
         email={profile?.email}
-        address={storeAny?.address}
-        facebookUrl={storeAny?.facebook_url}
-        instagramUrl={storeAny?.instagram_url}
-        twitterUrl={storeAny?.twitter_url}
-        youtubeUrl={storeAny?.youtube_url}
-        linkedinUrl={storeAny?.linkedin_url}
-        socialLinks={storeAny?.social_links}
-        policies={storeAny?.policies}
+        address={store?.address}
+        facebookUrl={store?.facebook_url}
+        instagramUrl={store?.instagram_url}
+        twitterUrl={store?.twitter_url}
+        youtubeUrl={store?.youtube_url}
+        linkedinUrl={store?.linkedin_url}
+        socialLinks={store?.social_links}
+        policies={store?.policies}
       />
     </div>
   );
