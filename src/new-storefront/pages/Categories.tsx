@@ -9,6 +9,7 @@ import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicStoreCategories } from "@/lib/storefrontCategoryData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
@@ -124,17 +125,11 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
       try {
         const storeIdToUse = store!.id;
         const [categoriesResult, productCounts] = await Promise.all([
-          supabase
-            .from("categories")
-            .select("*")
-            .eq("store_id", storeIdToUse)
-            .order("created_at", { ascending: true }),
+          getPublicStoreCategories(storeIdToUse, 50),
           loadCategoryCounts(storeIdToUse),
         ]);
 
-        if (categoriesResult.error) throw categoriesResult.error;
-
-        const categoriesWithCounts: Category[] = (categoriesResult.data || []).map((cat: any) => ({
+        const categoriesWithCounts: Category[] = categoriesResult.map((cat) => ({
           id: cat.id,
           name: cat.name,
           image_url: cat.image_url,

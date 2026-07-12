@@ -4,48 +4,17 @@ import { getPalette, buildPaletteCSS } from '@/lib/colorPalettes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface StoreSocialLinks {
-  facebook?: string | null;
-  instagram?: string | null;
-  twitter?: string | null;
-  youtube?: string | null;
-  linkedin?: string | null;
-  [key: string]: string | null | undefined;
-}
-
-export interface StorePolicies {
-  returnPolicy?: string | null;
-  shippingPolicy?: string | null;
-  termsConditions?: string | null;
-  deliveryAreas?: string | null;
-  privacyPolicy?: string | null;
-  [key: string]: string | null | undefined;
-}
-
-export interface InstagramReelsSettings {
-  enabled: boolean;
-  display_mode: string;
-  max_reels: number;
-  manual_reels: Array<{
-    url: string;
-    thumbnail_url?: string;
-    caption?: string;
-  }>;
-  show_on_homepage: boolean;
-  section_title: string;
-}
-
 export interface PublicStorefrontThemeState {
-  store_id: string;
+  published_version_id: string | null;
   published_theme_id: string | null;
   published_theme_version: string | null;
-  published_settings: Record<string, unknown> | null;
-  published_page_layout: Record<string, unknown> | null;
-  version: number | null;
+  published_settings: Record<string, unknown>;
+  published_page_layout: Record<string, unknown>;
+  published_assets: Record<string, unknown>;
   published_at: string | null;
 }
 
-export interface PublicStorefrontConfig {
+export interface StoreContextData {
   id: string;
   name: string;
   slug: string;
@@ -60,8 +29,8 @@ export interface PublicStorefrontConfig {
   address: string | null;
   storefront_theme: string | null;
   storefront_color_palette: string | null;
-  social_links: StoreSocialLinks | null;
-  policies: StorePolicies | null;
+  social_links: Record<string, string | null> | null;
+  policies: Record<string, string | null> | null;
   facebook_url: string | null;
   instagram_url: string | null;
   twitter_url: string | null;
@@ -70,26 +39,11 @@ export interface PublicStorefrontConfig {
   storefront_template: string | null;
   free_delivery_above: number | null;
   promo_bar_text: string | null;
-  ai_voice_embed_code: string | null;
-  alternate_names: string | null;
-  seo_description: string | null;
-  business_phone: string | null;
-  business_email: string | null;
-  street_address: string | null;
-  city: string | null;
-  state: string | null;
-  postal_code: string | null;
-  country: string | null;
-  opening_hours: string | null;
-  price_range: string | null;
-  instagram_reels_settings: InstagramReelsSettings | null;
-  instagram_username: string | null;
-  google_reviews_enabled: boolean | null;
-  ga_measurement_id: string | null;
   theme_state?: PublicStorefrontThemeState | null;
+  [key: string]: unknown;
 }
 
-export type StoreContextData = PublicStorefrontConfig;
+export type PublicStorefrontConfig = StoreContextData;
 
 export interface StoreProfileData {
   phone: string | null;
@@ -97,7 +51,7 @@ export interface StoreProfileData {
 }
 
 export interface StoreContextValue {
-  store: PublicStorefrontConfig | null;
+  store: StoreContextData | null;
   profile: StoreProfileData | null;
   storeId: string | null;
   storeSlug: string | null;
@@ -110,7 +64,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
+const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   id,
   name,
   slug,
@@ -151,13 +105,43 @@ const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
   instagram_username,
   google_reviews_enabled,
   ga_measurement_id,
-  theme_state
+  published_version_id,
+  published_theme_id,
+  published_theme_version,
+  published_theme_settings,
+  published_theme_layout,
+  published_theme_assets,
+  theme_published_at,
+  public_feature_flags
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+type StorefrontQueryResult<T> = {
+  data: T;
+  error: unknown | null;
+};
+
+type StorefrontQueryBuilder<T> = {
+  select: (columns: string) => StorefrontQueryBuilder<T>;
+  or: (filters: string) => StorefrontQueryBuilder<T>;
+  maybeSingle: () => Promise<StorefrontQueryResult<T | null>>;
+};
+
+type StorefrontDbClient = {
+  from: <T>(table: string) => StorefrontQueryBuilder<T>;
+};
+
+type StorefrontWindow = Window & {
+  [key: string]: unknown;
+  dataLayer?: unknown[][];
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+};
+
+const storefrontDb = supabase as unknown as StorefrontDbClient;
+
 interface CachedEntry {
-  store: PublicStorefrontConfig;
+  store: StoreContextData;
   profile: StoreProfileData | null;
   cachedAt: number;
 }
@@ -171,13 +155,14 @@ function readCache(slug: string): CachedEntry | null {
       sessionStorage.removeItem(CACHE_PREFIX + slug);
       return null;
     }
+    entry.store = normalizePublicStorefrontConfig(entry.store);
     return entry;
   } catch {
     return null;
   }
 }
 
-function writeCache(slug: string, store: PublicStorefrontConfig, profile: StoreProfileData | null) {
+function writeCache(slug: string, store: StoreContextData, profile: StoreProfileData | null) {
   try {
     sessionStorage.setItem(CACHE_PREFIX + slug, JSON.stringify({ store, profile, cachedAt: Date.now() }));
   } catch { /* storage full or disabled — degrade gracefully */ }
@@ -187,9 +172,9 @@ function writeCache(slug: string, store: PublicStorefrontConfig, profile: StoreP
 
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
-    let query = (supabase as any)
-      .from('public_storefront_bootstrap')
-      .select(PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS);
+    let query = storefrontDb
+      .from<StoreContextData>('public_storefront_config')
+      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -197,7 +182,7 @@ async function retryStoreLookup(slug: string) {
     return query.maybeSingle();
   };
 
-  let result;
+  let result: StorefrontQueryResult<StoreContextData | null>;
 
   try {
     result = await runLookup();
@@ -218,10 +203,42 @@ async function retryStoreLookup(slug: string) {
   return result;
 }
 
-function toPublicStoreProfile(store: PublicStorefrontConfig): StoreProfileData {
+const stringOrNull = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value : null;
+
+function toPublicStoreProfile(store: StoreContextData): StoreProfileData {
   return {
-    phone: store.business_phone ?? store.whatsapp_number ?? null,
-    email: store.business_email ?? null,
+    phone: stringOrNull(store.business_phone) ?? store.whatsapp_number ?? null,
+    email: stringOrNull(store.business_email),
+  };
+}
+
+function normalizePublicStorefrontConfig(store: StoreContextData): StoreContextData {
+  const publishedThemeId = stringOrNull(store.published_theme_id);
+  const publishedVersionId = stringOrNull(store.published_version_id);
+
+  return {
+    ...store,
+    theme_state: publishedThemeId
+      ? {
+          published_version_id: publishedVersionId,
+          published_theme_id: publishedThemeId,
+          published_theme_version: stringOrNull(store.published_theme_version),
+          published_settings:
+            typeof store.published_theme_settings === 'object' && store.published_theme_settings !== null
+              ? (store.published_theme_settings as Record<string, unknown>)
+              : {},
+          published_page_layout:
+            typeof store.published_theme_layout === 'object' && store.published_theme_layout !== null
+              ? (store.published_theme_layout as Record<string, unknown>)
+              : {},
+          published_assets:
+            typeof store.published_theme_assets === 'object' && store.published_theme_assets !== null
+              ? (store.published_theme_assets as Record<string, unknown>)
+              : {},
+          published_at: stringOrNull(store.theme_published_at),
+        }
+      : null,
   };
 }
 
@@ -288,7 +305,7 @@ const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 export function StoreProvider({ slug, children }: { slug?: string | null; children: ReactNode }) {
   const cached = slug ? readCache(slug) : null;
 
-  const [store, setStore] = useState<PublicStorefrontConfig | null>(cached?.store ?? null);
+  const [store, setStore] = useState<StoreContextData | null>(cached?.store ?? null);
   const [profile, setProfile] = useState<StoreProfileData | null>(cached?.profile ?? null);
   const [loading, setLoading] = useState(!cached);
   const [errorType, setErrorType] = useState<StoreContextValue['errorType']>(null);
@@ -342,20 +359,21 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     const gaId = store['ga_measurement_id'] as string | undefined;
     if (!gaId || !/^G-[A-Z0-9]+$/.test(gaId)) return;
     const guardKey = '__ga_injected_' + store.id;
-    if ((window as any)[guardKey]) return;
-    (window as any)[guardKey] = true;
+    const storefrontWindow = window as StorefrontWindow;
+    if (storefrontWindow[guardKey]) return;
+    storefrontWindow[guardKey] = true;
     const inject = () => {
       const script = document.createElement('script');
       script.async = true;
       script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
       document.head.appendChild(script);
-      (window as any).dataLayer = (window as any).dataLayer || [];
-      const gtag = (...args: any[]) => { (window as any).dataLayer.push(args); };
+      storefrontWindow.dataLayer = storefrontWindow.dataLayer || [];
+      const gtag = (...args: unknown[]) => { storefrontWindow.dataLayer?.push(args); };
       gtag('js', new Date());
       gtag('config', gaId);
     };
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(inject, { timeout: 3000 });
+      storefrontWindow.requestIdleCallback?.(inject, { timeout: 3000 });
     } else {
       setTimeout(inject, 100);
     }
@@ -402,11 +420,11 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
           return;
         }
 
-        const publicStore = storeData as PublicStorefrontConfig;
+        const publicStore = normalizePublicStorefrontConfig(storeData as StoreContextData);
         const profileData = toPublicStoreProfile(publicStore);
         writeCache(slug, publicStore, profileData);
         setStore(publicStore);
-        setProfile(profileData);
+        setProfile(profileData ?? null);
         setErrorType(null);
       } finally {
         if (!cancelled) setLoading(false);
