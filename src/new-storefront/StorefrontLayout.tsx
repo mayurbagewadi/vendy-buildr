@@ -3,7 +3,6 @@ import { Outlet, useLocation, useParams } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StoreProvider, useStorefront } from "@/contexts/StoreContext";
-import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
 import { useActiveStorefrontTheme } from "@/new-storefront/theme-engine/resolveTheme";
 
 interface StorefrontLayoutProps {
@@ -18,16 +17,9 @@ const StorefrontLayout = ({ slug: slugProp }: StorefrontLayoutProps = {}) => {
 
   return (
     <StoreProvider slug={slug}>
-      <StorefrontDesignLoader />
       <StorefrontThemeScope />
     </StoreProvider>
   );
-};
-
-const StorefrontDesignLoader = () => {
-  const { storeId, storeSlug } = useStorefront();
-  useAIDesignCSS(storeId, storeSlug);
-  return null;
 };
 
 const StorefrontThemeScope = () => {

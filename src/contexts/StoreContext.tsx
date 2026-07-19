@@ -64,7 +64,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
+const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
   id,
   name,
   slug,
@@ -105,14 +105,7 @@ const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   instagram_username,
   google_reviews_enabled,
   ga_measurement_id,
-  published_version_id,
-  published_theme_id,
-  published_theme_version,
-  published_theme_settings,
-  published_theme_layout,
-  published_theme_assets,
-  theme_published_at,
-  public_feature_flags
+  theme_state
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -173,8 +166,8 @@ function writeCache(slug: string, store: StoreContextData, profile: StoreProfile
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
     let query = storefrontDb
-      .from<StoreContextData>('public_storefront_config')
-      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
+      .from<StoreContextData>('public_storefront_bootstrap')
+      .select(PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -214,8 +207,12 @@ function toPublicStoreProfile(store: StoreContextData): StoreProfileData {
 }
 
 function normalizePublicStorefrontConfig(store: StoreContextData): StoreContextData {
-  const publishedThemeId = stringOrNull(store.published_theme_id);
-  const publishedVersionId = stringOrNull(store.published_version_id);
+  const embeddedThemeState =
+    typeof store.theme_state === 'object' && store.theme_state !== null
+      ? (store.theme_state as Record<string, unknown>)
+      : null;
+  const publishedThemeId = stringOrNull(embeddedThemeState?.published_theme_id ?? store.published_theme_id);
+  const publishedVersionId = stringOrNull(embeddedThemeState?.published_version_id ?? store.published_version_id);
 
   return {
     ...store,
@@ -223,20 +220,26 @@ function normalizePublicStorefrontConfig(store: StoreContextData): StoreContextD
       ? {
           published_version_id: publishedVersionId,
           published_theme_id: publishedThemeId,
-          published_theme_version: stringOrNull(store.published_theme_version),
+          published_theme_version: stringOrNull(embeddedThemeState?.published_theme_version ?? store.published_theme_version),
           published_settings:
-            typeof store.published_theme_settings === 'object' && store.published_theme_settings !== null
+            typeof embeddedThemeState?.published_settings === 'object' && embeddedThemeState.published_settings !== null
+              ? (embeddedThemeState.published_settings as Record<string, unknown>)
+              : typeof store.published_theme_settings === 'object' && store.published_theme_settings !== null
               ? (store.published_theme_settings as Record<string, unknown>)
               : {},
           published_page_layout:
-            typeof store.published_theme_layout === 'object' && store.published_theme_layout !== null
+            typeof embeddedThemeState?.published_page_layout === 'object' && embeddedThemeState.published_page_layout !== null
+              ? (embeddedThemeState.published_page_layout as Record<string, unknown>)
+              : typeof store.published_theme_layout === 'object' && store.published_theme_layout !== null
               ? (store.published_theme_layout as Record<string, unknown>)
               : {},
           published_assets:
-            typeof store.published_theme_assets === 'object' && store.published_theme_assets !== null
+            typeof embeddedThemeState?.published_assets === 'object' && embeddedThemeState.published_assets !== null
+              ? (embeddedThemeState.published_assets as Record<string, unknown>)
+              : typeof store.published_theme_assets === 'object' && store.published_theme_assets !== null
               ? (store.published_theme_assets as Record<string, unknown>)
               : {},
-          published_at: stringOrNull(store.theme_published_at),
+          published_at: stringOrNull(embeddedThemeState?.published_at ?? store.theme_published_at),
         }
       : null,
   };
