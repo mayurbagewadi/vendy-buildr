@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Leaf, Minus, Plus, ShieldCheck, ShoppingBag, X } from "lucide-react";
 
 import StoreFooter from "@/components/customer/StoreFooter";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ThemeCartProps } from "@/new-storefront/theme-engine/types";
@@ -22,24 +22,21 @@ const EcoSoapCart = ({
   updateQuantity,
   removeItem,
 }: ThemeCartProps) => {
-  const storeAny = store as any;
-  const profileAny = profile as any;
-
   const footer = (
     <StoreFooter
-      storeName={storeAny?.name || storeSlug || "Store"}
-      storeDescription={storeAny?.description}
-      whatsappNumber={storeAny?.whatsapp_number}
-      phone={profileAny?.phone}
-      email={profileAny?.email}
-      address={storeAny?.address}
-      facebookUrl={storeAny?.facebook_url}
-      instagramUrl={storeAny?.instagram_url}
-      twitterUrl={storeAny?.twitter_url}
-      youtubeUrl={storeAny?.youtube_url}
-      linkedinUrl={storeAny?.linkedin_url}
-      socialLinks={storeAny?.social_links}
-      policies={storeAny?.policies}
+      storeName={store?.name || storeSlug || "Store"}
+      storeDescription={store?.description}
+      whatsappNumber={store?.whatsapp_number}
+      phone={profile?.phone}
+      email={profile?.email}
+      address={store?.address}
+      facebookUrl={store?.facebook_url}
+      instagramUrl={store?.instagram_url}
+      twitterUrl={store?.twitter_url}
+      youtubeUrl={store?.youtube_url}
+      linkedinUrl={store?.linkedin_url}
+      socialLinks={store?.social_links}
+      policies={store?.policies}
     />
   );
 
@@ -114,9 +111,10 @@ const EcoSoapCart = ({
                   return (
                     <article key={`${item.productId}-${item.variant}`} className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm">
                       <div className="flex flex-col gap-5 p-4 sm:flex-row sm:p-6">
-                        <LazyImage
+                        <StorefrontImage
                           src={item.productImage}
                           alt={item.productName}
+                          purpose="cart-thumb"
                           className="aspect-square w-full rounded-xl object-cover sm:h-32 sm:w-32"
                         />
 

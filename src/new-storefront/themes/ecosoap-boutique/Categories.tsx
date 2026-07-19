@@ -3,7 +3,7 @@ import { ArrowRight, Leaf, Sparkles } from "lucide-react";
 
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
-import { convertToDirectImageUrl } from "@/lib/imageUtils";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import type { ThemeCategoriesProps } from "@/new-storefront/theme-engine/types";
@@ -96,9 +96,7 @@ const EcoSoapCategories = ({ store, profile, storeSlug, categories }: ThemeCateg
 
             <div data-ai="categories-grid" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {categories.map((category, index) => {
-                const imageUrl = category.image_url
-                  ? convertToDirectImageUrl(category.image_url)
-                  : fallbackImages[index % fallbackImages.length];
+                const imageUrl = category.image_url || fallbackImages[index % fallbackImages.length];
                 const productCount = category.productCount ?? 0;
 
                 return (
@@ -109,12 +107,13 @@ const EcoSoapCategories = ({ store, profile, storeSlug, categories }: ThemeCateg
                     className="group block overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-100 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                   >
                     <div data-ai="category-card-image-container" className="relative aspect-[4/3] overflow-hidden bg-stone-50">
-                      <img
+                      <StorefrontImage
                         src={imageUrl}
                         alt={`${category.name} collection`}
+                        purpose="category-card"
                         data-ai="category-card-image"
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        loading={index < 4 ? "eager" : "lazy"}
+                        priority={index < 4}
                       />
                       <div data-ai="category-card-overlay" className="absolute inset-0 bg-gradient-to-t from-stone-950/72 via-stone-950/12 to-transparent" />
                       <span className="absolute left-4 top-4 rounded-full border border-white/25 bg-white/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow">

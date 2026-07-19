@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
+import { getImageUrl, normalizeUploadedImage, type StorefrontImageSource } from "@/lib/responsiveImages";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 const parseStockInput = (value: string): number | null => {
@@ -52,7 +53,7 @@ const EditProduct = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<StorefrontImageSource[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [pricingMode, setPricingMode] = useState<"single" | "variants">("single");
@@ -520,7 +521,7 @@ category: "",
     setIsSubmitting(true);
 
     try {
-      let uploadedImageUrls: string[] = [...imageUrls];
+      let uploadedImageUrls: StorefrontImageSource[] = [...imageUrls];
 
       if (pendingFiles.length > 0) {
         setIsUploadingToDrive(true);
@@ -578,7 +579,7 @@ category: "",
                 throw new Error(responseData.error || 'Failed to upload image');
               }
 
-              uploadedImageUrls.push(responseData.imageUrl);
+              uploadedImageUrls.push(normalizeUploadedImage(responseData));
 
               await supabase.from('media_library').insert({
                 store_id: store.id,
@@ -1290,7 +1291,7 @@ category: "",
                             <div key={`pending-${index}`} className="relative group">
                               <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden ring-2 ring-primary/40">
                                 <img
-                                  src={url}
+                                  src={getImageUrl(url)}
                                   alt={`Pending ${index + 1}`}
                                   className="w-full h-full object-cover"
                                 />
@@ -1318,7 +1319,7 @@ category: "",
                           <div key={index} className="relative group">
                             <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                               <img
-                                src={url}
+                                src={getImageUrl(url)}
                                 alt={`Preview ${index + 1}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {

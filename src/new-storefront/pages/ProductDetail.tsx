@@ -3,9 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { useStorefront } from "@/contexts/StoreContext";
-import { applyStoreDesignCSS } from "@/lib/applyStoreDesign";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -14,7 +12,8 @@ import { Minus, Plus, ShoppingCart, Share2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
+import { getImageUrl } from "@/lib/responsiveImages";
 
 import { getPublishedProductById, getPublishedProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
@@ -110,8 +109,8 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   // ── StoreContext: store + profile already resolved — no separate fetch needed
   const { store: ctxStore, profile: ctxProfile, loading: storeLoading } = useStorefront();
-  const storeData    = ctxStore as any;   // public storefront fields from StoreContext
-  const profileData  = ctxProfile as any;
+  const storeData = ctxStore;
+  const profileData = ctxProfile;
   // storeId and storeSlug derived from context; fall back to route prop during load
   const storeId   = ctxStore?.id   ?? null;
   const storeSlug = ctxStore?.slug ?? storeSlugFromRoute;
@@ -155,25 +154,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
       try {
         setProductLoading(true);
 
-        // Inject AI design CSS early (skip if already applied from prev page)
-        const aiDesignPromise = !document.getElementById('ai-layer2-styles') && storeId
-          ? supabase
-              .from('store_design_state')
-              .select('current_design, ai_full_css, mode')
-              .eq('store_id', storeId)
-              .maybeSingle()
-          : Promise.resolve({ data: null });
-
-        // Fetch product + AI design in parallel (store/profile come from context)
-        const [productData, designResult] = await Promise.all([
-          getPublishedProductBySlug(productSlug, storeId || undefined),
-          aiDesignPromise,
-        ]);
-
-        // Apply AI design CSS if not already injected
-        if (designResult.data) {
-          applyStoreDesignCSS(designResult.data);
-        }
+        const productData = await getPublishedProductBySlug(productSlug, storeId || undefined);
 
         // Fallback: try by UUID for backward compatibility
         let data = productData;
@@ -393,7 +374,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const productsLink = storefrontUrls.products;
   const cartLink = storefrontUrls.cart;
 
-  if (import.meta.env.DEV || localStorage.getItem("dd_theme_debug") === "1") {
+  if (import.meta.env.DEV) {
     console.info("[STOREFRONT_THEME_DEBUG][product-detail]", {
       productSlug,
       productName: product.name,
@@ -570,7 +551,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
           storeData?.subdomain,
           storeData?.custom_domain
         )}
-        image={images[0]}
+        image={getImageUrl(images[0])}
         type="product"
         price={currentVariant?.price || product.base_price}
         availability={isSeoAvailable ? 'in stock' : 'out of stock'}
@@ -600,14 +581,16 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                       <Card className="overflow-hidden">
                         <CardContent className="p-0">
                           <div className="aspect-square bg-muted">
-                            <LazyImage
+                            <StorefrontImage
                               src={image}
                               alt={generateProductImageAlt({
                                 productName: product.name,
                                 category: product.category,
                                 imageIndex: index
                               })}
+                              purpose="product-detail"
                               className="w-full h-full object-contain"
+                              priority={index === 0}
                             />
                           </div>
                         </CardContent>
@@ -674,14 +657,16 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                 <CardContent className="p-0">
                   <div ref={mainImageRef} className="aspect-square bg-muted">
                     {selectedImage < images.length ? (
-                      <LazyImage
+                      <StorefrontImage
                         src={images[selectedImage]}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: selectedImage
                         })}
+                        purpose="product-detail"
                         className="w-full h-full object-contain"
+                        priority
                       />
                     ) : (
                       /* Video View */
@@ -712,13 +697,14 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
                           : "border-transparent hover:border-border"
                       }`}
                     >
-                      <LazyImage
+                      <StorefrontImage
                         src={image}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: index
                         })}
+                        purpose="cart-thumb"
                         className="w-full h-full object-contain"
                       />
                     </button>
@@ -1066,15 +1052,15 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
             {/* Product Image and Details */}
             <div className="flex gap-4 pb-4 border-b border-border">
               <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                <img
+                <StorefrontImage
                   src={images[0]}
                   alt={generateProductImageAlt({
                     productName: product.name,
                     category: product.category,
                     imageIndex: 0
                   })}
+                  purpose="cart-thumb"
                   className="w-full h-full object-cover"
-                  loading="lazy"
                 />
               </div>
               <div className="flex-1 min-w-0">

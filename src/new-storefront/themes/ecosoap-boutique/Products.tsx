@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import type { Product } from "@/lib/productData";
 import type { ThemeProductsProps } from "@/new-storefront/theme-engine/types";
@@ -50,15 +51,13 @@ const EcoSoapProducts = ({
   getProductUrl,
   navigateToProduct,
 }: ThemeProductsProps) => {
-  const storeAny = store as any;
-
   return (
     <div className="flex min-h-screen flex-col bg-[#fbfaf6] text-stone-900">
       <SEOHead
-        title={`Botanicals | ${storeAny.name}`}
-        description={storeAny.description || `Shop handcrafted botanical collections at ${storeAny.name}.`}
-        canonical={getStoreCanonicalUrl(storeAny.slug, storeAny.subdomain, storeAny.custom_domain) + "/products"}
-        image={storeAny.logo_url || undefined}
+        title={`Botanicals | ${store.name}`}
+        description={store.description || `Shop handcrafted botanical collections at ${store.name}.`}
+        canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain) + "/products"}
+        image={store.logo_url || undefined}
       />
 
       <main className="flex-1">
@@ -223,11 +222,12 @@ const EcoSoapProducts = ({
                                 onClick={() => navigateToProduct(product)}
                                 className="relative aspect-[4/3] overflow-hidden bg-stone-50 text-left"
                               >
-                                <img
+                                <StorefrontImage
                                   src={image}
                                   alt={product.name}
+                                  purpose="product-card"
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                  loading={index < 6 ? "eager" : "lazy"}
+                                  priority={index < 3}
                                 />
                                 <span className="absolute left-4 top-4 rounded-full border border-stone-100/55 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-800 shadow backdrop-blur-sm">
                                   {ecoCategory} note
@@ -287,19 +287,19 @@ const EcoSoapProducts = ({
       </main>
 
       <StoreFooter
-        storeName={storeAny.name}
-        storeDescription={storeAny.description}
-        whatsappNumber={storeAny.whatsapp_number}
+        storeName={store.name}
+        storeDescription={store.description}
+        whatsappNumber={store.whatsapp_number}
         phone={profile?.phone}
         email={profile?.email}
-        address={storeAny.address}
-        facebookUrl={storeAny.facebook_url}
-        instagramUrl={storeAny.instagram_url}
-        twitterUrl={storeAny.twitter_url}
-        youtubeUrl={storeAny.youtube_url}
-        linkedinUrl={storeAny.linkedin_url}
-        socialLinks={storeAny.social_links}
-        policies={storeAny.policies}
+        address={store.address}
+        facebookUrl={store.facebook_url}
+        instagramUrl={store.instagram_url}
+        twitterUrl={store.twitter_url}
+        youtubeUrl={store.youtube_url}
+        linkedinUrl={store.linkedin_url}
+        socialLinks={store.social_links}
+        policies={store.policies}
       />
     </div>
   );

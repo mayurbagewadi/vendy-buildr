@@ -20,6 +20,7 @@ import { CategorySelector } from "@/components/admin/CategorySelector";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { getRandomDefaultImages } from "@/lib/defaultImages";
 import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
+import { normalizeUploadedImage, type StorefrontImageSource } from "@/lib/responsiveImages";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 
 // Utility function to generate URL-friendly slugs from product names
@@ -507,7 +508,7 @@ category: "",
     setIsSubmitting(true);
 
     try {
-      let uploadedImageUrls: string[] = [...imageUrls];
+      let uploadedImageUrls: StorefrontImageSource[] = [...imageUrls];
 
       // Upload pending files if any
       if (pendingFiles.length > 0) {
@@ -631,8 +632,10 @@ category: "",
                 idx === i ? { ...f, progress: 100 } : f
               ));
               // Convert to thumbnail format (uc?export=view fails in img tags)
-              const productImageUrl = convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
-              uploadedImageUrls.push(productImageUrl);
+              const uploadedImage = uploadDestination === 'vps'
+                ? normalizeUploadedImage(response.data)
+                : convertToDirectImageUrl(response.data.imageUrl) || response.data.imageUrl;
+              uploadedImageUrls.push(uploadedImage);
             }
           } catch (fileError) {
             clearInterval(progressInterval);

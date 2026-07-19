@@ -74,13 +74,7 @@ async function prerender() {
 
     // Step 4 — clean up DOM before capturing static HTML
     await page.evaluate(() => {
-      // 4a — Reset animated text to initial GSAP "from" state (prevents hydration flash)
-      document.querySelectorAll('.word-inner').forEach((el) => {
-        el.style.opacity = '0'
-        el.style.transform = 'translateY(110%) rotateX(-40deg)'
-      })
-
-      // 4b — Strip third-party scripts injected by React during render.
+      // 4a — Strip third-party scripts injected by React during render.
       // Without this, they get baked into static HTML as render-blocking scripts.
       // React will re-inject them asynchronously on hydration via useEffect/Helmet.
       const blocklist = [

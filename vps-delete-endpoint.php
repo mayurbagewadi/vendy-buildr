@@ -98,8 +98,27 @@ try {
         exit;
     }
 
+    $directory = dirname($filePath);
+    $filenameOnly = basename($filePath);
+    $stem = pathinfo($filenameOnly, PATHINFO_FILENAME);
+    $variantSuffixes = ['-thumb', '-card', '-mobile', '-detail', '-zoom'];
+
+    foreach ($variantSuffixes as $suffix) {
+        if (substr($stem, -strlen($suffix)) === $suffix) {
+            $stem = substr($stem, 0, -strlen($suffix));
+            break;
+        }
+    }
+
+    $deletedAny = false;
+    foreach (glob($directory . '/' . $stem . '*') ?: [] as $relatedPath) {
+        if (is_file($relatedPath) && unlink($relatedPath)) {
+            $deletedAny = true;
+        }
+    }
+
     // Delete the file
-    if (!unlink($filePath)) {
+    if (!$deletedAny && !unlink($filePath)) {
         throw new Exception('Failed to delete file');
     }
 

@@ -1,7 +1,8 @@
-﻿import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateAction } from "react";
-import type { StoreContextData, StoreProfileData } from "@/contexts/StoreContext";
+import type { ComponentType, Dispatch, LazyExoticComponent, RefObject, SetStateAction } from "react";
+import type { PublicStorefrontConfig, StoreProfileData } from "@/contexts/StoreContext";
 import type { CartItem } from "@/lib/cartUtils";
 import type { Product } from "@/lib/productData";
+import type { StorefrontImageSource } from "@/lib/responsiveImages";
 import type { ThemePreset } from "@/lib/themeRegistry";
 
 export type ThemeStorefrontUrls = {
@@ -50,7 +51,7 @@ export type ThemePageData = {
 };
 
 export type ThemeStorefrontProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   products: Product[];
   categories?: Array<{
     id: string;
@@ -98,7 +99,7 @@ export type ThemeCategory = {
 };
 
 export type ThemeCategoriesProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   profile: StoreProfileData | null;
   storeSlug?: string;
   categories: ThemeCategory[];
@@ -108,7 +109,7 @@ export type ThemeCategoriesProps = {
 };
 
 export type ThemeProductsProps = {
-  store: StoreContextData;
+  store: PublicStorefrontConfig;
   profile: StoreProfileData | null;
   storeSlug?: string;
   products: Product[];
@@ -137,7 +138,7 @@ export type ThemeCartStockInfo = {
 };
 
 export type ThemeCartProps = {
-  store: StoreContextData | null;
+  store: PublicStorefrontConfig | null;
   profile: StoreProfileData | null;
   storeSlug?: string;
   cart: CartItem[];
@@ -173,7 +174,7 @@ export type ThemeProductDetailProduct = {
   name: string;
   description: string;
   category: string;
-  images: string[];
+  images: StorefrontImageSource[];
   videoUrl?: string;
   video_url?: string;
   basePrice?: number;
@@ -192,7 +193,7 @@ export type ThemeProductDetailProduct = {
 };
 
 export type ThemeProductDetailProps = {
-  store: StoreContextData | null;
+  store: PublicStorefrontConfig | null;
   profile: StoreProfileData | null;
   storeSlug?: string;
   isSubdomain: boolean;
@@ -208,7 +209,7 @@ export type ThemeProductDetailProps = {
   setShowConfirmationModal: Dispatch<SetStateAction<boolean>>;
   isDescriptionExpanded: boolean;
   setIsDescriptionExpanded: Dispatch<SetStateAction<boolean>>;
-  images: string[];
+  images: StorefrontImageSource[];
   videoUrl?: string;
   videoThumbnail: string | null;
   baseSku?: string;
@@ -303,6 +304,7 @@ export type ThemeSectionSchema = {
 type StorefrontThemeComponent<Props> =
   | ComponentType<Props>
   | LazyExoticComponent<ComponentType<Props>>;
+
 export type StorefrontThemeComponents = {
   Home?: StorefrontThemeComponent<ThemeStorefrontProps>;
   Products?: StorefrontThemeComponent<ThemeProductsProps>;
@@ -402,4 +404,3 @@ export type StorefrontThemeRuntimeLoader = () => Promise<{
   default?: StorefrontThemeRuntimeDefinition;
   storefrontThemeRuntime?: StorefrontThemeRuntimeDefinition;
 }>;
-

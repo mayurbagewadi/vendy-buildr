@@ -28,6 +28,77 @@ $uploadBasePath = '/var/www/digitaldukandar.in/uploads/';
 $baseUrl = 'https://digitaldukandar.in/uploads/';
 $maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
 
+function createImageResource($path, $mimeType) {
+    switch ($mimeType) {
+        case 'image/jpeg':
+            return function_exists('imagecreatefromjpeg') ? imagecreatefromjpeg($path) : false;
+        case 'image/png':
+            return function_exists('imagecreatefrompng') ? imagecreatefrompng($path) : false;
+        case 'image/webp':
+            return function_exists('imagecreatefromwebp') ? imagecreatefromwebp($path) : false;
+        default:
+            return false;
+    }
+}
+
+function saveWebpVariant($source, $sourceWidth, $sourceHeight, $targetWidth, $targetPath) {
+    if (!function_exists('imagewebp')) {
+        return false;
+    }
+
+    $width = min($sourceWidth, $targetWidth);
+    $height = (int) round($sourceHeight * ($width / $sourceWidth));
+
+    $canvas = imagecreatetruecolor($width, $height);
+    imagealphablending($canvas, false);
+    imagesavealpha($canvas, true);
+
+    imagecopyresampled($canvas, $source, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
+    $saved = imagewebp($canvas, $targetPath, 82);
+    imagedestroy($canvas);
+
+    if ($saved) {
+        chmod($targetPath, 0644);
+    }
+
+    return $saved;
+}
+
+function generateImageVariants($sourcePath, $mimeType, $targetDir, $baseName, $publicBaseUrl) {
+    $source = createImageResource($sourcePath, $mimeType);
+    if (!$source) {
+        return [];
+    }
+
+    $sourceWidth = imagesx($source);
+    $sourceHeight = imagesy($source);
+    $variantSizes = [
+        'thumb' => 160,
+        'card' => 480,
+        'mobile' => 768,
+        'detail' => 1200,
+        'zoom' => 1600,
+    ];
+    $variants = [];
+
+    foreach ($variantSizes as $key => $width) {
+        $variantFilename = $baseName . '-' . $key . '.webp';
+        $variantPath = $targetDir . $variantFilename;
+
+        if (saveWebpVariant($source, $sourceWidth, $sourceHeight, $width, $variantPath)) {
+            $variants[$key] = $publicBaseUrl . $variantFilename;
+        }
+    }
+
+    imagedestroy($source);
+
+    return [
+        'variants' => $variants,
+        'width' => $sourceWidth,
+        'height' => $sourceHeight,
+    ];
+}
+
 try {
     // Check if file was uploaded
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
@@ -101,15 +172,32 @@ try {
 
     // Construct public URL
     if ($storeSlug) {
-        $imageUrl = $baseUrl . $storeSlug . '/' . $subdir . '/' . $filename;
+        $publicDirUrl = $baseUrl . $storeSlug . '/' . $subdir . '/';
+        $originalUrl = $publicDirUrl . $filename;
     } else {
-        $imageUrl = $baseUrl . $subdir . '/' . $filename;
+        $publicDirUrl = $baseUrl . $subdir . '/';
+        $originalUrl = $publicDirUrl . $filename;
     }
+
+    $baseName = pathinfo($filename, PATHINFO_FILENAME);
+    $variantData = generateImageVariants($targetPath, $mimeType, $targetDir, $baseName, $publicDirUrl);
+    $variants = $variantData['variants'] ?? [];
+    $imageUrl = $variants['detail'] ?? $variants['card'] ?? $originalUrl;
+
+    $image = [
+        'url' => $imageUrl,
+        'original' => $originalUrl,
+        'variants' => $variants,
+        'width' => $variantData['width'] ?? null,
+        'height' => $variantData['height'] ?? null,
+        'format' => count($variants) > 0 ? 'webp' : $mimeType
+    ];
 
     // Return success response
     echo json_encode([
         'success' => true,
         'imageUrl' => $imageUrl,
+        'image' => $image,
         'fileId' => $filename,
         'fileSizeMB' => round($fileSizeMB, 2),
         'fileType' => $subdir

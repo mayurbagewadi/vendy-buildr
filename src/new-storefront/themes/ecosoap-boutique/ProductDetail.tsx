@@ -16,10 +16,11 @@ import {
 import ProductCard from "@/components/customer/ProductCard";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
-import LazyImage from "@/components/ui/lazy-image";
+import StorefrontImage from "@/components/ui/storefront-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getImageUrl } from "@/lib/responsiveImages";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import { getProductCanonicalUrl } from "@/lib/seo/canonicalUrl";
 import type { ThemeProductDetailProps } from "@/new-storefront/theme-engine/types";
@@ -62,9 +63,6 @@ const EcoSoapProductDetail = ({
   handleAddToCart,
   handleShare,
 }: ThemeProductDetailProps) => {
-  const storeAny = store as any;
-  const profileAny = profile as any;
-
   const ecoBenefits = [
     product.category ? `${product.category} formulation` : "Botanical formulation",
     isOutOfStock ? "Currently curing" : "Ready to dispatch",
@@ -81,19 +79,19 @@ const EcoSoapProductDetail = ({
   return (
     <div className="min-h-screen bg-[#fbfaf6] text-stone-900">
       <SEOHead
-        title={`${product.name} - ${storeAny?.name || "Store"} | Buy Online`}
-        description={product.description?.slice(0, 160) || `Shop ${product.name} from ${storeAny?.name}. ${currentVariant ? `Price: Rs. ${currentVariant.price}` : product.base_price ? `Starting from Rs. ${product.base_price}` : ""}`}
+        title={`${product.name} - ${store?.name || "Store"} | Buy Online`}
+        description={product.description?.slice(0, 160) || `Shop ${product.name} from ${store?.name}. ${currentVariant ? `Price: Rs. ${currentVariant.price}` : product.base_price ? `Starting from Rs. ${product.base_price}` : ""}`}
         canonical={getProductCanonicalUrl(
           storeSlug || "",
           product.id,
-          storeAny?.subdomain,
-          storeAny?.custom_domain
+          store?.subdomain,
+          store?.custom_domain
         )}
-        image={images[0]}
+        image={getImageUrl(images[0])}
         type="product"
         price={currentVariant?.price || product.base_price}
         availability={isSeoAvailable ? "in stock" : "out of stock"}
-        keywords={[product.name, product.category, storeAny?.name || "store", "buy online"]}
+        keywords={[product.name, product.category, store?.name || "store", "buy online"]}
       />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-8 pb-32 sm:px-6 lg:px-8 md:pb-10">
@@ -111,7 +109,7 @@ const EcoSoapProductDetail = ({
               <div className="overflow-hidden rounded-2xl border-4 border-white bg-stone-50 shadow-2xl">
                 <div className="aspect-[4/3]">
                   {selectedImage < images.length ? (
-                    <img
+                    <StorefrontImage
                       ref={mainImageRef}
                       src={images[selectedImage]}
                       alt={generateProductImageAlt({
@@ -119,9 +117,9 @@ const EcoSoapProductDetail = ({
                         category: product.category,
                         imageIndex: selectedImage,
                       })}
+                      purpose="product-detail"
                       className="h-full w-full object-cover"
-                      loading="eager"
-                      decoding="async"
+                      priority
                     />
                   ) : (
                     <div className="relative h-full w-full bg-stone-100">
@@ -148,13 +146,14 @@ const EcoSoapProductDetail = ({
                       }`}
                       aria-label={`View image ${index + 1}`}
                     >
-                      <LazyImage
+                      <StorefrontImage
                         src={image}
                         alt={generateProductImageAlt({
                           productName: product.name,
                           category: product.category,
                           imageIndex: index,
                         })}
+                        purpose="cart-thumb"
                         className="h-full w-full object-cover"
                       />
                     </button>
@@ -441,7 +440,12 @@ const EcoSoapProductDetail = ({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex gap-4 border-b border-stone-100 pb-4">
-              <img src={images[0]} alt={product.name} className="h-16 w-16 rounded-xl object-cover" loading="lazy" />
+              <StorefrontImage
+                src={images[0]}
+                alt={product.name}
+                purpose="cart-thumb"
+                className="h-16 w-16 rounded-xl object-cover"
+              />
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-serif text-lg font-semibold text-stone-900">{product.name}</h3>
                 {selectedVariant && <p className="text-sm text-stone-500">Batch: {selectedVariant}</p>}
@@ -470,21 +474,21 @@ const EcoSoapProductDetail = ({
         </div>
       )}
 
-      {storeAny ? (
+      {store ? (
         <StoreFooter
-          storeName={storeAny.name}
-          storeDescription={storeAny.description}
-          whatsappNumber={storeAny.whatsapp_number}
-          phone={profileAny?.phone}
-          email={profileAny?.email}
-          address={storeAny.address}
-          facebookUrl={storeAny.facebook_url}
-          instagramUrl={storeAny.instagram_url}
-          twitterUrl={storeAny.twitter_url}
-          youtubeUrl={storeAny.youtube_url}
-          linkedinUrl={storeAny.linkedin_url}
-          socialLinks={storeAny.social_links}
-          policies={storeAny.policies}
+          storeName={store.name}
+          storeDescription={store.description}
+          whatsappNumber={store.whatsapp_number}
+          phone={profile?.phone}
+          email={profile?.email}
+          address={store.address}
+          facebookUrl={store.facebook_url}
+          instagramUrl={store.instagram_url}
+          twitterUrl={store.twitter_url}
+          youtubeUrl={store.youtube_url}
+          linkedinUrl={store.linkedin_url}
+          socialLinks={store.social_links}
+          policies={store.policies}
         />
       ) : null}
     </div>

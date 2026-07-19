@@ -23,6 +23,7 @@ import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/typ
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
+import StorefrontImage from "@/components/ui/storefront-image";
 import {
   Form,
   FormControl,
@@ -55,7 +56,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
-  const { store: ctxStore } = useStorefront();
+  const { store: ctxStore, profile } = useStorefront();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -66,8 +67,6 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const locationSectionRef = useRef<HTMLDivElement>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [storeSlug, setStoreSlug] = useState<string | undefined>(slug);
-  const [footerStore, setFooterStore] = useState<any>(null);
-  const [footerProfile, setFooterProfile] = useState<any>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [notifModal, setNotifModal] = useState<{
     open: boolean;
@@ -111,6 +110,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [autoDiscountApplied, setAutoDiscountApplied] = useState<any>(null);
   const [autoDiscountAmount, setAutoDiscountAmount] = useState<number>(0);
   const [isLoadingAutoDiscount, setIsLoadingAutoDiscount] = useState(false);
+  const cartStoreId = cart[0]?.storeId ?? null;
+  const footerStore = ctxStore;
+  const footerProfile = profile;
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -144,7 +146,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     try {
       if (cart.length === 0) return;
 
-      const storeId = cart[0].storeId;
+      const storeId = cartStoreId;
+      if (!storeId) return;
+
       const { data: store } = await supabase
         .from('stores')
         .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers')
@@ -416,65 +420,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     checkSubscriptionLimits();
     loadPaymentSettings();
 
-    // Get store slug from URL or cart items
-    if (slug) {
-      setStoreSlug(slug);
-    } else if (cart.length > 0 && cart[0].storeId) {
-      const fetchStoreSlug = async () => {
-        const { data } = await supabase
-          .from("stores")
-          .select("slug")
-          .eq("id", cart[0].storeId)
-          .maybeSingle();
-        if (data) {
-          setStoreSlug(data.slug);
-        }
-      };
-      fetchStoreSlug();
-    }
-  }, [slug, cart]);
+    // Use the route slug first; fall back to the public store context when available.
+    setStoreSlug(slug || ctxStore?.slug || undefined);
+  }, [slug, cartStoreId, ctxStore?.slug]);
 
   // Isolated footer data fetch — works for both cart-has-items and empty-cart states
-  useEffect(() => {
-    const fetchFooterData = async () => {
-      let data: any = null;
-
-      if (cart.length > 0) {
-        const { data: storeData } = await supabase
-          .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
-          .eq("id", cart[0].storeId)
-          .maybeSingle();
-        data = storeData;
-      } else if (slug) {
-        const normalizedSlug = slug.toLowerCase();
-        let query = supabase
-          .from("stores")
-          .select("name, description, whatsapp_number, address, facebook_url, instagram_url, twitter_url, youtube_url, linkedin_url, social_links, policies, user_id, storefront_template")
-          .eq("is_active", true);
-        if (normalizedSlug.includes('.')) {
-          query = query.or(`custom_domain.eq.${normalizedSlug},subdomain.eq.${normalizedSlug}`);
-        } else {
-          query = query.or(`subdomain.eq.${normalizedSlug},slug.eq.${normalizedSlug}`);
-        }
-        const { data: storeResults } = await query.limit(1);
-        data = storeResults?.[0] ?? null;
-      }
-
-      if (!data) return;
-      setFooterStore(data);
-      if (data.user_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone, email")
-          .eq("user_id", data.user_id)
-          .maybeSingle();
-        if (profile) setFooterProfile(profile);
-      }
-    };
-    fetchFooterData();
-  }, [slug, cart]);
-
   // Load auto discount when cart or payment method changes
   useEffect(() => {
     loadAutoDiscount();
@@ -785,7 +735,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     setCouponError('');
   };
 
-  const checkoutPageVariant = getStorefrontPageVariant((ctxStore as any)?.storefront_template ?? footerStore?.storefront_template, "checkout");
+  const checkoutPageVariant = getStorefrontPageVariant(footerStore?.storefront_template ?? null, "checkout");
   const isEditorialCheckout = checkoutPageVariant === "editorial-checkout";
   const pageShellClass = isEditorialCheckout
     ? "min-h-screen flex flex-col bg-[#fbfaf6] text-stone-900"
@@ -1623,9 +1573,10 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                       key={`${item.productId}-${item.variant}`}
                       className={isEditorialCheckout ? "flex gap-3 border-b border-stone-100 pb-3 last:border-0" : "flex gap-3 pb-3 border-b border-border last:border-0"}
                     >
-                      <img
+                      <StorefrontImage
                         src={item.productImage}
                         alt={item.productName}
+                        purpose="cart-thumb"
                         className={isEditorialCheckout ? "h-16 w-16 rounded-xl border border-stone-100 object-cover" : "w-16 h-16 object-cover rounded"}
                       />
                       <div className="flex-1 min-w-0">

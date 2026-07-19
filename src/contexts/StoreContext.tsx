@@ -4,6 +4,16 @@ import { getPalette, buildPaletteCSS } from '@/lib/colorPalettes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface PublicStorefrontThemeState {
+  published_version_id: string | null;
+  published_theme_id: string | null;
+  published_theme_version: string | null;
+  published_settings: Record<string, unknown>;
+  published_page_layout: Record<string, unknown>;
+  published_assets: Record<string, unknown>;
+  published_at: string | null;
+}
+
 export interface StoreContextData {
   id: string;
   name: string;
@@ -29,8 +39,11 @@ export interface StoreContextData {
   storefront_template: string | null;
   free_delivery_above: number | null;
   promo_bar_text: string | null;
+  theme_state?: PublicStorefrontThemeState | null;
   [key: string]: unknown;
 }
+
+export type PublicStorefrontConfig = StoreContextData;
 
 export interface StoreProfileData {
   phone: string | null;
@@ -51,7 +64,7 @@ export interface StoreContextValue {
 const CACHE_PREFIX = 'dd_sf_';
 const CACHE_TTL = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 700;
-const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
+const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
   id,
   name,
   slug,
@@ -92,17 +105,33 @@ const PUBLIC_STOREFRONT_CONFIG_COLUMNS = `
   instagram_username,
   google_reviews_enabled,
   ga_measurement_id,
-  published_version_id,
-  published_theme_id,
-  published_theme_version,
-  published_theme_settings,
-  published_theme_layout,
-  published_theme_assets,
-  theme_published_at,
-  public_feature_flags
+  theme_state
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+type StorefrontQueryResult<T> = {
+  data: T;
+  error: unknown | null;
+};
+
+type StorefrontQueryBuilder<T> = {
+  select: (columns: string) => StorefrontQueryBuilder<T>;
+  or: (filters: string) => StorefrontQueryBuilder<T>;
+  maybeSingle: () => Promise<StorefrontQueryResult<T | null>>;
+};
+
+type StorefrontDbClient = {
+  from: <T>(table: string) => StorefrontQueryBuilder<T>;
+};
+
+type StorefrontWindow = Window & {
+  [key: string]: unknown;
+  dataLayer?: unknown[][];
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+};
+
+const storefrontDb = supabase as unknown as StorefrontDbClient;
 
 interface CachedEntry {
   store: StoreContextData;
@@ -119,6 +148,7 @@ function readCache(slug: string): CachedEntry | null {
       sessionStorage.removeItem(CACHE_PREFIX + slug);
       return null;
     }
+    entry.store = normalizePublicStorefrontConfig(entry.store);
     return entry;
   } catch {
     return null;
@@ -135,9 +165,9 @@ function writeCache(slug: string, store: StoreContextData, profile: StoreProfile
 
 async function retryStoreLookup(slug: string) {
   const runLookup = async () => {
-    let query = (supabase as any)
-      .from('public_storefront_config')
-      .select(PUBLIC_STOREFRONT_CONFIG_COLUMNS);
+    let query = storefrontDb
+      .from<StoreContextData>('public_storefront_bootstrap')
+      .select(PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS);
     query = slug.includes('.')
       ? query.or(`custom_domain.eq.${slug},subdomain.eq.${slug}`)
       : query.or(`subdomain.eq.${slug},slug.eq.${slug}`);
@@ -145,7 +175,7 @@ async function retryStoreLookup(slug: string) {
     return query.maybeSingle();
   };
 
-  let result;
+  let result: StorefrontQueryResult<StoreContextData | null>;
 
   try {
     result = await runLookup();
@@ -173,6 +203,45 @@ function toPublicStoreProfile(store: StoreContextData): StoreProfileData {
   return {
     phone: stringOrNull(store.business_phone) ?? store.whatsapp_number ?? null,
     email: stringOrNull(store.business_email),
+  };
+}
+
+function normalizePublicStorefrontConfig(store: StoreContextData): StoreContextData {
+  const embeddedThemeState =
+    typeof store.theme_state === 'object' && store.theme_state !== null
+      ? (store.theme_state as Record<string, unknown>)
+      : null;
+  const publishedThemeId = stringOrNull(embeddedThemeState?.published_theme_id ?? store.published_theme_id);
+  const publishedVersionId = stringOrNull(embeddedThemeState?.published_version_id ?? store.published_version_id);
+
+  return {
+    ...store,
+    theme_state: publishedThemeId
+      ? {
+          published_version_id: publishedVersionId,
+          published_theme_id: publishedThemeId,
+          published_theme_version: stringOrNull(embeddedThemeState?.published_theme_version ?? store.published_theme_version),
+          published_settings:
+            typeof embeddedThemeState?.published_settings === 'object' && embeddedThemeState.published_settings !== null
+              ? (embeddedThemeState.published_settings as Record<string, unknown>)
+              : typeof store.published_theme_settings === 'object' && store.published_theme_settings !== null
+              ? (store.published_theme_settings as Record<string, unknown>)
+              : {},
+          published_page_layout:
+            typeof embeddedThemeState?.published_page_layout === 'object' && embeddedThemeState.published_page_layout !== null
+              ? (embeddedThemeState.published_page_layout as Record<string, unknown>)
+              : typeof store.published_theme_layout === 'object' && store.published_theme_layout !== null
+              ? (store.published_theme_layout as Record<string, unknown>)
+              : {},
+          published_assets:
+            typeof embeddedThemeState?.published_assets === 'object' && embeddedThemeState.published_assets !== null
+              ? (embeddedThemeState.published_assets as Record<string, unknown>)
+              : typeof store.published_theme_assets === 'object' && store.published_theme_assets !== null
+              ? (store.published_theme_assets as Record<string, unknown>)
+              : {},
+          published_at: stringOrNull(embeddedThemeState?.published_at ?? store.theme_published_at),
+        }
+      : null,
   };
 }
 
@@ -293,20 +362,21 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
     const gaId = store['ga_measurement_id'] as string | undefined;
     if (!gaId || !/^G-[A-Z0-9]+$/.test(gaId)) return;
     const guardKey = '__ga_injected_' + store.id;
-    if ((window as any)[guardKey]) return;
-    (window as any)[guardKey] = true;
+    const storefrontWindow = window as StorefrontWindow;
+    if (storefrontWindow[guardKey]) return;
+    storefrontWindow[guardKey] = true;
     const inject = () => {
       const script = document.createElement('script');
       script.async = true;
       script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
       document.head.appendChild(script);
-      (window as any).dataLayer = (window as any).dataLayer || [];
-      const gtag = (...args: any[]) => { (window as any).dataLayer.push(args); };
+      storefrontWindow.dataLayer = storefrontWindow.dataLayer || [];
+      const gtag = (...args: unknown[]) => { storefrontWindow.dataLayer?.push(args); };
       gtag('js', new Date());
       gtag('config', gaId);
     };
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(inject, { timeout: 3000 });
+      storefrontWindow.requestIdleCallback?.(inject, { timeout: 3000 });
     } else {
       setTimeout(inject, 100);
     }
@@ -353,7 +423,7 @@ export function StoreProvider({ slug, children }: { slug?: string | null; childr
           return;
         }
 
-        const publicStore = storeData as StoreContextData;
+        const publicStore = normalizePublicStorefrontConfig(storeData as StoreContextData);
         const profileData = toPublicStoreProfile(publicStore);
         writeCache(slug, publicStore, profileData);
         setStore(publicStore);

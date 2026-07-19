@@ -1,9 +1,10 @@
 // Shopping cart utilities and types
+import type { StorefrontImageSource } from "@/lib/responsiveImages";
 
 export interface CartItem {
   productId: string;
   productName: string;
-  productImage: string;
+  productImage: StorefrontImageSource;
   variant?: string;
   price: number;
   quantity: number;

@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Palette, Sun, Moon, Monitor, Loader2 } from "lucide-react";
+import { Palette, Sun, Moon, Monitor, Loader2, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { COLOR_PALETTES, type PaletteId } from "@/lib/colorPalettes";
+import { getStorefrontThemeByTemplate } from "@/new-storefront/theme-engine/registry";
 
 type ThemeOption = "dark" | "light" | "system";
 
@@ -21,6 +24,7 @@ const ThemeSettings = () => {
   const [whatsappFloatEnabled, setWhatsappFloatEnabled] = useState(true);
   const [storefrontTheme, setStorefrontTheme] = useState<ThemeOption>("dark");
   const [storefrontPalette, setStorefrontPalette] = useState<PaletteId>("default");
+  const [storefrontTemplate, setStorefrontTemplate] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,6 +33,8 @@ const ThemeSettings = () => {
   // BUG-3 fix: sequence counters — only the latest click's response is applied.
   const paletteSeq = useRef(0);
   const themeSeq = useRef(0);
+  const customTheme = getStorefrontThemeByTemplate(storefrontTemplate);
+  const isCustomThemeActive = Boolean(customTheme);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -37,13 +43,14 @@ const ThemeSettings = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, slug, whatsapp_float_enabled, storefront_theme, storefront_color_palette")
+        .select("id, slug, whatsapp_float_enabled, storefront_theme, storefront_color_palette, storefront_template")
         .eq("user_id", user.id)
         .single();
 
       if (store) {
         setStoreId(store.id);
         setStoreSlug(store.slug);
+        setStorefrontTemplate(store.storefront_template ?? null);
         setWhatsappFloatEnabled(store.whatsapp_float_enabled !== false);
         // BUG-10 fix: validate against known values — || only catches falsy,
         // not invalid non-empty strings like "xyz" from old/corrupt DB data.
@@ -91,7 +98,7 @@ const ThemeSettings = () => {
   };
 
   const handlePaletteChange = async (value: PaletteId) => {
-    if (!storeId) return;
+    if (!storeId || isCustomThemeActive) return;
     const previous = storefrontPalette;
     // BUG-3: stamp this click; ignore any response that isn't the latest.
     const seq = ++paletteSeq.current;
@@ -115,7 +122,7 @@ const ThemeSettings = () => {
   };
 
   const handleThemeChange = async (value: ThemeOption) => {
-    if (!storeId) return;
+    if (!storeId || isCustomThemeActive) return;
     const previous = storefrontTheme;
     // BUG-3: stamp this click; ignore any response that isn't the latest.
     const seq = ++themeSeq.current;
@@ -167,100 +174,123 @@ const ThemeSettings = () => {
         <p className="text-sm text-muted-foreground mt-0.5">Customize the appearance of your store</p>
       </div>
 
-      {/* Storefront Theme */}
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-base">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Palette className="w-4 h-4 text-primary" />
+      <div className="relative">
+        {isCustomThemeActive && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl border border-primary/30 bg-background/55 p-4 backdrop-blur-[3px]">
+            <div className="w-full max-w-2xl rounded-xl border bg-card/95 p-8 text-center shadow-xl">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+                <Lock className="h-7 w-7 text-primary" />
+              </div>
+              <p className="text-xl font-semibold">Custom theme is active</p>
+              <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-muted-foreground">
+                {customTheme?.manifest.name} is managed from Online Store. Basic theme switching is locked here to avoid accidental reset.
+              </p>
+              <Button size="lg" className="mt-6" asChild>
+                <Link to="/admin/online-store/themes">Open Theme Manager</Link>
+              </Button>
             </div>
-            Store Theme
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Choose the default theme for your customer-facing store</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Store theme">
-            {THEME_OPTIONS.map(({ value, label, icon, desc }) => {
-              const isSelected = storefrontTheme === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => handleThemeChange(value)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
-                    ${isSelected
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                    }`}
-                >
-                  <div className={`p-2 rounded-lg ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
-                    {icon}
-                  </div>
-                  <span className="text-sm font-semibold">{label}</span>
-                  <span className="text-xs text-center leading-tight opacity-70">{desc}</span>
-                  {isSelected && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                      Active
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Color Palette */}
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-base">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Palette className="w-4 h-4 text-primary" />
-            </div>
-            Color Palette
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Choose a color scheme for your customer-facing store</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="radiogroup" aria-label="Color palette">
-            {COLOR_PALETTES.map(({ id, label, swatches }) => {
-              const isSelected = storefrontPalette === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => handlePaletteChange(id as PaletteId)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
-                    ${isSelected
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                    }`}
-                >
-                  <div className="flex gap-1.5">
-                    {swatches.map((color, i) => (
-                      <span
-                        key={i}
-                        className="w-4 h-4 rounded-full ring-1 ring-black/10"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm font-semibold">{label}</span>
-                  {isSelected && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                      Active
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+        <div className={isCustomThemeActive ? "space-y-6 blur-[2px] pointer-events-none select-none" : "space-y-6"}>
+          {/* Storefront Theme */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Palette className="w-4 h-4 text-primary" />
+                </div>
+                Store Theme
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Choose the default theme for your customer-facing store</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Store theme">
+                {THEME_OPTIONS.map(({ value, label, icon, desc }) => {
+                  const isSelected = storefrontTheme === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => handleThemeChange(value)}
+                      disabled={isCustomThemeActive}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
+                        ${isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                    >
+                      <div className={`p-2 rounded-lg ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
+                        {icon}
+                      </div>
+                      <span className="text-sm font-semibold">{label}</span>
+                      <span className="text-xs text-center leading-tight opacity-70">{desc}</span>
+                      {isSelected && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                          Active
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Color Palette */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Palette className="w-4 h-4 text-primary" />
+                </div>
+                Color Palette
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Choose a color scheme for your customer-facing store</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="radiogroup" aria-label="Color palette">
+                {COLOR_PALETTES.map(({ id, label, swatches }) => {
+                  const isSelected = storefrontPalette === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => handlePaletteChange(id as PaletteId)}
+                      disabled={isCustomThemeActive}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer
+                        ${isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                    >
+                      <div className="flex gap-1.5">
+                        {swatches.map((color, i) => (
+                          <span
+                            key={i}
+                            className="w-4 h-4 rounded-full ring-1 ring-black/10"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold">{label}</span>
+                      {isSelected && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                          Active
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* WhatsApp Button Visibility */}
       <Card className="admin-card">
