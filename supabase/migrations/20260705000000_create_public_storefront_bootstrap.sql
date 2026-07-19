@@ -48,19 +48,22 @@ SELECT
   s.google_reviews_enabled,
   s.ga_measurement_id,
   CASE
-    WHEN sts.store_id IS NULL THEN NULL
+    WHEN stv.id IS NULL THEN NULL
     ELSE jsonb_build_object(
       'store_id', sts.store_id,
-      'published_theme_id', sts.published_theme_id,
-      'published_theme_version', sts.published_theme_version,
-      'published_settings', sts.published_settings,
-      'published_page_layout', sts.published_page_layout,
-      'version', sts.version,
-      'published_at', sts.published_at
+      'published_version_id', sts.published_version_id,
+      'published_theme_id', stv.theme_id,
+      'published_theme_version', stv.theme_version,
+      'published_settings', stv.settings,
+      'published_page_layout', stv.layout,
+      'published_assets', stv.assets,
+      'version', sts.publish_sequence,
+      'published_at', stv.published_at
     )
   END AS theme_state
 FROM public.stores s
-LEFT JOIN public.store_theme_state sts ON sts.store_id = s.id
+LEFT JOIN public.store_theme_states sts ON sts.store_id = s.id
+LEFT JOIN public.store_theme_versions stv ON stv.id = sts.published_version_id
 WHERE s.is_active = true;
 
 GRANT SELECT ON public.public_storefront_bootstrap TO anon, authenticated;
