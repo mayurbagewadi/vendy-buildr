@@ -749,7 +749,7 @@ const Orders = () => {
           ) : (
             <>
             {/* Mobile Cards — visible only on mobile */}
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="sm:hidden space-y-3">
               {filteredOrders.map((order) => {
                 const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
                 const hasAutoDiscount = order.automatic_discount_id && order.automatic_discount_id.trim() !== "";
@@ -853,7 +853,7 @@ const Orders = () => {
             </div>
 
             {/* Desktop Table — hidden on mobile */}
-            <div className="hidden">
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

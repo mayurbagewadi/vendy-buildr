@@ -2,12 +2,6 @@ import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { useLandingAnimations } from "@/hooks/useLandingAnimations";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { AnimatedText } from "@/components/landing/AnimatedText";
@@ -1228,7 +1222,7 @@ const Index = () => {
               Everything you need to know about building your ecommerce website
             </p>
           </div>
-          <Accordion type="single" collapsible className="space-y-3 sm:space-y-4">
+          <div className="space-y-4">
             {[
               {
                 q: "What is the best ecommerce website builder?",
@@ -1283,20 +1277,12 @@ const Index = () => {
                 a: "Yes. With WhatsApp ecommerce integration, you can receive and manage orders directly through WhatsApp — no separate website required. You can also share your store link on Instagram, Facebook, or any messaging app to sell online instantly."
               }
             ].map((item, i) => (
-              <AccordionItem
-                key={i}
-                value={`faq-${i}`}
-                className="overflow-hidden rounded-xl border border-border/60 bg-card px-0 shadow-sm transition-shadow data-[state=open]:shadow-md sm:rounded-2xl"
-              >
-                <AccordionTrigger className="px-4 py-4 text-left text-base font-semibold leading-snug text-foreground hover:no-underline sm:px-6 sm:py-5 sm:text-lg">
-                  {item.q}
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-5 pt-0 text-sm leading-relaxed text-muted-foreground sm:px-6 sm:text-base">
-                  {item.a}
-                </AccordionContent>
-              </AccordionItem>
+              <div key={i} className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-semibold text-lg text-foreground mb-2">{item.q}</h3>
+                <p className="text-muted-foreground leading-relaxed">{item.a}</p>
+              </div>
             ))}
-          </Accordion>
+          </div>
         </div>
       </section>
 

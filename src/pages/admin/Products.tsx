@@ -392,7 +392,7 @@ const Products = () => {
             ) : (
               <>
               {/* Mobile Cards — visible only on mobile */}
-              <div className="grid gap-3 xl:grid-cols-2">
+              <div className="sm:hidden space-y-3">
                 {paginatedProducts.map((product) => (
                   <div
                     key={product.id}
@@ -466,7 +466,7 @@ const Products = () => {
               </div>
 
               {/* Desktop Table — hidden on mobile */}
-              <div className="hidden">
+              <div className="hidden sm:block overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -475,7 +475,7 @@ const Products = () => {
                       <TableHead className="hidden md:table-cell">Variants</TableHead>
                       <TableHead>Price</TableHead>
                       <TableHead className="hidden lg:table-cell">Status</TableHead>
-                      <TableHead className="sticky right-0 z-20 min-w-[132px] bg-card text-right shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">Actions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -483,7 +483,7 @@ const Products = () => {
                       <TableRow
                         key={product.id}
                         data-product-id={product.id}
-                        className={`group hover:bg-muted/50 transition-all duration-500 cursor-pointer ${
+                        className={`hover:bg-muted/50 transition-all duration-500 cursor-pointer ${
                           highlightedProductId === product.id
                             ? 'bg-success/10 border-l-4 border-success animate-in fade-in'
                             : ''
@@ -522,7 +522,7 @@ const Products = () => {
                             {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)] transition-colors group-hover:bg-muted/50">
+                        <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-1">
                             <Button
                               variant="ghost"

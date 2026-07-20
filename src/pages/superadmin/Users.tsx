@@ -727,133 +727,7 @@ export default function Users() {
 
       {/* Users Table */}
       <div className="bg-card rounded-lg border">
-        <div className="grid gap-3 p-3 xl:grid-cols-2">
-          {loading ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Loading...
-            </div>
-          ) : displayedUsers.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No users found
-            </div>
-          ) : (
-            displayedUsers.map((user) => (
-              <div key={user.id} className="rounded-xl border bg-background p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedUsers.includes(user.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectUser(user.id, checked as boolean)
-                    }
-                    className="mt-1"
-                  />
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback>
-                      {user.email[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{user.email}</p>
-                    {user.full_name && (
-                      <p className="truncate text-sm text-muted-foreground">{user.full_name}</p>
-                    )}
-                    {user.phone && (
-                      <p className="truncate text-xs text-muted-foreground">{user.phone}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Store</p>
-                    {user.store ? (
-                      <>
-                        <p className="truncate font-medium">{user.store.name}</p>
-                        <a
-                          href={`/${user.store.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex max-w-full items-center gap-1 truncate text-xs text-primary hover:underline"
-                        >
-                          {user.store.slug}
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      </>
-                    ) : (
-                      <Badge variant="outline" className="mt-1 border-yellow-500 bg-yellow-50 text-yellow-600">
-                        No Store
-                      </Badge>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Revenue</p>
-                    <p className="font-medium">â‚¹{user.totalRevenue.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{user.orderCount} orders</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Plan</p>
-                    <Badge variant="outline" className="mt-1">
-                      {user.subscription?.plan?.name || "Free"}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Status</p>
-                    <div className="mt-1">{getStatusBadge(user.subscription)}</div>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setShowUserDetail(true);
-                    }}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setShowAssignPlanModal(true);
-                    }}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Plan
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setShowSuspendModal(true);
-                    }}
-                  >
-                    Suspend
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setShowDeleteModal(true);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <Table className="hidden">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
@@ -871,7 +745,7 @@ export default function Users() {
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created Date</TableHead>
-              <TableHead className="sticky right-0 z-20 min-w-[112px] bg-card text-right shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">Actions</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -889,7 +763,7 @@ export default function Users() {
               </TableRow>
             ) : (
               displayedUsers.map((user) => (
-                <TableRow key={user.id} className="group">
+                <TableRow key={user.id}>
                   <TableCell>
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
@@ -1011,7 +885,7 @@ export default function Users() {
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)] transition-colors group-hover:bg-muted/50">
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
