@@ -21,6 +21,7 @@ import { getAvailablePaymentMethods } from "@/lib/payment/methods";
 import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/types";
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
+import { loadSavedCheckoutProfile, saveCheckoutProfile } from "@/lib/checkoutProfile";
 import {
   Form,
   FormControl,
@@ -121,6 +122,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       deliveryTime: "anytime",
     },
   });
+
+  useEffect(() => {
+    const savedProfile = loadSavedCheckoutProfile();
+    if (savedProfile) {
+      form.reset(savedProfile);
+    }
+  }, [form]);
 
   const showModal = (
     variant: 'error' | 'success' | 'warning',
@@ -894,6 +902,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
   const onSubmit = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
+    saveCheckoutProfile({
+      ...data,
+      email: data.email || "",
+      landmark: data.landmark || "",
+    });
 
     // Validate location if required
     if (forceLocationSharing && !location) {

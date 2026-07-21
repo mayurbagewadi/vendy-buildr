@@ -24,6 +24,7 @@ import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtil
 import { type CartItem } from "@/lib/autoDiscountUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 import StorefrontImage from "@/components/ui/storefront-image";
+import { loadSavedCheckoutProfile, saveCheckoutProfile } from "@/lib/checkoutProfile";
 import {
   Form,
   FormControl,
@@ -126,6 +127,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       deliveryTime: "anytime",
     },
   });
+
+  useEffect(() => {
+    const savedProfile = loadSavedCheckoutProfile();
+    if (savedProfile) {
+      form.reset(savedProfile);
+    }
+  }, [form]);
 
   const showModal = (
     variant: 'error' | 'success' | 'warning',
@@ -879,6 +887,11 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
 
   const onSubmit = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
+    saveCheckoutProfile({
+      ...data,
+      email: data.email || "",
+      landmark: data.landmark || "",
+    });
 
     // Validate location if required
     if (forceLocationSharing && !location) {
