@@ -179,6 +179,18 @@ category: "",
     setImageUrls(product.images || []);
     setVideoUrl(product.videoUrl || product.video_url || "");
 
+    const existingPrice = product.basePrice ?? product.base_price;
+    if (existingPrice !== null && existingPrice !== undefined) {
+      setBasePrice(existingPrice.toString());
+    }
+    const existingOfferPrice = product.offerPrice ?? product.offer_price;
+    if (existingOfferPrice !== null && existingOfferPrice !== undefined) {
+      setOfferPrice(existingOfferPrice.toString());
+    }
+    if (product.stock !== null && product.stock !== undefined) {
+      setBaseStock(product.stock.toString());
+    }
+
     // Detect pricing mode from existing data
     if (product.variants && product.variants.length > 0) {
       setPricingMode("variants");
@@ -192,17 +204,6 @@ category: "",
       })));
     } else {
       setPricingMode("single");
-      const existingPrice = product.basePrice || product.base_price;
-      if (existingPrice) {
-        setBasePrice(existingPrice.toString());
-      }
-      const existingOfferPrice = product.offerPrice || product.offer_price;
-      if (existingOfferPrice) {
-        setOfferPrice(existingOfferPrice.toString());
-      }
-      if (product.stock !== null && product.stock !== undefined) {
-        setBaseStock(product.stock.toString());
-      }
     }
 
     setIsLoading(false);
@@ -694,7 +695,7 @@ category: "",
           : pricingMode === "variants" && variants.length > 0
             ? Math.min(...variants.map(v => parseFloat(v.price)))
             : undefined,
-        offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0
+        offerPrice: offerPrice && parseFloat(offerPrice) > 0
           ? parseFloat(offerPrice)
           : null,
         stock: pricingMode === "single" ? parseStockInput(baseStock) : null,
@@ -900,6 +901,31 @@ category: "",
 
                     {/* Multiple Variants Mode */}
                     {pricingMode === "variants" && (<>
+                    {offerPrice && parseFloat(offerPrice) > 0 && (
+                      <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="font-medium">Old Product Offer Price</p>
+                              <p className="text-sm">This old price was saved before. Clear it if not needed.</p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={offerPrice}
+                                onChange={(e) => setOfferPrice(e.target.value)}
+                                className="no-spinner bg-background"
+                              />
+                              <Button type="button" variant="outline" onClick={() => setOfferPrice("")}>
+                                Clear old offer price
+                              </Button>
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Add Variant</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

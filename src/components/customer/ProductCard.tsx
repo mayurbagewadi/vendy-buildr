@@ -31,6 +31,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
 
   const imageUrl = images && images.length > 0 ? images[0] : "/placeholder.svg";
   const displayPrice = priceRange || price_range || 'Price on request';
+  const isVariantMode = variants && variants.length > 0;
 
   // Offer price logic
   const sellingPrice = basePrice || base_price;
@@ -50,12 +51,11 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
   })();
 
   // Single price: discount %
-  const singleDiscount = sellingPrice && activeOfferPrice && activeOfferPrice > 0 && activeOfferPrice < sellingPrice
+  const singleDiscount = !isVariantMode && sellingPrice && activeOfferPrice && activeOfferPrice > 0 && activeOfferPrice < sellingPrice
     ? Math.round((sellingPrice - activeOfferPrice) / sellingPrice * 100)
     : 0;
 
-  const discountPct = singleDiscount || variantMaxDiscount;
-  const isVariantMode = variants && variants.length > 0;
+  const discountPct = isVariantMode ? variantMaxDiscount : singleDiscount;
   const isVariantOutOfStock = (value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === "") return false;
     const parsedStock = Number(value);
@@ -69,7 +69,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
   // Fallback for variant products where base_price/offer_price columns are null in DB.
   // Picks the variant with the lowest offer_price and uses its price pair for display.
   const variantDisplayPrices = (() => {
-    if (!isVariantMode || singleDiscount > 0) return null;
+    if (!isVariantMode) return null;
     const withOffer = (variants || []).filter(v => v.offer_price && v.offer_price > 0 && v.offer_price < v.price);
     if (withOffer.length === 0) return null;
     const cheapest = withOffer.reduce((min, v) => v.offer_price! < min.offer_price! ? v : min);
@@ -146,7 +146,7 @@ const ProductCard = ({ id, slug, name, category, priceRange, price_range, basePr
           <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors duration-200 line-clamp-2">
             {name}
           </h3>
-          {singleDiscount > 0 && sellingPrice && activeOfferPrice ? (
+          {!isVariantMode && singleDiscount > 0 && sellingPrice && activeOfferPrice ? (
             <div className="flex items-center gap-2">
               <p className="text-lg font-bold text-primary">₹{activeOfferPrice.toFixed(2)}</p>
               <p className="text-sm text-muted-foreground line-through">₹{sellingPrice.toFixed(2)}</p>
