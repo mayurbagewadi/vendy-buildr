@@ -68,7 +68,7 @@ async function logPaymentEvent(
  * Variant-price: looks up the selected variant in the variants JSON array.
  * Falls back to first variant if no variant name supplied (defensive).
  */
-function resolveEffectivePrice(
+function resolveEffectivePriceLegacy(
   p: { base_price: any; offer_price: any; variants: any },
   variantName: string | undefined
 ): number {
@@ -96,6 +96,42 @@ function resolveEffectivePrice(
  * Calculate delivery fee server-side.
  * Mirrors the identical logic in Checkout.tsx so the two can never diverge.
  */
+function resolveCheckoutPrice(
+  p: { base_price: any; offer_price: any; variants: any; name?: string },
+  variantName: string | undefined
+): number {
+  const variants: VariantJson[] = Array.isArray(p.variants) ? p.variants : [];
+
+  if (variants.length > 0) {
+    if (!variantName) {
+      throw new Error(`Please select a variant for ${p.name || 'this product'}.`);
+    }
+
+    const matched = variants.find((v) => v.name === variantName);
+    if (!matched) {
+      throw new Error(`Selected variant is unavailable for ${p.name || 'this product'}.`);
+    }
+
+    const variantPrice = Number(matched.price);
+    if (!Number.isFinite(variantPrice) || variantPrice <= 0) {
+      throw new Error(`Selected variant has invalid pricing for ${p.name || 'this product'}.`);
+    }
+
+    const variantOfferPrice = Number(matched.offer_price);
+    return Number.isFinite(variantOfferPrice) && variantOfferPrice > 0 && variantOfferPrice < variantPrice
+      ? variantOfferPrice
+      : variantPrice;
+  }
+
+  const basePrice = Number(p.base_price);
+  if (!Number.isFinite(basePrice) || basePrice <= 0) return 0;
+
+  const offerPrice = Number(p.offer_price);
+  return Number.isFinite(offerPrice) && offerPrice > 0 && offerPrice < basePrice
+    ? offerPrice
+    : basePrice;
+}
+
 function calcDeliveryFee(
   subtotal: number,
   deliveryMode: string,
@@ -363,7 +399,7 @@ serve(async (req) => {
     const productMap = new Map<string, { price: number; name: string }>();
     for (const p of (products ?? [])) {
       const cartItem = cartItems.find((i) => i.productId === p.id);
-      const effectivePrice = resolveEffectivePrice(p, cartItem?.variant);
+      const effectivePrice = resolveCheckoutPrice(p, cartItem?.variant);
       productMap.set(p.id, { price: effectivePrice, name: p.name });
     }
 

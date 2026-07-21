@@ -392,6 +392,9 @@ category: "",
       });
       return;
     }
+    if (!validateOfferPrice(newVariant.price, newVariant.offerPrice, newVariant.name.trim())) {
+      return;
+    }
 
     const variant: Variant = {
       id: Date.now().toString(),
@@ -445,6 +448,9 @@ category: "",
       });
       return;
     }
+    if (!validateOfferPrice(editingVariant.price, editingVariant.offerPrice, editingVariant.name.trim())) {
+      return;
+    }
 
     setVariants(prev =>
       prev.map(v =>
@@ -476,6 +482,31 @@ category: "",
     return `₹${minPrice.toFixed(2)} - ₹${maxPrice.toFixed(2)}`;
   };
 
+  const validateOfferPrice = (priceValue: string, offerValue: string | undefined, label: string) => {
+    const trimmedOffer = offerValue?.trim();
+    if (!trimmedOffer) return true;
+
+    const price = parseFloat(priceValue);
+    const offer = parseFloat(trimmedOffer);
+    if (!Number.isFinite(offer) || offer <= 0) {
+      toast({
+        title: "Invalid offer price",
+        description: `${label} offer price must be a positive number`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!Number.isFinite(price) || offer >= price) {
+      toast({
+        title: "Invalid offer price",
+        description: `${label} offer price must be less than selling price`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const onSubmit = async (data: ProductFormData) => {
     if (!id) return;
 
@@ -488,6 +519,9 @@ category: "",
       });
       return;
     }
+    if (pricingMode === "single" && !validateOfferPrice(basePrice, offerPrice, "Product")) {
+      return;
+    }
     if (pricingMode === "single" && baseStock.trim() && !/^\d+$/.test(baseStock.trim())) {
       toast({
         title: "Invalid stock",
@@ -495,6 +529,10 @@ category: "",
         variant: "destructive",
       });
       return;
+    }
+    if (pricingMode === "variants") {
+      const invalidVariant = variants.find(v => !validateOfferPrice(v.price, v.offerPrice, v.name));
+      if (invalidVariant) return;
     }
     if (pricingMode === "variants" && variants.length === 0) {
       toast({
@@ -642,15 +680,6 @@ category: "",
         setImageUrls(uploadedImageUrls);
       }
 
-      // For variant mode: derive base_price/offer_price from the cheapest-offer variant
-      // so DB columns stay consistent and the product card always shows the correct price.
-      const cheapestOfferVariant = pricingMode === "variants"
-        ? variants
-            .filter(v => v.offerPrice && parseFloat(v.offerPrice) > 0 && parseFloat(v.offerPrice) < parseFloat(v.price))
-            .reduce<typeof variants[0] | null>((best, v) =>
-              !best || parseFloat(v.offerPrice!) < parseFloat(best.offerPrice!) ? v : best, null)
-        : null;
-
       // Update product using shared utility
       const productData: SharedProduct = {
         id,
@@ -662,21 +691,17 @@ category: "",
         videoUrl: videoUrl.trim() || undefined,
         basePrice: pricingMode === "single" && basePrice
           ? parseFloat(basePrice)
-          : cheapestOfferVariant
-            ? parseFloat(cheapestOfferVariant.price)
-            : pricingMode === "variants" && variants.length > 0
-              ? Math.min(...variants.map(v => parseFloat(v.price)))
-              : undefined,
+          : pricingMode === "variants" && variants.length > 0
+            ? Math.min(...variants.map(v => parseFloat(v.price)))
+            : undefined,
         offerPrice: pricingMode === "single" && offerPrice && parseFloat(offerPrice) > 0
           ? parseFloat(offerPrice)
-          : cheapestOfferVariant
-            ? parseFloat(cheapestOfferVariant.offerPrice!)
-            : undefined,
+          : null,
         stock: pricingMode === "single" ? parseStockInput(baseStock) : null,
         variants: pricingMode === "variants" ? variants.map(v => ({
           name: v.name,
           price: parseFloat(v.price),
-          offer_price: v.offerPrice && parseFloat(v.offerPrice) > 0 ? parseFloat(v.offerPrice) : undefined,
+          offer_price: v.offerPrice && parseFloat(v.offerPrice) > 0 && parseFloat(v.offerPrice) < parseFloat(v.price) ? parseFloat(v.offerPrice) : undefined,
           sku: v.sku,
           stock: parseStockInput(v.stock || ""),
         })) : [],

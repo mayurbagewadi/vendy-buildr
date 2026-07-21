@@ -190,7 +190,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     appliedCoupon: Coupon | null;
     discountAmount: number;
     storeId: string;
-    cartItems: { productId: string; quantity: number }[];
+    cartItems: { productId: string; quantity: number; variant?: string }[];
     autoDiscountId?: string;
   }) => {
     try {

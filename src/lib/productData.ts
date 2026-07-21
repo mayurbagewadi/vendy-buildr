@@ -7,7 +7,7 @@ export interface Variant {
   name: string;
   price: number;
   sku?: string;
-  offer_price?: number;
+  offer_price?: number | null;
   stock?: number | null;
 }
 
@@ -17,10 +17,10 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  basePrice?: number;
-  base_price?: number;
-  offerPrice?: number;
-  offer_price?: number;
+  basePrice?: number | null;
+  base_price?: number | null;
+  offerPrice?: number | null;
+  offer_price?: number | null;
   priceRange?: string;
   price_range?: string;
   stock?: number | null;
@@ -212,8 +212,8 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
       slug: product.slug,  // FIX: Include slug in database insert
       description: product.description,
       category: product.category,
-      base_price: product.basePrice || product.base_price,
-      offer_price: product.offerPrice || product.offer_price || null,
+      base_price: product.basePrice ?? product.base_price ?? null,
+      offer_price: product.offerPrice ?? product.offer_price ?? null,
       price_range: product.priceRange || product.price_range,
       stock: product.stock ?? null,
       sku: product.sku,
@@ -242,7 +242,7 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
   if (product.description !== undefined) updateData.description = product.description;
   if (product.category !== undefined) updateData.category = product.category;
   if (product.basePrice !== undefined || product.base_price !== undefined) {
-    updateData.base_price = product.basePrice || product.base_price;
+    updateData.base_price = product.basePrice ?? product.base_price ?? null;
   }
   if (product.offerPrice !== undefined || product.offer_price !== undefined) {
     updateData.offer_price = product.offerPrice ?? product.offer_price ?? null;
