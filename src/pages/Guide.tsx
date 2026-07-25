@@ -70,8 +70,8 @@ interface MenuSection {
 }
 
 const Guide = () => {
-  const [activeMenu, setActiveMenu] = useState("store-signup");
-  const [activeSubOption, setActiveSubOption] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState("settings");
+  const [activeSubOption, setActiveSubOption] = useState<string | null>("gst-invoice-setup");
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [barPosition, setBarPosition] = useState(0);
@@ -536,6 +536,190 @@ const Guide = () => {
       icon: "⚙️",
       subOptions: [
         {
+          id: "gst-invoice-setup",
+          label: "GST & Invoice Setup",
+          title: "GST Invoice Setup for Online Store in India",
+          description: "Set GSTIN, GST percentage, invoice number, customer GST summary, and admin invoice download correctly for your DigitalDukandar store.",
+          sections: [
+            {
+              heading: "What is GST Invoice Setup?",
+              content: [
+                "GST invoice setup lets a store owner add GST details to checkout, order summaries, order records, and downloadable invoices.",
+                "",
+                "In DigitalDukandar, this setup includes GST enable or disable, GSTIN, default GST percentage, invoice prefix, next invoice number, price includes GST, and show GST on summary.",
+                "",
+                "This guide is for Indian online stores that want a simple GST invoice setup without changing product pages one by one.",
+                "",
+                "Important: DigitalDukandar helps you configure GST display and invoice records. Store owners should confirm their GST registration, GST rate, HSN/SAC needs, and filing rules with their accountant or tax advisor."
+              ]
+            },
+            {
+              heading: "GST Setup Keywords This Guide Answers",
+              content: [
+                "Primary topic: GST invoice setup for online store India.",
+                "",
+                "This guide also answers: how to add GST to online store, GSTIN setup for ecommerce website, GST settings for ecommerce store, invoice number setup for online orders, GST invoice download online store, and how GST appears in customer order summary.",
+                "",
+                "Simple answer: Go to Admin -> Settings -> GST & Invoicing, enable GST, enter GSTIN, enter the correct GST percentage, set invoice prefix and next invoice number, then save."
+              ]
+            },
+            {
+              heading: "Where to Find GST Settings",
+              content: [
+                "1. Log in to your store admin panel.",
+                "2. Open Settings from the admin sidebar.",
+                "3. Find the GST & Invoicing section.",
+                "4. Turn on Enable GST.",
+                "5. Fill GSTIN, GST percentage, invoice prefix, and next invoice number.",
+                "6. Click Save Changes.",
+                "",
+                "If GST is off, checkout will not add GST and new orders will be saved without GST invoice details."
+              ]
+            },
+            {
+              heading: "GSTIN Setup",
+              content: [
+                "GSTIN is the 15-character Goods and Services Tax Identification Number of the registered business.",
+                "",
+                "Example GSTIN format: 27ABCDE1234F1Z5",
+                "",
+                "Enter GSTIN only if the store/business is GST registered. If the store owner is not registered for GST, keep GST disabled until their accountant confirms they should enable it.",
+                "",
+                "Bad idea: using a fake GSTIN just to show GST on invoice.",
+                "Better: use only the real registered GSTIN of the business."
+              ]
+            },
+            {
+              heading: "Default GST Percentage",
+              content: [
+                "Default GST Percentage is the store-level GST rate used for new orders.",
+                "",
+                "Example: If product subtotal is Rs 100 and GST rate is 18%, GST amount is Rs 18 and total becomes Rs 118 when price does not include GST.",
+                "",
+                "Common GST slabs in India include 5%, 12%, 18%, and 28%, but the correct rate depends on product category and tax rules.",
+                "",
+                "Bad idea: setting one random GST rate for all products without checking product category.",
+                "Better: use the correct GST rate confirmed by the store owner's accountant. Product-level GST can be added later when the platform needs advanced tax rules."
+              ]
+            },
+            {
+              heading: "Price Includes GST",
+              content: [
+                "Price Includes GST controls whether product prices already include tax.",
+                "",
+                "If OFF: Product Rs 100 + GST 18% = Total Rs 118.",
+                "If ON: Product Rs 100 already includes GST. The customer total stays Rs 100, and the invoice shows the GST portion inside that price.",
+                "",
+                "Use OFF when store prices are listed before tax.",
+                "Use ON when store prices are final customer-facing prices including GST."
+              ]
+            },
+            {
+              heading: "Show GST on Order Summary",
+              content: [
+                "Show GST on Order Summary controls whether customers see GST breakup during checkout and order summary.",
+                "",
+                "If ON, customers can see taxable value, GST rate, GST amount, delivery charge, and final total.",
+                "If OFF, customers see the final total without GST breakup, but the order still stores GST snapshot when GST is enabled.",
+                "",
+                "Recommended for GST registered stores: keep it ON for transparency."
+              ]
+            },
+            {
+              heading: "Invoice Prefix and Next Invoice Number",
+              content: [
+                "Invoice Prefix is the text before invoice numbers. Example: INV",
+                "Next Invoice Number is the next invoice sequence your store will issue.",
+                "",
+                "Example setup:",
+                "  Invoice Prefix: INV",
+                "  Next Invoice Number: 1001",
+                "  First invoice: INV-001001",
+                "  Next invoice: INV-001002",
+                "",
+                "Order number and invoice number are different. Order number is for ecommerce tracking. Invoice number is for tax/accounting records.",
+                "",
+                "If the business already issued invoice INV-001000 elsewhere, set Next Invoice Number to 1001 before creating GST invoices in DigitalDukandar."
+              ]
+            },
+            {
+              heading: "Why Old Orders Do Not Change",
+              content: [
+                "Old orders must keep the GST rate used at the time of purchase.",
+                "",
+                "Example old order:",
+                "  Product: Rs 100",
+                "  GST setting: 18%",
+                "  GST: Rs 18",
+                "  Total: Rs 118",
+                "",
+                "If the store owner changes GST to 5% after two months, the old order still shows 18%.",
+                "",
+                "New orders after the change use the new 5% rate.",
+                "",
+                "This is important because invoices are historical records. Recalculating old orders from current settings would make past invoices incorrect."
+              ]
+            },
+            {
+              heading: "How GST Appears to Customers",
+              content: [
+                "When GST is enabled and Show GST on Order Summary is ON, checkout shows GST details before the customer places the order.",
+                "",
+                "Customer summary example:",
+                "  Taxable Value: Rs 100",
+                "  GST (18%): Rs 18",
+                "  Delivery: Rs 0",
+                "  Total: Rs 118",
+                "",
+                "This also helps customers understand why the final amount is higher than product subtotal when prices do not include GST."
+              ]
+            },
+            {
+              heading: "How Admin Downloads GST Invoice",
+              content: [
+                "1. Go to Admin -> Orders.",
+                "2. Open the order details.",
+                "3. Click Download PDF.",
+                "4. The PDF includes invoice and GST details when GST was enabled for that order.",
+                "",
+                "The invoice PDF can include invoice number, invoice date, GSTIN, taxable value, GST rate, GST amount, delivery charge, and final total.",
+                "",
+                "If an older non-GST order does not show GST fields, that is expected."
+              ]
+            },
+            {
+              heading: "GST Invoice FAQ",
+              content: [
+                "Q: Can I change GST percentage later?",
+                "A: Yes. New orders will use the new GST percentage. Old orders keep the old GST snapshot.",
+                "",
+                "Q: Will old invoices change if I update GST settings?",
+                "A: No. Old orders keep the GST rate, GST amount, and invoice details captured when the order was placed.",
+                "",
+                "Q: What is Next Invoice Number?",
+                "A: It is the next invoice sequence the store will issue. Example: prefix INV and next number 1001 creates INV-001001.",
+                "",
+                "Q: Can I hide GST breakup from customers?",
+                "A: Yes. Turn off Show GST on Order Summary. GST can still be stored on the order when GST is enabled.",
+                "",
+                "Q: Can admin download invoice?",
+                "A: Yes. Admin can open an order and download the PDF invoice from order details.",
+                "",
+                "Q: Should every product use the same GST rate?",
+                "A: Only if that is correct for the store's products. This phase uses one store-level GST rate. Product-level GST should be added later only when the business needs multiple tax rates."
+              ]
+            },
+            {
+              heading: "Official References",
+              content: [
+                "CBIC GST invoice rules: https://cbic-gst.gov.in/gst-invoice-rules.html",
+                "Google SEO Starter Guide: https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+                "Google structured data introduction: https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data"
+              ]
+            }
+          ]
+        },
+        {
           id: "custom-domain",
           label: "Custom Domain",
           title: "Add Your Custom Domain - Complete Guide",
@@ -735,6 +919,221 @@ const Guide = () => {
       ]
     },
     {
+      id: "delhivery-seo-aeo-geo",
+      title: "Delhivery Shipping Setup",
+      icon: "🚚",
+      content: {
+        title: "Delhivery Shipping Setup Guide",
+        description: "Connect Delhivery correctly, create AWB from the admin panel, refresh tracking safely, and write store content that is easier for customers and search engines to understand.",
+        sections: [
+          {
+            heading: "What This Guide Covers",
+            content: [
+              "This guide is for store owners who want to use Delhivery inside DigitalDukandar and make their store easier for customers to find and understand.",
+              "",
+              "You will learn:",
+              "  • How to set up Delhivery API token",
+              "  • What Production and Staging mean",
+              "  • What to enter in Client Name / HQ Name",
+              "  • What to enter in Pickup Location",
+              "  • How Ship via Delhivery creates AWB",
+              "  • How tracking refresh works safely",
+              "  • How to write better product, category, and FAQ content",
+              "",
+              "Important: This is one focused guide section. Do not create many thin pages for small keyword variations. One complete, useful page is stronger than many weak pages."
+            ]
+          },
+          {
+            heading: "Delhivery Setup Checklist",
+            content: [
+              "Before connecting Delhivery, confirm these items in Delhivery One:",
+              "",
+              "1. Your Delhivery account is active",
+              "2. KYC and business details are completed",
+              "3. Wallet has enough balance",
+              "4. Pickup location is active",
+              "5. Live API token is available",
+              "6. Store package length, breadth, height, and weight are correct",
+              "",
+              "Bad idea: Copy random company text into setup fields.",
+              "Better: Copy Delhivery values exactly as shown in Delhivery One."
+            ]
+          },
+          {
+            heading: "Where to Find API Token",
+            content: [
+              "Open Delhivery One and go to Settings -> API Setup.",
+              "",
+              "Use the Live API Token for real orders.",
+              "Use staging only when you are testing and do not want to create real shipments.",
+              "",
+              "Production means real customer shipment, real AWB, and real Delhivery flow.",
+              "Staging means test environment. Do not use staging for customer orders.",
+              "",
+              "Security rule: Never paste Delhivery API token in frontend code, browser console, screenshots, WhatsApp groups, or public documents. DigitalDukandar stores it encrypted and uses it only from server-side Supabase functions."
+            ]
+          },
+          {
+            heading: "Client Name / HQ Name",
+            content: [
+              "Client Name / HQ Name means the Delhivery account or client name assigned to your Delhivery account.",
+              "",
+              "Where to find it:",
+              "  • Open Delhivery One",
+              "  • Check the top-right account selector",
+              "  • Look under Domestic",
+              "",
+              "In DigitalDukandar, enter this value exactly.",
+              "",
+              "Common confusion: Store owners may think this field means company name or pickup address. It does not. It should match the Delhivery account/client name."
+            ]
+          },
+          {
+            heading: "Pickup Location",
+            content: [
+              "Pickup Location means the active pickup location name inside Delhivery One.",
+              "",
+              "Where to find it:",
+              "  • Open Delhivery One",
+              "  • Go to Settings -> Pickup Locations",
+              "  • Copy the active pickup location name exactly",
+              "",
+              "Do not paste full pickup address in this field unless Delhivery itself shows the full address as the pickup location name.",
+              "",
+              "Example mistake: Entering 'Ward No. 12 Khairthal Siwan Road...' when Delhivery expects the pickup location name.",
+              "Correct approach: Enter the active pickup location name exactly as Delhivery shows it."
+            ]
+          },
+          {
+            heading: "How Ship via Delhivery Works",
+            content: [
+              "When admin clicks Ship via Delhivery from Orders:",
+              "",
+              "1. DigitalDukandar verifies the store owner and order",
+              "2. It checks Delhivery integration and package details",
+              "3. It calls Delhivery from the server, not the browser",
+              "4. Delhivery creates the shipment and returns AWB",
+              "5. DigitalDukandar saves courier name, AWB, shipping status, and tracking URL",
+              "6. Store owner can see shipping details inside the order",
+              "",
+              "AWB means tracking number or waybill number.",
+              "Manifested means the shipment is created with Delhivery. It does not always mean picked up."
+            ]
+          },
+          {
+            heading: "Tracking Page and Manual Refresh",
+            content: [
+              "Customers should use the DigitalDukandar tracking page, not the Delhivery public tracking page.",
+              "",
+              "Reason: Delhivery public tracking can ask the customer for phone number. DigitalDukandar tracking page is cleaner for customer experience.",
+              "",
+              "Safe refresh rules for current scale and Supabase Free:",
+              "  • Customer tracking page reads saved status from database",
+              "  • It should not call Delhivery every time customer opens page",
+              "  • Admin can refresh a single order manually",
+              "  • Admin can use manual bulk refresh when needed",
+              "",
+              "Manual bulk refresh rules:",
+              "  • Only Delhivery shipments",
+              "  • Only active shipments",
+              "  • Only last 20 days",
+              "  • Skip delivered, cancelled, returned, and RTO",
+              "  • Batch 30 AWBs per Delhivery API call",
+              "  • Rate limit refresh actions",
+              "",
+              "Bad idea: Automatic cron every few minutes on Supabase Free.",
+              "Better: Manual admin refresh now, webhook or paid scheduled fallback later."
+            ]
+          },
+          {
+            heading: "Make Your Store Easier to Find",
+            content: [
+              "Good store content helps customers, Google, and AI search tools understand what you sell.",
+              "",
+              "Write clear answers to real buyer questions like 'What is this product used for?', 'Is COD available?', 'How many days for delivery?', and 'Is this safe for daily use?'",
+              "",
+              "Mention delivery, returns, ingredients, material, size, warranty, city, and service area only when those details are true.",
+              "",
+              "Simple rule: Write for customers first. Make every product and category clear enough that a buyer can understand it without guessing."
+            ]
+          },
+          {
+            heading: "Store Content Checklist",
+            content: [
+              "Product title: Use product type + main benefit + brand or use case.",
+              "Example: Herbal Hair Oil for Hair Fall Control - 100ml",
+              "",
+              "Product description: Explain who it is for, benefits, ingredients/material, size, usage, delivery, and COD availability.",
+              "",
+              "Category names: Use words buyers search for. Example: Herbal Hair Care, Ayurvedic Skin Care, Handmade Gifts.",
+              "",
+              "FAQs: Add real customer questions. Example: Is COD available? How many days for delivery? Is this product safe for daily use?",
+              "",
+              "Local SEO: Mention city, state, and delivery area only when true. Do not add fake city names just for ranking.",
+              "",
+              "Images: Use clear product photos and meaningful alt text. Do not upload dark, blurry, or duplicate images.",
+              "",
+              "Bad idea: Keyword stuffing like 'best hair oil India best hair oil online best hair oil buy now'.",
+              "Better: One clear product title, useful description, price, stock, shipping info, and FAQ."
+            ]
+          },
+          {
+            heading: "Keyword Research Map",
+            content: [
+              "Use these keywords naturally inside this guide, product descriptions, FAQs, and admin help text. Do not repeat them unnaturally.",
+              "",
+              "Delhivery setup keywords:",
+              "  • Delhivery API token setup",
+              "  • Delhivery Client Name HQ Name",
+              "  • Delhivery pickup location setup",
+              "  • connect Delhivery to ecommerce store",
+              "",
+              "Shipping and tracking keywords:",
+              "  • create Delhivery AWB",
+              "  • Delhivery manifested status meaning",
+              "  • ecommerce shipping tracking India",
+              "  • customer tracking page",
+              "",
+              "Store visibility keywords:",
+              "  • product SEO for ecommerce store",
+              "  • clear ecommerce product description",
+              "  • product FAQ for online store",
+              "  • local SEO for online store India"
+            ]
+          },
+          {
+            heading: "Troubleshooting",
+            content: [
+              "Problem: shipment list contains no data.",
+              "Fix: Check Client Name / HQ Name and Pickup Location. Use exact Delhivery values.",
+              "",
+              "Problem: AWB is created but status stays manifested.",
+              "Fix: This is normal before pickup/scans. Refresh tracking after pickup movement.",
+              "",
+              "Problem: Customer tracking asks for phone number.",
+              "Fix: Share DigitalDukandar tracking page instead of Delhivery public page.",
+              "",
+              "Problem: Token stopped working.",
+              "Fix: If you regenerate Delhivery live token, update it in DigitalDukandar immediately.",
+              "",
+              "Problem: SEO is not improving.",
+              "Fix: Improve product titles, descriptions, FAQs, image quality, internal links, and category names. Do not rely on keyword stuffing."
+            ]
+          },
+          {
+            heading: "Official References",
+            content: [
+              "Delhivery API Token: https://help.delhivery.com/docs/api-token-generation",
+              "Delhivery Integration Prerequisites: https://delhivery-express-api-doc.readme.io/reference/must-to-have-for-integration",
+              "Delhivery Tracking API: https://one.delhivery.com/developer-portal/document/b2c/detail/order-tracking",
+              "Google SEO Starter Guide: https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+              "Google AI Optimization Guide: https://developers.google.com/search/docs/fundamentals/ai-optimization-guide"
+            ]
+          }
+        ]
+      }
+    },
+    {
       id: "products",
       title: "Products Management",
       icon: "📦",
@@ -878,15 +1277,15 @@ const Guide = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <style>{scrollbarHideStyles}</style>
       <Helmet>
-        <title>Guide | DigitalDukandar</title>
-        <meta name="description" content="Step-by-step guides for DigitalDukandar. Learn how to set up your store, manage products, configure payments, and grow your online business." />
-        <meta name="keywords" content="guide, documentation, help, tutorials, discounts, coupons" />
-        <meta property="og:title" content="Guide | DigitalDukandar" />
-        <meta property="og:description" content="Comprehensive guides and documentation for DigitalDukandar platform." />
+        <title>GST Invoice Setup Guide for Online Store India | DigitalDukandar</title>
+        <meta name="description" content="Learn how to set GSTIN, GST percentage, invoice prefix, next invoice number, customer GST summary, and admin invoice download for your DigitalDukandar online store in India." />
+        <meta name="keywords" content="GST invoice setup online store India, GST settings ecommerce store, GSTIN setup ecommerce website, invoice number setup online orders, GST invoice download" />
+        <meta property="og:title" content="GST Invoice Setup Guide for Online Store India | DigitalDukandar" />
+        <meta property="og:description" content="Step-by-step GST and invoice setup guide for DigitalDukandar store owners in India." />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Guide | DigitalDukandar" />
-        <meta name="twitter:description" content="Comprehensive guides and documentation for DigitalDukandar platform." />
+        <meta name="twitter:title" content="GST Invoice Setup Guide for Online Store India | DigitalDukandar" />
+        <meta name="twitter:description" content="Set GSTIN, GST rate, invoice sequence, GST summary, and PDF invoice download correctly." />
       </Helmet>
 
       {/* Header with Search */}
@@ -926,7 +1325,7 @@ const Guide = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search documentation..."
+                placeholder="Search GST, invoice number, GSTIN..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-11 h-12 bg-muted/50 border-border/50 focus:border-primary/50 text-sm w-full rounded-xl shadow-sm"
