@@ -14,6 +14,7 @@ import { generateStoreTXT } from "@/lib/generateStoreTXT";
 import { DeleteMyAccountModal } from "@/components/admin/DeleteMyAccountModal";
 import { convertToDirectImageUrl } from "@/lib/imageUtils";
 import { compressImage, normalizeImageFormat, ALLOWED_IMAGE_TYPES } from "@/lib/imageCompression";
+import { isValidGstin, normalizeGstRate } from "@/lib/gst";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -60,6 +61,13 @@ const AdminSettings = () => {
     delivery_fee_amount: "",
     free_delivery_above: "",
     promo_bar_text: "",
+    gstEnabled: false,
+    gstin: "",
+    gstRate: "",
+    gstPriceIncludesTax: false,
+    gstShowOnSummary: true,
+    invoicePrefix: "INV",
+    nextInvoiceNumber: "1001",
   });
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [storageUsed, setStorageUsed] = useState(0);
@@ -160,6 +168,13 @@ const AdminSettings = () => {
         delivery_fee_amount: store?.delivery_fee_amount != null ? String(store.delivery_fee_amount) : "",
         free_delivery_above: store?.free_delivery_above != null ? String(store.free_delivery_above) : "",
         promo_bar_text: store?.promo_bar_text || "",
+        gstEnabled: store?.gst_enabled || false,
+        gstin: store?.gstin || "",
+        gstRate: store?.gst_rate != null ? String(store.gst_rate) : "",
+        gstPriceIncludesTax: store?.gst_price_includes_tax || false,
+        gstShowOnSummary: store?.gst_show_on_summary !== false,
+        invoicePrefix: store?.invoice_prefix || "INV",
+        nextInvoiceNumber: store?.next_invoice_number != null ? String(store.next_invoice_number) : "1001",
       });
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -241,6 +256,21 @@ const AdminSettings = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleGstRateChange = (value: string) => {
+    const cleaned = value.replace(/[^0-9.]/g, "");
+    const [wholePart, ...decimalParts] = cleaned.split(".");
+    const decimalPart = decimalParts.join("").slice(0, 2);
+    const normalized = decimalParts.length > 0
+      ? `${wholePart || "0"}.${decimalPart}`
+      : wholePart;
+
+    handleInputChange("gstRate", normalized);
+  };
+
+  const handleNextInvoiceNumberChange = (value: string) => {
+    handleInputChange("nextInvoiceNumber", value.replace(/\D/g, ""));
   };
 
   const handleCopyImageUrl = (url: string) => {
@@ -358,6 +388,13 @@ const AdminSettings = () => {
         delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
         free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
         promo_bar_text: formData.promo_bar_text.trim() || null,
+        gst_enabled: formData.gstEnabled,
+        gstin: formData.gstin.trim().toUpperCase() || null,
+        gst_rate: formData.gstRate !== "" ? normalizeGstRate(formData.gstRate) : 0,
+        gst_price_includes_tax: formData.gstPriceIncludesTax,
+        gst_show_on_summary: formData.gstShowOnSummary,
+        invoice_prefix: formData.invoicePrefix.trim().toUpperCase() || "INV",
+        next_invoice_number: formData.nextInvoiceNumber !== "" ? parseInt(formData.nextInvoiceNumber, 10) : 1001,
       };
 
       if (subscriptionLimits.enableCustomDomain) {
@@ -959,6 +996,52 @@ const AdminSettings = () => {
         return;
       }
 
+      if (formData.gstEnabled) {
+        const gstin = formData.gstin.trim().toUpperCase();
+        const gstRate = Number(formData.gstRate);
+        const nextInvoiceNumber = Number(formData.nextInvoiceNumber);
+
+        if (!gstin) {
+          toast({
+            variant: "destructive",
+            title: "GSTIN Required",
+            description: "Please enter GSTIN or turn off GST.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!isValidGstin(gstin)) {
+          toast({
+            variant: "destructive",
+            title: "Invalid GSTIN",
+            description: "Please enter a valid 15-character GSTIN.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!Number.isFinite(gstRate) || gstRate < 0 || gstRate > 40) {
+          toast({
+            variant: "destructive",
+            title: "Invalid GST Rate",
+            description: "GST percentage must be between 0 and 40.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!Number.isInteger(nextInvoiceNumber) || nextInvoiceNumber <= 0) {
+          toast({
+            variant: "destructive",
+            title: "Invalid Invoice Number",
+            description: "Next invoice number must be a positive whole number.",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Save to Supabase
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -984,6 +1067,13 @@ const AdminSettings = () => {
         delivery_fee_amount: formData.delivery_fee_amount !== "" ? parseFloat(formData.delivery_fee_amount) : null,
         free_delivery_above: formData.free_delivery_above !== "" ? parseFloat(formData.free_delivery_above) : null,
         promo_bar_text: formData.promo_bar_text.trim() || null,
+        gst_enabled: formData.gstEnabled,
+        gstin: formData.gstin.trim().toUpperCase() || null,
+        gst_rate: formData.gstRate !== "" ? normalizeGstRate(formData.gstRate) : 0,
+        gst_price_includes_tax: formData.gstPriceIncludesTax,
+        gst_show_on_summary: formData.gstShowOnSummary,
+        invoice_prefix: formData.invoicePrefix.trim().toUpperCase() || "INV",
+        next_invoice_number: formData.nextInvoiceNumber !== "" ? parseInt(formData.nextInvoiceNumber, 10) : 1001,
       };
 
       // Only update custom_domain if user has permission
@@ -1161,6 +1251,151 @@ const AdminSettings = () => {
             </Card>
           ))}
 
+
+          {/* GST & Invoicing Section */}
+          <Card className="admin-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                GST & Invoicing
+              </CardTitle>
+              <p className="text-muted-foreground">Set a store-level GST rate for checkout and order invoices</p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                <div className="space-y-1">
+                  <Label htmlFor="gstEnabled" className="text-base font-medium cursor-pointer">
+                    Enable GST
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    New orders will save a GST snapshot using the current settings.
+                  </p>
+                </div>
+                <Switch
+                  id="gstEnabled"
+                  checked={formData.gstEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, gstEnabled: checked }))
+                  }
+                />
+              </div>
+
+              {formData.gstEnabled && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="gstin">GSTIN <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="gstin"
+                        type="text"
+                        placeholder="27ABCDE1234F1Z5"
+                        value={formData.gstin}
+                        onChange={(e) => handleInputChange('gstin', e.target.value.toUpperCase())}
+                        className="admin-input mt-2 uppercase"
+                        maxLength={15}
+                      />
+                      {formData.gstin && !isValidGstin(formData.gstin) && (
+                        <p className="text-xs text-destructive mt-2">Enter a valid 15-character GSTIN.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="gstRate">Default GST Percentage <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="gstRate"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.]?[0-9]{0,2}"
+                        placeholder="18"
+                        value={formData.gstRate}
+                        onChange={(e) => handleGstRateChange(e.target.value)}
+                        className="admin-input mt-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Used for all products in this phase. Product-level GST is not enabled yet.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="invoicePrefix">Invoice Prefix</Label>
+                      <Input
+                        id="invoicePrefix"
+                        type="text"
+                        placeholder="INV"
+                        value={formData.invoicePrefix}
+                        onChange={(e) => handleInputChange('invoicePrefix', e.target.value.toUpperCase())}
+                        className="admin-input mt-2 uppercase"
+                        maxLength={12}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
+                      <Input
+                        id="nextInvoiceNumber"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="1001"
+                        value={formData.nextInvoiceNumber}
+                        onChange={(e) => handleNextInvoiceNumberChange(e.target.value)}
+                        className="admin-input mt-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                      <div className="space-y-1 pr-4">
+                        <Label htmlFor="gstPriceIncludesTax" className="font-medium cursor-pointer">
+                          Price Includes GST
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Turn on if product prices already include GST.
+                        </p>
+                      </div>
+                      <Switch
+                        id="gstPriceIncludesTax"
+                        checked={formData.gstPriceIncludesTax}
+                        onCheckedChange={(checked) =>
+                          setFormData(prev => ({ ...prev, gstPriceIncludesTax: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                      <div className="space-y-1 pr-4">
+                        <Label htmlFor="gstShowOnSummary" className="font-medium cursor-pointer">
+                          Show GST On Summary
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Customers and invoices will show GST breakup.
+                        </p>
+                      </div>
+                      <Switch
+                        id="gstShowOnSummary"
+                        checked={formData.gstShowOnSummary}
+                        onCheckedChange={(checked) =>
+                          setFormData(prev => ({ ...prev, gstShowOnSummary: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {Number(formData.gstRate) > 0 && ![0.25, 3, 5, 12, 18, 28].includes(Number(formData.gstRate)) && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        This GST rate is uncommon. Confirm it applies to your products before accepting orders.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Custom Domain Section */}
           <Card className="admin-card">

@@ -66,6 +66,11 @@ export interface OrderDetails {
   subtotal: number;
   deliveryCharge: number;
   total: number;
+  gstEnabled?: boolean;
+  gstShowOnSummary?: boolean;
+  gstRate?: number;
+  taxableAmount?: number;
+  gstAmount?: number;
   paymentMethod?: 'cod' | 'online';
   paymentGateway?: string;
   transactionId?: string;
@@ -120,6 +125,10 @@ export const generateOrderMessage = (order: OrderDetails): string => {
   message += `━━━━━━━━━━━━━━━━\n`;
   message += `💰 *PAYMENT SUMMARY*\n`;
   message += `Subtotal: ₹${order.subtotal.toFixed(2)}\n`;
+  if (order.gstEnabled && order.gstShowOnSummary && order.gstAmount && order.gstAmount > 0) {
+    message += `Taxable Value: ₹${(order.taxableAmount || 0).toFixed(2)}\n`;
+    message += `GST (${order.gstRate || 0}%): ₹${order.gstAmount.toFixed(2)}\n`;
+  }
   message += `Delivery: ₹${order.deliveryCharge.toFixed(2)}\n`;
   message += `*Total Amount: ₹${order.total.toFixed(2)}*\n\n`;
 

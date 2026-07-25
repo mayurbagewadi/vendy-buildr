@@ -35,6 +35,14 @@ interface VariantJson {
   offer_price?: number;
 }
 
+interface GstCalculation {
+  discountedSubtotal: number;
+  taxableAmount: number;
+  gstAmount: number;
+  deliveryCharge: number;
+  total: number;
+}
+
 async function logPaymentEvent(
   supabase: any,
   eventType: string,
@@ -149,6 +157,62 @@ function calcDeliveryFee(
     return deliveryFeeAmount;
   }
   return 0;
+}
+
+function roundCurrency(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeGstRate(value: unknown): number {
+  const rate = Number(value);
+  if (!Number.isFinite(rate)) return 0;
+  return Math.min(40, Math.max(0, roundCurrency(rate)));
+}
+
+function calcGst(
+  subtotal: number,
+  discountAmount: number,
+  deliveryCharge: number,
+  gstEnabled: boolean,
+  gstRate: number,
+  priceIncludesTax: boolean
+): GstCalculation {
+  const discountedSubtotal = roundCurrency(Math.max(0, subtotal - discountAmount));
+  const roundedDelivery = roundCurrency(Math.max(0, deliveryCharge));
+  const rate = normalizeGstRate(gstRate);
+
+  if (!gstEnabled || rate <= 0 || discountedSubtotal <= 0) {
+    return {
+      discountedSubtotal,
+      taxableAmount: discountedSubtotal,
+      gstAmount: 0,
+      deliveryCharge: roundedDelivery,
+      total: roundCurrency(discountedSubtotal + roundedDelivery),
+    };
+  }
+
+  if (priceIncludesTax) {
+    const gstAmount = roundCurrency((discountedSubtotal * rate) / (100 + rate));
+    const taxableAmount = roundCurrency(discountedSubtotal - gstAmount);
+    return {
+      discountedSubtotal,
+      taxableAmount,
+      gstAmount,
+      deliveryCharge: roundedDelivery,
+      total: roundCurrency(discountedSubtotal + roundedDelivery),
+    };
+  }
+
+  const taxableAmount = discountedSubtotal;
+  const gstAmount = roundCurrency((taxableAmount * rate) / 100);
+  return {
+    discountedSubtotal,
+    taxableAmount,
+    gstAmount,
+    deliveryCharge: roundedDelivery,
+    total: roundCurrency(taxableAmount + gstAmount + roundedDelivery),
+  };
 }
 
 /**
@@ -352,7 +416,12 @@ serve(async (req) => {
         delivery_mode,
         delivery_fee_amount,
         free_delivery_above,
-        delivery_tiers
+        delivery_tiers,
+        gst_enabled,
+        gstin,
+        gst_rate,
+        gst_price_includes_tax,
+        gst_show_on_summary
       `)
       .eq('id', storeId)
       .single();
@@ -446,7 +515,16 @@ serve(async (req) => {
     }
 
     // ── 7. Final total — this is the only number Razorpay will ever see ───
-    const verifiedTotal = Math.max(0, subtotal - discountAmount + deliveryFee);
+    const gstRate = normalizeGstRate(store.gst_rate);
+    const gstBreakdown = calcGst(
+      subtotal,
+      discountAmount,
+      deliveryFee,
+      store.gst_enabled === true,
+      gstRate,
+      store.gst_price_includes_tax === true
+    );
+    const verifiedTotal = gstBreakdown.total;
 
     if (verifiedTotal <= 0) {
       return new Response(
@@ -459,6 +537,8 @@ serve(async (req) => {
       subtotal,
       deliveryFee,
       discountAmount,
+      gstAmount: gstBreakdown.gstAmount,
+      taxableAmount: gstBreakdown.taxableAmount,
       verifiedTotal,
       storeId,
     });
@@ -483,6 +563,24 @@ serve(async (req) => {
       automatic_discount_id: couponCode ? null : (autoDiscountId || orderRecord.automatic_discount_id || null),
       delivery_charge: deliveryFee,
       total: verifiedTotal,
+      gst_enabled: store.gst_enabled === true,
+      gstin: store.gstin || null,
+      gst_rate: store.gst_enabled === true ? gstRate : null,
+      gst_price_includes_tax: store.gst_price_includes_tax === true,
+      gst_show_on_summary: store.gst_show_on_summary !== false,
+      taxable_amount: gstBreakdown.taxableAmount,
+      gst_amount: gstBreakdown.gstAmount,
+      gst_snapshot: {
+        enabled: store.gst_enabled === true,
+        gstin: store.gstin || null,
+        rate: gstRate,
+        price_includes_tax: store.gst_price_includes_tax === true,
+        show_on_summary: store.gst_show_on_summary !== false,
+        taxable_amount: gstBreakdown.taxableAmount,
+        gst_amount: gstBreakdown.gstAmount,
+        total: verifiedTotal,
+        captured_at: new Date().toISOString(),
+      },
       status: 'new',
       payment_method: 'razorpay',
       payment_status: 'awaiting_payment',
@@ -653,6 +751,9 @@ serve(async (req) => {
         verifiedSubtotal: subtotal,
         verifiedDeliveryCharge: deliveryFee,
         verifiedDiscount: discountAmount,
+        verifiedTaxableAmount: gstBreakdown.taxableAmount,
+        verifiedGstAmount: gstBreakdown.gstAmount,
+        verifiedGstRate: gstRate,
         amountInPaise: razorpayOrder.amount,
         currency: razorpayOrder.currency,
       }),

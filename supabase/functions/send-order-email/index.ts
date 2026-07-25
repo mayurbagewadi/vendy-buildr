@@ -183,6 +183,15 @@ serve(async (req) => {
               <span>Discount:</span>
               <strong>-&#8377;${order.discount_amount}</strong>
             </div>` : ''}
+            ${order.gst_enabled && order.gst_show_on_summary !== false && Number(order.gst_amount || 0) > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>Taxable Value:</span>
+              <strong>&#8377;${order.taxable_amount}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+              <span>GST (${order.gst_rate || 0}%):</span>
+              <strong>&#8377;${order.gst_amount}</strong>
+            </div>` : ''}
             <div style="display: flex; justify-content: space-between; margin: 10px 0; padding-top: 10px; border-top: 2px solid #333; font-size: 18px;">
               <span>Total:</span>
               <strong>&#8377;${order.total}</strong>

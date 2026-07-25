@@ -1454,7 +1454,17 @@ export type Database = {
           delivery_time: string | null
           discount_amount: number | null
           gateway_order_id: string | null
+          gst_amount: number
+          gst_enabled: boolean
+          gst_price_includes_tax: boolean
+          gst_rate: number | null
+          gst_show_on_summary: boolean
+          gst_snapshot: Json
+          gstin: string | null
           id: string
+          invoice_issued_at: string | null
+          invoice_number: string | null
+          invoice_prefix: string | null
           items: Json
           notes: string | null
           order_number: string
@@ -1469,6 +1479,7 @@ export type Database = {
           status: string
           store_id: string
           subtotal: number
+          taxable_amount: number
           total: number
           tracking_url: string | null
           updated_at: string
@@ -1491,7 +1502,17 @@ export type Database = {
           delivery_time?: string | null
           discount_amount?: number | null
           gateway_order_id?: string | null
+          gst_amount?: number
+          gst_enabled?: boolean
+          gst_price_includes_tax?: boolean
+          gst_rate?: number | null
+          gst_show_on_summary?: boolean
+          gst_snapshot?: Json
+          gstin?: string | null
           id?: string
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          invoice_prefix?: string | null
           items?: Json
           notes?: string | null
           order_number: string
@@ -1506,6 +1527,7 @@ export type Database = {
           status?: string
           store_id: string
           subtotal?: number
+          taxable_amount?: number
           total?: number
           tracking_url?: string | null
           updated_at?: string
@@ -1528,7 +1550,17 @@ export type Database = {
           delivery_time?: string | null
           discount_amount?: number | null
           gateway_order_id?: string | null
+          gst_amount?: number
+          gst_enabled?: boolean
+          gst_price_includes_tax?: boolean
+          gst_rate?: number | null
+          gst_show_on_summary?: boolean
+          gst_snapshot?: Json
+          gstin?: string | null
           id?: string
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          invoice_prefix?: string | null
           items?: Json
           notes?: string | null
           order_number?: string
@@ -1543,6 +1575,7 @@ export type Database = {
           status?: string
           store_id?: string
           subtotal?: number
+          taxable_amount?: number
           total?: number
           tracking_url?: string | null
           updated_at?: string
@@ -2046,6 +2079,11 @@ export type Database = {
           google_reviews_display_type: string | null
           google_reviews_enabled: boolean | null
           google_reviews_last_reset: string | null
+          gst_enabled: boolean
+          gst_price_includes_tax: boolean
+          gst_rate: number
+          gst_show_on_summary: boolean
+          gstin: string | null
           whatsapp_float_enabled: boolean | null
           google_sheet_connected: boolean | null
           google_sheet_created_at: string | null
@@ -2062,12 +2100,14 @@ export type Database = {
           instagram_token_expiry: string | null
           instagram_url: string | null
           instagram_username: string | null
+          invoice_prefix: string | null
           is_active: boolean | null
           last_admin_visit: string | null
           last_sheet_sync: string | null
           linkedin_url: string | null
           logo_url: string | null
           name: string
+          next_invoice_number: number
           opening_hours: string | null
           package_breadth: number | null
           package_height: number | null
@@ -2125,6 +2165,11 @@ export type Database = {
           google_reviews_display_type?: string | null
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
+          gst_enabled?: boolean
+          gst_price_includes_tax?: boolean
+          gst_rate?: number
+          gst_show_on_summary?: boolean
+          gstin?: string | null
           whatsapp_float_enabled?: boolean | null
           google_sheet_connected?: boolean | null
           google_sheet_created_at?: string | null
@@ -2141,12 +2186,14 @@ export type Database = {
           instagram_token_expiry?: string | null
           instagram_url?: string | null
           instagram_username?: string | null
+          invoice_prefix?: string | null
           is_active?: boolean | null
           last_admin_visit?: string | null
           last_sheet_sync?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
           name: string
+          next_invoice_number?: number
           opening_hours?: string | null
           package_breadth?: number | null
           package_height?: number | null
@@ -2204,6 +2251,11 @@ export type Database = {
           google_reviews_display_type?: string | null
           google_reviews_enabled?: boolean | null
           google_reviews_last_reset?: string | null
+          gst_enabled?: boolean
+          gst_price_includes_tax?: boolean
+          gst_rate?: number
+          gst_show_on_summary?: boolean
+          gstin?: string | null
           whatsapp_float_enabled?: boolean | null
           google_sheet_connected?: boolean | null
           google_sheet_created_at?: string | null
@@ -2220,12 +2272,14 @@ export type Database = {
           instagram_token_expiry?: string | null
           instagram_url?: string | null
           instagram_username?: string | null
+          invoice_prefix?: string | null
           is_active?: boolean | null
           last_admin_visit?: string | null
           last_sheet_sync?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
           name?: string
+          next_invoice_number?: number
           opening_hours?: string | null
           package_breadth?: number | null
           package_height?: number | null

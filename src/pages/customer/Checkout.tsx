@@ -22,6 +22,7 @@ import type { PaymentMethod, PaymentGatewayCredentials } from "@/lib/payment/typ
 import { validateCoupon, calculateDiscount, type Coupon } from "@/lib/couponUtils";
 import { type CartItem } from "@/lib/autoDiscountUtils";
 import { loadSavedCheckoutProfile, saveCheckoutProfile } from "@/lib/checkoutProfile";
+import { calculateGst, createGstSnapshot, normalizeGstRate, type GstSettings } from "@/lib/gst";
 import {
   Form,
   FormControl,
@@ -97,6 +98,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(0);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState<number | null>(null);
   const [deliveryTiers, setDeliveryTiers] = useState<{ min: number; max: number | null; fee: number }[]>([]);
+  const [gstSettings, setGstSettings] = useState<GstSettings>({
+    enabled: false,
+    gstin: null,
+    rate: 0,
+    priceIncludesTax: false,
+    showOnSummary: true,
+  });
 
   // Coupon-related state
   const [couponCode, setCouponCode] = useState<string>('');
@@ -152,7 +160,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       const storeId = cart[0].storeId;
       const { data: store } = await supabase
         .from('stores')
-        .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers')
+        .select('payment_mode, payment_gateway_credentials, delivery_mode, delivery_fee_amount, free_delivery_above, delivery_tiers, gst_enabled, gstin, gst_rate, gst_price_includes_tax, gst_show_on_summary')
         .eq('id', storeId)
         .maybeSingle();
 
@@ -177,6 +185,13 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         setDeliveryFeeAmount(store.delivery_fee_amount != null ? Number(store.delivery_fee_amount) : 0);
         setFreeDeliveryAbove(store.free_delivery_above != null ? Number(store.free_delivery_above) : null);
         setDeliveryTiers((store.delivery_tiers as { min: number; max: number | null; fee: number }[]) || []);
+        setGstSettings({
+          enabled: store.gst_enabled === true,
+          gstin: store.gstin || null,
+          rate: normalizeGstRate(store.gst_rate),
+          priceIncludesTax: store.gst_price_includes_tax === true,
+          showOnSummary: store.gst_show_on_summary !== false,
+        });
       }
     } catch (error) {
       console.error('Error loading payment settings:', error);
@@ -1050,7 +1065,15 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       } else if (deliveryFeeAmount > 0 && (freeDeliveryAbove === null || cartTotal < freeDeliveryAbove)) {
         orderDeliveryFee = deliveryFeeAmount;
       }
-      const finalTotal = cartTotal - appliedDiscountAmount + orderDeliveryFee;
+      const gstBreakdown = calculateGst({
+        subtotal: cartTotal,
+        discountAmount: appliedDiscountAmount,
+        deliveryCharge: orderDeliveryFee,
+        gstEnabled: gstSettings.enabled,
+        gstRate: gstSettings.rate,
+        priceIncludesTax: gstSettings.priceIncludesTax,
+      });
+      const gstSnapshot = createGstSnapshot(gstSettings, gstBreakdown);
 
       // Prepare order for database
       const orderRecord = {
@@ -1071,7 +1094,15 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
         coupon_code: appliedCoupon?.code || null,
         automatic_discount_id: appliedCoupon ? null : (autoDiscountApplied?.id || null),
         delivery_charge: orderDeliveryFee,
-        total: finalTotal,
+        total: gstBreakdown.total,
+        gst_enabled: gstSettings.enabled,
+        gstin: gstSettings.gstin?.trim().toUpperCase() || null,
+        gst_rate: gstSettings.enabled ? gstSettings.rate : null,
+        gst_price_includes_tax: gstSettings.priceIncludesTax,
+        gst_show_on_summary: gstSettings.showOnSummary,
+        taxable_amount: gstBreakdown.taxableAmount,
+        gst_amount: gstBreakdown.gstAmount,
+        gst_snapshot: gstSnapshot,
         status: 'new',
         payment_method: selectedPaymentMethod,
         payment_status: selectedPaymentMethod === 'cod' ? 'pending' : 'awaiting_payment',
@@ -1086,7 +1117,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: finalTotal,   // client estimate — for fallback warning display only
+          amount: gstBreakdown.total,   // client estimate — for fallback warning display only
           currency: 'INR',
           baseOrderRecord: orderRecord,
           appliedCoupon,
@@ -1158,7 +1189,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           customerName: data.fullName,
           customerEmail: data.email,
           customerPhone: data.phone,
-          amount: finalTotal,
+          amount: gstBreakdown.total,
           currency: 'INR',
         });
       } else {
@@ -1178,7 +1209,12 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           subtotal: cartTotal,
           discount: discountAmount,
           deliveryCharge: orderDeliveryFee,
-          total: finalTotal,
+          total: gstBreakdown.total,
+          gstEnabled: gstSettings.enabled,
+          gstShowOnSummary: gstSettings.showOnSummary,
+          gstRate: gstSettings.rate,
+          taxableAmount: gstBreakdown.taxableAmount,
+          gstAmount: gstBreakdown.gstAmount,
         };
 
         // Generate and send WhatsApp message
@@ -1217,6 +1253,16 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
     return 0;
   })();
+  const appliedDiscountAmountForSummary = discountAmount > 0 ? discountAmount : autoDiscountAmount;
+  const gstSummary = calculateGst({
+    subtotal: cartTotal,
+    discountAmount: appliedDiscountAmountForSummary,
+    deliveryCharge: computedDeliveryFee,
+    gstEnabled: gstSettings.enabled,
+    gstRate: gstSettings.rate,
+    priceIncludesTax: gstSettings.priceIncludesTax,
+  });
+  const shouldShowGstSummary = gstSettings.enabled && gstSettings.showOnSummary && gstSummary.gstAmount > 0;
 
   const homeLink = storeSlug ? `/${storeSlug}` : "/home";
   const cartLink = storeSlug ? `/${storeSlug}/cart` : "/cart";
@@ -1682,6 +1728,22 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                     </div>
                   )}
 
+                  {shouldShowGstSummary && (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Taxable Value
+                          {gstSettings.priceIncludesTax && <span className="text-xs ml-1">(included)</span>}
+                        </span>
+                        <span>₹{gstSummary.taxableAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">GST ({gstSettings.rate}%)</span>
+                        <span>₹{gstSummary.gstAmount.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Delivery</span>
                     {computedDeliveryFee > 0 ? (
@@ -1707,7 +1769,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-semibold">Total</span>
                   <span data-ai="price-total" className="text-2xl font-bold text-primary">
-                    ₹{(cartTotal - (discountAmount > 0 ? discountAmount : autoDiscountAmount) + computedDeliveryFee).toFixed(2)}
+                    ₹{gstSummary.total.toFixed(2)}
                   </span>
                 </div>
 
