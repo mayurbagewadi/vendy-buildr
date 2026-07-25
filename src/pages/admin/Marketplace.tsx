@@ -50,6 +50,7 @@ const getIconComponent = (iconName: string) => {
 const getFeatureRoute = (slug: string): string => {
   const routeMap: Record<string, string> = {
     'shipping': '/admin/shipping',
+    'delhivery': '/admin/shipping',
     'analytics': '/admin/analytics',
     'live-chat': '/admin/live-chat',
     'email-marketing': '/admin/email-marketing',

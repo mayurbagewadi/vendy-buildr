@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, Phone, Mail, Package, Calendar, Clock, Download, Copy, CheckCheck, CreditCard } from "lucide-react";
+import { MapPin, User, Phone, Mail, Package, Calendar, Clock, Download, Copy, CheckCheck, CreditCard, Truck } from "lucide-react";
 import { useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -41,6 +41,10 @@ interface Order {
   created_at: string;
   coupon_code?: string;
   discount_amount?: number;
+  awb_code?: string | null;
+  courier_name?: string | null;
+  shipping_status?: string | null;
+  tracking_url?: string | null;
 }
 
 interface OrderDetailModalProps {
@@ -385,6 +389,45 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
               )}
             </div>
           </div>
+
+          {/* Shipping Information */}
+          {(order.awb_code || order.shipping_status || order.courier_name) && (
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Shipping Information
+              </h3>
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                {order.courier_name && (
+                  <p><strong>Courier:</strong> {order.courier_name}</p>
+                )}
+                {order.awb_code && (
+                  <p><strong>AWB:</strong> <span className="font-mono">{order.awb_code}</span></p>
+                )}
+                {order.shipping_status && (
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    <Badge variant="outline" className="capitalize">
+                      {order.shipping_status.replace(/_/g, " ")}
+                    </Badge>
+                  </p>
+                )}
+                {order.tracking_url && (
+                  <p>
+                    <strong>Tracking:</strong>{" "}
+                    <a
+                      href={order.tracking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      View customer tracking page
+                    </a>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Order Items */}
           <div>

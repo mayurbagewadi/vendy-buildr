@@ -368,8 +368,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       icon: CreditCard,
       current: location.pathname === "/admin/subscription",
     },
-    // Conditionally show Shipping when enabled
-    ...(enabledFeatures.includes('shipping') ? [{
+    // Conditionally show Shipping when at least one shipping provider is installed
+    ...(enabledFeatures.includes('shipping') || enabledFeatures.includes('delhivery') ? [{
       name: "Shipping",
       href: "/admin/shipping",
       icon: Truck,

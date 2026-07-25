@@ -14,6 +14,8 @@ import * as XLSX from 'xlsx';
 import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
 import { EditOrderModal } from "@/components/admin/EditOrderModal";
 import { shiprocketLogin, shiprocketCreateOrder, convertToShiprocketOrder, shiprocketGetPickupLocations } from "@/lib/shiprocket";
+import { getShippingIntegrations } from "@/lib/shippingIntegrations";
+import { createDelhiveryShipment, refreshDelhiveryTracking } from "@/lib/shippingShipments";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +50,10 @@ interface Order {
   coupon_code?: string;
   discount_amount?: number;
   automatic_discount_id?: string;
+  awb_code?: string | null;
+  courier_name?: string | null;
+  shipping_status?: string | null;
+  tracking_url?: string | null;
 }
 
 const Orders = () => {
@@ -66,6 +72,7 @@ const Orders = () => {
   const [planName, setPlanName] = useState<string>("");
   const [shiprocketConnected, setShiprocketConnected] = useState(false);
   const [shiprocketToken, setShiprocketToken] = useState<string | null>(null);
+  const [delhiveryConnected, setDelhiveryConnected] = useState(false);
   const [pickupLocation, setPickupLocation] = useState<string>("");
   const [packageDefaults, setPackageDefaults] = useState({ length: 10, breadth: 10, height: 10, weight: 0.5 });
   const [shippingOrderId, setShippingOrderId] = useState<string | null>(null);
@@ -75,6 +82,8 @@ const Orders = () => {
   const [doubleDiscountWarningDismissed, setDoubleDiscountWarningDismissed] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [failedOrders, setFailedOrders] = useState<Order[]>([]);
+  const hasConnectedShippingProvider = shiprocketConnected || delhiveryConnected;
+  const shouldOpenShippingOptions = shippingPopupEnabled || hasConnectedShippingProvider;
 
   useEffect(() => {
     checkAuthAndLoadOrders();
@@ -108,6 +117,9 @@ const Orders = () => {
 
       // Check shipping popup enabled setting
       setShippingPopupEnabled(store.shipping_popup_enabled || false);
+      setShiprocketConnected(false);
+      setShiprocketToken(null);
+      setDelhiveryConnected(false);
 
       // Check Shiprocket connection
       if (store.shiprocket_token) {
@@ -125,6 +137,19 @@ const Orders = () => {
         if (store.package_breadth) setPackageDefaults(prev => ({ ...prev, breadth: store.package_breadth }));
         if (store.package_height) setPackageDefaults(prev => ({ ...prev, height: store.package_height }));
         if (store.package_weight) setPackageDefaults(prev => ({ ...prev, weight: store.package_weight }));
+      }
+
+      try {
+        const integrationsResult = await getShippingIntegrations(store.id);
+        const delhivery = integrationsResult.integrations.find(
+          (integration) =>
+            integration.provider === "delhivery" &&
+            integration.enabled &&
+            integration.status === "connected"
+        );
+        setDelhiveryConnected(Boolean(delhivery));
+      } catch (integrationError) {
+        console.warn("Failed to load Delhivery integration:", integrationError);
       }
 
       // Get subscription and plan details to check view limit
@@ -443,7 +468,7 @@ const Orders = () => {
   };
 
   const handleShipClick = (order: Order) => {
-    if (shippingPopupEnabled) {
+    if (shouldOpenShippingOptions) {
       // Show modal with options
       setOrderToShip(order);
       setShipModalOpen(true);
@@ -499,6 +524,53 @@ const Orders = () => {
     }
   };
 
+  const handleShipViaDelhivery = async () => {
+    if (!orderToShip) return;
+
+    setShipModalOpen(false);
+    setShippingOrderId(orderToShip.id);
+
+    try {
+      const result = await createDelhiveryShipment(orderToShip.id);
+      toast({
+        title: result.reused ? "Delhivery Shipment Already Exists" : "Delhivery Shipment Created",
+        description: result.shipment.awb ? `AWB: ${result.shipment.awb}` : "Shipment saved",
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: "Delhivery Error",
+        description: error.message || "Failed to create Delhivery shipment",
+        variant: "destructive",
+      });
+    } finally {
+      setShippingOrderId(null);
+      setOrderToShip(null);
+    }
+  };
+
+  const handleRefreshDelhiveryTracking = async (order: Order) => {
+    if (!order.awb_code) return;
+    setShippingOrderId(order.id);
+
+    try {
+      const result = await refreshDelhiveryTracking(order.id);
+      toast({
+        title: result.cached ? "Tracking Recently Synced" : "Tracking Updated",
+        description: `Delhivery status: ${result.shipment.status}`,
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: "Tracking Error",
+        description: error.message || "Failed to refresh Delhivery tracking",
+        variant: "destructive",
+      });
+    } finally {
+      setShippingOrderId(null);
+    }
+  };
+
   const handleManualDelivery = async () => {
     if (!orderToShip) return;
     setShipModalOpen(false);
@@ -517,6 +589,16 @@ const Orders = () => {
   const getPaymentStatusColor = (paymentMethod: string) => {
     const isCOD = paymentMethod.toLowerCase() === "cod" || paymentMethod.toLowerCase() === "cash on delivery";
     return isCOD ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400";
+  };
+
+  const getShippingBadge = (order: Order) => {
+    if (!order.awb_code && !order.shipping_status) return null;
+
+    return (
+      <Badge variant="outline" className="w-fit text-[11px] capitalize">
+        {order.courier_name || "Shipping"}: {(order.shipping_status || order.awb_code || "created").replace(/_/g, " ")}
+      </Badge>
+    );
   };
 
   // Check if there are orders with both coupon and auto discount applied
@@ -784,6 +866,7 @@ const Orders = () => {
                           {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''} • {order.payment_method.toUpperCase()}
                         </span>
                       </div>
+                      {getShippingBadge(order)}
                       <div className="ml-auto">
                         {order.status === 'cancelled' || order.status === 'delivered'
                           ? getStatusBadge(order.status)
@@ -820,7 +903,7 @@ const Orders = () => {
                           onClick={() => handleShipClick(order)}
                           className="h-10 flex-1 gap-2"
                           disabled={shippingOrderId === order.id || updatingOrderId === order.id}
-                          title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
+                          title={shouldOpenShippingOptions ? "Ship Order" : "Mark as Delivered"}
                         >
                           {shippingOrderId === order.id || updatingOrderId === order.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -828,6 +911,22 @@ const Orders = () => {
                             <Truck className="h-4 w-4" />
                           )}
                           Ship
+                        </Button>
+                      )}
+                      {order.courier_name === "Delhivery" && order.awb_code && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRefreshDelhiveryTracking(order)}
+                          className="h-10 w-10 p-0"
+                          disabled={shippingOrderId === order.id}
+                          title="Refresh Delhivery Tracking"
+                        >
+                          {shippingOrderId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
                         </Button>
                       )}
                       {order.status !== "cancelled" && (
@@ -907,12 +1006,15 @@ const Orders = () => {
                         {formatCurrency(order.total)}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {order.status === 'cancelled' || order.status === 'delivered'
-                          ? getStatusBadge(order.status)
-                          : order.payment_status === 'failed'
-                            ? <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Failed</Badge>
-                            : getStatusBadge(order.status)
-                        }
+                        <div className="flex flex-col gap-1">
+                          {order.status === 'cancelled' || order.status === 'delivered'
+                            ? getStatusBadge(order.status)
+                            : order.payment_status === 'failed'
+                              ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
+                              : getStatusBadge(order.status)
+                          }
+                          {getShippingBadge(order)}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
@@ -939,7 +1041,7 @@ const Orders = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleShipClick(order)}
-                              title={shippingPopupEnabled ? "Ship Order" : "Mark as Delivered"}
+                              title={shouldOpenShippingOptions ? "Ship Order" : "Mark as Delivered"}
                               className="h-10 w-10 p-0 text-blue-600 hover:text-blue-700"
                               disabled={shippingOrderId === order.id || updatingOrderId === order.id}
                             >
@@ -947,6 +1049,22 @@ const Orders = () => {
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Truck className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          {order.courier_name === "Delhivery" && order.awb_code && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRefreshDelhiveryTracking(order)}
+                              title="Refresh Delhivery Tracking"
+                              className="h-10 w-10 p-0 text-blue-600 hover:text-blue-700"
+                              disabled={shippingOrderId === order.id}
+                            >
+                              {shippingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4" />
                               )}
                             </Button>
                           )}
@@ -1024,6 +1142,21 @@ const Orders = () => {
                   <div className="text-left">
                     <div className="font-medium">Ship via Shiprocket</div>
                     <div className="text-xs text-muted-foreground">Create shipment with courier partner</div>
+                  </div>
+                </Button>
+              )}
+              {delhiveryConnected && (
+                <Button
+                  onClick={handleShipViaDelhivery}
+                  className="w-full h-14 justify-start gap-4 border-primary"
+                  variant="outline"
+                >
+                  <div className="p-2 rounded-lg bg-sky-100 dark:bg-sky-900">
+                    <Truck className="h-5 w-5 text-sky-600" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">Ship via Delhivery</div>
+                    <div className="text-xs text-muted-foreground">Create AWB and save tracking in admin</div>
                   </div>
                 </Button>
               )}
