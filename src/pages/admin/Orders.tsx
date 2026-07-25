@@ -15,7 +15,7 @@ import { OrderDetailModal } from "@/components/admin/OrderDetailModal";
 import { EditOrderModal } from "@/components/admin/EditOrderModal";
 import { shiprocketLogin, shiprocketCreateOrder, convertToShiprocketOrder, shiprocketGetPickupLocations } from "@/lib/shiprocket";
 import { getShippingIntegrations } from "@/lib/shippingIntegrations";
-import { createDelhiveryShipment, refreshDelhiveryTracking } from "@/lib/shippingShipments";
+import { bulkRefreshDelhiveryTracking, cancelDelhiveryShipment, createDelhiveryShipment, refreshDelhiveryTracking } from "@/lib/shippingShipments";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,17 @@ interface Order {
   coupon_code?: string;
   discount_amount?: number;
   automatic_discount_id?: string;
+  gst_enabled?: boolean;
+  gstin?: string | null;
+  gst_rate?: number | null;
+  gst_price_includes_tax?: boolean;
+  gst_show_on_summary?: boolean;
+  taxable_amount?: number;
+  gst_amount?: number;
+  invoice_prefix?: string | null;
+  invoice_number?: string | null;
+  invoice_issued_at?: string | null;
+  gst_snapshot?: any;
   awb_code?: string | null;
   courier_name?: string | null;
   shipping_status?: string | null;
@@ -81,6 +92,7 @@ const Orders = () => {
   const [shippingPopupEnabled, setShippingPopupEnabled] = useState(false);
   const [doubleDiscountWarningDismissed, setDoubleDiscountWarningDismissed] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [bulkTrackingRefreshing, setBulkTrackingRefreshing] = useState(false);
   const [failedOrders, setFailedOrders] = useState<Order[]>([]);
   const hasConnectedShippingProvider = shiprocketConnected || delhiveryConnected;
   const shouldOpenShippingOptions = shippingPopupEnabled || hasConnectedShippingProvider;
@@ -385,6 +397,11 @@ const Orders = () => {
       "Items": Array.isArray(order.items) 
         ? order.items.map((item: any) => `${item.name} (${item.quantity}x)`).join(", ")
         : "N/A",
+      "Invoice Number": order.invoice_number || "N/A",
+      "GSTIN": order.gstin || "N/A",
+      "GST Rate": order.gst_rate != null ? `${order.gst_rate}%` : "N/A",
+      "Taxable Amount": order.taxable_amount || 0,
+      "GST Amount": order.gst_amount || 0,
       "Amount": order.total,
       "Payment Method": order.payment_method,
       "Status": order.status,
@@ -571,6 +588,55 @@ const Orders = () => {
     }
   };
 
+  const handleBulkRefreshDelhiveryTracking = async () => {
+    if (!delhiveryConnected || bulkTrackingRefreshing) return;
+    setBulkTrackingRefreshing(true);
+
+    try {
+      const result = await bulkRefreshDelhiveryTracking();
+      toast({
+        title: "Delhivery Tracking Refreshed",
+        description: `Checked ${result.scanned} active shipments and updated ${result.updated}.`,
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: "Bulk Refresh Error",
+        description: error.message || "Failed to refresh Delhivery tracking",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkTrackingRefreshing(false);
+    }
+  };
+
+  const canCancelDelhiveryShipment = (order: Order) => {
+    if (order.courier_name !== "Delhivery" || !order.awb_code) return false;
+    return ["manifested", "pickup_scheduled", "failed"].includes(order.shipping_status || "");
+  };
+
+  const handleCancelDelhiveryShipment = async (order: Order) => {
+    if (!canCancelDelhiveryShipment(order)) return;
+    setShippingOrderId(order.id);
+
+    try {
+      await cancelDelhiveryShipment(order.id, "Cancelled by store admin");
+      toast({
+        title: "Delhivery Shipment Cancelled",
+        description: `AWB ${order.awb_code} has been cancelled`,
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: "Cancellation Error",
+        description: error.message || "Failed to cancel Delhivery shipment",
+        variant: "destructive",
+      });
+    } finally {
+      setShippingOrderId(null);
+    }
+  };
+
   const handleManualDelivery = async () => {
     if (!orderToShip) return;
     setShipModalOpen(false);
@@ -682,6 +748,22 @@ const Orders = () => {
               <RefreshCw className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
+            {delhiveryConnected && (
+              <Button
+                onClick={handleBulkRefreshDelhiveryTracking}
+                variant="outline"
+                size="sm"
+                disabled={bulkTrackingRefreshing}
+                title="Refresh active Delhivery shipments from the last 20 days"
+              >
+                {bulkTrackingRefreshing ? (
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">Refresh Tracking</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -929,7 +1011,23 @@ const Orders = () => {
                           )}
                         </Button>
                       )}
-                      {order.status !== "cancelled" && (
+                      {canCancelDelhiveryShipment(order) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancelDelhiveryShipment(order)}
+                          className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                          disabled={shippingOrderId === order.id}
+                          title="Cancel Delhivery Shipment"
+                        >
+                          {shippingOrderId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Ban className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      {order.status !== "cancelled" && !canCancelDelhiveryShipment(order) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1068,7 +1166,23 @@ const Orders = () => {
                               )}
                             </Button>
                           )}
-                          {order.status !== "cancelled" && (
+                          {canCancelDelhiveryShipment(order) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCancelDelhiveryShipment(order)}
+                              title="Cancel Delhivery Shipment"
+                              className="h-10 w-10 p-0 text-destructive hover:text-destructive"
+                              disabled={shippingOrderId === order.id}
+                            >
+                              {shippingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          {order.status !== "cancelled" && !canCancelDelhiveryShipment(order) && (
                             <Button
                               variant="ghost"
                               size="sm"

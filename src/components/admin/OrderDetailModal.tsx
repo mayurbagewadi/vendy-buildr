@@ -41,6 +41,17 @@ interface Order {
   created_at: string;
   coupon_code?: string;
   discount_amount?: number;
+  gst_enabled?: boolean;
+  gstin?: string | null;
+  gst_rate?: number | null;
+  gst_price_includes_tax?: boolean;
+  gst_show_on_summary?: boolean;
+  taxable_amount?: number;
+  gst_amount?: number;
+  invoice_prefix?: string | null;
+  invoice_number?: string | null;
+  invoice_issued_at?: string | null;
+  gst_snapshot?: any;
   awb_code?: string | null;
   courier_name?: string | null;
   shipping_status?: string | null;
@@ -57,6 +68,10 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
   const [copied, setCopied] = useState(false);
 
   if (!order) return null;
+
+  const customerTrackingUrl = order.awb_code
+    ? `${window.location.origin}/track/${encodeURIComponent(order.awb_code)}`
+    : order.tracking_url;
 
   const isOnlinePayment = order.payment_method.toLowerCase() !== "cod" &&
     order.payment_method.toLowerCase() !== "cash on delivery";
@@ -130,6 +145,24 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
     doc.setFont(undefined, "bold");
     doc.text(`Order Details - ${order.order_number}`, margin, yPosition);
     yPosition += 12;
+
+    if (order.gst_enabled && order.invoice_number) {
+      doc.setFontSize(11);
+      doc.setFont(undefined, "bold");
+      doc.text("INVOICE INFORMATION", margin, yPosition);
+      yPosition += 7;
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(10);
+      doc.text(`Invoice Number: ${order.invoice_number}`, margin + 5, yPosition);
+      yPosition += 5;
+      doc.text(`Invoice Date: ${formatDate(order.invoice_issued_at || order.created_at)}`, margin + 5, yPosition);
+      yPosition += 5;
+      if (order.gstin) {
+        doc.text(`GSTIN: ${order.gstin}`, margin + 5, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 5;
+    }
 
     // Customer Information
     doc.setFontSize(11);
@@ -234,6 +267,11 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
       summaryData.push(["Discount:", `-${formatCurrencyForPDF(order.discount_amount)}`]);
     }
 
+    if (order.gst_enabled && order.gst_show_on_summary !== false && (order.gst_amount || 0) > 0) {
+      summaryData.push(["Taxable Value:", formatCurrencyForPDF(order.taxable_amount || 0)]);
+      summaryData.push([`GST (${order.gst_rate || 0}%):`, formatCurrencyForPDF(order.gst_amount || 0)]);
+    }
+
     // Add total and payment method
     summaryData.push([totalLabel, formatCurrencyForPDF(order.total)]);
     summaryData.push(["Payment Method:", order.payment_method.toUpperCase()]);
@@ -333,6 +371,27 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
             </div>
           </div>
 
+          {order.gst_enabled && (
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Invoice Information
+              </h3>
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                {order.invoice_number && (
+                  <p><strong>Invoice Number:</strong> <span className="font-mono">{order.invoice_number}</span></p>
+                )}
+                <p><strong>Invoice Date:</strong> {formatDate(order.invoice_issued_at || order.created_at)}</p>
+                {order.gstin && (
+                  <p><strong>GSTIN:</strong> <span className="font-mono">{order.gstin}</span></p>
+                )}
+                {order.gst_rate != null && (
+                  <p><strong>GST Rate:</strong> {order.gst_rate}% {order.gst_price_includes_tax ? "(price included GST)" : "(added at checkout)"}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Customer Information */}
           <div>
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -412,11 +471,11 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
                     </Badge>
                   </p>
                 )}
-                {order.tracking_url && (
+                {customerTrackingUrl && (
                   <p>
                     <strong>Tracking:</strong>{" "}
                     <a
-                      href={order.tracking_url}
+                      href={customerTrackingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
@@ -488,6 +547,18 @@ export function OrderDetailModal({ order, open, onClose }: OrderDetailModalProps
                       <span className="text-red-600 dark:text-red-400 font-medium">-{formatCurrency(order.discount_amount)}</span>
                     </div>
                   )}
+                </>
+              )}
+              {order.gst_enabled && order.gst_show_on_summary !== false && (order.gst_amount || 0) > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Taxable Value:</span>
+                    <span>{formatCurrency(order.taxable_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>GST ({order.gst_rate || 0}%):</span>
+                    <span>{formatCurrency(order.gst_amount || 0)}</span>
+                  </div>
                 </>
               )}
               <Separator />

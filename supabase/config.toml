@@ -32,3 +32,12 @@ verify_jwt = true
 
 [functions.instagram-fetch-reels]
 verify_jwt = false
+
+[functions.public-shipment-tracking]
+verify_jwt = false
+
+[functions.delhivery-tracking-webhook]
+verify_jwt = false
+
+[functions.shipping-notification-worker]
+verify_jwt = false

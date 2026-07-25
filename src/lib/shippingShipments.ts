@@ -58,3 +58,27 @@ export const refreshDelhiveryTracking = async (
     order_id: orderId,
   });
 };
+
+export const bulkRefreshDelhiveryTracking = async (): Promise<{
+  success: boolean;
+  scanned: number;
+  updated: number;
+  batch_size: number;
+  days: number;
+  limit: number;
+}> => {
+  return callShippingShipmentsFunction({
+    action: "bulk_refresh_delhivery_tracking",
+  });
+};
+
+export const cancelDelhiveryShipment = async (
+  orderId: string,
+  reason?: string,
+): Promise<{ shipment: ShippingShipment; cancelled: boolean }> => {
+  return callShippingShipmentsFunction({
+    action: "cancel_delhivery_shipment",
+    order_id: orderId,
+    reason,
+  });
+};

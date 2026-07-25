@@ -11,6 +11,12 @@ const DELHIVERY_BASE_URLS = {
   production: "https://track.delhivery.com",
   staging: "https://staging-express.delhivery.com",
 } as const;
+const STOREFRONT_DOMAIN = "digitaldukandar.in";
+const ACTIVE_TRACKING_STATUSES = ["manifested", "pickup_scheduled", "picked_up", "in_transit", "out_for_delivery", "failed"];
+const BULK_REFRESH_DAYS = 20;
+const BULK_REFRESH_BATCH_SIZE = 30;
+const BULK_REFRESH_LIMIT = 90;
+const TRACKING_REFRESH_CACHE_MS = 120000;
 
 type Environment = keyof typeof DELHIVERY_BASE_URLS;
 
@@ -148,6 +154,26 @@ function normalizeShipmentStatus(value: unknown): string {
   return "manifested";
 }
 
+function isFinalShipmentStatus(status: unknown): boolean {
+  return ["delivered", "cancelled", "returned", "rto_initiated"].includes(String(status || ""));
+}
+
+function canCancelShipment(status: unknown): boolean {
+  return ["pending", "manifested", "pickup_scheduled", "failed"].includes(String(status || ""));
+}
+
+function trackingEventKey(awb: string, status: string, happenedAt: string, location = "", message = ""): string {
+  return [awb, status, happenedAt, location, message].join("|").slice(0, 512);
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 function sanitizeShipment(row: any) {
   return {
     id: row.id,
@@ -159,6 +185,26 @@ function sanitizeShipment(row: any) {
     last_synced_at: row.last_synced_at,
     last_error: row.last_error,
   };
+}
+
+function buildCustomerTrackingUrl(store: any, awb: string): string {
+  const encodedAwb = encodeURIComponent(awb);
+  const customDomain = cleanText(store.custom_domain);
+  if (customDomain && store.custom_domain_verified) {
+    return `https://${customDomain}/track/${encodedAwb}`;
+  }
+
+  const subdomain = cleanText(store.subdomain);
+  if (subdomain) {
+    return `https://${subdomain}.${STOREFRONT_DOMAIN}/track/${encodedAwb}`;
+  }
+
+  const slug = cleanText(store.slug);
+  if (slug) {
+    return `https://${STOREFRONT_DOMAIN}/${encodeURIComponent(slug)}/track/${encodedAwb}`;
+  }
+
+  return `https://www.delhivery.com/track/package/${encodedAwb}`;
 }
 
 async function enforceRateLimit(
@@ -251,6 +297,176 @@ async function createDelhiveryOrder(apiToken: string, baseUrl: string, payload: 
   return result;
 }
 
+async function cancelDelhiveryOrder(apiToken: string, baseUrl: string, awb: string) {
+  const response = await fetch(new URL("/api/p/edit", baseUrl).toString(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Token " + apiToken,
+    },
+    body: JSON.stringify({
+      waybill: awb,
+      cancellation: "true",
+    }),
+  });
+
+  const text = await response.text();
+  let result: any = null;
+  try {
+    result = text ? JSON.parse(text) : null;
+  } catch {
+    result = { raw: text };
+  }
+
+  if (!response.ok) {
+    throw new Error(extractProviderError(result));
+  }
+
+  if (result?.success === false || String(result?.status || "").toLowerCase() === "fail") {
+    throw new Error(extractProviderError(result));
+  }
+
+  return result;
+}
+
+async function fetchDelhiveryTracking(apiToken: string, baseUrl: string, awbs: string[]) {
+  const url = new URL("/api/v1/packages/json/", baseUrl);
+  url.searchParams.set("waybill", awbs.join(","));
+  url.searchParams.set("token", apiToken);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  const tracking = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(tracking?.error || tracking?.detail || "Delhivery tracking request failed");
+  }
+
+  return tracking;
+}
+
+function parseTrackingShipments(tracking: any): any[] {
+  if (Array.isArray(tracking?.ShipmentData)) {
+    return tracking.ShipmentData.map((item: any) => item?.Shipment || item).filter(Boolean);
+  }
+  if (tracking?.Shipment) return [tracking.Shipment];
+  return [];
+}
+
+function parseProviderTracking(providerShipment: any, fallback: any = {}) {
+  const statusPayload =
+    providerShipment?.Status && typeof providerShipment.Status === "object"
+      ? providerShipment.Status
+      : fallback?.Status && typeof fallback.Status === "object"
+        ? fallback.Status
+        : {};
+  const providerStatus = firstNonEmpty(
+    statusPayload.Status,
+    statusPayload.status,
+    typeof providerShipment?.Status === "string" ? providerShipment.Status : "",
+    typeof fallback?.Status === "string" ? fallback.Status : "",
+  );
+  const normalizedStatus = normalizeShipmentStatus(providerStatus);
+  const awb = firstNonEmpty(providerShipment?.AWB, providerShipment?.AWBNo, providerShipment?.waybill, providerShipment?.wbn, fallback?.AWB);
+  const happenedAt = statusPayload.StatusDateTime || statusPayload.status_date_time || new Date().toISOString();
+  const location = cleanText(statusPayload.StatusLocation || statusPayload.location);
+  const message = firstNonEmpty(statusPayload.Instructions, statusPayload.Status, providerStatus);
+
+  return { awb, normalizedStatus, happenedAt, location, message, statusPayload };
+}
+
+async function saveTrackingUpdate(supabase: any, shipment: any, parsed: any, rawEvent: any, nextOrderStatus: string) {
+  const { data: updatedShipment, error: updateError } = await supabase
+    .from("shipments")
+    .update({
+      status: parsed.normalizedStatus,
+      last_synced_at: new Date().toISOString(),
+      last_error: null,
+      raw_response: rawEvent,
+      cancelled_at: parsed.normalizedStatus === "cancelled" ? new Date().toISOString() : shipment.cancelled_at,
+    })
+    .eq("id", shipment.id)
+    .select("*")
+    .single();
+
+  if (updateError) throw updateError;
+
+  await supabase.from("shipment_events").upsert(
+    {
+      shipment_id: shipment.id,
+      status: parsed.normalizedStatus,
+      location: parsed.location,
+      message: parsed.message,
+      happened_at: parsed.happenedAt,
+      raw_event: parsed.statusPayload || rawEvent,
+      event_key: trackingEventKey(shipment.awb, parsed.normalizedStatus, parsed.happenedAt, parsed.location, parsed.message),
+    },
+    { onConflict: "shipment_id,event_key" },
+  );
+
+  await supabase
+    .from("orders")
+    .update({
+      shipping_status: parsed.normalizedStatus,
+      status: nextOrderStatus,
+      tracking_url: shipment.tracking_url,
+    })
+    .eq("id", shipment.order_id);
+
+  return updatedShipment;
+}
+
+async function queueShipmentCreatedNotification(supabase: any, order: any, store: any, shipment: any) {
+  if (!shipment?.id || !shipment?.awb) return;
+
+  const basePayload = {
+    customer_name: order.customer_name,
+    order_number: order.order_number,
+    store_name: store.name,
+    provider: "Delhivery",
+    awb: shipment.awb,
+    tracking_url: shipment.tracking_url,
+  };
+
+  const phone = cleanText(order.customer_phone);
+  if (phone) {
+    await supabase.from("shipping_notification_jobs").upsert(
+      {
+        store_id: store.id,
+        order_id: order.id,
+        shipment_id: shipment.id,
+        channel: "whatsapp",
+        template: "shipment_created",
+        recipient: phone,
+        payload: basePayload,
+        status: "pending",
+        scheduled_at: new Date().toISOString(),
+      },
+      { onConflict: "shipment_id,channel,template" },
+    );
+  }
+
+  const email = cleanText(order.customer_email);
+  if (email) {
+    await supabase.from("shipping_notification_jobs").upsert(
+      {
+        store_id: store.id,
+        order_id: order.id,
+        shipment_id: shipment.id,
+        channel: "email",
+        template: "shipment_created",
+        recipient: email,
+        payload: basePayload,
+        status: "pending",
+        scheduled_at: new Date().toISOString(),
+      },
+      { onConflict: "shipment_id,channel,template" },
+    );
+  }
+}
+
 function buildDelhiveryPayload(order: any, store: any, integration: any) {
   const pincode = normalizePincode(order.delivery_pincode);
   const storePincode = normalizePincode(store.postal_code);
@@ -313,7 +529,7 @@ async function loadOwnedOrderContext(supabase: any, userId: string, orderId: str
 
   const { data: store, error: storeError } = await supabase
     .from("stores")
-    .select("id, user_id, name, business_phone, business_email, whatsapp_number, address, street_address, city, state, country, postal_code, package_length, package_breadth, package_height, package_weight")
+    .select("id, user_id, name, slug, subdomain, custom_domain, custom_domain_verified, business_phone, business_email, whatsapp_number, address, street_address, city, state, country, postal_code, package_length, package_breadth, package_height, package_weight")
     .eq("id", order.store_id)
     .eq("user_id", userId)
     .single();
@@ -323,6 +539,20 @@ async function loadOwnedOrderContext(supabase: any, userId: string, orderId: str
   }
 
   return { order, store };
+}
+
+async function loadOwnedStoreContext(supabase: any, userId: string) {
+  const { data: store, error: storeError } = await supabase
+    .from("stores")
+    .select("id, user_id, name, slug, subdomain, custom_domain, custom_domain_verified")
+    .eq("user_id", userId)
+    .single();
+
+  if (storeError || !store) {
+    throw new Error("Store not found");
+  }
+
+  return store;
 }
 
 async function loadDelhiveryIntegration(supabase: any, storeId: string) {
@@ -362,6 +592,72 @@ serve(async (req) => {
 
     const body = await req.json();
     const action = body?.action;
+
+    if (action === "bulk_refresh_delhivery_tracking") {
+      const store = await loadOwnedStoreContext(supabase, userResult.user.id);
+      const allowed = await enforceRateLimit(supabase, store.id, userResult.user.id, action, 3, 600);
+      if (!allowed) return jsonResponse({ error: "Too many bulk refreshes. Try again in 10 minutes." }, 429);
+
+      const integration = await loadDelhiveryIntegration(supabase, store.id);
+      const apiToken = await decryptSecret(integration.encrypted_api_token);
+      const environment = normalizeEnvironment(integration.environment);
+      const baseUrl = DELHIVERY_BASE_URLS[environment];
+      const createdAfter = new Date(Date.now() - BULK_REFRESH_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const staleBefore = new Date(Date.now() - TRACKING_REFRESH_CACHE_MS).toISOString();
+
+      const { data: shipments, error: shipmentError } = await supabase
+        .from("shipments")
+        .select("id, store_id, order_id, awb, status, cancelled_at, tracking_url, last_synced_at, created_at")
+        .eq("store_id", store.id)
+        .eq("provider", "delhivery")
+        .not("awb", "is", null)
+        .in("status", ACTIVE_TRACKING_STATUSES)
+        .gte("created_at", createdAfter)
+        .or(`last_synced_at.is.null,last_synced_at.lt.${staleBefore}`)
+        .order("last_synced_at", { ascending: true, nullsFirst: true })
+        .limit(BULK_REFRESH_LIMIT);
+
+      if (shipmentError) throw shipmentError;
+
+      const results: any[] = [];
+      for (const shipmentChunk of chunk(shipments || [], BULK_REFRESH_BATCH_SIZE)) {
+        const awbs = shipmentChunk.map((shipment) => shipment.awb).filter(Boolean);
+        if (awbs.length === 0) continue;
+
+        const tracking = await fetchDelhiveryTracking(apiToken, baseUrl, awbs);
+        const providerShipments = parseTrackingShipments(tracking);
+        const shipmentByAwb = new Map(shipmentChunk.map((shipment) => [shipment.awb, shipment]));
+
+        for (const providerShipment of providerShipments) {
+          const parsed = parseProviderTracking(providerShipment);
+          const shipment = shipmentByAwb.get(parsed.awb);
+          if (!shipment) {
+            results.push({ updated: false, awb: parsed.awb, error: "Shipment not found in batch" });
+            continue;
+          }
+
+          const nextOrderStatus =
+            parsed.normalizedStatus === "delivered"
+              ? "delivered"
+              : parsed.normalizedStatus === "cancelled"
+                ? "cancelled"
+                : "processing";
+          await saveTrackingUpdate(supabase, shipment, parsed, providerShipment, nextOrderStatus);
+          results.push({ updated: true, awb: parsed.awb, status: parsed.normalizedStatus });
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        scanned: shipments?.length || 0,
+        updated: results.filter((result) => result.updated).length,
+        batch_size: BULK_REFRESH_BATCH_SIZE,
+        days: BULK_REFRESH_DAYS,
+        limit: BULK_REFRESH_LIMIT,
+        results,
+      });
+    }
+
     const orderId = body?.order_id;
 
     if (!orderId || !isValidUUID(orderId)) {
@@ -405,7 +701,7 @@ serve(async (req) => {
         throw new Error("Delhivery did not return an AWB number");
       }
 
-      const trackingUrl = `https://www.delhivery.com/track/package/${encodeURIComponent(awb)}`;
+      const trackingUrl = buildCustomerTrackingUrl(store, awb);
       const shipmentRecord = {
         store_id: store.id,
         order_id: orderId,
@@ -433,6 +729,7 @@ serve(async (req) => {
         shipment_id: shipment.id,
         status: "manifested",
         message: "Shipment manifested in Delhivery",
+        event_key: trackingEventKey(awb, "manifested", new Date().toISOString(), "", "Shipment manifested in Delhivery"),
         raw_event: result,
       });
 
@@ -446,6 +743,8 @@ serve(async (req) => {
           status: "processing",
         })
         .eq("id", orderId);
+
+      await queueShipmentCreatedNotification(supabase, order, store, shipment);
 
       return jsonResponse({ shipment: sanitizeShipment(shipment) });
     }
@@ -465,36 +764,53 @@ serve(async (req) => {
         throw new Error("No Delhivery shipment found for this order");
       }
 
-      if (shipment.last_synced_at && Date.now() - new Date(shipment.last_synced_at).getTime() < 120000) {
+      if (shipment.last_synced_at && Date.now() - new Date(shipment.last_synced_at).getTime() < TRACKING_REFRESH_CACHE_MS) {
         return jsonResponse({ shipment: sanitizeShipment(shipment), cached: true });
       }
 
-      const url = new URL("/api/v1/packages/json/", baseUrl);
-      url.searchParams.set("waybill", shipment.awb);
-      url.searchParams.set("token", apiToken);
+      const tracking = await fetchDelhiveryTracking(apiToken, baseUrl, [shipment.awb]);
+      const providerShipment = tracking?.ShipmentData?.[0]?.Shipment || tracking?.Shipment || {};
+      const parsed = parseProviderTracking(providerShipment, tracking);
+      const nextOrderStatus = parsed.normalizedStatus === "delivered" ? "delivered" : order.status === "new" ? "processing" : order.status;
+      const updatedShipment = await saveTrackingUpdate(supabase, shipment, parsed, tracking, nextOrderStatus);
 
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-      const tracking = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(tracking?.error || tracking?.detail || "Delhivery tracking request failed");
+      return jsonResponse({ shipment: sanitizeShipment(updatedShipment) });
+    }
+
+    if (action === "cancel_delhivery_shipment") {
+      const allowed = await enforceRateLimit(supabase, store.id, userResult.user.id, action, 8, 60);
+      if (!allowed) return jsonResponse({ error: "Too many cancellation attempts. Try again in a minute." }, 429);
+
+      const { data: shipment, error: shipmentError } = await supabase
+        .from("shipments")
+        .select("*")
+        .eq("order_id", orderId)
+        .eq("provider", "delhivery")
+        .single();
+
+      if (shipmentError || !shipment?.awb) {
+        throw new Error("No Delhivery shipment found for this order");
       }
 
-      const providerShipment = tracking?.ShipmentData?.[0]?.Shipment || tracking?.Shipment || {};
-      const statusPayload = providerShipment?.Status || tracking?.Status || {};
-      const providerStatus = firstNonEmpty(statusPayload.Status, statusPayload.status, providerShipment.Status);
-      const normalizedStatus = normalizeShipmentStatus(providerStatus);
-      const happenedAt = statusPayload.StatusDateTime || statusPayload.status_date_time || new Date().toISOString();
+      if (isFinalShipmentStatus(shipment.status)) {
+        throw new Error(`Shipment is already ${String(shipment.status).replace(/_/g, " ")}`);
+      }
 
+      if (!canCancelShipment(shipment.status)) {
+        throw new Error("Shipment cannot be cancelled after pickup or while in transit");
+      }
+
+      const result = await cancelDelhiveryOrder(apiToken, baseUrl, shipment.awb);
+      const cancelledAt = new Date().toISOString();
       const { data: updatedShipment, error: updateError } = await supabase
         .from("shipments")
         .update({
-          status: normalizedStatus,
-          last_synced_at: new Date().toISOString(),
+          status: "cancelled",
+          cancelled_at: cancelledAt,
+          cancel_reason: cleanText(body?.reason || "Cancelled by store admin"),
+          last_synced_at: cancelledAt,
           last_error: null,
-          raw_response: tracking,
+          raw_response: result,
         })
         .eq("id", shipment.id)
         .select("*")
@@ -502,25 +818,34 @@ serve(async (req) => {
 
       if (updateError) throw updateError;
 
-      await supabase.from("shipment_events").insert({
-        shipment_id: shipment.id,
-        status: normalizedStatus,
-        location: cleanText(statusPayload.StatusLocation || statusPayload.location),
-        message: firstNonEmpty(statusPayload.Instructions, statusPayload.Status, providerStatus),
-        happened_at: happenedAt,
-        raw_event: statusPayload || tracking,
-      });
+      const message = "Shipment cancelled in Delhivery";
+      await supabase.from("shipment_events").upsert(
+        {
+          shipment_id: shipment.id,
+          status: "cancelled",
+          message,
+          happened_at: cancelledAt,
+          raw_event: result,
+          event_key: trackingEventKey(shipment.awb, "cancelled", cancelledAt, "", message),
+        },
+        { onConflict: "shipment_id,event_key" },
+      );
 
       await supabase
         .from("orders")
         .update({
-          shipping_status: normalizedStatus,
-          status: normalizedStatus === "delivered" ? "delivered" : order.status === "new" ? "processing" : order.status,
-          tracking_url: shipment.tracking_url,
+          shipping_status: "cancelled",
+          status: "cancelled",
         })
         .eq("id", orderId);
 
-      return jsonResponse({ shipment: sanitizeShipment(updatedShipment) });
+      await supabase.from("shipping_action_logs").insert({
+        store_id: store.id,
+        user_id: userResult.user.id,
+        action: "cancel_delhivery_shipment_success",
+      });
+
+      return jsonResponse({ shipment: sanitizeShipment(updatedShipment), cancelled: true });
     }
 
     return jsonResponse({ error: "Invalid action" }, 400);

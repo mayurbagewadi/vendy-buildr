@@ -24,6 +24,7 @@ const ProductDetail   = lazy(() => import("./pages/customer/ProductDetail"));
 const Cart            = lazy(() => import("./pages/customer/Cart"));
 const Checkout        = lazy(() => import("./pages/customer/Checkout"));
 const PaymentSuccess  = lazy(() => import("./pages/customer/PaymentSuccess"));
+const Tracking        = lazy(() => import("./pages/customer/Tracking"));
 
 // Guard + Layout components — always static (they're wrappers, not pages)
 const SuperAdminGuard = lazy(() =>
@@ -242,6 +243,7 @@ const App = () => {
                             <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
                             <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
                             <Route path="/payment-success" element={<PaymentSuccess />} />
+                            <Route path="/track/:awb" element={<Tracking />} />
                           </Route>
                           <Route path="/sitemap.xml" element={<Sitemap />} />
                           <Route path="*" element={<NotFound />} />
@@ -302,6 +304,7 @@ const App = () => {
                           <Route path="/cart" element={<Cart />} />
                           <Route path="/checkout" element={<Checkout />} />
                           <Route path="/payment-success" element={<PaymentSuccess />} />
+                          <Route path="/track/:awb" element={<Tracking />} />
 
                           {/* Super Admin Routes */}
                           <Route path="/superadmin/login" element={<SuperAdminLogin />} />
@@ -344,6 +347,7 @@ const App = () => {
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />
                             <Route path="payment-success" element={<PaymentSuccess />} />
+                            <Route path="track/:awb" element={<Tracking />} />
                           </Route>
                           <Route path="*" element={<NotFound />} />
                         </>
