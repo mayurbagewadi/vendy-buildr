@@ -47,6 +47,34 @@ const checkoutSchema = z.object({
   }),
 });
 
+const phoneNumberRegex = /^[6-9]\d{9}$/;
+const genericCouponErrorMessage = "We could not apply this coupon right now. Please try again.";
+
+const getFunctionErrorMessage = async (error: any, fallback = genericCouponErrorMessage) => {
+  const response = error?.context;
+
+  if (response && typeof response.clone === "function") {
+    try {
+      const body = await response.clone().json();
+      if (typeof body?.error === "string" && body.error.trim()) {
+        return body.error;
+      }
+      if (typeof body?.message === "string" && body.message.trim()) {
+        return body.message;
+      }
+    } catch (_parseError) {
+      // Fall back to a customer-safe message below.
+    }
+  }
+
+  const message = typeof error?.message === "string" ? error.message : "";
+  if (!message || message.includes("non-2xx") || message.includes("Functions")) {
+    return fallback;
+  }
+
+  return message;
+};
+
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 interface CheckoutProps {
@@ -690,45 +718,68 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
   };
 
   const applyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError('Please enter a coupon code');
+    const normalizedCouponCode = couponCode.trim().toUpperCase();
+
+    if (!normalizedCouponCode) {
+      setCouponError('Please enter a coupon code.');
       return;
     }
 
-    setIsValidatingCoupon(true);
     setCouponError('');
 
     try {
       const storeId = cart[0]?.storeId;
+      if (cart.length === 0 || !Number.isFinite(cartTotal) || cartTotal <= 0) {
+        setCouponError('Add items to your cart before applying a coupon.');
+        return;
+      }
+
       if (!storeId) {
-        setCouponError('Store information not available');
-        setIsValidatingCoupon(false);
+        setCouponError('Store information is not ready yet. Please refresh and try again.');
         return;
       }
 
       // Get form values for customer info
-      const fullName = form.getValues('fullName');
-      const phone = form.getValues('phone');
-      const email = form.getValues('email');
+      const phone = form.getValues('phone').trim();
+      const email = form.getValues('email').trim();
+
+      if (!phoneNumberRegex.test(phone)) {
+        await form.trigger('phone');
+        setCouponError('Please enter a valid 10-digit phone number before applying this coupon.');
+        return;
+      }
+
+      setIsValidatingCoupon(true);
 
       // Call Edge Function for server-side validation
       const { data, error: couponValidateError } = await supabase.functions.invoke('validate-coupon', {
         body: {
-          couponCode,
+          couponCode: normalizedCouponCode,
           storeId,
           cartTotal,
           customerPhone: phone,
           customerEmail: email || undefined,
+          selectedPaymentMethod,
+          cartItems: cart.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            variant: item.variant,
+          })),
         },
       });
 
-      if (couponValidateError) throw couponValidateError;
+      if (couponValidateError) {
+        throw new Error(await getFunctionErrorMessage(couponValidateError, data?.error));
+      }
+
+      if (!data) {
+        throw new Error(genericCouponErrorMessage);
+      }
 
       if (!data.valid) {
-        setCouponError(data.error || 'Invalid coupon code');
+        setCouponError(data.error || 'Invalid coupon code.');
         setAppliedCoupon(null);
         setDiscountAmount(0);
-        setIsValidatingCoupon(false);
         return;
       }
 
@@ -741,9 +792,9 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
       setAutoDiscountApplied(null);
       setAutoDiscountAmount(0);
 
-      showModal('success', 'Coupon Applied', `Discount of ₹${data.discount.toFixed(2)} applied successfully!`);
+      showModal('success', 'Coupon Applied', `Discount of Rs${data.discount.toFixed(2)} applied successfully!`);
     } catch (error: any) {
-      setCouponError(error.message || 'Failed to apply coupon');
+      setCouponError(error.message || genericCouponErrorMessage);
       setAppliedCoupon(null);
       setDiscountAmount(0);
     } finally {
