@@ -37,6 +37,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
   const storeId = store?.id ?? null;
   const storefrontUrls = buildStorefrontUrls({ slug });
+  const isSubdomain = storefrontUrls.home === "/";
 
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
