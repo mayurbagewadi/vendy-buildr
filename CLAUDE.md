@@ -55,6 +55,172 @@ Migration status: `src/new-storefront/` owns the new storefront entry, router, l
 - Keep the customer journey inside `src/new-storefront/`.
 - Build per-store theme presets and design tokens before adding new one-off features.
 
+## New Storefront Theme Architecture
+
+Future theme creation must use the new storefront theme system. Do not create scattered `if theme === X` logic across shared pages. Themes must be self-contained folders and registered through the theme registry.
+
+### Theme Source Of Truth
+```text
+src/new-storefront/theme-engine/
+  types.ts                         # Theme component contracts
+  registry.ts                      # Re-export for theme lookup
+  resolveTheme.ts                  # Active theme/page variant helpers
+
+src/new-storefront/themes/
+  registry.ts                      # List of available storefront runtime themes
+
+  ecosoap-boutique/
+    index.ts                       # Runtime theme export and component registration
+    theme.ts                       # Marketplace metadata: id, slug, name, template, price, preset
+    Storefront.tsx                 # Theme home page renderer
+    Header.tsx                     # Theme header override
+    Preview.tsx                    # Marketplace preview for this theme
+    Categories.tsx                 # Optional page override owned by this theme
+    theme.css                      # Imports/scopes CSS for this theme only
+    assets.ts                      # Theme asset references
+
+  future-theme-name/
+    index.ts
+    theme.ts
+    Storefront.tsx
+    Header.tsx                     # Optional
+    Preview.tsx
+    Categories.tsx                 # Optional
+    theme.css
+    assets.ts
+```
+
+Public/static theme assets should live under:
+
+```text
+public/themes/<theme-slug>/
+  hero.webp
+  preview.webp
+  product-placeholder.webp
+```
+
+Then expose paths from the theme folder's `assets.ts`, for example:
+
+```ts
+export const fashionPremiumAssets = {
+  hero: "/themes/fashion-premium/hero.webp",
+  preview: "/themes/fashion-premium/preview.webp",
+};
+```
+
+### Required Theme Files
+Every new theme must include:
+
+- `theme.ts`: metadata used by Marketplace/Admin install flows.
+- `index.ts`: runtime registration for components and page variants.
+- `Storefront.tsx`: theme home page.
+- `Preview.tsx`: marketplace preview, owned by the theme.
+- `theme.css`: scoped CSS only.
+- `assets.ts`: asset references.
+
+Optional page overrides can be added when a theme needs a custom page:
+
+- `Categories.tsx`
+- `Products.tsx`
+- `ProductDetail.tsx`
+- `Cart.tsx`
+- `Checkout.tsx`
+- `PaymentSuccess.tsx`
+- `About.tsx`
+- `Policies.tsx`
+
+If a theme does not provide a page override, the shared page must render normally as the fallback.
+
+### Registration Rules
+Register metadata in the theme folder, then expose it through:
+
+```text
+src/new-storefront/themes/<theme-slug>/index.ts
+src/new-storefront/themes/registry.ts
+src/lib/themeRegistry.ts
+```
+
+Each theme must have unique values:
+
+```ts
+id: "fashion-premium"
+slug: "fashion-premium"
+template: "fashion-premium"
+```
+
+Do not reuse `template` values across themes. Do not use generic template names like `"playful"` for new themes except as a temporary `legacyTemplates` mapping.
+
+### Runtime Rules
+- Store theme selection comes from `stores.storefront_template`.
+- Resolve active theme through registry helpers, not hardcoded theme checks.
+- Prefer `activeTheme?.components.PageName` style handoff.
+- Shared pages should fetch data once, then delegate rendering to a theme-owned component if present.
+- Do not duplicate Supabase queries inside theme components when the shared page already has the data.
+- Do not add theme-specific markup directly into shared pages unless it is a small fallback variant already supported by the theme engine.
+
+Good pattern:
+
+```tsx
+const ThemeCategories = getStorefrontThemeByTemplate(store?.storefront_template)?.components.Categories;
+
+if (store && ThemeCategories) {
+  return <ThemeCategories store={store} profile={profile} storeSlug={slug} categories={categories} />;
+}
+```
+
+Bad pattern:
+
+```tsx
+if (theme.id === ECOSOAP_THEME.id) {
+  return <EcoSoapCategories />;
+}
+```
+
+The bad pattern does not scale when there are many themes.
+
+### CSS Rules
+Theme CSS must be scoped by `data-storefront-theme`:
+
+```css
+[data-storefront-theme="fashion-premium"] {
+  --primary: 340 80% 48%;
+}
+
+[data-storefront-theme="fashion-premium"] [data-ai="product-card"] {
+  border-radius: 4px;
+}
+```
+
+Never write global theme CSS like:
+
+```css
+.product-card {
+  border-radius: 4px;
+}
+```
+
+Global selectors can break other stores and themes.
+
+### Performance And Scale Rules
+- Keep theme components presentational where possible.
+- Keep product/cart/checkout business logic in shared pages/components.
+- Avoid extra API calls inside theme components.
+- Use existing data from `StoreContext`, React Query, and page props.
+- Use lazy route/page loading already provided by React Router/Vite.
+- Use `imageUtils.ts` for uploaded image URLs.
+- Use theme assets from `public/themes/<theme-slug>/`.
+- Keep checkout/payment/security/rate-limit logic out of theme folders.
+- Run `npm run build:storefront` after theme work.
+
+### Current Theme
+Current production theme folder:
+
+```text
+src/new-storefront/themes/ecosoap-boutique/
+```
+
+Use EcoSoap Boutique as the reference pattern for future themes, but avoid copying one-off EcoSoap logic into shared pages. When a future theme needs custom design, create/extend a theme-owned component in that theme folder and register it in `index.ts`.
+
 ### Old/Full Platform Storefront Path
 ```text
 index.html                                   # Full platform HTML entry

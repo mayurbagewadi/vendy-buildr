@@ -554,13 +554,13 @@ const Guide = () => {
               ]
             },
             {
-              heading: "GST Setup Keywords This Guide Answers",
+              heading: "Quick Setup Summary",
               content: [
-                "Primary topic: GST invoice setup for online store India.",
+                "To set up GST invoices, open Admin -> Settings -> GST & Invoicing.",
                 "",
-                "This guide also answers: how to add GST to online store, GSTIN setup for ecommerce website, GST settings for ecommerce store, invoice number setup for online orders, GST invoice download online store, and how GST appears in customer order summary.",
+                "Turn on GST, enter the store owner's GSTIN, add the correct GST percentage, choose whether prices include GST, and set the invoice prefix and next invoice number.",
                 "",
-                "Simple answer: Go to Admin -> Settings -> GST & Invoicing, enable GST, enter GSTIN, enter the correct GST percentage, set invoice prefix and next invoice number, then save."
+                "After saving, new orders will store GST and invoice details automatically. Old orders will not be recalculated when GST settings change later."
               ]
             },
             {
@@ -932,15 +932,30 @@ const Guide = () => {
               "This guide is for store owners who want to use Delhivery inside DigitalDukandar and make their store easier for customers to find and understand.",
               "",
               "You will learn:",
+              "  • How to install Delhivery from Marketplace",
               "  • How to set up Delhivery API token",
               "  • What Production and Staging mean",
               "  • What to enter in Client Name / HQ Name",
               "  • What to enter in Pickup Location",
               "  • How Ship via Delhivery creates AWB",
               "  • How tracking refresh works safely",
-              "  • How to write better product, category, and FAQ content",
               "",
               "Important: This is one focused guide section. Do not create many thin pages for small keyword variations. One complete, useful page is stronger than many weak pages."
+            ]
+          },
+          {
+            heading: "Step 1: Install Delhivery from Marketplace",
+            content: [
+              "Before adding API details, first enable the Delhivery app from your store admin panel.",
+              "",
+              "1. Open your DigitalDukandar store admin panel",
+              "2. Go to Marketplace",
+              "3. Find Delhivery",
+              "4. Click Install or Enable",
+              "5. After installation, go to Shipping settings",
+              "6. Open Delhivery setup and enter your API details",
+              "",
+              "If Delhivery is not installed from Marketplace, store owners may not see the correct Delhivery setup and shipping options."
             ]
           },
           {
@@ -970,7 +985,7 @@ const Guide = () => {
               "Production means real customer shipment, real AWB, and real Delhivery flow.",
               "Staging means test environment. Do not use staging for customer orders.",
               "",
-              "Security rule: Never paste Delhivery API token in frontend code, browser console, screenshots, WhatsApp groups, or public documents. DigitalDukandar stores it encrypted and uses it only from server-side Supabase functions."
+              "Security rule: Never paste Delhivery API token in browser console, screenshots, WhatsApp groups, or public documents. DigitalDukandar stores it securely and uses it only for shipping actions."
             ]
           },
           {
@@ -1027,7 +1042,7 @@ const Guide = () => {
               "",
               "Reason: Delhivery public tracking can ask the customer for phone number. DigitalDukandar tracking page is cleaner for customer experience.",
               "",
-              "Safe refresh rules for current scale and Supabase Free:",
+              "Safe tracking refresh rules:",
               "  • Customer tracking page reads saved status from database",
               "  • It should not call Delhivery every time customer opens page",
               "  • Admin can refresh a single order manually",
@@ -1040,65 +1055,6 @@ const Guide = () => {
               "  • Skip delivered, cancelled, returned, and RTO",
               "  • Batch 30 AWBs per Delhivery API call",
               "  • Rate limit refresh actions",
-              "",
-              "Bad idea: Automatic cron every few minutes on Supabase Free.",
-              "Better: Manual admin refresh now, webhook or paid scheduled fallback later."
-            ]
-          },
-          {
-            heading: "Make Your Store Easier to Find",
-            content: [
-              "Good store content helps customers, Google, and AI search tools understand what you sell.",
-              "",
-              "Write clear answers to real buyer questions like 'What is this product used for?', 'Is COD available?', 'How many days for delivery?', and 'Is this safe for daily use?'",
-              "",
-              "Mention delivery, returns, ingredients, material, size, warranty, city, and service area only when those details are true.",
-              "",
-              "Simple rule: Write for customers first. Make every product and category clear enough that a buyer can understand it without guessing."
-            ]
-          },
-          {
-            heading: "Store Content Checklist",
-            content: [
-              "Product title: Use product type + main benefit + brand or use case.",
-              "Example: Herbal Hair Oil for Hair Fall Control - 100ml",
-              "",
-              "Product description: Explain who it is for, benefits, ingredients/material, size, usage, delivery, and COD availability.",
-              "",
-              "Category names: Use words buyers search for. Example: Herbal Hair Care, Ayurvedic Skin Care, Handmade Gifts.",
-              "",
-              "FAQs: Add real customer questions. Example: Is COD available? How many days for delivery? Is this product safe for daily use?",
-              "",
-              "Local SEO: Mention city, state, and delivery area only when true. Do not add fake city names just for ranking.",
-              "",
-              "Images: Use clear product photos and meaningful alt text. Do not upload dark, blurry, or duplicate images.",
-              "",
-              "Bad idea: Keyword stuffing like 'best hair oil India best hair oil online best hair oil buy now'.",
-              "Better: One clear product title, useful description, price, stock, shipping info, and FAQ."
-            ]
-          },
-          {
-            heading: "Keyword Research Map",
-            content: [
-              "Use these keywords naturally inside this guide, product descriptions, FAQs, and admin help text. Do not repeat them unnaturally.",
-              "",
-              "Delhivery setup keywords:",
-              "  • Delhivery API token setup",
-              "  • Delhivery Client Name HQ Name",
-              "  • Delhivery pickup location setup",
-              "  • connect Delhivery to ecommerce store",
-              "",
-              "Shipping and tracking keywords:",
-              "  • create Delhivery AWB",
-              "  • Delhivery manifested status meaning",
-              "  • ecommerce shipping tracking India",
-              "  • customer tracking page",
-              "",
-              "Store visibility keywords:",
-              "  • product SEO for ecommerce store",
-              "  • clear ecommerce product description",
-              "  • product FAQ for online store",
-              "  • local SEO for online store India"
             ]
           },
           {
@@ -1114,10 +1070,7 @@ const Guide = () => {
               "Fix: Share DigitalDukandar tracking page instead of Delhivery public page.",
               "",
               "Problem: Token stopped working.",
-              "Fix: If you regenerate Delhivery live token, update it in DigitalDukandar immediately.",
-              "",
-              "Problem: SEO is not improving.",
-              "Fix: Improve product titles, descriptions, FAQs, image quality, internal links, and category names. Do not rely on keyword stuffing."
+              "Fix: If you regenerate Delhivery live token, update it in DigitalDukandar immediately."
             ]
           },
           {

@@ -40,8 +40,20 @@ export interface Product {
 const PRODUCT_CARD_COLUMNS =
   'id, slug, name, category, base_price, offer_price, price_range, stock, sku, status, images, variants, created_at, store_id';
 
+// Admin list uses same columns as card — no description or video_url needed for the list view
+const ADMIN_LIST_COLUMNS = PRODUCT_CARD_COLUMNS;
+
 const PUBLIC_PRODUCT_DETAIL_COLUMNS =
   'id, slug, name, description, category, base_price, offer_price, price_range, stock, sku, status, images, video_url, variants, created_at, updated_at, store_id';
+
+export interface ProductsOptions {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  status?: string;
+  storeId?: string;
+}
 
 // Get current store ID from session
 const getStoreId = async (): Promise<string | null> => {
@@ -62,22 +74,60 @@ export const initializeProducts = (): void => {
   console.log('Products are now stored in Supabase database');
 };
 
-// Get all products for the current store
-export const getProducts = async (): Promise<Product[]> => {
-  const storeId = await getStoreId();
-  if (!storeId) return [];
+// Stats — 3 parallel count-only queries (no rows returned, just counts)
+export const getProductStats = async (storeId?: string): Promise<{ total: number; published: number; draft: number }> => {
+  const resolvedId = storeId ?? await getStoreId();
+  if (!resolvedId) return { total: 0, published: 0, draft: 0 };
 
-  const { data, error } = await supabase
+  const [totalRes, publishedRes, draftRes] = await Promise.all([
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('store_id', resolvedId),
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('store_id', resolvedId).eq('status', 'published'),
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('store_id', resolvedId).eq('status', 'draft'),
+  ]);
+
+  return {
+    total: totalRes.count ?? 0,
+    published: publishedRes.count ?? 0,
+    draft: draftRes.count ?? 0,
+  };
+};
+
+// Get products — specific columns only (no description/video), supports pagination + server-side search
+export const getProducts = async (options?: ProductsOptions): Promise<Product[]> => {
+  const resolvedId = options?.storeId ?? await getStoreId();
+  if (!resolvedId) return [];
+
+  let query = supabase
     .from('products')
-    .select('*')
-    .eq('store_id', storeId)
+    .select(ADMIN_LIST_COLUMNS)
+    .eq('store_id', resolvedId)
     .order('created_at', { ascending: false });
 
+  const hasSearch = !!options?.search;
+  const hasCategory = !!(options?.category && options.category !== 'all');
+  const hasStatus = !!(options?.status && options.status !== 'all');
+  const isFiltered = hasSearch || hasCategory || hasStatus;
+
+  if (hasSearch) {
+    const term = options!.search!;
+    query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%,category.ilike.%${term}%`);
+  }
+  if (hasCategory) query = query.eq('category', options!.category!);
+  if (hasStatus) query = query.eq('status', options!.status!);
+
+  if (!isFiltered && options?.limit) {
+    const p = options.page || 1;
+    const from = (p - 1) * options.limit;
+    query = query.range(from, from + options.limit - 1);
+  } else if (isFiltered) {
+    query = query.limit(100);
+  }
+
+  const { data, error } = await query;
   if (error) {
     console.error('Error fetching products:', error);
     return [];
   }
-
   return (data || []) as unknown as Product[];
 };
 
@@ -107,13 +157,18 @@ export const getPublishedProducts = async (storeId?: string, limit = 200): Promi
   return (data || []) as unknown as Product[];
 };
 
-// Get product by ID
-export const getProductById = async (id: string): Promise<Product | null> => {
-  const { data, error } = await supabase
+// Get product by ID — storeId enforces ownership when provided (required for admin callers)
+export const getProductById = async (id: string, storeId?: string): Promise<Product | null> => {
+  let query = supabase
     .from('products')
     .select('*')
-    .eq('id', id)
-    .maybeSingle();
+    .eq('id', id);
+
+  if (storeId) {
+    query = query.eq('store_id', storeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error('Error fetching product:', error);
@@ -234,10 +289,13 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
   return data as unknown as Product;
 };
 
-// Update product
+// Update product — enforces store ownership so no store can edit another store's product
 export const updateProduct = async (id: string, product: Partial<Product>): Promise<Product | null> => {
+  const storeId = await getStoreId();
+  if (!storeId) throw new Error('Not authenticated');
+
   const updateData: any = {};
-  
+
   if (product.name !== undefined) updateData.name = product.name;
   if (product.description !== undefined) updateData.description = product.description;
   if (product.category !== undefined) updateData.category = product.category;
@@ -263,6 +321,7 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
     .from('products')
     .update(updateData)
     .eq('id', id)
+    .eq('store_id', storeId)
     .select()
     .single();
 
@@ -296,13 +355,17 @@ const deleteImageFromVPSAndMediaLibrary = async (imageUrl: string): Promise<void
   }
 };
 
-// Delete product
+// Delete product — enforces store ownership on both image fetch and delete
 export const deleteProduct = async (id: string): Promise<void> => {
-  // 1. Get product images first
+  const storeId = await getStoreId();
+  if (!storeId) throw new Error('Not authenticated');
+
+  // 1. Get product images — scoped to store to verify ownership
   const { data: product } = await supabase
     .from('products')
     .select('images')
     .eq('id', id)
+    .eq('store_id', storeId)
     .single();
 
   // 2. Delete all product images from VPS and media library
@@ -312,11 +375,12 @@ export const deleteProduct = async (id: string): Promise<void> => {
     );
   }
 
-  // 3. Delete the product from database
+  // 3. Delete the product — store_id prevents cross-store deletion
   const { error } = await supabase
     .from('products')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('store_id', storeId);
 
   if (error) {
     console.error('Error deleting product:', error);
@@ -324,15 +388,15 @@ export const deleteProduct = async (id: string): Promise<void> => {
   }
 };
 
-// Get unique categories
-export const getCategories = async (): Promise<string[]> => {
-  const storeId = await getStoreId();
-  if (!storeId) return [];
+// Get unique categories — accepts storeId to skip redundant session lookup
+export const getCategories = async (storeId?: string): Promise<string[]> => {
+  const id = storeId ?? await getStoreId();
+  if (!id) return [];
 
   const { data, error } = await supabase
     .from('products')
     .select('category')
-    .eq('store_id', storeId)
+    .eq('store_id', id)
     .not('category', 'is', null);
 
   if (error) {

@@ -17,7 +17,7 @@ import { generateProductInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import StorefrontImage from "@/components/ui/storefront-image";
 
-import { getProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
+import { getPublishedProductById, getProductBySlug, getPublishedProducts } from "@/lib/productData";
 import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import ProductCard from "@/components/customer/ProductCard";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
@@ -169,7 +169,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
         // Fallback: try by UUID for backward compatibility
         let data = productData;
         if (!data) {
-          data = await getProductById(productSlug);
+          data = await getPublishedProductById(productSlug, storeId || undefined);
           // Found by UUID → redirect to slug URL (SEO 301)
           if (data && data.slug) {
             const newUrl = isSubdomain

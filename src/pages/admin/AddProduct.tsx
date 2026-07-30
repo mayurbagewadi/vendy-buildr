@@ -545,6 +545,9 @@ category: "",
 
     setIsSubmitting(true);
 
+    // Track VPS-uploaded URLs so we can delete them if product save fails (prevent orphans)
+    let uploadedVpsUrls: string[] = [];
+
     try {
       let uploadedImageUrls: StorefrontImageSource[] = [...imageUrls];
 
@@ -584,6 +587,11 @@ category: "",
           const file = pendingFiles[i];
           const fileSizeMB = file.size / 1024 / 1024;
 
+          // Per-file storage check — catches concurrent tab uploads that bypass the upfront check
+          if (currentUsage + fileSizeMB > storageLimit) {
+            throw new Error(`Storage limit reached mid-upload. Only ${(storageLimit - currentUsage).toFixed(0)}MB remaining. Delete some images from Media Library to free space.`);
+          }
+
           setUploadingFiles(prev => prev.map((f, idx) =>
             idx === i ? { ...f, progress: 10 } : f
           ));
@@ -622,6 +630,7 @@ category: "",
               response = { data: responseData, error: null };
               imageUrl = responseData.imageUrl;
               fileName = responseData.fileId || file.name;
+              uploadedVpsUrls.push(imageUrl); // Track for cleanup if product save fails
 
               // Track in media_library for VPS uploads
               const { error: mediaError } = await supabase
@@ -684,7 +693,12 @@ category: "",
         setUploadingFiles([]);
       }
 
-      // Use uploaded images or auto-assign 3 unique random images
+      // If the user selected files but none uploaded successfully, stop — don't silently save random images
+      if (uploadedImageUrls.length === 0 && pendingFiles.length > 0) {
+        throw new Error('No images were uploaded successfully. Please check your connection and try again.');
+      }
+
+      // Use real uploaded/URL images, or default placeholders only when no images were provided at all
       const allImages = uploadedImageUrls.length > 0
         ? uploadedImageUrls
         : getRandomDefaultImages(3);
@@ -734,6 +748,20 @@ category: "",
       navigate("/admin/products", { state: { highlightedProductId: createdProduct.id } });
     } catch (error: any) {
       console.error('Error saving product:', error);
+
+      // Delete any images already uploaded to VPS — prevents orphaned files + incorrect storage tracking
+      if (uploadedVpsUrls.length > 0) {
+        Promise.all(uploadedVpsUrls.map(async (url) => {
+          try {
+            await fetch('https://digitaldukandar.in/api/delete.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageUrl: url }),
+            });
+            await supabase.from('media_library').delete().eq('file_url', url);
+          } catch { /* cleanup failure is non-critical */ }
+        }));
+      }
 
       // Check for duplicate product name/slug error
       if (error?.code === '23505' && error?.message?.includes('products_store_slug_unique')) {

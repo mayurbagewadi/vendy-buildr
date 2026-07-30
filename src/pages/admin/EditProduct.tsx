@@ -105,17 +105,6 @@ category: "",
       return;
     }
 
-    const product = await getProductById(id);
-    if (!product) {
-      toast({
-        title: "Product not found",
-        description: "The product you're trying to edit doesn't exist",
-        variant: "destructive",
-      });
-      navigate("/admin/products");
-      return;
-    }
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -158,6 +147,57 @@ category: "",
 
         // Always verify Drive connection with actual API call
         await verifyDriveConnection();
+
+        // Fetch product scoped to this store — prevents loading another store's product
+        const product = await getProductById(id, store.id);
+        if (!product) {
+          toast({
+            title: "Product not found",
+            description: "The product you're trying to edit doesn't exist",
+            variant: "destructive",
+          });
+          navigate("/admin/products");
+          return;
+        }
+
+        // Load product data into form
+        form.reset({
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          status: product.status,
+        });
+
+        setOriginalStatus(product.status);
+        setImageUrls(product.images || []);
+        setVideoUrl(product.videoUrl || product.video_url || "");
+
+        const existingPrice = product.basePrice ?? product.base_price;
+        if (existingPrice !== null && existingPrice !== undefined) {
+          setBasePrice(existingPrice.toString());
+        }
+        const existingOfferPrice = product.offerPrice ?? product.offer_price;
+        if (existingOfferPrice !== null && existingOfferPrice !== undefined) {
+          setOfferPrice(existingOfferPrice.toString());
+        }
+        if (product.stock !== null && product.stock !== undefined) {
+          setBaseStock(product.stock.toString());
+        }
+
+        // Detect pricing mode from existing data
+        if (product.variants && product.variants.length > 0) {
+          setPricingMode("variants");
+          setVariants(product.variants.map((v, idx) => ({
+            id: `${idx}`,
+            name: v.name,
+            price: v.price.toString(),
+            offerPrice: v.offer_price ? v.offer_price.toString() : "",
+            sku: v.sku,
+            stock: v.stock !== null && v.stock !== undefined ? v.stock.toString() : "",
+          })));
+        } else {
+          setPricingMode("single");
+        }
       }
     } catch (error: any) {
       toast({
@@ -165,45 +205,6 @@ category: "",
         description: error.message,
         variant: "destructive",
       });
-    }
-
-    // Load product data
-    form.reset({
-      name: product.name,
-      description: product.description,
-      category: product.category,
-      status: product.status,
-    });
-
-    setOriginalStatus(product.status);
-    setImageUrls(product.images || []);
-    setVideoUrl(product.videoUrl || product.video_url || "");
-
-    const existingPrice = product.basePrice ?? product.base_price;
-    if (existingPrice !== null && existingPrice !== undefined) {
-      setBasePrice(existingPrice.toString());
-    }
-    const existingOfferPrice = product.offerPrice ?? product.offer_price;
-    if (existingOfferPrice !== null && existingOfferPrice !== undefined) {
-      setOfferPrice(existingOfferPrice.toString());
-    }
-    if (product.stock !== null && product.stock !== undefined) {
-      setBaseStock(product.stock.toString());
-    }
-
-    // Detect pricing mode from existing data
-    if (product.variants && product.variants.length > 0) {
-      setPricingMode("variants");
-      setVariants(product.variants.map((v, idx) => ({
-        id: `${idx}`,
-        name: v.name,
-        price: v.price.toString(),
-        offerPrice: v.offer_price ? v.offer_price.toString() : "",
-        sku: v.sku,
-        stock: v.stock !== null && v.stock !== undefined ? v.stock.toString() : "",
-      })));
-    } else {
-      setPricingMode("single");
     }
 
     setIsLoading(false);
@@ -707,7 +708,7 @@ category: "",
           stock: parseStockInput(v.stock || ""),
         })) : [],
         priceRange: pricingMode === "variants" ? (getPriceRange() || undefined) : (basePrice ? `₹${parseFloat(basePrice).toFixed(2)}` : undefined),
-        createdAt: (await getProductById(id))?.createdAt || (await getProductById(id))?.created_at || new Date().toISOString(),
+        createdAt: (await getProductById(id, storeId || undefined))?.createdAt || (await getProductById(id, storeId || undefined))?.created_at || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
