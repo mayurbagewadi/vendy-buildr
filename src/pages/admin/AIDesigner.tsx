@@ -677,216 +677,119 @@ const AIDesigner = () => {
     setIsSending(true);
 
     try {
-      // ═══ LAYER 2: Use clean HTML snapshot for AI context ═══
-      const iframe = iframeRef.current;
+      // ═══ PHASE 4: theme_chat → StorefrontConfig (sections + settings) ═══
+      // Build conversation history for the AI (last 10 turns, exclude welcome/loading)
+      const chatHistory: ChatTurn[] = [...messages, userMsg]
+        .filter((m) => m.id !== "welcome" && !m.isLoading)
+        .slice(0, -1) // exclude current user msg — it's the prompt
+        .map((m) => ({
+          role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+          content: m.content,
+        }))
+        .slice(-10);
 
-      // Use the clean HTML snapshot (captured once on first load) instead of extracting from live iframe
-      // This avoids stale/cached HTML that causes the "second request fails" issue
-      const cleanHTML = cleanHTMLSnapshotRef.current;
+      setMessages((prev) => prev.map((m) =>
+        m.id === loadingMsgId ? { ...m, content: "Designing your store...", isLoading: false, isThinking: true } : m
+      ));
 
-      if (cleanHTML) {
-        try {
-        // Build conversation history for Layer 2 — AI gets CSS context from previous turns
-        const allMessages = [...messages, userMsg];
-        const layer2History = buildLayer2History(allMessages);
+      const result = await themeChatRequest({
+        storeId,
+        userId,
+        prompt: text,
+        history: chatHistory,
+        currentSections: draftSectionsRef.current,
+        referenceImage: attachedImage || undefined,
+      });
+      setAttachedImage(null);
 
-        // Create AbortController for this request — user can cancel anytime
-        abortControllerRef.current = new AbortController();
-
-        // Stream AI response — show text progressively in chat
-        let streamedText = '';
-        const layer2Result = await generateFullCSSStream(
-          storeId,
-          userId,
-          cleanHTML.slice(0, 10000), // Multi-page structural skeleton (home + products + categories + detail)
-          null, // Layer 1 data not available - AI will work with HTML context alone
-          text,
-          layer2History,
-          (chunk) => {
-            streamedText += chunk;
-
-            // Show SUMMARY text when available (clean conversational response)
-            const summaryIdx = streamedText.indexOf('SUMMARY:');
-            if (summaryIdx !== -1) {
-              const afterSummary = streamedText.slice(summaryIdx + 8).trimStart();
-              const changesIdx = afterSummary.indexOf('CHANGES:');
-              const visibleText = changesIdx !== -1
-                ? afterSummary.slice(0, changesIdx).trimEnd()
-                : afterSummary;
-              if (visibleText) {
-                setMessages((prev) => prev.map((m) =>
-                  m.id === loadingMsgId
-                    ? { ...m, content: visibleText, isLoading: false, isThinking: false }
-                    : m
-                ));
-                return;
-              }
-            }
-
-            // While CSS is being generated (before SUMMARY:), show live CSS lines as progress
-            const cssLines = streamedText.split('\n').filter(l => l.trim().startsWith('[data-ai') || l.trim().startsWith('.dark'));
-            if (cssLines.length > 0) {
-              setMessages((prev) => prev.map((m) =>
-                m.id === loadingMsgId
-                  ? { ...m, content: 'Styling ' + cssLines.length + ' section' + (cssLines.length > 1 ? 's' : '') + '...', isLoading: false, isThinking: true }
-                  : m
-              ));
-            }
-          },
-          resolvedTheme === "dark" ? "dark" : "light",
-          attachedImage || undefined,
-          abortControllerRef.current!.signal,
-          (thinkingChunk) => {
-            // Show "AI is thinking..." while reasoning tokens arrive (before CSS generation starts)
-            if (!streamedText) {
-              setMessages((prev) => prev.map((m) =>
-                m.id === loadingMsgId
-                  ? { ...m, content: 'Thinking...', isLoading: false, isThinking: true }
-                  : m
-              ));
-            }
-          },
-          getManifestForPrompt(), // Site manifest — gives AI full knowledge of all pages
-        );
-        setAttachedImage(null); // Clear image after send
-
-        // Server returns merged CSS (existing + new) — track locally and inject
-        cumulativeCSSRef.current = layer2Result.css;
-
-        // ─── FIX 3: Validate selectors against site manifest (P1) ───
-        // Check against ALL known selectors across all pages, not just current iframe DOM
-        if (layer2Result.css) {
-          const allManifestSelectors = new Set<string>();
-          Object.values(STORE_SITE_MANIFEST.pages).forEach((page: any) => {
-            Object.values(page.selectors).forEach((desc: any) => {
-              const match = String(desc).match(/\[data-ai='([^']+)'\]/);
-              if (match) allManifestSelectors.add(match[1]);
-            });
-          });
-          Object.values(STORE_SITE_MANIFEST.shared_components.selectors).forEach((desc: any) => {
-            const match = String(desc).match(/\[data-ai='([^']+)'\]/);
-            if (match) allManifestSelectors.add(match[1]);
-          });
-          const selectorMatches = [...layer2Result.css.matchAll(/\[data-ai="([^"]+)"\]/g)];
-          const usedSelectors = [...new Set(selectorMatches.map(m => m[1]))];
-          const unknownSelectors = usedSelectors.filter(sel => !allManifestSelectors.has(sel));
-          if (unknownSelectors.length > 0) {
-            console.warn('[SELECTOR-CHECK] AI used unknown selectors not in manifest:', unknownSelectors);
-            toast.warning('AI used unknown selectors: ' + unknownSelectors.slice(0, 3).join(', '), { duration: 5000 });
-          } else if (usedSelectors.length > 0) {
-            console.log('[SELECTOR-CHECK] All', usedSelectors.length, 'selectors verified against manifest');
-          }
-        }
-
-        // Inject merged CSS into preview
-        if (iframe) {
-          injectLayer2CSS(iframe, layer2Result.css);
-        }
-
-        // Validate color harmony and WCAG accessibility
-        const cssVars = extractCSSVarsFromCSS(layer2Result.css);
-        if (Object.keys(cssVars).length > 0) {
-          const validation = validateDesignColors(cssVars);
-          if (validation.colorHarmony === 'dissonant') {
-            toast.warning('Color harmony: colors may clash. Ask AI for complementary or analogous colors.', { duration: 5000 });
-          }
-          validation.contrastIssues.forEach(issue => {
-            toast.warning('Accessibility: ' + issue, { duration: 6000 });
-          });
-        }
-
-        // Format AI message with Layer 2 design data for rich UI display
-        const layer2Design: AIDesignResult = {
-          summary: layer2Result.message || "AI-generated design applied",
-          changes_list: layer2Result.changes_list || [],
-          css_variables: {}, // Layer 2 uses full CSS, not just variables
-          css_overrides: layer2Result.css, // Store Layer 2 CSS in overrides
-        };
-
-        // Enable Publish button — mark this design as pending
-        setPendingDesign(layer2Design);
-        setPendingHistoryId(undefined); // Layer 2 has no history_id (CSS stored directly in DB)
-
-        const aiMsg: UIMessage = {
-          id: `ai-${Date.now()}`,
-          role: "ai",
-          content: layer2Result.message || "AI-generated design applied",
-          design: layer2Design, // Add design object for rich UI
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
-
-        // Store design version for history/comparison
-        const versionId = `v-${Date.now()}`;
-        setDesignVersions((prev) => [...prev, {
-          id: versionId,
-          design: layer2Design,
-          timestamp: new Date(),
-        }]);
-
-        // Update tokens
-        setTokenBalance((prev) => ({
-          ...prev,
-          tokens_remaining: layer2Result.tokens_remaining,
-          has_tokens: layer2Result.tokens_remaining > 0,
-        }));
-
-        toast.success("Design applied using Layer 2!");
-        } catch (layer2Error: any) {
-          // Handle abort (user-initiated cancel)
-          if (layer2Error.name === 'AbortError') {
-            // User clicked Stop button — remove loading message
-            setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
-            // Generation cancelled by user
-          } else {
-            console.error('[LAYER2] Error:', layer2Error);
-            toast.error("Design generation failed: " + (layer2Error.message || 'Unknown error'));
-          }
-        }
+      // Merge sections: "build" = full replacement, "patch" = merge into existing
+      let updatedSections: Record<string, unknown>[];
+      if (result.intent === "build") {
+        updatedSections = result.sections as Record<string, unknown>[];
       } else {
-        // Fallback to Layer 1 if HTML snapshot not captured (iframe not ready)
-        const recentMessages = [...messages, userMsg].slice(-20);
-        const history = buildAPIHistory(recentMessages);
-        const result = await chatWithAI(storeId, userId, history, (resolvedTheme === "dark" ? "dark" : "light"));
-
-        const aiMsg: UIMessage = {
-          id: `ai-${Date.now()}`,
-          role: "ai",
-          content: result.message,
-          design: result.design,
-          historyId: result.history_id,
-          timestamp: new Date(),
-          isDestructive: result.is_destructive || false,
-          destructiveInfo: result.destructive_info || undefined,
-        };
-
-        setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
-
-        if (result.type === "design" && result.design) {
-          setPendingDesign(result.design);
-          setPendingHistoryId(result.history_id);
-          previewDesignRef.current = result.design;
-          setPreviewDesign(result.design);
-          injectCSSIntoIframe(result.design);
-
-          // Store design version for history/comparison
-          const versionId = `v-${Date.now()}`;
-          setDesignVersions((prev) => [...prev, {
-            id: versionId,
-            design: result.design,
-            timestamp: new Date(),
-          }]);
-
-          if (result.tokens_remaining !== undefined) {
-            setTokenBalance((prev) => ({
-              ...prev,
-              tokens_remaining: result.tokens_remaining!,
-              has_tokens: result.tokens_remaining! > 0,
-            }));
+        updatedSections = [...draftSectionsRef.current];
+        for (const aiSection of result.sections) {
+          const existingIdx = updatedSections.findIndex(
+            (s: any) => s.id === aiSection.id || s.type === aiSection.type
+          );
+          if (existingIdx >= 0) {
+            updatedSections[existingIdx] = {
+              ...updatedSections[existingIdx],
+              visible: aiSection.visible,
+              settings: {
+                ...((updatedSections[existingIdx] as any).settings ?? {}),
+                ...(aiSection.settings ?? {}),
+              },
+            };
+          } else {
+            updatedSections.push(aiSection as Record<string, unknown>);
           }
         }
+        updatedSections.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
       }
+      draftSectionsRef.current = updatedSections;
+      draftSettingsRef.current = result.global_settings;
+
+      // Save draft to store_theme_states so publish flow can read it
+      await saveDraftThemeState({
+        storeId,
+        themeId: activeThemeId,
+        themeVersion: activeThemeVersion,
+        settings: result.global_settings,
+        pageLayout: { sections: updatedSections },
+        customCss: result.custom_css || null,
+      });
+
+      // postMessage to iframe for instant preview (Store.tsx listens and re-renders with draft sections)
+      const iframe = iframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'VENDY_THEME_DRAFT',
+          sections: updatedSections,
+          settings: result.global_settings,
+          customCss: result.custom_css || '',
+        }, '*');
+      }
+
+      // Inject any custom_css directly into iframe document (same-origin, instant)
+      if (result.custom_css && iframe?.contentDocument?.head) {
+        let draftCssEl = iframe.contentDocument.getElementById('ai-draft-css');
+        if (!draftCssEl) {
+          draftCssEl = iframe.contentDocument.createElement('style');
+          draftCssEl.id = 'ai-draft-css';
+          iframe.contentDocument.head.appendChild(draftCssEl);
+        }
+        draftCssEl.textContent = result.custom_css;
+      }
+
+      // Build pending design for publish button enable state and version history
+      const pendingDesignData: AIDesignResult = {
+        summary: result.message,
+        changes_list: updatedSections.map((s: any) => s.type + ' → ' + (s.settings?.headline || s.settings?.text || s.type)),
+        css_variables: {},
+      };
+      setPendingDesign(pendingDesignData);
+      setPendingHistoryId(undefined);
+
+      setTokenBalance((prev) => ({
+        ...prev,
+        tokens_remaining: result.tokens_remaining,
+        has_tokens: result.tokens_remaining > 0,
+      }));
+
+      const aiMsg: UIMessage = {
+        id: `ai-${Date.now()}`,
+        role: "ai",
+        content: result.message,
+        design: pendingDesignData,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => prev.map((m) => m.id === loadingMsgId ? aiMsg : m));
+
+      const versionId = `v-${Date.now()}`;
+      setDesignVersions((prev) => [...prev, { id: versionId, design: pendingDesignData, timestamp: new Date() }]);
+
+      toast.success(result.intent === "build" ? "Store designed! Click Publish to go live." : "Design updated! Click Publish to go live.");
     } catch (error: any) {
       setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
       if (error.message?.includes("No tokens")) {
@@ -997,15 +900,7 @@ const AIDesigner = () => {
     setIsPublishing(true);
     const previousDesign = currentDesign; // snapshot before state update
     try {
-      const isLayer2Design = !!pendingDesign.css_overrides && Object.keys(pendingDesign.css_variables || {}).length === 0;
-
-      if (isLayer2Design) {
-        // Layer 2: explicitly save CSS to DB so customer store sees it
-        // Never assume DB was updated during generation — always write on Publish
-        await applyLayer2CSS(storeId, pendingDesign.css_overrides!);
-      } else {
-        await applyDesign(storeId, pendingDesign, pendingHistoryId);
-      }
+      await publishDraftThemeState(storeId);
       const publishedDesign = pendingDesign;
       setCurrentDesign(publishedDesign);
       setPendingDesign(null);
@@ -1038,12 +933,14 @@ const AIDesigner = () => {
       setPendingHistoryId(undefined);
       previewDesignRef.current = null; // sync — handleIframeLoad will inject nothing
       setPreviewDesign(null);
-      // Clear HTML snapshot, cumulative CSS, saved Layer 2 CSS, and versions when user resets (starts fresh)
+      // Clear HTML snapshot, cumulative CSS, saved Layer 2 CSS, draft sections, and versions when user resets (starts fresh)
       cleanHTMLSnapshotRef.current = null;
       setCleanHTMLSnapshot(null);
       cumulativeCSSRef.current = '';
       hasScannedRef.current = false; // allow re-scan after reset
       savedLayer2CSSRef.current = null;
+      draftSectionsRef.current = [];
+      draftSettingsRef.current = {};
       setDesignVersions([]);
       // Remember that user explicitly reset — prevents history design from being restored on refresh
       localStorage.setItem(`ai_designer_reset_${storeId}`, '1');
@@ -1224,6 +1121,15 @@ const AIDesigner = () => {
         injectCSSIntoIframe(previewDesignRef.current);
         if (savedLayer2CSSRef.current && iframeRef.current) {
           injectLayer2CSS(iframeRef.current, savedLayer2CSSRef.current);
+        }
+        // Re-post draft sections so preview survives iframe reload
+        if (draftSectionsRef.current.length > 0 && iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'VENDY_THEME_DRAFT',
+            sections: draftSectionsRef.current,
+            settings: draftSettingsRef.current,
+            customCss: '',
+          }, '*');
         }
       }, delay);
     });
