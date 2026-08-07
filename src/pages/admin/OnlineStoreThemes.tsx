@@ -12,7 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getStorefrontThemeById,
   getStorefrontThemeByTemplate,
-  STOREFRONT_THEME_MANIFESTS,
 } from "@/new-storefront/theme-engine/registry";
 import { normalizeThemePageLayout } from "@/new-storefront/theme-engine/layout";
 import { sanitizeThemeSettings } from "@/new-storefront/theme-engine/settings";
@@ -286,45 +285,6 @@ const OnlineStoreThemes = () => {
       });
     } finally {
       setIsPublishing(false);
-    }
-  };
-
-  const installThemeAsDraft = async (theme: StorefrontThemeManifest) => {
-    if (!store?.id) return;
-
-    const nextSettings = mergeThemeSettings(theme, {});
-    const nextLayout = {
-      sections: normalizeThemePageLayout(theme, "home", {}).sections,
-    };
-    setDraftThemeId(theme.id);
-    setDraftSettings(nextSettings);
-    setDraftPageLayout(nextLayout);
-    setIsSaving(true);
-
-    try {
-      const saved = await saveDraftThemeState({
-        storeId: store.id,
-        themeId: theme.id,
-        themeVersion: theme.version,
-        settings: nextSettings,
-        pageLayout: nextLayout,
-        initialPublishedThemeId: publishedTheme?.id ?? "default",
-        initialPublishedThemeVersion: publishedTheme?.version ?? null,
-        initialPublishedSettings: themeState?.published_settings ?? publishedTheme?.defaultSettings ?? {},
-        initialPublishedPageLayout: themeState?.published_page_layout ?? {},
-      });
-
-      setThemeState(saved);
-      setSavedDraftKey(draftKey(nextSettings, nextLayout));
-      toast({ title: "Installed as draft", description: "Publish when you are ready to make it live." });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Install failed",
-        description: error.message || "Could not install theme as draft.",
-      });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -628,43 +588,6 @@ const OnlineStoreThemes = () => {
           </CardContent>
         </Card>
       )}
-
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle className="text-base">Theme Library</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Install themes as draft first. Publishing is a separate action.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {STOREFRONT_THEME_MANIFESTS.map((theme) => (
-              <div key={theme.id} className="rounded-lg border bg-card p-4">
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{theme.manifest.name}</h3>
-                    <p className="text-xs text-muted-foreground">v{theme.version}</p>
-                  </div>
-                  <Badge variant={theme.id === publishedTheme?.id ? "default" : "outline"}>
-                    {theme.id === publishedTheme?.id ? "Live" : theme.id === draftTheme?.id ? "Draft" : "Available"}
-                  </Badge>
-                </div>
-                <p className="min-h-12 text-sm text-muted-foreground">{theme.manifest.description}</p>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isSaving || theme.id === draftTheme?.id}
-                    onClick={() => installThemeAsDraft(theme)}
-                  >
-                    Install as Draft
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {snapshots.length > 0 && (
         <Card className="admin-card">

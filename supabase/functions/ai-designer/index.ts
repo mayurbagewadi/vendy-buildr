@@ -910,6 +910,46 @@ function buildLayer2SystemPrompt(htmlStructure: string, layer1Baseline: any, exi
     fewShotExample;
 }
 
+// ─── Theme Chat System Prompt ─────────────────────────────────
+function buildThemeChatSystemPrompt(storeName: string, currentSectionsJSON: string, validTypes: string[]): string {
+  const typeList = validTypes.map(function(t: string) { return "- " + t; }).join("\n");
+  return "You are a storefront builder AI for " + storeName + ".\n\n" +
+    "SECTION LIBRARY (only these section types are allowed):\n" + typeList + "\n\n" +
+    "OUTPUT: Return ONLY a single JSON object. No markdown fences. No text outside the JSON.\n\n" +
+    "JSON FORMAT:\n" +
+    "{\n" +
+    "  \"intent\": \"build\" or \"patch\",\n" +
+    "  \"sections\": [\n" +
+    "    { \"id\": \"hero-01\", \"type\": \"hero\", \"order\": 0, \"visible\": true, \"settings\": { \"headline\": \"...\" } }\n" +
+    "  ],\n" +
+    "  \"global_settings\": {},\n" +
+    "  \"custom_css\": \"\",\n" +
+    "  \"message\": \"1-2 sentence friendly summary of what you built or changed\"\n" +
+    "}\n\n" +
+    "INTENT RULES:\n" +
+    "- intent=\"build\": user wants a full storefront (\"Build me\", \"Create\", \"Make me a store\")\n" +
+    "  → Include ALL sections for a complete storefront. Populate settings with real content.\n" +
+    "- intent=\"patch\": user wants a specific change (\"Make\", \"Change\", \"Add\", \"Remove\", \"Update\")\n" +
+    "  → Only include the sections that need to change. Reuse the SAME id as the existing section.\n\n" +
+    "SECTION SETTINGS (only these keys per type):\n" +
+    "- announcement-bar: { text (string), enabled (boolean) }\n" +
+    "- header: { compact (boolean) }\n" +
+    "- hero: { headline (string), subtitle (string) }\n" +
+    "- featured-categories: { limit (number 3-12) }\n" +
+    "- featured-products: { limit (number 4-16) }\n" +
+    "- reviews: {}\n" +
+    "- instagram-reels: {}\n" +
+    "- footer: { show_social_links (boolean) }\n\n" +
+    "HARD RULES:\n" +
+    "- Use ONLY section types from SECTION LIBRARY above — never invent new types\n" +
+    "- custom_css: always empty string \"\" in V1\n" +
+    "- global_settings: always empty object {} in V1\n" +
+    "- NEVER output cart, checkout, payment, order logic, or JavaScript code\n" +
+    "- NEVER change prices, stock levels, or order data\n\n" +
+    "CURRENT DRAFT (what is already on the store — reference this for patch operations):\n" +
+    currentSectionsJSON + "\n";
+}
+
 // ─── Main handler ─────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -2419,6 +2459,194 @@ serve(async (req) => {
           error: "Internal error: " + (error.message || "Unknown error in generate_full_css")
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
       }
+    }
+
+    // ── theme_chat ─────────────────────────────────────────────
+    // Returns StorefrontConfig JSON (sections + global_settings + custom_css).
+    // Used by Theme Editor Phase 4 AI chat. Separate from generate_full_css (CSS only).
+    if (action === "theme_chat") {
+      const { conversation_history, current_sections, reference_image } = body;
+
+      if (!store_id || !isValidUUID(store_id) || !user_id || !isValidUUID(user_id) || !prompt) {
+        return new Response(JSON.stringify({ success: false, error: "Missing required fields" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // Check tokens
+      const { data: tcPurchases } = await supabase.from("ai_token_purchases")
+        .select("id, tokens_remaining, tokens_used")
+        .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0)
+        .order("expires_at", { ascending: true, nullsFirst: false }).limit(1);
+
+      const tcPurchase = tcPurchases?.[0];
+      if (!tcPurchase) {
+        return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please purchase more tokens to continue." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+      }
+
+      // Platform settings
+      const { data: tcSettings } = await supabase.from("platform_settings")
+        .select("openrouter_api_key, openrouter_model, openrouter_fallback_model").eq("id", SETTINGS_ID).single();
+
+      if (!tcSettings?.openrouter_api_key) {
+        return new Response(JSON.stringify({ success: false, error: "AI not configured. Please contact platform support." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const tcModel = (tcSettings.openrouter_model || tcSettings.openrouter_fallback_model || "").trim();
+      if (!tcModel) {
+        return new Response(JSON.stringify({ success: false, error: "No AI model configured." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      // Store info
+      const { data: tcStore } = await supabase.from("stores")
+        .select("name").eq("id", store_id).single();
+      const tcStoreName = tcStore?.name || "Store";
+
+      // V1 section library — must stay in sync with theme section schemas
+      const VALID_SECTION_TYPES = [
+        "announcement-bar", "header", "hero", "featured-categories", "featured-products",
+        "reviews", "instagram-reels", "footer"
+      ];
+
+      const currentSectionsStr = JSON.stringify(current_sections || [], null, 2);
+      const historyMessages = Array.isArray(conversation_history) ? conversation_history.slice(-6) : [];
+
+      const tcSystemPrompt = buildThemeChatSystemPrompt(tcStoreName, currentSectionsStr, VALID_SECTION_TYPES);
+
+      const userContent = (typeof reference_image === "string" && reference_image.startsWith("data:image/"))
+        ? [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: reference_image } }
+          ]
+        : prompt;
+      const tcMessages = [
+        ...historyMessages,
+        { role: "user", content: userContent }
+      ];
+
+      console.log("[THEME_CHAT] store=" + store_id + " prompt=" + prompt.slice(0, 80) + " history_turns=" + historyMessages.length);
+
+      const tcAbort = new AbortController();
+      const tcTimeout = setTimeout(() => tcAbort.abort(), 30000);
+
+      let tcAIResponse: Response;
+      try {
+        tcAIResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + tcSettings.openrouter_api_key.trim(),
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://yesgive.shop",
+            "X-Title": "Vendy Theme Builder",
+          },
+          body: JSON.stringify({
+            model: tcModel,
+            messages: [{ role: "system", content: tcSystemPrompt }, ...tcMessages],
+            max_tokens: 3000,
+            temperature: 0.1,
+          }),
+          signal: tcAbort.signal,
+        });
+      } catch (error: any) {
+        clearTimeout(tcTimeout);
+        const errMsg = error.name === "AbortError" ? "Request timed out. Please try again." : "Unable to connect to AI. Please try again.";
+        return new Response(JSON.stringify({ success: false, error: errMsg }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+      clearTimeout(tcTimeout);
+
+      if (!tcAIResponse.ok) {
+        console.error("[THEME_CHAT] OpenRouter error:", tcAIResponse.status);
+        return new Response(JSON.stringify({ success: false, error: "AI service error. Please try again." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const tcData = await tcAIResponse.json();
+      const tcRawContent = tcData.choices?.[0]?.message?.content || "";
+      console.log("[THEME_CHAT] raw response (" + tcRawContent.length + " chars): " + tcRawContent.slice(0, 200));
+
+      // Parse JSON from AI response
+      let tcParsed: any = null;
+      try {
+        tcParsed = extractJSON(tcRawContent);
+      } catch (e: any) {
+        console.error("[THEME_CHAT] JSON parse failed:", e.message, "| raw:", tcRawContent.slice(0, 300));
+        return new Response(JSON.stringify({ success: false, error: "AI returned an unexpected format. Please try again." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // Validate and sanitize AI output
+      const tcIntent = tcParsed.intent === "patch" ? "patch" : "build";
+      const tcRawSections = Array.isArray(tcParsed.sections) ? tcParsed.sections : [];
+
+      // Strip unknown section types and sanitize settings
+      const tcValidatedSections = tcRawSections
+        .filter(function(s: any) { return VALID_SECTION_TYPES.includes(s.type); })
+        .map(function(s: any, idx: number) {
+          return {
+            id: (typeof s.id === "string" && s.id) ? s.id : (s.type + "-" + String(idx + 1)),
+            type: s.type,
+            order: typeof s.order === "number" ? s.order : idx,
+            visible: s.visible !== false,
+            settings: (typeof s.settings === "object" && s.settings !== null) ? s.settings : {},
+            blocks: Array.isArray(s.blocks) ? s.blocks : [],
+          };
+        });
+
+      const tcGlobalSettings = (typeof tcParsed.global_settings === "object" && tcParsed.global_settings !== null)
+        ? tcParsed.global_settings
+        : {};
+
+      // Sanitize custom CSS (V1 restriction: should be empty, but sanitize if AI adds any)
+      let tcCustomCSS = "";
+      if (typeof tcParsed.custom_css === "string" && tcParsed.custom_css.trim()) {
+        const tcSanitized = sanitizeCSS(tcParsed.custom_css);
+        if (tcSanitized.blocked.length > 0) console.warn("[THEME_CHAT] CSS blocked:", tcSanitized.blocked);
+        tcCustomCSS = tcSanitized.sanitized;
+      }
+
+      const tcMessageText = (typeof tcParsed.message === "string" && tcParsed.message) ? tcParsed.message : "Done!";
+
+      if (tcValidatedSections.length === 0 && tcIntent === "build") {
+        return new Response(JSON.stringify({ success: false, error: "AI returned no valid sections. Please try a different prompt." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      // Deduct 1 token
+      await supabase.from("ai_token_purchases").update({
+        tokens_remaining: tcPurchase.tokens_remaining - 1,
+        tokens_used: tcPurchase.tokens_used + 1,
+        updated_at: new Date().toISOString(),
+      }).eq("id", tcPurchase.id);
+
+      // Log to history
+      await supabase.from("ai_designer_history").insert({
+        store_id,
+        user_id,
+        prompt,
+        ai_response: { intent: tcIntent, sections_count: tcValidatedSections.length, message: tcMessageText },
+        tokens_used: 1,
+        applied: false,
+      }).catch(function(e: any) { console.error("[THEME_CHAT] History insert failed:", e.message); });
+
+      // Get updated token balance
+      const { data: tcUpdatedPurchases } = await supabase.from("ai_token_purchases")
+        .select("tokens_remaining").eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0);
+      const tcTokensLeft = (tcUpdatedPurchases || []).reduce(function(s: number, p: any) { return s + p.tokens_remaining; }, 0);
+
+      console.log("[THEME_CHAT] success intent=" + tcIntent + " sections=" + tcValidatedSections.length + " tokens_left=" + tcTokensLeft);
+
+      return new Response(JSON.stringify({
+        success: true,
+        intent: tcIntent,
+        sections: tcValidatedSections,
+        global_settings: tcGlobalSettings,
+        custom_css: tcCustomCSS,
+        message: tcMessageText,
+        tokens_remaining: tcTokensLeft,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── reset_design ───────────────────────────────────────────

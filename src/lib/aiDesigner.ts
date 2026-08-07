@@ -506,11 +506,10 @@ export async function generateFullCSSStream(
   if (!result) throw new Error("Stream ended without a result");
   if (result.error) throw new Error(result.error);
 
-  // If CSS missing from stream response, fetch from DB as fallback
-  // (edge function saves to store_design_state before sending done event)
+  // If CSS missing from stream response, fetch from draft store as fallback
   let css = result.css;
   if (!css) {
-    console.warn("[generateFullCSSStream] No CSS in stream response, fetching from DB...");
+    console.warn("[generateFullCSSStream] No CSS in stream response, fetching from draft...");
     css = await getLayer2CSS(storeId) || "";
   }
   if (!css) throw new Error("No CSS received from AI");
@@ -524,54 +523,62 @@ export async function generateFullCSSStream(
 }
 
 /**
- * Get Layer 2 CSS from database
+ * Get Layer 2 CSS from the unified draft store.
+ * Reads from store_theme_states.draft_custom_css (Phase 0+).
  */
 export async function getLayer2CSS(storeId: string): Promise<string | null> {
   const { data } = await supabase
-    .from("store_design_state")
-    .select("ai_full_css, mode")
+    .from("store_theme_states")
+    .select("draft_custom_css")
     .eq("store_id", storeId)
     .maybeSingle();
 
-  if (data?.mode === "advanced" && data?.ai_full_css) {
-    return data.ai_full_css;
-  }
-  return null;
+  return (data as { draft_custom_css: string | null } | null)?.draft_custom_css ?? null;
 }
 
 /**
- * Apply Layer 2 CSS to store
+ * Apply Layer 2 CSS to store.
+ * Writes to store_theme_states.draft_custom_css then immediately publishes
+ * so the live storefront reflects the change without a separate Publish step.
+ * (Phase 1 will introduce an explicit preview → publish UI; until then, apply = live.)
  */
 export async function applyLayer2CSS(storeId: string, css: string): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("store_design_state")
-    .upsert({
-      store_id: storeId,
-      ai_full_css: css,
-      mode: "advanced",
-      ai_full_css_applied_at: now,
-      updated_at: now,
-    }, { onConflict: "store_id" });
 
-  if (error) throw error;
+  const { error: draftError } = await supabase
+    .from("store_theme_states")
+    .upsert(
+      { store_id: storeId, draft_custom_css: css, draft_theme_id: "default", updated_at: now },
+      { onConflict: "store_id" }
+    );
+
+  if (draftError) throw draftError;
+
+  const { error: publishError } = await supabase.rpc("publish_store_theme_draft", {
+    p_store_id: storeId,
+  });
+
+  if (publishError) throw publishError;
 }
 
 /**
- * Reset Layer 2 (back to simple mode)
+ * Reset Layer 2 — clears custom CSS and publishes so the live store reverts instantly.
  */
 export async function resetLayer2(storeId: string): Promise<void> {
-  const { error } = await supabase
-    .from("store_design_state")
-    .update({
-      ai_full_css: null,
-      layer1_snapshot: null,
-      mode: "simple",
-      ai_full_css_applied_at: null,
-    })
+  const now = new Date().toISOString();
+
+  const { error: draftError } = await supabase
+    .from("store_theme_states")
+    .update({ draft_custom_css: null, updated_at: now })
     .eq("store_id", storeId);
 
-  if (error) throw error;
+  if (draftError) throw draftError;
+
+  const { error: publishError } = await supabase.rpc("publish_store_theme_draft", {
+    p_store_id: storeId,
+  });
+
+  if (publishError) throw publishError;
 }
 
 /**

@@ -21,8 +21,8 @@ const StorefrontLayout = ({ slug: slugProp }: StorefrontLayoutProps = {}) => {
 };
 
 const StorefrontDesignLoader = () => {
-  const { storeId, storeSlug } = useStorefront();
-  useAIDesignCSS(storeId, storeSlug);
+  const { store, storeSlug } = useStorefront();
+  useAIDesignCSS(store?.theme_state?.custom_css, storeSlug);
   return null;
 };
 

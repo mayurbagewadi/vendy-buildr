@@ -1,94 +1,58 @@
 import { useEffect, useLayoutEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
+// Phase 0: custom CSS now travels inside the public_storefront_bootstrap payload.
+// No second DB query. The CSS is already in StoreContext when this hook runs.
 
 const CSS_CACHE_PREFIX = "ai-design-css-";
+const STYLE_ID = "ai-layer2-styles";
 
 function getCacheKey(storeSlug?: string | null): string | null {
   return storeSlug ? CSS_CACHE_PREFIX + storeSlug : null;
 }
 
-export function useAIDesignCSS(storeId?: string | null, storeSlug?: string | null) {
-  // PHASE 1: Synchronous injection from localStorage cache (before browser paints)
-  useLayoutEffect(() => {
-    if (document.getElementById("ai-layer2-styles")) return;
+function injectCSS(css: string): void {
+  let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement("style");
+    el.id = STYLE_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
 
+function removeCSS(): void {
+  document.getElementById(STYLE_ID)?.remove();
+}
+
+/**
+ * Injects published custom CSS into the page.
+ * customCss comes from store.theme_state.custom_css (already in StoreContext — zero extra queries).
+ * storeSlug is used only for the localStorage cache (flash-of-unstyled-content prevention).
+ */
+export function useAIDesignCSS(customCss?: string | null, storeSlug?: string | null) {
+  // PHASE 1 — synchronous: inject from localStorage cache before the browser paints.
+  // This prevents a flash of unstyled content on repeat visits while context is loading.
+  useLayoutEffect(() => {
+    if (document.getElementById(STYLE_ID)) return;
     const key = getCacheKey(storeSlug);
     if (!key) return;
-
     try {
       const cached = localStorage.getItem(key);
-      if (cached) {
-        const el = document.createElement("style");
-        el.id = "ai-layer2-styles";
-        el.textContent = cached;
-        document.head.appendChild(el);
-      }
+      if (cached) injectCSS(cached);
     } catch {}
   }, [storeSlug]);
 
-  // PHASE 2: Async fetch from DB — verifies/updates cache
+  // PHASE 2 — after context loads: sync the live value from the bootstrap payload.
+  // No DB query. customCss arrives via props from StoreContext.
   useEffect(() => {
-    if (!storeId && !storeSlug) return;
+    const key = getCacheKey(storeSlug);
 
-    let cancelled = false;
-
-    const loadCSS = async () => {
-      try {
-        let resolvedStoreId = storeId;
-
-        if (!resolvedStoreId && storeSlug) {
-          let query = supabase
-            .from("stores")
-            .select("id")
-            .eq("is_active", true);
-
-          if (storeSlug.includes('.')) {
-            query = query.or("custom_domain.eq." + storeSlug + ",subdomain.eq." + storeSlug);
-          } else {
-            query = query.or("subdomain.eq." + storeSlug + ",slug.eq." + storeSlug);
-          }
-
-          const { data: store } = await query.maybeSingle();
-          if (!store?.id) return;
-          if (cancelled) return;
-          resolvedStoreId = store.id;
-        }
-
-        if (!resolvedStoreId || cancelled) return;
-
-        const { data } = await supabase
-          .from("store_design_state")
-          .select("ai_full_css, mode")
-          .eq("store_id", resolvedStoreId)
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        const key = getCacheKey(storeSlug);
-
-        if (data?.mode === "advanced" && data?.ai_full_css) {
-          if (key) {
-            try { localStorage.setItem(key, data.ai_full_css); } catch {}
-          }
-
-          let el = document.getElementById("ai-layer2-styles");
-          if (!el) {
-            el = document.createElement("style");
-            el.id = "ai-layer2-styles";
-            document.head.appendChild(el);
-          }
-          el.textContent = data.ai_full_css;
-        } else {
-          if (key) {
-            try { localStorage.removeItem(key); } catch {}
-          }
-          document.getElementById("ai-layer2-styles")?.remove();
-        }
-      } catch {}
-    };
-
-    loadCSS();
-
-    return () => { cancelled = true; };
-  }, [storeId, storeSlug]);
+    if (customCss) {
+      injectCSS(customCss);
+      try { if (key) localStorage.setItem(key, customCss); } catch {}
+    } else {
+      removeCSS();
+      try { if (key) localStorage.removeItem(key); } catch {}
+    }
+  }, [customCss, storeSlug]);
 }

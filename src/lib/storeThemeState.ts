@@ -29,6 +29,7 @@ export type StoreThemeState = {
   draft_theme_version: string | null;
   draft_settings: Record<string, unknown>;
   draft_page_layout: Record<string, unknown>;
+  draft_custom_css: string | null;
   draft_updated_at: string | null;
   published_version_id: string | null;
   published_theme_id: string;
@@ -36,6 +37,7 @@ export type StoreThemeState = {
   published_settings: Record<string, unknown>;
   published_page_layout: Record<string, unknown>;
   published_assets: Record<string, unknown>;
+  published_custom_css: string | null;
   published_at: string | null;
   published_by: string | null;
   version: number;
@@ -64,6 +66,7 @@ const STORE_THEME_STATE_COLUMNS = `
   draft_settings,
   draft_layout,
   draft_assets,
+  draft_custom_css,
   published_version_id,
   publish_sequence,
   created_at,
@@ -77,6 +80,7 @@ type StoreThemeStateRow = {
   draft_settings: Record<string, unknown> | null;
   draft_layout: Record<string, unknown> | null;
   draft_assets: Record<string, unknown> | null;
+  draft_custom_css: string | null;
   published_version_id: string | null;
   publish_sequence: number | null;
   created_at: string | null;
@@ -92,6 +96,7 @@ type StoreThemeVersionRow = {
   settings: Record<string, unknown> | null;
   layout: Record<string, unknown> | null;
   assets: Record<string, unknown> | null;
+  custom_css: string | null;
   published_by: string | null;
   published_at: string | null;
   reason: string | null;
@@ -107,6 +112,7 @@ const STORE_THEME_VERSION_COLUMNS = `
   settings,
   layout,
   assets,
+  custom_css,
   published_by,
   published_at,
   reason,
@@ -124,6 +130,7 @@ const toPublicState = (
   draft_theme_version: state.draft_theme_version,
   draft_settings: state.draft_settings ?? emptyObject(),
   draft_page_layout: state.draft_layout ?? emptyObject(),
+  draft_custom_css: state.draft_custom_css ?? null,
   draft_updated_at: state.updated_at,
   published_version_id: state.published_version_id,
   published_theme_id: publishedVersion?.theme_id ?? "default",
@@ -131,6 +138,7 @@ const toPublicState = (
   published_settings: publishedVersion?.settings ?? emptyObject(),
   published_page_layout: publishedVersion?.layout ?? emptyObject(),
   published_assets: publishedVersion?.assets ?? emptyObject(),
+  published_custom_css: publishedVersion?.custom_css ?? null,
   published_at: publishedVersion?.published_at ?? null,
   published_by: publishedVersion?.published_by ?? null,
   version: state.publish_sequence ?? 0,
@@ -182,6 +190,7 @@ export const saveDraftThemeState = async ({
   themeVersion,
   settings,
   pageLayout = {},
+  customCss = null,
   initialPublishedThemeId = "default",
   initialPublishedThemeVersion = null,
   initialPublishedSettings = {},
@@ -192,6 +201,7 @@ export const saveDraftThemeState = async ({
   themeVersion: string | null;
   settings: Record<string, unknown>;
   pageLayout?: Record<string, unknown>;
+  customCss?: string | null;
   initialPublishedThemeId?: string;
   initialPublishedThemeVersion?: string | null;
   initialPublishedSettings?: Record<string, unknown>;
@@ -203,6 +213,7 @@ export const saveDraftThemeState = async ({
     draft_settings: settings,
     draft_layout: pageLayout,
     draft_assets: {},
+    draft_custom_css: customCss,
     updated_at: new Date().toISOString(),
   };
 

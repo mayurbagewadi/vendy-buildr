@@ -11,6 +11,7 @@ export interface PublicStorefrontThemeState {
   published_settings: Record<string, unknown>;
   published_page_layout: Record<string, unknown>;
   published_assets: Record<string, unknown>;
+  custom_css: string | null;
   published_at: string | null;
 }
 
@@ -239,6 +240,7 @@ function normalizePublicStorefrontConfig(store: StoreContextData): StoreContextD
               : typeof store.published_theme_assets === 'object' && store.published_theme_assets !== null
               ? (store.published_theme_assets as Record<string, unknown>)
               : {},
+          custom_css: typeof embeddedThemeState?.custom_css === 'string' ? embeddedThemeState.custom_css : null,
           published_at: stringOrNull(embeddedThemeState?.published_at ?? store.theme_published_at),
         }
       : null,

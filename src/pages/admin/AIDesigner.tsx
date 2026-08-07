@@ -54,6 +54,9 @@ import {
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
 import { getManifestForPrompt, STORE_SITE_MANIFEST } from "@/lib/aiSiteManifest";
+import { themeChatRequest, type ChatTurn } from "@/lib/themeChatAI";
+import { saveDraftThemeState, publishDraftThemeState, loadStoreThemeState } from "@/lib/storeThemeState";
+import { getStorefrontThemeByTemplate } from "@/new-storefront/themes/registry";
 
 // ═══ STRUCTURAL SKELETON EXTRACTOR ═══
 // Converts a DOM element into a clean structural skeleton for the AI.
@@ -279,6 +282,10 @@ const AIDesigner = () => {
   const [designVersions, setDesignVersions] = useState<Array<{ id: string; design: AIDesignResult; timestamp: Date }>>([]);
   const [attachedImage, setAttachedImage] = useState<string | null>(null); // Base64 image to send with next message
   const [pagesScanStatus, setPagesScanStatus] = useState<string | null>(null); // "Scanning products page..." etc, null = done
+  const [activeThemeId, setActiveThemeId] = useState<string>("ecosoap-boutique");
+  const [activeThemeVersion, setActiveThemeVersion] = useState<string>("1.0.0");
+  const draftSectionsRef = useRef<Record<string, unknown>[]>([]);
+  const draftSettingsRef = useRef<Record<string, unknown>>({});
 
   useEffect(() => {
     loadInitialData();
@@ -449,7 +456,7 @@ const AIDesigner = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, name, slug, subdomain")
+        .select("id, name, slug, subdomain, storefront_template")
         .eq("user_id", session.user.id)
         .single();
 
@@ -459,6 +466,13 @@ const AIDesigner = () => {
       }
 
       setStoreId(store.id);
+
+      // Resolve active marketplace theme
+      const themeManifest = getStorefrontThemeByTemplate(store.storefront_template);
+      if (themeManifest) {
+        setActiveThemeId(themeManifest.id);
+        setActiveThemeVersion(themeManifest.version);
+      }
 
       const hostname = window.location.hostname;
       const isSubdomain = store.subdomain && hostname.startsWith(store.subdomain + '.');
@@ -479,6 +493,13 @@ const AIDesigner = () => {
       if (layer2CSS) {
         savedLayer2CSSRef.current = layer2CSS;
         cumulativeCSSRef.current = layer2CSS;
+      }
+
+      // Load existing draft sections for AI patch context
+      const existingThemeState = await loadStoreThemeState(store.id).catch(() => null);
+      if (existingThemeState?.draft_page_layout && Array.isArray((existingThemeState.draft_page_layout as any).sections)) {
+        draftSectionsRef.current = (existingThemeState.draft_page_layout as any).sections as Record<string, unknown>[];
+        draftSettingsRef.current = existingThemeState.draft_settings ?? {};
       }
 
       // Load chat history — also returns the most recent generated design for preview fallback

@@ -24,7 +24,7 @@ import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/r
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
 import { resolveThemeSettings } from "@/new-storefront/theme-engine/settings";
 import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
-import type { ThemeStorefrontProps } from "@/new-storefront/theme-engine/types";
+import type { ThemeStorefrontProps, ThemeSectionInstance } from "@/new-storefront/theme-engine/types";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -77,6 +77,8 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
 
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [themeRenderFailed, setThemeRenderFailed] = useState(false);
+  const [draftSections, setDraftSections] = useState<ThemeSectionInstance[] | null>(null);
+  const [draftGlobalSettings, setDraftGlobalSettings] = useState<Record<string, unknown> | null>(null);
 
   // Scroll animations (unchanged)
   const categoriesGridRef       = useScrollAnimation({ animation: 'slideUp',     duration: 0.6, stagger: 0.1,  delay: 0.2 });
@@ -89,6 +91,18 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   useEffect(() => {
     setThemeRenderFailed(false);
   }, [activeMarketplaceTheme?.id, activeMarketplaceTheme?.version]);
+
+  // Listen for AI Designer draft preview messages
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== 'VENDY_THEME_DRAFT') return;
+      const { sections, settings } = event.data;
+      if (Array.isArray(sections)) setDraftSections(sections as ThemeSectionInstance[]);
+      if (settings && typeof settings === 'object') setDraftGlobalSettings(settings as Record<string, unknown>);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   // ── Page data: categories + products — shared storefront data layer ─────────
   // Fires immediately once ctxStore.id is available (instant on cached sessions).
@@ -214,11 +228,12 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const publishedThemeSettings = store.theme_state?.published_settings ?? null;
   const publishedPageLayout = store.theme_state?.published_page_layout ?? null;
   const resolvedThemeSettings = activeMarketplaceTheme
-    ? resolveThemeSettings(activeMarketplaceTheme, publishedThemeSettings)
+    ? resolveThemeSettings(activeMarketplaceTheme, draftGlobalSettings ?? publishedThemeSettings)
     : {};
   const publishedSections = activeMarketplaceTheme
     ? normalizeThemePageLayout(activeMarketplaceTheme, "home", publishedPageLayout).sections
     : undefined;
+  const effectiveSections = draftSections ?? publishedSections;
   const themeStorefrontProps: ThemeStorefrontProps | null = activeMarketplaceTheme
     ? {
         store,
@@ -236,11 +251,11 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
         },
         runtime: buildThemeRuntimeContext(activeMarketplaceTheme),
         settings: resolvedThemeSettings,
-        sections: publishedSections,
+        sections: effectiveSections,
         page: {
           page: "home",
           settings: resolvedThemeSettings,
-          sections: publishedSections,
+          sections: effectiveSections,
         },
       }
     : null;

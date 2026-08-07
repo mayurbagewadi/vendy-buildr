@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StoreProvider, useStorefront } from "@/contexts/StoreContext";
 import { useActiveStorefrontTheme } from "@/new-storefront/theme-engine/resolveTheme";
+import { useAIDesignCSS } from "@/hooks/useAIDesignCSS";
 
 interface StorefrontLayoutProps {
   // Provided by StorefrontApp for subdomain/custom-domain routes where the slug
@@ -26,6 +27,8 @@ const StorefrontThemeScope = () => {
   const { store, storeSlug, loading, errorType } = useStorefront();
   const location = useLocation();
   const activeTheme = useActiveStorefrontTheme();
+
+  useAIDesignCSS(store?.theme_state?.custom_css, storeSlug);
   const themeId = activeTheme?.cssScope;
   const debugEnabled = import.meta.env.DEV;
 

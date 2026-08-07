@@ -31,6 +31,7 @@ import {
   Palette,
   Headphones,
   MonitorSmartphone,
+  Layout,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
@@ -401,6 +402,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           current: location.pathname === "/admin/online-store/themes",
         },
       ],
+    },
+    {
+      name: "Theme Editor",
+      href: "/admin/theme-editor",
+      icon: Layout,
+      current: location.pathname.startsWith("/admin/theme-editor"),
     },
     {
       name: "Settings",
