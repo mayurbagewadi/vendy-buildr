@@ -697,7 +697,7 @@ const AIDesigner = () => {
         userId,
         prompt: text,
         history: chatHistory,
-        currentSections: draftSectionsRef.current,
+        currentSections: draftSectionsRef.current.filter((s: any) => s.type !== "custom-html"),
         referenceImage: attachedImage || undefined,
       });
       setAttachedImage(null);
@@ -706,6 +706,12 @@ const AIDesigner = () => {
       let updatedSections: Record<string, unknown>[];
       if (result.intent === "build") {
         updatedSections = result.sections as Record<string, unknown>[];
+        // Re-append custom-html sections — AI doesn't know about them
+        for (const ch of draftSectionsRef.current.filter((s: any) => s.type === "custom-html")) {
+          if (!updatedSections.some((s: any) => s.id === (ch as any).id)) {
+            updatedSections.push(ch);
+          }
+        }
       } else {
         updatedSections = [...draftSectionsRef.current];
         for (const aiSection of result.sections) {

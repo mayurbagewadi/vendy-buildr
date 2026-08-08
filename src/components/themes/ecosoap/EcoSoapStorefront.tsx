@@ -9,6 +9,7 @@ import FooterSection from "@/new-storefront/themes/ecosoap-boutique/sections/Foo
 import HeaderSection from "@/new-storefront/themes/ecosoap-boutique/sections/HeaderSection";
 import HeroSection from "@/new-storefront/themes/ecosoap-boutique/sections/HeroSection";
 import PageRenderer from "@/new-storefront/theme-engine/PageRenderer";
+import { CustomHTMLSection } from "@/new-storefront/components/CustomHTMLSection";
 import type { CartItem } from "@/lib/cartUtils";
 import type {
   ThemeSectionInstance,
@@ -349,6 +350,13 @@ export default function EcoSoapStorefront({
 
     if (section.type === "footer") {
       return <FooterSection store={store} copy={copy} onSelectTab={setActiveTab} />;
+    }
+
+    if (section.type === "custom-html") {
+      const htmlContent = typeof section.settings?.html_content === "string"
+        ? section.settings.html_content
+        : "";
+      return <CustomHTMLSection htmlContent={htmlContent} />;
     }
 
     return null;

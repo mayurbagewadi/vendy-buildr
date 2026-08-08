@@ -14,19 +14,28 @@ import type { ThemeSettingField } from "@/new-storefront/theme-engine/types";
 
 interface ThemeEditorInspectorProps {
   sectionLabel: string;
+  sectionType?: string;
   fields: ThemeSettingField[];
   values: Record<string, unknown>;
   onChange: (fieldId: string, value: unknown) => void;
   onClose: () => void;
 }
 
+const KB_WARN = 40 * 1024;
+const KB_MAX = 50 * 1024;
+
 export function ThemeEditorInspector({
   sectionLabel,
+  sectionType,
   fields,
   values,
   onChange,
   onClose,
 }: ThemeEditorInspectorProps) {
+  const htmlContent = sectionType === "custom-html" ? String(values["html_content"] ?? "") : "";
+  const sectionLabelVal = sectionType === "custom-html" ? String(values["section_label"] ?? "") : "";
+  const byteLen = sectionType === "custom-html" ? new TextEncoder().encode(htmlContent).length : 0;
+
   return (
     <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-card">
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
@@ -41,7 +50,50 @@ export function ThemeEditorInspector({
         </button>
       </div>
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
-        {fields.length === 0 ? (
+        {sectionType === "custom-html" ? (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Section label</Label>
+              <Input
+                value={sectionLabelVal}
+                onChange={(e) => onChange("section_label", e.target.value)}
+                className="h-8 text-sm"
+                placeholder="Custom block"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">HTML / CSS</Label>
+                <span
+                  className={`tabular-nums text-xs ${
+                    byteLen > KB_MAX
+                      ? "text-destructive"
+                      : byteLen > KB_WARN
+                      ? "text-amber-500"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {(byteLen / 1024).toFixed(1)} / 50 KB
+                </span>
+              </div>
+              <Textarea
+                value={htmlContent}
+                onChange={(e) => onChange("html_content", e.target.value)}
+                className="min-h-[200px] resize-y font-mono text-xs"
+                placeholder={"<section>\n  <!-- Your HTML here -->\n</section>"}
+              />
+              {byteLen > KB_WARN && byteLen <= KB_MAX && (
+                <p className="text-xs text-amber-500">Approaching 50 KB limit.</p>
+              )}
+              {byteLen > KB_MAX && (
+                <p className="text-xs text-destructive">Exceeds 50 KB. Reduce content.</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Sandboxed — no external network access.
+              </p>
+            </div>
+          </>
+        ) : fields.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">
             No settings for this section.
           </p>

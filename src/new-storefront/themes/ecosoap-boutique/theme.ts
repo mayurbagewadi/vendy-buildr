@@ -385,6 +385,28 @@ export const ecosoapBoutiqueThemeSectionSchema: ThemeSectionSchema[] = [
     allowedBlocks: ["trust-indicator", "badge"],
   },
   {
+    page: "home",
+    type: "custom-html",
+    label: "Custom HTML",
+    description: "Add raw HTML and CSS. Runs in a sandboxed frame.",
+    defaultVisible: false,
+    settings: [
+      {
+        id: "section_label",
+        type: "text",
+        label: "Section label",
+        defaultValue: "Custom block",
+      },
+      {
+        id: "html_content",
+        type: "textarea",
+        label: "HTML / CSS",
+        defaultValue: "",
+        placeholder: "<section>\n  <!-- Your HTML here -->\n</section>",
+      },
+    ],
+  },
+  {
     page: "products",
     type: "product-grid",
     label: "Product grid",

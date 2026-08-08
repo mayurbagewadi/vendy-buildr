@@ -27,6 +27,7 @@ import {
   Sparkles,
   Trash2,
   Plus,
+  Code2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   "reviews": Star,
   "instagram-reels": Instagram,
   "footer": Layers,
+  "custom-html": Code2,
 };
 
 // ─── CSS injection (draft preview) ───────────────────────────────────────────
@@ -490,8 +492,10 @@ export default function ThemeEditor() {
     }, 50);
 
     try {
-      // Strip label (UI-only) before sending to AI
-      const currentSectionsPayload = sections.map(({ label: _label, ...s }) => s as Record<string, unknown>);
+      // Strip label (UI-only) and custom-html blocks before sending to AI (AI doesn't manage those)
+      const currentSectionsPayload = sections
+        .filter((s) => s.type !== "custom-html")
+        .map(({ label: _label, ...s }) => s as Record<string, unknown>);
 
       const result = await themeChatRequest({
         storeId,
@@ -523,6 +527,12 @@ export default function ThemeEditor() {
           settings: s.settings as Record<string, unknown>,
           label: schemaMap.get(s.type)?.label ?? s.type,
         }));
+        // Re-append custom-html sections — AI doesn't know about them
+        for (const ch of sections.filter((s) => s.type === "custom-html")) {
+          if (!updatedSections.some((s) => s.id === ch.id)) {
+            updatedSections.push(ch);
+          }
+        }
       } else {
         // Patch: merge AI's changes into existing sections
         updatedSections = [...sections];
@@ -919,6 +929,7 @@ export default function ThemeEditor() {
         {selectedSection && (
           <ThemeEditorInspector
             sectionLabel={selectedSection.label}
+            sectionType={selectedSection.type}
             fields={inspectorFields}
             values={selectedSection.settings ?? {}}
             onChange={handleSectionSettingChange}
@@ -1026,7 +1037,7 @@ export default function ThemeEditor() {
                   .filter((s) => s.page === "home")
                   .map((schema) => {
                     const Icon: LucideIcon = SECTION_ICONS[schema.type] ?? Package;
-                    const alreadyAdded = sections.some((s) => s.type === schema.type);
+                    const alreadyAdded = schema.type !== "custom-html" && sections.some((s) => s.type === schema.type);
                     return (
                       <button
                         key={schema.type}

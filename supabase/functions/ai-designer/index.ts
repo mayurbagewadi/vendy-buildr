@@ -942,6 +942,7 @@ function buildThemeChatSystemPrompt(storeName: string, currentSectionsJSON: stri
     "- footer: { show_social_links (boolean) }\n\n" +
     "HARD RULES:\n" +
     "- Use ONLY section types from SECTION LIBRARY above — never invent new types\n" +
+    "- NEVER generate sections of type \"custom-html\" — these are store owner-managed only\n" +
     "- custom_css: always empty string \"\" in V1\n" +
     "- global_settings: always empty object {} in V1\n" +
     "- NEVER output cart, checkout, payment, order logic, or JavaScript code\n" +
