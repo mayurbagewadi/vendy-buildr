@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Coins, Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { loadRazorpayScript } from "@/lib/payment/razorpay";
 
 interface TokenPackage {
   id: string;
@@ -90,6 +91,11 @@ const BuyTokens = () => {
       }
 
       // Load Razorpay and open checkout
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Failed to load Razorpay SDK");
+      }
+
       const razorpay = new (window as any).Razorpay({
         key: orderData.razorpay_key_id,
         amount: orderData.amount,
