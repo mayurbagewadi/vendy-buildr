@@ -1246,9 +1246,11 @@ serve(async (req) => {
           status: "pending_review" as const,
         };
 
-        await supabase.from("ai_generation_failures").insert(failureRecord)
-          .then(() => console.log("[FAILURE_LOG_OK]"))
-          .catch(() => console.error("[FAILURE_LOG_ERROR] Failed to log failure"));
+        {
+          const { error: flErr } = await supabase.from("ai_generation_failures").insert(failureRecord);
+          if (flErr) { console.error("[FAILURE_LOG_ERROR] Failed to log failure"); }
+          else { console.log("[FAILURE_LOG_OK]"); }
+        }
 
         return new Response(JSON.stringify({
           success: false,
@@ -1589,13 +1591,16 @@ serve(async (req) => {
       // Fallback if parsing failed
       if (!genParsed) {
         console.warn("[GENERATE] All parse attempts exhausted. Logging failure.");
-        await supabase.from("ai_generation_failures").insert({
-          store_id, user_id, user_prompt: prompt,
-          error_message: genLastError,
-          model: genModel,
-          raw_ai_output: genContent.substring(0, 2000),
-          attempt_count: 3,
-        }).catch(e => console.error("[LOG_ERROR]", e.message));
+        {
+          const { error: genLogErr } = await supabase.from("ai_generation_failures").insert({
+            store_id, user_id, user_prompt: prompt,
+            error_message: genLastError,
+            model: genModel,
+            raw_ai_output: genContent.substring(0, 2000),
+            attempt_count: 3,
+          });
+          if (genLogErr) { console.error("[LOG_ERROR]", genLogErr.message); }
+        }
 
         return new Response(JSON.stringify({
           success: true, type: "text",
@@ -2431,7 +2436,7 @@ serve(async (req) => {
               await supabase.from("ai_token_ledger").update({
                 status: "failed",
                 completed_at: new Date().toISOString(),
-              }).eq("idempotency_key", idempotency_key).catch(() => null);
+              }).eq("idempotency_key", idempotency_key);
             }
             const errMsg = err.name === "AbortError"
               ? "Design generation timed out (120s). Try a simpler prompt."
@@ -2623,14 +2628,17 @@ serve(async (req) => {
       }).eq("id", tcPurchase.id);
 
       // Log to history
-      await supabase.from("ai_designer_history").insert({
-        store_id,
-        user_id,
-        prompt,
-        ai_response: { intent: tcIntent, sections_count: tcValidatedSections.length, message: tcMessageText },
-        tokens_used: 1,
-        applied: false,
-      }).catch(function(e: any) { console.error("[THEME_CHAT] History insert failed:", e.message); });
+      {
+        const { error: tcHistErr } = await supabase.from("ai_designer_history").insert({
+          store_id,
+          user_id,
+          prompt,
+          ai_response: { intent: tcIntent, sections_count: tcValidatedSections.length, message: tcMessageText },
+          tokens_used: 1,
+          applied: false,
+        });
+        if (tcHistErr) { console.error("[THEME_CHAT] History insert failed:", tcHistErr.message); }
+      }
 
       // Get updated token balance
       const { data: tcUpdatedPurchases } = await supabase.from("ai_token_purchases")
