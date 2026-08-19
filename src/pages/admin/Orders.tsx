@@ -188,12 +188,11 @@ const Orders = () => {
       setPlanName(subscription?.subscription_plans?.name || "");
       setViewLimit(ordersViewLimit);
 
-      // Get total order count — exclude orders awaiting payment (not yet confirmed)
+      // Get total order count — includes in-progress ("Processing") payments so nothing is invisible
       const { count: totalCount } = await supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
-        .eq("store_id", store.id)
-        .neq("payment_status", "awaiting_payment");
+        .eq("store_id", store.id);
 
       setTotalOrderCount(totalCount || 0);
 
@@ -204,7 +203,6 @@ const Orders = () => {
         .from("orders")
         .select("*")
         .eq("store_id", store.id)
-        .neq("payment_status", "awaiting_payment") // Hide unpaid online orders until payment confirmed
         .order("created_at", { ascending: true }); // Get oldest first from DB
 
       // Apply limit if set
@@ -929,7 +927,7 @@ const Orders = () => {
                         {getDiscountBadges(order)}
                         <span className="font-semibold text-sm text-foreground">{order.order_number}</span>
                       </div>
-                      <span className={`font-bold text-base ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
+                      <span className={`font-bold text-base ${(order.payment_status === 'failed' || order.payment_status === 'awaiting_payment') ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
                         {formatCurrency(order.total)}
                       </span>
                     </div>
@@ -954,7 +952,9 @@ const Orders = () => {
                           ? getStatusBadge(order.status)
                           : order.payment_status === 'failed'
                             ? <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Failed</Badge>
-                            : getStatusBadge(order.status)
+                            : order.payment_status === 'awaiting_payment'
+                              ? <Badge variant="secondary" className="flex items-center gap-1"><Clock className="h-3 w-3" />Processing</Badge>
+                              : getStatusBadge(order.status)
                         }
                       </div>
                     </div>
@@ -1080,7 +1080,9 @@ const Orders = () => {
                               ? getStatusBadge(order.status)
                               : order.payment_status === 'failed'
                                 ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
-                                : getStatusBadge(order.status)
+                                : order.payment_status === 'awaiting_payment'
+                                  ? <Badge variant="secondary" className="flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Processing</Badge>
+                                  : getStatusBadge(order.status)
                             }
                           </span>
                         </div>
@@ -1100,7 +1102,7 @@ const Orders = () => {
                           {Array.isArray(order.items) ? order.items.length : 0} item{Array.isArray(order.items) && order.items.length !== 1 ? 's' : ''}
                         </div>
                       </TableCell>
-                      <TableCell className={`font-medium text-sm ${order.payment_status === 'failed' ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
+                      <TableCell className={`font-medium text-sm ${(order.payment_status === 'failed' || order.payment_status === 'awaiting_payment') ? 'text-muted-foreground' : getPaymentStatusColor(order.payment_method)}`}>
                         {formatCurrency(order.total)}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
@@ -1109,7 +1111,9 @@ const Orders = () => {
                             ? getStatusBadge(order.status)
                             : order.payment_status === 'failed'
                               ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
-                              : getStatusBadge(order.status)
+                              : order.payment_status === 'awaiting_payment'
+                                ? <Badge variant="secondary" className="flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Processing</Badge>
+                                : getStatusBadge(order.status)
                           }
                           {getShippingBadge(order)}
                         </div>
