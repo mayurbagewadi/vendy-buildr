@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw, Package, Clock, CheckCircle2, XCircle, Download, Eye, Edit, Truck, Ban, AlertTriangle, ArrowUpCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
@@ -316,6 +317,22 @@ const Orders = () => {
       </Badge>
     );
   };
+
+  const renderAwaitingPaymentBadge = (className = "") => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger type="button" onClick={(e) => e.stopPropagation()} className={`inline-flex ${className}`}>
+          <Badge className="flex items-center whitespace-nowrap bg-orange-500 text-white hover:bg-orange-500 cursor-default">
+            <Clock className="h-3 w-3 mr-1 shrink-0" />
+            Awaiting Payment
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-sm">
+          The customer started an online payment, but we haven't received final confirmation yet. Please check your payment gateway dashboard to confirm whether the payment was received.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 
   const getDiscountBadges = (order: Order) => {
     const hasCoupon = order.coupon_code && order.coupon_code.trim() !== "";
@@ -953,7 +970,7 @@ const Orders = () => {
                           : order.payment_status === 'failed'
                             ? <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Failed</Badge>
                             : order.payment_status === 'awaiting_payment'
-                              ? <Badge variant="secondary" className="flex items-center gap-1"><Clock className="h-3 w-3" />Processing</Badge>
+                              ? renderAwaitingPaymentBadge()
                               : getStatusBadge(order.status)
                         }
                       </div>
@@ -1081,7 +1098,7 @@ const Orders = () => {
                               : order.payment_status === 'failed'
                                 ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
                                 : order.payment_status === 'awaiting_payment'
-                                  ? <Badge variant="secondary" className="flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Processing</Badge>
+                                  ? renderAwaitingPaymentBadge("w-fit")
                                   : getStatusBadge(order.status)
                             }
                           </span>
@@ -1112,7 +1129,7 @@ const Orders = () => {
                             : order.payment_status === 'failed'
                               ? <Badge variant="destructive" className="flex items-center gap-1 w-fit"><XCircle className="h-3 w-3" />Failed</Badge>
                               : order.payment_status === 'awaiting_payment'
-                                ? <Badge variant="secondary" className="flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Processing</Badge>
+                                ? renderAwaitingPaymentBadge("w-fit")
                                 : getStatusBadge(order.status)
                           }
                           {getShippingBadge(order)}
