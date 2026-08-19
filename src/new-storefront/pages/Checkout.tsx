@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { ChevronRight, MessageCircle, ShoppingBag, AlertTriangle, CreditCard, Smartphone, Wallet, Ticket, Check, X, Loader2, CheckCircle, XCircle, RefreshCw, Download } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useStorefront } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
@@ -108,6 +108,20 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     secondaryLabel?: string;
     secondaryAction?: () => void;
   }>({ open: false, variant: 'error', title: '', description: '' });
+  const [paymentRecoveryModal, setPaymentRecoveryModal] = useState<{
+    open: boolean;
+    paymentId: string;
+    amount: number;
+    orderNumber: string;
+    razorpayOrderId: string;
+    razorpaySignature: string;
+    storeId: string;
+    dbOrderId: string;
+    customerName: string;
+    customerPhone: string;
+    isRetrying: boolean;
+    showDownload: boolean;
+  } | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [limitDetails, setLimitDetails] = useState<{
     planName: string;
@@ -183,6 +197,93 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     }
   ) => {
     setNotifModal({ open: true, variant, title, description, ...options });
+  };
+
+  // Re-checks payment status with our server. Only marks the order paid if
+  // verification genuinely succeeds — never assumes success just because the
+  // customer clicked Refresh.
+  const retryPaymentVerification = async () => {
+    setPaymentRecoveryModal(prev => prev ? { ...prev, isRetrying: true } : prev);
+
+    const recovery = paymentRecoveryModal;
+    if (!recovery) return;
+
+    try {
+      const { verifyRazorpayPayment } = await import("@/lib/payment/razorpay");
+      const verification = await verifyRazorpayPayment(
+        recovery.razorpayOrderId,
+        recovery.paymentId,
+        recovery.razorpaySignature,
+        recovery.storeId,
+        recovery.dbOrderId
+      );
+
+      if (verification.verified) {
+        clearCart();
+        const finalOrderId = verification.orderId || recovery.dbOrderId;
+        const successParams = new URLSearchParams({
+          gateway: 'razorpay',
+          orderId: finalOrderId,
+          storeId: recovery.storeId,
+          paymentId: recovery.paymentId,
+          razorpayOrderId: recovery.razorpayOrderId,
+          signature: recovery.razorpaySignature,
+          storeSlug: storeSlug || '',
+        });
+        window.location.href = `/payment-success?${successParams.toString()}`;
+        return;
+      }
+
+      throw new Error(verification.error || 'Payment verification failed');
+    } catch (retryError) {
+      console.error('Payment recovery retry failed:', retryError);
+      setPaymentRecoveryModal(prev => prev ? { ...prev, isRetrying: false, showDownload: true } : prev);
+
+      try {
+        const { downloadPaymentReceiptPDF } = await import("@/lib/payment/generateReceiptPDF");
+        await downloadPaymentReceiptPDF({
+          storeName: ctxStore?.name || 'Store',
+          storePhone: profile?.phone || ctxStore?.whatsapp_number || null,
+          orderNumber: recovery.orderNumber,
+          paymentId: recovery.paymentId,
+          amount: recovery.amount,
+          customerName: recovery.customerName,
+          customerPhone: recovery.customerPhone,
+          items: cart.map(item => ({
+            productName: item.productName,
+            variant: item.variant,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        });
+      } catch (pdfError) {
+        console.error('Receipt PDF generation failed:', pdfError);
+      }
+    }
+  };
+
+  const downloadReceiptAgain = async () => {
+    if (!paymentRecoveryModal) return;
+    try {
+      const { downloadPaymentReceiptPDF } = await import("@/lib/payment/generateReceiptPDF");
+      await downloadPaymentReceiptPDF({
+        storeName: ctxStore?.name || 'Store',
+        storePhone: profile?.phone || ctxStore?.whatsapp_number || null,
+        orderNumber: paymentRecoveryModal.orderNumber,
+        paymentId: paymentRecoveryModal.paymentId,
+        amount: paymentRecoveryModal.amount,
+        customerName: paymentRecoveryModal.customerName,
+        customerPhone: paymentRecoveryModal.customerPhone,
+        items: cart.map(item => ({
+          productName: item.productName,
+          variant: item.variant,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      });
+    } catch (pdfError) {
+      console.error('Receipt PDF generation failed:', pdfError);
+    }
   };
 
   // Load payment settings from store
@@ -349,13 +450,23 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
               window.location.href = `/payment-success?${verifiedSuccessParams.toString()}`;
               return;
             } catch (saveError: any) {
-              // Payment went through but DB save failed — critical, show payment ID so customer can contact support
+              // Payment went through but confirmation failed — critical, let the
+              // customer retry the confirmation before falling back to a receipt.
               console.error('Order save after payment failed:', saveError);
-              showModal(
-                'warning',
-                'Payment Received — Contact Support',
-                `Payment of ₹${params.amount} was successful (ID: ${response.razorpay_payment_id}). Your order could not be saved automatically. Please share this Payment ID with the store owner.`
-              );
+              setPaymentRecoveryModal({
+                open: true,
+                paymentId: response.razorpay_payment_id,
+                amount: params.amount,
+                orderNumber: params.orderNumber,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+                storeId: params.storeId,
+                dbOrderId,
+                customerName: params.customerName,
+                customerPhone: params.customerPhone,
+                isRetrying: false,
+                showDownload: false,
+              });
               setIsProcessingPayment(false);
             }
           },
@@ -1975,6 +2086,55 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
             {notifModal.secondaryLabel && notifModal.secondaryAction && (
               <Button variant="outline" className="w-full" onClick={notifModal.secondaryAction}>
                 {notifModal.secondaryLabel}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Recovery Modal — payment succeeded but server-side confirmation
+          failed. Refresh re-checks with the payment gateway; only a genuine
+          confirmed match marks the order paid. If it still can't confirm, a
+          receipt PDF (auto-downloaded, and re-downloadable) is the fallback. */}
+      <Dialog
+        open={Boolean(paymentRecoveryModal?.open)}
+        onOpenChange={(open) => setPaymentRecoveryModal(prev => prev ? { ...prev, open } : prev)}
+      >
+        <DialogContent className="sm:max-w-sm text-center">
+          <div className="flex flex-col items-center gap-4 pt-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <AlertTriangle className="w-9 h-9 text-amber-600" />
+            </div>
+            <div className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold">Payment Received — Contact Support</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                Payment of ₹{paymentRecoveryModal?.amount} was successful (ID: {paymentRecoveryModal?.paymentId}).
+                Your order could not be confirmed automatically. Tap Refresh to try again.
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 mt-2">
+            <Button
+              className="w-full"
+              onClick={retryPaymentVerification}
+              disabled={paymentRecoveryModal?.isRetrying}
+            >
+              {paymentRecoveryModal?.isRetrying ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </>
+              )}
+            </Button>
+            {paymentRecoveryModal?.showDownload && (
+              <Button variant="outline" className="w-full" onClick={downloadReceiptAgain}>
+                <Download className="w-4 h-4 mr-2" />
+                Download Receipt
               </Button>
             )}
           </DialogFooter>
