@@ -17,6 +17,9 @@ export interface CallResult {
   status: number;
   body: string;
   timedOut: boolean;
+  // "stop" = model finished; "length" = hit max_tokens (page is cut off).
+  finishReason: string;
+  reasoningTokens: number;
 }
 
 // One OpenRouter call, no internal retry loop — retry now lives at the job
@@ -62,19 +65,24 @@ export async function callOpenRouter(
         // defaults to "thinking" mode (50-120s/page); instant mode skips
         // that and writes HTML directly, same model/quality, far faster.
         thinking: { type: "disabled" },
+        // OpenRouter ignores Moonshot's native `thinking` field above — this
+        // is OpenRouter's own switch. K2.5 reasons by default, and reasoning
+        // tokens share the max_tokens budget with the HTML, which was cutting
+        // pages off mid-<style> before any markup was written.
+        reasoning: { enabled: false },
       }),
       signal: abort.signal,
     });
   } catch (err: any) {
     clearTimeout(timeout);
     const timedOut = err?.name === "AbortError";
-    return { ok: false, html: "", status: 0, body: timedOut ? "timeout" : String(err?.message || err), timedOut };
+    return { ok: false, html: "", status: 0, body: timedOut ? "timeout" : String(err?.message || err), timedOut, finishReason: "", reasoningTokens: 0 };
   }
   clearTimeout(timeout);
 
   if (!resp.ok) {
     const bodyText = await resp.text().catch(() => "");
-    return { ok: false, html: "", status: resp.status, body: bodyText.slice(0, 300), timedOut: false };
+    return { ok: false, html: "", status: resp.status, body: bodyText.slice(0, 300), timedOut: false, finishReason: "", reasoningTokens: 0 };
   }
 
   const json: any = await resp.json();
@@ -83,7 +91,15 @@ export async function callOpenRouter(
     const fenced = html.match(/```(?:html)?\s*([\s\S]*?)```/i);
     if (fenced) html = fenced[1].trim();
   }
-  return { ok: true, html, status: resp.status, body: "", timedOut: false };
+  const finishReason: string = json.choices?.[0]?.finish_reason || "";
+  const reasoningTokens: number = json.usage?.completion_tokens_details?.reasoning_tokens || 0;
+  return { ok: true, html, status: resp.status, body: "", timedOut: false, finishReason, reasoningTokens };
+}
+
+// A complete page ends with </html>. finish_reason "length" means the
+// token budget ran out mid-page — never save that as a finished page.
+export function isTruncated(result: CallResult): boolean {
+  return result.finishReason === "length" || !result.html.toLowerCase().includes("</html>");
 }
 
 // 429/5xx/timeout are transient — worth a job-level retry (new attempt,

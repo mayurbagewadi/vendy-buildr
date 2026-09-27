@@ -21,9 +21,11 @@ export const GT_REQUIRED_IDS: Record<GtPageType, string[]> = {
   policies: ["menu-toggle", "mobile-menu", "cart-count", "policies-content"],
 };
 
+// Ceiling only — billing is for tokens actually generated, not this limit.
+// Real pages run 8-18k chars (~3-6k tokens); the old 3-8k caps cut pages off.
 export const GT_MAX_TOKENS: Record<GtPageType, number> = {
-  home: 8000, products: 6000, categories: 4000,
-  product_detail: 5000, cart: 5000, about: 3000, policies: 3000,
+  home: 16000, products: 16000, categories: 16000,
+  product_detail: 16000, cart: 16000, about: 16000, policies: 16000,
 };
 
 export function gtValidateHTML(pageType: GtPageType, html: string): { valid: boolean; missing: string[] } {

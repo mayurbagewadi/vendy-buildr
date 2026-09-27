@@ -4,7 +4,7 @@ import {
   AiThemeJob, claimNextJob, completeJob, deductOneToken, extendLease, failJob,
   loadOpenRouterSettings, loadStoreContext, logHistory, saveHomePage, saveOtherPage,
 } from "./db.js";
-import { callOpenRouter, isRetryableCallResult, StoreCtx } from "./openrouter.js";
+import { callOpenRouter, isRetryableCallResult, isTruncated, StoreCtx } from "./openrouter.js";
 import { gtValidateHTML } from "./prompt.js";
 
 let draining = false;
@@ -92,8 +92,10 @@ async function processJob(job: AiThemeJob): Promise<void> {
 
   let html = first.html;
   let check = gtValidateHTML(job.page_type, html);
+  let truncated = isTruncated(first);
+  console.log(`[worker] ${label} attempt-call done: finish=${first.finishReason || "?"}, reasoningTokens=${first.reasoningTokens}, ${html.length} chars${truncated ? ", CUT OFF" : ""}`);
 
-  if (!check.valid) {
+  if (!check.valid || truncated) {
     // Heartbeat + cancel-check before spending a second full call on repair.
     const mid = await extendLease(job.id, job.attempt);
     if (!mid.stillOwned) {
@@ -105,13 +107,17 @@ async function processJob(job: AiThemeJob): Promise<void> {
       return;
     }
 
-    const retryInstruction =
-      `\n\nSTRICT: your previous output was missing these required element ids: ${check.missing.join(", ")}. ` +
-      "Include every one of them exactly as specified above.\n";
+    const retryInstruction = truncated
+      ? "\n\nSTRICT: your previous output was cut off before the page was finished. Keep the CSS concise " +
+        "and output the COMPLETE page, including every required element id, ending with </html>.\n"
+      : `\n\nSTRICT: your previous output was missing these required element ids: ${check.missing.join(", ")}. ` +
+        "Include every one of them exactly as specified above.\n";
     const repaired = await callOpenRouter(settings.apiKey, settings.model, job.page_type, ctx, retryInstruction, config.callTimeoutSeconds);
     if (repaired.ok && repaired.html) {
       html = repaired.html;
       check = gtValidateHTML(job.page_type, html);
+      truncated = isTruncated(repaired);
+      console.log(`[worker] ${label} repair-call done: finish=${repaired.finishReason || "?"}, reasoningTokens=${repaired.reasoningTokens}, ${html.length} chars${truncated ? ", CUT OFF" : ""}`);
     }
     // If the repair call itself fails, fall through with the first (still
     // usable, just missing some ids) result — matches the prior lenient
@@ -120,6 +126,13 @@ async function processJob(job: AiThemeJob): Promise<void> {
 
   if (!html) {
     await failJob(job.id, job.attempt, "AI returned empty output", true);
+    return;
+  }
+
+  // A cut-off page is broken (no markup after the <style> block), unlike a
+  // page missing a few ids — never save it; let the queue retry the job.
+  if (truncated) {
+    await failJob(job.id, job.attempt, "AI output was cut off before the page finished", true);
     return;
   }
 
