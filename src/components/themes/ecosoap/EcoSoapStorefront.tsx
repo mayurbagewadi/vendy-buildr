@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Filter, HelpCircle, Leaf } from "lucide-react";
+import { Filter, HelpCircle, Leaf, PackageSearch } from "lucide-react";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { generateGeneralInquiryMessage, openWhatsApp } from "@/lib/whatsappUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -214,6 +214,7 @@ export default function EcoSoapStorefront({
   const productsLink = urls?.products ?? (isSubdomain ? "/products" : `/${store.slug}/products`);
   const categoriesLink = urls?.categories ?? (isSubdomain ? "/categories" : `/${store.slug}/categories`);
   const aboutLink = urls?.about ?? (isSubdomain ? "/about" : `/${store.slug}/about`);
+  const myOrderLink = isSubdomain ? "/my-order" : `/${store.slug}/my-order`;
   const cartLink = urls?.cart ?? (isSubdomain ? "/cart" : `/${store.slug}/cart`);
   const checkoutLink = urls?.checkout ?? (isSubdomain ? "/checkout" : `/${store.slug}/checkout`);
   const updateCartQuantity = actions?.updateQuantity ?? (() => undefined);
@@ -288,6 +289,14 @@ export default function EcoSoapStorefront({
       icon: HelpCircle,
       iconClass: "text-emerald-600",
     },
+    {
+      href: myOrderLink,
+      label: "My Order",
+      active: location.pathname === myOrderLink,
+      activeClass: "border border-emerald-100 bg-emerald-50 text-emerald-800 shadow-sm",
+      icon: PackageSearch,
+      iconClass: "text-emerald-600",
+    },
   ];
 
   const handleWhatsApp = async () => {
@@ -349,7 +358,7 @@ export default function EcoSoapStorefront({
     }
 
     if (section.type === "footer") {
-      return <FooterSection store={store} copy={copy} onSelectTab={setActiveTab} />;
+      return <FooterSection store={store} copy={copy} onSelectTab={setActiveTab} myOrderLink={myOrderLink} />;
     }
 
     if (section.type === "custom-html") {

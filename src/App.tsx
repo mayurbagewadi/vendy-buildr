@@ -25,6 +25,7 @@ const Cart            = lazy(() => import("./pages/customer/Cart"));
 const Checkout        = lazy(() => import("./pages/customer/Checkout"));
 const PaymentSuccess  = lazy(() => import("./pages/customer/PaymentSuccess"));
 const Tracking        = lazy(() => import("./pages/customer/Tracking"));
+const MyOrder         = lazy(() => import("./new-storefront/pages/MyOrder"));
 
 // Guard + Layout components — always static (they're wrappers, not pages)
 const SuperAdminGuard = lazy(() =>
@@ -246,6 +247,7 @@ const App = () => {
                             <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
                             <Route path="/payment-success" element={<PaymentSuccess />} />
                             <Route path="/track/:awb" element={<Tracking />} />
+                            <Route path="/my-order" element={<MyOrder />} />
                           </Route>
                           <Route path="/sitemap.xml" element={<Sitemap />} />
                           <Route path="*" element={<NotFound />} />
@@ -351,6 +353,7 @@ const App = () => {
                             <Route path="checkout" element={<Checkout />} />
                             <Route path="payment-success" element={<PaymentSuccess />} />
                             <Route path="track/:awb" element={<Tracking />} />
+                            <Route path="my-order" element={<MyOrder />} />
                           </Route>
                           <Route path="*" element={<NotFound />} />
                         </>

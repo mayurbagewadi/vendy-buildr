@@ -237,6 +237,13 @@ export default function PaymentSuccess() {
     }
   };
 
+  // Opens the My Order page with this order selected (same routing rules as handleGoHome)
+  const handleViewMyOrder = () => {
+    const domainInfo = detectDomain();
+    const basePath = domainInfo.isStoreSpecific ? '' : (storeSlug ? `/${storeSlug}` : '');
+    navigate(`${basePath}/my-order?order=${encodeURIComponent(orderNumber)}`);
+  };
+
   const isEditorialPayment = getStorefrontPageVariant((store as any)?.storefront_template, "paymentSuccess") === "editorial-payment";
 
   return (
@@ -359,6 +366,16 @@ export default function PaymentSuccess() {
                   50% { transform: scale(1.03); }
                 }
               `}</style>
+
+              <Button
+                onClick={handleViewMyOrder}
+                variant="outline"
+                size="lg"
+                className="w-full"
+              >
+                <Package className="w-5 h-5 mr-2" />
+                View My Order
+              </Button>
 
               {/* Minimized Home Link - just a text link, not a button */}
               <div className="text-center pt-2">

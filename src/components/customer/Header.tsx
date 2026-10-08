@@ -84,6 +84,7 @@ const Header = ({ storeSlug: slugProp, storeId: idProp, cartVariant = "default" 
   const productsLink = isSubdomain ? "/products" : (storeSlug ? `/${storeSlug}/products` : "/products");
   const categoriesLink = isSubdomain ? "/categories" : (storeSlug ? `/${storeSlug}/categories` : "/categories");
   const aboutLink = isSubdomain ? "/about" : (storeSlug ? `/${storeSlug}/about` : "/about");
+  const myOrderLink = isSubdomain ? "/my-order" : (storeSlug ? `/${storeSlug}/my-order` : "/my-order");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +158,9 @@ const Header = ({ storeSlug: slugProp, storeId: idProp, cartVariant = "default" 
             </Link>
             <Link to={aboutLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
               About
+            </Link>
+            <Link to={myOrderLink} className="relative font-semibold text-foreground hover:text-primary transition-all duration-300 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left hover:translate-y-[-2px]">
+              My Order
             </Link>
           </nav>
 
@@ -278,6 +282,13 @@ const Header = ({ storeSlug: slugProp, storeId: idProp, cartVariant = "default" 
               onClick={() => setMobileMenuOpen(false)}
             >
               About
+            </Link>
+            <Link
+              to={myOrderLink}
+              className="font-semibold text-foreground hover:text-primary transition-all duration-300 hover:translate-x-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              My Order
             </Link>
             <Button onClick={handleWhatsApp} className="w-full min-h-[48px] animate-in fade-in slide-in-from-bottom-2 duration-300 delay-300 group">
               <Phone className="w-5 h-5 mr-2 transition-transform duration-300 group-hover:rotate-12" />

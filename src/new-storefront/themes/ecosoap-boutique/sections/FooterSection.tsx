@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Leaf } from "lucide-react";
 
 type FooterStore = {
@@ -16,9 +17,10 @@ type FooterSectionProps = {
   store: FooterStore;
   copy: FooterCopy;
   onSelectTab: (tab: string) => void;
+  myOrderLink?: string;
 };
 
-const FooterSection = ({ store, copy, onSelectTab }: FooterSectionProps) => (
+const FooterSection = ({ store, copy, onSelectTab, myOrderLink }: FooterSectionProps) => (
   <footer className="border-t border-stone-100 bg-white py-12 text-stone-600 md:py-16">
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 gap-8 text-left md:grid-cols-4">
@@ -40,6 +42,7 @@ const FooterSection = ({ store, copy, onSelectTab }: FooterSectionProps) => (
             <li><button onClick={() => onSelectTab("soap-lab")} className="hover:text-emerald-700">Experimental Soap Lab</button></li>
             <li><button onClick={() => onSelectTab("skin-guide")} className="hover:text-emerald-700">AI Botanical Assessment</button></li>
             <li><button onClick={() => onSelectTab("sustainability")} className="hover:text-emerald-700">Footprint Trackers</button></li>
+            {myOrderLink && <li><Link to={myOrderLink} className="hover:text-emerald-700">My Order</Link></li>}
           </ul>
         </div>
         <div className="space-y-3">

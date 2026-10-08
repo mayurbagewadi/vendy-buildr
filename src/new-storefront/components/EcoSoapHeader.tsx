@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Filter, HelpCircle, Leaf, Menu, Phone, ShoppingBag, X } from "lucide-react";
+import { Filter, HelpCircle, Leaf, Menu, PackageSearch, Phone, ShoppingBag, X } from "lucide-react";
 
 import EcoSoapCartDrawer from "@/components/themes/ecosoap/EcoSoapCartDrawer";
 import { useCart } from "@/contexts/CartContext";
@@ -37,6 +37,7 @@ const EcoSoapHeader = ({ storeSlug: slugProp, storeId: idProp }: EcoSoapHeaderPr
   const productsLink = isSubdomain ? "/products" : `/${storeSlug}/products`;
   const categoriesLink = isSubdomain ? "/categories" : `/${storeSlug}/categories`;
   const aboutLink = isSubdomain ? "/about" : `/${storeSlug}/about`;
+  const myOrderLink = isSubdomain ? "/my-order" : `/${storeSlug}/my-order`;
   const cartLink = isSubdomain ? "/cart" : `/${storeSlug}/cart`;
   const checkoutLink = isSubdomain ? "/checkout" : `/${storeSlug}/checkout`;
 
@@ -45,6 +46,7 @@ const EcoSoapHeader = ({ storeSlug: slugProp, storeId: idProp }: EcoSoapHeaderPr
     { href: productsLink, label: "Products", active: location.pathname.startsWith(productsLink), icon: Leaf },
     { href: categoriesLink, label: "Categories", active: location.pathname.startsWith(categoriesLink), icon: Filter },
     { href: aboutLink, label: "About", active: location.pathname === aboutLink, icon: HelpCircle },
+    { href: myOrderLink, label: "My Order", active: location.pathname === myOrderLink, icon: PackageSearch },
   ];
 
   const handleWhatsApp = async () => {

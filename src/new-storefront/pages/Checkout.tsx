@@ -25,6 +25,7 @@ import { type CartItem } from "@/lib/autoDiscountUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
 import StorefrontImage from "@/components/ui/storefront-image";
 import { loadSavedCheckoutProfile, saveCheckoutProfile } from "@/lib/checkoutProfile";
+import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { calculateGst, createGstSnapshot, normalizeGstRate, type GstSettings } from "@/lib/gst";
 import {
   Form,
@@ -123,6 +124,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
     showDownload: boolean;
   } | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [placedOrderNumber, setPlacedOrderNumber] = useState('');
   const [limitDetails, setLimitDetails] = useState<{
     planName: string;
     ordersUsed: number;
@@ -1028,6 +1030,24 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
                 <p className="text-muted-foreground mb-8">
                   We'll contact you shortly on WhatsApp to confirm your order.
                 </p>
+                {placedOrderNumber && (
+                  <div className="mb-8 space-y-4">
+                    <p className="text-muted-foreground">
+                      Order Number: <span className="font-bold text-foreground">{placedOrderNumber}</span>
+                    </p>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        const basePath = isStoreSpecificDomain() ? '' : (storeSlug ? `/${storeSlug}` : '');
+                        navigate(`${basePath}/my-order?order=${encodeURIComponent(placedOrderNumber)}`);
+                      }}
+                    >
+                      View My Order
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -1374,6 +1394,7 @@ const Checkout = ({ slug: slugProp }: CheckoutProps = {}) => {
           return;
         }
 
+        setPlacedOrderNumber(orderNumber);
         setOrderSuccess(true);
         clearCart();
       }

@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.shipping-notification-worker]
 verify_jwt = false
+
+[functions.customer-order-lookup]
+verify_jwt = false

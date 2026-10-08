@@ -19,6 +19,7 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const Policies = lazy(() => import("./pages/Policies"));
 const About = lazy(() => import("./pages/About"));
+const MyOrder = lazy(() => import("./pages/MyOrder"));
 const Toaster = lazy(() => import("@/components/ui/toaster").then((module) => ({ default: module.Toaster })));
 const Sonner = lazy(() => import("@/components/ui/sonner").then((module) => ({ default: module.Toaster })));
 
@@ -145,6 +146,7 @@ const StorefrontRoutes = () => {
           <Route path="/cart" element={<Cart slug={storeIdentifier} />} />
           <Route path="/checkout" element={<Checkout slug={storeIdentifier} />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/my-order" element={<MyOrder />} />
         </Route>
         <Route path="*" element={<StorefrontNotFound />} />
       </Routes>
@@ -163,6 +165,7 @@ const StorefrontRoutes = () => {
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="payment-success" element={<PaymentSuccess />} />
+        <Route path="my-order" element={<MyOrder />} />
       </Route>
       <Route path="*" element={<StorefrontNotFound />} />
     </Routes>

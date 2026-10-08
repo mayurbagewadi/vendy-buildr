@@ -156,6 +156,14 @@ const StoreFooter = ({
                 </Link>
               </li>
               <li>
+                <Link
+                  to={`${basePath}/my-order`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  My Order
+                </Link>
+              </li>
+              <li>
                 <a
                   href="/sitemap.xml"
                   className="text-muted-foreground hover:text-primary transition-colors"
