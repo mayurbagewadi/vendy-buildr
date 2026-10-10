@@ -26,6 +26,7 @@ import {
   Store,
   Truck,
   Star,
+  MessageSquare,
   Ticket,
   Sparkles,
   Palette,
@@ -382,6 +383,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/google-reviews",
       icon: Star,
       current: location.pathname === "/admin/google-reviews",
+    }] : []),
+    // Conditionally show Customer Reviews when installed
+    ...(enabledFeatures.includes('customer-reviews') ? [{
+      name: "Customer Reviews",
+      href: "/admin/customer-reviews",
+      icon: MessageSquare,
+      current: location.pathname === "/admin/customer-reviews",
     }] : []),
     {
       name: "Marketplace",

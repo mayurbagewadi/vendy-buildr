@@ -33,6 +33,7 @@ const GoogleReviewsSection = lazy(() =>
     default: module.GoogleReviewsSection,
   }))
 );
+const CustomerReviewsSection = lazy(() => import("@/new-storefront/components/CustomerReviewsSection"));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -453,6 +454,15 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
             </div>
           </section>
         )}
+
+        {/* ═══ CUSTOMER REVIEWS SECTION (Marketplace plugin: customer-reviews) ═══
+            Purpose: Owner-entered genuine customer reviews + "See all reviews on Google" link
+            Renders nothing when the plugin is not installed or there are no visible reviews.
+            Selectors: [data-ai="section-customer-reviews"] | [data-ai="customer-review-card"]
+        */}
+        <Suspense fallback={null}>
+          <CustomerReviewsSection storeId={store.id} className={sectionPy} />
+        </Suspense>
 
         {/* ═══ NEW ARRIVALS SECTION ═══
             Purpose: Showcase recently added/new products

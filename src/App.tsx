@@ -61,6 +61,7 @@ const AdminShipping             = lazy(() => import("./pages/admin/Shipping"));
 const AdminAIDesigner           = lazy(() => import("./pages/admin/AIDesigner"));
 const BuyTokens                 = lazy(() => import("./pages/admin/BuyTokens"));
 const AdminGoogleReviews        = lazy(() => import("./pages/admin/GoogleReviews"));
+const AdminCustomerReviews      = lazy(() => import("./pages/admin/CustomerReviews"));
 const AdminCustomerCare         = lazy(() => import("./pages/admin/CustomerCare"));
 const AdminNotifications        = lazy(() => import("./pages/admin/Notifications"));
 const ThemeEditor               = lazy(() => import("./pages/admin/ThemeEditor"));
@@ -222,6 +223,7 @@ const App = () => {
                           <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/customer-reviews" element={<StoreGuard><AdminLayout><AdminCustomerReviews /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
@@ -289,6 +291,7 @@ const App = () => {
                           <Route path="/admin/marketplace" element={<StoreGuard><AdminLayout><AdminMarketplace /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
+                          <Route path="/admin/customer-reviews" element={<StoreGuard><AdminLayout><AdminCustomerReviews /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
