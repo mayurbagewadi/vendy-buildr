@@ -224,8 +224,13 @@ const App = () => {
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-reviews" element={<StoreGuard><AdminLayout><AdminCustomerReviews /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
+                          {/* Online Store themes — local-dev only (excluded from production builds) */}
+                          {import.meta.env.DEV && (
+                            <>
+                            <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
+                            <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
+                            </>
+                          )}
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/payments" element={<StoreGuard><AdminLayout><PaymentSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
@@ -234,7 +239,8 @@ const App = () => {
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/theme-editor" element={<StoreGuard><ThemeEditor /></StoreGuard>} />
+                          {/* Theme Editor — local-dev only (excluded from production builds) */}
+                          {import.meta.env.DEV && <Route path="/admin/theme-editor" element={<StoreGuard><ThemeEditor /></StoreGuard>} />}
 
                           {/* Customer Routes — wrapped in StorefrontLayout so theme + store context
                               are shared across all pages without per-page re-fetching */}
@@ -292,8 +298,13 @@ const App = () => {
                           <Route path="/admin/shipping" element={<StoreGuard><AdminLayout><AdminShipping /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/google-reviews" element={<StoreGuard><AdminLayout><AdminGoogleReviews /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-reviews" element={<StoreGuard><AdminLayout><AdminCustomerReviews /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
+                          {/* Online Store themes — local-dev only (excluded from production builds) */}
+                          {import.meta.env.DEV && (
+                            <>
+                            <Route path="/admin/online-store/themes" element={<StoreGuard><AdminLayout><OnlineStoreThemes /></AdminLayout></StoreGuard>} />
+                            <Route path="/admin/online-store/themes/preview" element={<StoreGuard><ThemeDraftPreview /></StoreGuard>} />
+                            </>
+                          )}
                           <Route path="/admin/settings" element={<StoreGuard><AdminLayout><AdminSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/payments" element={<StoreGuard><AdminLayout><PaymentSettings /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/settings/delivery" element={<StoreGuard><AdminLayout><DeliverySettings /></AdminLayout></StoreGuard>} />
@@ -302,7 +313,8 @@ const App = () => {
                           <Route path="/admin/ai-designer" element={<StoreGuard><AdminLayout><AdminAIDesigner /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/buy-tokens" element={<StoreGuard><AdminLayout><BuyTokens /></AdminLayout></StoreGuard>} />
                           <Route path="/admin/customer-care" element={<StoreGuard><AdminLayout><AdminCustomerCare /></AdminLayout></StoreGuard>} />
-                          <Route path="/admin/theme-editor" element={<StoreGuard><ThemeEditor /></StoreGuard>} />
+                          {/* Theme Editor — local-dev only (excluded from production builds) */}
+                          {import.meta.env.DEV && <Route path="/admin/theme-editor" element={<StoreGuard><ThemeEditor /></StoreGuard>} />}
 
                           {/* Customer Routes */}
                           <Route path="/home" element={<Home />} />

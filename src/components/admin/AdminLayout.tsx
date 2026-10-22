@@ -397,7 +397,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       icon: Store,
       current: location.pathname === "/admin/marketplace",
     },
-    {
+    // Online Store + Theme Editor are local-dev only (hidden in production builds)
+    ...(import.meta.env.DEV ? [{
       name: "Online Store",
       icon: MonitorSmartphone,
       isDropdown: true,
@@ -416,7 +417,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       href: "/admin/theme-editor",
       icon: Layout,
       current: location.pathname.startsWith("/admin/theme-editor"),
-    },
+    }] : []),
     {
       name: "Settings",
       icon: Settings,

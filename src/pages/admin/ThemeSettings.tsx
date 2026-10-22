@@ -185,9 +185,11 @@ const ThemeSettings = () => {
               <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-muted-foreground">
                 {customTheme?.manifest.name} is managed from Online Store. Basic theme switching is locked here to avoid accidental reset.
               </p>
-              <Button size="lg" className="mt-6" asChild>
-                <Link to="/admin/online-store/themes">Open Theme Manager</Link>
-              </Button>
+              {import.meta.env.DEV && (
+                <Button size="lg" className="mt-6" asChild>
+                  <Link to="/admin/online-store/themes">Open Theme Manager</Link>
+                </Button>
+              )}
             </div>
           </div>
         )}
