@@ -48,7 +48,8 @@ import {
   Play,
   LineChart,
   Percent,
-  AlertCircle
+  AlertCircle,
+  Globe
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -66,12 +67,20 @@ import {
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000000';
 
+// Customer showcase — drop logo files into public/customers/ (shows initials until the file exists)
+const ourCustomers = [
+  { name: "Herbal Twist", logo: "/customers/herbaltwist.jpg", instagram: "https://www.instagram.com/herbaltwist_by_drpooja/", website: "https://herbaltwist.in/" },
+  { name: "Sundar Sparsh", logo: "/customers/sundarsparsh.jpg", instagram: "https://www.instagram.com/sundar_sparsh/reels/", website: "https://sundersparsh.digitaldukandar.in/" },
+  { name: "PK Express", logo: "/customers/pkexpress.png", instagram: "https://www.instagram.com/pkexpresss/", website: "https://pkexpress.in/" },
+];
+
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { heroRef, featuresRef, stepsRef, sellersRef } = useLandingAnimations();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAccountDeletedDialog, setShowAccountDeletedDialog] = useState(false);
   const [supportWhatsapp, setSupportWhatsapp] = useState<string | null>(null);
+  const [missingLogos, setMissingLogos] = useState<Record<string, boolean>>({});
 
   // Check for account deleted error and show dialog
   useEffect(() => {
@@ -734,6 +743,59 @@ const Index = () => {
             <div className="mt-4">
               <InstagramPromoTermsModal />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Our Customers Section */}
+      <section className="container mx-auto px-4 lg:px-8 py-20 lg:py-24">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-block mb-4">
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider">Our Customers</span>
+            </div>
+            <h2 className="font-playfair text-4xl md:text-5xl font-bold text-foreground">
+              Trusted by Growing Brands
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ourCustomers.map((customer) => (
+              <Card key={customer.name} className="p-6 flex flex-col items-center text-center hover:shadow-lg transition-shadow duration-300">
+                <div className="w-28 h-28 mb-4 rounded-2xl border-2 border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden">
+                  {missingLogos[customer.name] ? (
+                    <span className="text-2xl font-bold text-muted-foreground">
+                      {customer.name.split(" ").map((w) => w[0]).join("")}
+                    </span>
+                  ) : (
+                    <img
+                      src={customer.logo}
+                      alt={`${customer.name} logo`}
+                      className="w-full h-full object-contain"
+                      width={112}
+                      height={112}
+                      loading="lazy"
+                      onError={() => setMissingLogos((prev) => ({ ...prev, [customer.name]: true }))}
+                    />
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">{customer.name}</h3>
+                <div className="flex gap-3 w-full">
+                  <Button asChild variant="outline" size="sm" className="flex-1">
+                    <a href={customer.instagram} target="_blank" rel="noopener noreferrer">
+                      <img src="/customers/instagram-icon.png" alt="" aria-hidden="true" className="w-4 h-4 mr-1.5" width={16} height={16} loading="lazy" />
+                      Instagram
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" className="flex-1">
+                    <a href={customer.website} target="_blank" rel="noopener noreferrer">
+                      <Globe className="w-4 h-4 mr-1.5" />
+                      Website
+                    </a>
+                  </Button>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
