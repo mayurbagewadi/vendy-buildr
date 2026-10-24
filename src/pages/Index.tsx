@@ -877,17 +877,6 @@ const Index = () => {
                   <p className={`text-muted-foreground leading-relaxed flex-grow text-sm lg:text-base`}>
                     {feature.description}
                   </p>
-
-                  {/* Hover indicator */}
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
-                    <span className={`bg-gradient-to-br ${feature.gradient} bg-clip-text text-transparent`}>
-                      Learn more
-                    </span>
-                    <ArrowRight className={`w-4 h-4 bg-gradient-to-br ${feature.gradient} text-transparent group-hover:translate-x-1 transition-transform duration-300`} style={{
-                      background: `linear-gradient(to bottom right, currentColor, currentColor)`,
-                      WebkitBackgroundClip: 'text'
-                    }} />
-                  </div>
                 </div>
               </Card>
             ))}
