@@ -5,12 +5,22 @@ import { Button } from "@/components/ui/button";
 import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useCart } from "@/contexts/CartContext";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 
 const About = () => {
   const { store, profile, storeSlug, loading } = useStorefront();
+  const { cart, addToCart } = useCart();
   const navigate = useNavigate();
+
+  // AI-built About page takes priority over the default layout — same
+  // precedence Store.tsx already gives the home page.
+  const aiThemePage = useAIThemePage("about", {
+    store, isSubdomain: isStoreSpecificDomain(), cart, addToCart,
+  });
+  if (aiThemePage) return aiThemePage;
 
   if (loading) {
     return (

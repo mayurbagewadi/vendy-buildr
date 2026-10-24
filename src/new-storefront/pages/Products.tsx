@@ -16,8 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useCart } from "@/contexts/CartContext";
 import { getPublishedProducts, type Product } from "@/lib/productData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
@@ -34,6 +36,7 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const navigate = useNavigate();
 
   const { store, profile, loading: storeLoading } = useStorefront();
+  const { cart, addToCart } = useCart();
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
   const storeId = store?.id ?? null;
   const storefrontUrls = buildStorefrontUrls({ slug });
@@ -168,6 +171,13 @@ const Products = ({ slug: slugProp }: ProductsProps = {}) => {
   const getProductUrl = (product: Product) => {
     return storefrontUrls.product(product);
   };
+
+  // AI-built Products page takes priority over marketplace themes and the
+  // default layout — same precedence Store.tsx already gives the home page.
+  const aiThemePage = useAIThemePage("products", {
+    store, isSubdomain, products: allProducts, cart, addToCart,
+  });
+  if (aiThemePage) return aiThemePage;
 
   if (store && ThemeProducts && !themeRenderFailed) {
     return (

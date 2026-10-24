@@ -31,6 +31,8 @@ import {
   User,
   ImagePlus,
   X,
+  Wand2,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +55,7 @@ import {
   type TokenBalance,
   type ChatMessage as APIChatMessage,
 } from "@/lib/aiDesigner";
+import { getImageUrl } from "@/lib/responsiveImages";
 import { getManifestForPrompt, STORE_SITE_MANIFEST } from "@/lib/aiSiteManifest";
 import { themeChatRequest, type ChatTurn } from "@/lib/themeChatAI";
 import { saveDraftThemeState, publishDraftThemeState, loadStoreThemeState } from "@/lib/storeThemeState";
@@ -240,6 +243,14 @@ const shouldShowDateSeparator = (currentMsg: UIMessage, previousMsg?: UIMessage)
   return currentDate !== previousDate;
 };
 
+// Every page Build Theme generates, in display order. Checkout/PaymentSuccess
+// are never in this list — they're never AI-built, always the real page.
+const GT_PAGE_ORDER = ["home", "products", "categories", "product_detail", "cart", "about", "policies"];
+const GT_PAGE_LABELS: Record<string, string> = {
+  home: "Home", products: "Products", categories: "Categories",
+  product_detail: "Product Detail", cart: "Cart", about: "About", policies: "Policies",
+};
+
 // ------- Main AIDesigner Page -------
 const AIDesigner = () => {
   const navigate = useNavigate();
@@ -286,6 +297,34 @@ const AIDesigner = () => {
   const [activeThemeVersion, setActiveThemeVersion] = useState<string>("1.0.0");
   const draftSectionsRef = useRef<Record<string, unknown>[]>([]);
   const draftSettingsRef = useRef<Record<string, unknown>>({});
+
+  // ── Unified AI Designer (Phase 3) ────────────────────────────────────────
+  // lastGenerationMode tracks what the most recent AI call produced so Publish
+  // and Reset know which path to take. null = nothing generated yet this session.
+  const [lastGenerationMode, setLastGenerationMode] = useState<"style" | "build" | null>(null);
+  const [isClassifying, setIsClassifying] = useState(false);
+
+  // ── Build Theme (Phase 4) — state kept for generation logic ──────────────
+  const [aiThemeMode, setAiThemeMode] = useState<"style" | "build">("style"); // kept for internal routing only
+  const [buildPrompt, setBuildPrompt] = useState("");
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [builtHtml, setBuiltHtml] = useState<string | null>(null);
+  const [aiThemePublished, setAiThemePublished] = useState(false);
+  const [aiThemeVersionHistory, setAiThemeVersionHistory] = useState<Array<{ id: string; prompt: string; created_at: string }>>([]);
+  const [isPublishingAiTheme, setIsPublishingAiTheme] = useState(false);
+  const [showResetAiThemeConfirm, setShowResetAiThemeConfirm] = useState(false);
+  const builtHtmlRef = useRef<string>("");
+  // Every page a full Build Theme run produced (home + the 6 others), keyed
+  // by page type — lets the preview switch between them instead of only
+  // ever showing home.
+  const builtPagesRef = useRef<Record<string, string>>({});
+  const [builtPageTypes, setBuiltPageTypes] = useState<string[]>([]);
+  const [previewPageType, setPreviewPageType] = useState<string>("home");
+  const [buildProgress, setBuildProgress] = useState<{ done: number; total: number } | null>(null);
+  const previewStoreRef = useRef<any>(null);
+  const previewProductsRef = useRef<any[]>([]);
+  const previewCategoriesRef = useRef<any[]>([]);
+  const previewIsSubdomainRef = useRef<boolean>(false);
 
   useEffect(() => {
     loadInitialData();
@@ -456,7 +495,7 @@ const AIDesigner = () => {
 
       const { data: store } = await supabase
         .from("stores")
-        .select("id, name, slug, subdomain, storefront_template")
+        .select("id, name, slug, subdomain, storefront_template, description, logo_url, whatsapp_number, address")
         .eq("user_id", session.user.id)
         .single();
 
@@ -467,25 +506,83 @@ const AIDesigner = () => {
 
       setStoreId(store.id);
 
+      const effectiveTemplate = store.storefront_template;
+
       // Resolve active marketplace theme
-      const themeManifest = getStorefrontThemeByTemplate(store.storefront_template);
+      const themeManifest = getStorefrontThemeByTemplate(effectiveTemplate);
       if (themeManifest) {
         setActiveThemeId(themeManifest.id);
         setActiveThemeVersion(themeManifest.version);
       }
 
       const hostname = window.location.hostname;
-      const isSubdomain = store.subdomain && hostname.startsWith(store.subdomain + '.');
-      const url = isSubdomain
+      const isSubdomain = !!(store.subdomain && hostname.startsWith(store.subdomain + '.'));
+      previewIsSubdomainRef.current = isSubdomain;
+
+      // When no marketplace theme is installed, append preview_theme so the
+      // Style Store iframe loads with EcoSoap — enabling section-based preview.
+      const needsPreviewTheme = !effectiveTemplate || effectiveTemplate === "default";
+      const baseUrl = isSubdomain
         ? `${window.location.origin}/`
         : `${window.location.origin}/${store.slug}`;
+      const url = needsPreviewTheme ? baseUrl + "?preview_theme=ecosoap-boutique" : baseUrl;
       setStoreUrl(url);
 
-      const [balance, appliedDesign, layer2CSS] = await Promise.all([
+      // Populate bridge data refs for Build Theme preview
+      previewStoreRef.current = {
+        id: store.id,
+        name: store.name,
+        slug: store.slug,
+        description: (store as any).description ?? "",
+        logo_url: (store as any).logo_url ?? "",
+        whatsapp_number: (store as any).whatsapp_number ?? "",
+        address: (store as any).address ?? "",
+      };
+
+      const [balance, appliedDesign, layer2CSS, productsRes, categoriesRes, aiThemeInvoke] = await Promise.all([
         getTokenBalance(store.id),
         getAppliedDesign(store.id),
         getLayer2CSS(store.id),
+        supabase.from("products").select("id, slug, name, base_price, offer_price, images, category").eq("store_id", store.id).eq("status", "published").limit(10),
+        supabase.from("categories").select("id, name, image_url").eq("store_id", store.id).limit(10),
+        supabase.functions.invoke("ai-designer", { body: { action: "get_ai_theme", store_id: store.id } }),
       ]);
+
+      // images can be plain URL strings OR responsive-image objects
+      // ({variants, url, original}) — resolve every entry to a plain string
+      // here, once, before it's ever embedded into the preview iframe's
+      // bridge script (that script is plain JS with no access to
+      // getImageUrl(), so this has to happen on the React side).
+      previewProductsRef.current = ((productsRes.data as any[]) ?? []).map((p) => ({
+        ...p,
+        images: Array.isArray(p.images) ? p.images.map((img: unknown) => getImageUrl(img as any)) : [],
+      }));
+      previewCategoriesRef.current = (categoriesRes.data as any[]) ?? [];
+
+      // Restore existing AI theme draft/publish state (home page + every
+      // other built page, so the multi-page preview survives a refresh)
+      const atData = aiThemeInvoke.data as any;
+      if (atData && !aiThemeInvoke.error) {
+        const restoredPages: Record<string, string> = {};
+        if (atData.draft_html) restoredPages.home = atData.draft_html;
+        if (Array.isArray(atData.pages)) {
+          atData.pages.forEach((p: any) => { if (p.draft_html) restoredPages[p.page_type] = p.draft_html; });
+        }
+        if (Object.keys(restoredPages).length > 0) {
+          builtPagesRef.current = restoredPages;
+          const availableTypes = GT_PAGE_ORDER.filter((t) => restoredPages[t]);
+          setBuiltPageTypes(availableTypes);
+          setPreviewPageType(availableTypes[0] || "home");
+          setBuiltHtml(availableTypes[0] ? restoredPages[availableTypes[0]] : null);
+          builtHtmlRef.current = atData.draft_html || "";
+        }
+        if (atData.published_html) setAiThemePublished(true);
+        if (Array.isArray(atData.version_history) && atData.version_history.length > 0) {
+          setAiThemeVersionHistory(atData.version_history);
+        }
+        // Restore preview mode so the correct panel shows after refresh
+        if (Object.keys(restoredPages).length > 0 || atData.published_html) setLastGenerationMode("build");
+      }
 
       setTokenBalance(balance);
 
@@ -622,7 +719,8 @@ const AIDesigner = () => {
   };
 
   const handleSend = async () => {
-    if (!storeId || !userId) return;
+    console.log("[STYLE-STORE] handleSend called", { storeId, userId, hasTokens: tokenBalance.has_tokens, tokensRemaining: tokenBalance.tokens_remaining });
+    if (!storeId || !userId) { console.warn("[STYLE-STORE] blocked — missing storeId or userId"); return; }
     const text = inputValue.trim();
     if (!text) return;
 
@@ -797,6 +895,7 @@ const AIDesigner = () => {
 
       toast.success(result.intent === "build" ? "Store designed! Click Publish to go live." : "Design updated! Click Publish to go live.");
     } catch (error: any) {
+      console.error("[STYLE-STORE] ✗ error", { message: error.message, stack: error.stack, raw: error });
       setMessages((prev) => prev.filter((m) => m.id !== loadingMsgId));
       if (error.message?.includes("No tokens")) {
         toast.error("No tokens remaining. Please buy tokens.");
@@ -819,7 +918,7 @@ const AIDesigner = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleUnifiedSend();
     }
   };
 
@@ -961,6 +1060,376 @@ const AIDesigner = () => {
       toast.error(error.message || "Failed to reset design");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  // ── Build Theme helpers ────────────────────────────────────────────────────
+
+  // Prepend an inline VendyBridge script with real product/store data so the
+  // AI-generated HTML can call VendyBridge.getProducts() etc in the srcdoc iframe.
+  // navigateTo posts a message to the parent window instead of doing nothing —
+  // the parent (this component) listens and swaps which built page is shown,
+  // so Products/Cart/a product card in the preview actually goes somewhere.
+  const buildSrcdocWithBridge = (html: string): string => {
+    const s = previewStoreRef.current ?? {};
+    const ps = previewProductsRef.current ?? [];
+    const cs = previewCategoriesRef.current ?? [];
+    const bridgeScript = `<script>(function(){` +
+      `var _s=${JSON.stringify(s)},_p=${JSON.stringify(ps)},_c=${JSON.stringify(cs)},_cart=[];` +
+      `window.VendyBridge={` +
+        `getStore:function(){return Promise.resolve(_s);},` +
+        `getProducts:function(n){return Promise.resolve(_p.slice(0,n||20));},` +
+        `getCategories:function(){return Promise.resolve(_c);},` +
+        `getCurrentProduct:function(){return Promise.resolve(_p[0]||null);},` +
+        `addToCart:function(id,qty){var x=_p.find(function(p){return p.id===id||p.slug===id;});if(x)_cart.push({productId:x.id,name:x.name,price:x.offer_price||x.base_price||0,qty:qty||1});return Promise.resolve();},` +
+        `getCart:function(){return Promise.resolve(_cart);},` +
+        `updateCartQty:function(id,qty){var it=_cart.find(function(c){return c.productId===id;});if(it)it.qty=qty;return Promise.resolve();},` +
+        `removeFromCart:function(id){_cart=_cart.filter(function(c){return c.productId!==id;});return Promise.resolve();},` +
+        `navigateTo:function(path){window.parent.postMessage({type:"vendy-preview-navigate",path:path},"*");},` +
+        `openWhatsApp:function(msg){var ph=(_s.whatsapp_number||"").replace(/\\D/g,"");if(!ph)return;window.open("https://wa.me/"+ph+(msg?"?text="+encodeURIComponent(msg):""),"_blank","noopener,noreferrer");}` +
+      `};` +
+    `})()</` + `script>`;
+    if (html.includes("<head>")) return html.replace("<head>", "<head>" + bridgeScript);
+    if (html.includes("<body>")) return html.replace("<body>", bridgeScript + "<body>");
+    return bridgeScript + html;
+  };
+
+  // Maps a VendyBridge.navigateTo(path) call from inside the preview iframe
+  // to which built page to show. Checkout/PaymentSuccess are never AI-built —
+  // clicking through to them in the preview just explains that.
+  const gtPathToPageType = (path: string): string | null => {
+    if (path === "/" || path === "") return "home";
+    if (path.startsWith("/products/")) return "product_detail";
+    if (path.startsWith("/products")) return "products";
+    if (path.startsWith("/categories")) return "categories";
+    if (path.startsWith("/cart")) return "cart";
+    if (path.startsWith("/about")) return "about";
+    if (path.startsWith("/policies")) return "policies";
+    return null; // /checkout and anything else — not an AI-built page
+  };
+
+  // Listens for navigateTo() calls from inside the preview iframe (posted by
+  // buildSrcdocWithBridge above) and switches the preview to that page.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "vendy-preview-navigate") return;
+      const path = event.data.path as string;
+      const pageType = gtPathToPageType(path);
+      console.log("[BUILD-THEME] preview navigateTo:", path, "→ pageType:", pageType,
+        "| builtPagesRef keys:", Object.keys(builtPagesRef.current));
+      if (!pageType) {
+        toast.info("Checkout isn't AI-built — it always stays on the real, secure checkout page.");
+        return;
+      }
+      if (!builtPagesRef.current[pageType]) {
+        toast.info("That page hasn't been built yet in this session.");
+        return;
+      }
+      setPreviewPageType(pageType);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  // Keeps the preview iframe's HTML in sync with whichever page is selected —
+  // by a tab click or by navigateTo() inside the preview itself.
+  useEffect(() => {
+    if (builtPagesRef.current[previewPageType]) {
+      setBuiltHtml(builtPagesRef.current[previewPageType]);
+    }
+  }, [previewPageType]);
+
+  // Builds all 7 pages as 7 INDEPENDENT edge function calls, in parallel.
+  // Each call gets its own full execution time budget — production logs
+  // showed a single page can legitimately take 40-120+ seconds on Kimi K2,
+  // so cramming all 7 into one shared-budget request (the old "generate_theme"
+  // SSE action) reliably got killed mid-batch before anything was even
+  // saved. This is the fix, not a workaround: no shared clock to run out.
+  // Builds all 7 pages as an async job batch — enqueue is fast (<1s each),
+  // the actual generation happens on the VPS worker (worker/ai-theme-worker/),
+  // completely outside this request. We just poll the ai_theme_jobs table
+  // directly (RLS-protected, no edge function hop needed for reads) until
+  // every job in the batch is terminal. This replaced awaiting each
+  // generate_theme_page call directly — that tied a 40-180+ second AI call
+  // to one HTTP connection, which Cloudflare/Supabase's own timeouts would
+  // eventually kill with no graceful error. See worker/ai-theme-worker/README.md.
+  const handleGenerateTheme = async (promptOverride?: string) => {
+    console.log("[BUILD-THEME] handleGenerateTheme called", { storeId, userId, hasTokens: tokenBalance.has_tokens, tokensRemaining: tokenBalance.tokens_remaining });
+    if (!storeId || !userId) { console.warn("[BUILD-THEME] blocked — missing storeId or userId"); return; }
+    const prompt = (promptOverride ?? buildPrompt).trim();
+    if (!prompt) { toast.error("Describe the store you want to build."); return; }
+    if (!tokenBalance.has_tokens) { toast.error("No tokens remaining. Please buy tokens."); return; }
+
+    setIsBuilding(true);
+    setBuildProgress({ done: 0, total: GT_PAGE_ORDER.length });
+    builtPagesRef.current = {};
+    setBuiltPageTypes([]);
+    setBuiltHtml(null);
+
+    try {
+      const pagesGenerated: string[] = [];
+      const pagesFailed: string[] = [];
+      const pageFailReasons: Record<string, string> = {};
+      const jobIdToPage: Record<string, string> = {};
+
+      console.log("[BUILD-THEME] → enqueuing " + GT_PAGE_ORDER.length + " page jobs", { storeId, userId, promptLen: prompt.length });
+
+      // Step 1: enqueue all 7 — each call returns in well under a second.
+      await Promise.all(GT_PAGE_ORDER.map(async (pageType) => {
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-designer", {
+            body: { action: "generate_theme_page", store_id: storeId, user_id: userId, prompt, page_type: pageType },
+          });
+          if (error) throw new Error(error.message);
+          if (!data?.success || !data?.job_id) throw new Error(data?.error || "Failed to enqueue");
+          jobIdToPage[data.job_id] = pageType;
+          console.log("[BUILD-THEME] enqueued:", pageType, "job=" + data.job_id, "status=" + data.status);
+        } catch (err: any) {
+          pagesFailed.push(pageType);
+          pageFailReasons[pageType] = err?.message || String(err);
+          console.error("[BUILD-THEME] enqueue FAILED:", pageType, err?.message || err);
+        }
+      }));
+
+      const jobIds = Object.keys(jobIdToPage);
+      setBuildProgress({ done: pagesFailed.length, total: GT_PAGE_ORDER.length });
+
+      // Step 2: poll the jobs table until every job is terminal. Each poll
+      // is a cheap primary-key-list lookup, RLS-protected, no edge function
+      // involved. Backs off from 2s to 8s; gives up (not fails — jobs keep
+      // running server-side) after ~10 minutes so the UI never hangs forever.
+      if (jobIds.length > 0) {
+        const seenTerminal = new Set<string>();
+        const maxWaitMs = 10 * 60 * 1000;
+        const startedAt = Date.now();
+        let delayMs = 2000;
+
+        while (seenTerminal.size < jobIds.length && Date.now() - startedAt < maxWaitMs) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          delayMs = Math.min(delayMs + 1500, 8000);
+
+          const { data: jobs, error: pollErr } = await supabase
+            .from("ai_theme_jobs")
+            .select("id, page_type, status, error_message")
+            .in("id", jobIds);
+          if (pollErr) {
+            console.warn("[BUILD-THEME] poll error (will retry):", pollErr.message);
+            continue;
+          }
+
+          for (const job of jobs || []) {
+            if (seenTerminal.has(job.id)) continue;
+            if (job.status === "succeeded") {
+              seenTerminal.add(job.id);
+              pagesGenerated.push(job.page_type);
+            } else if (job.status === "failed" || job.status === "cancelled") {
+              seenTerminal.add(job.id);
+              pagesFailed.push(job.page_type);
+              pageFailReasons[job.page_type] = job.error_message || job.status;
+            }
+          }
+          setBuildProgress({ done: seenTerminal.size + (GT_PAGE_ORDER.length - jobIds.length), total: GT_PAGE_ORDER.length });
+        }
+
+        if (seenTerminal.size < jobIds.length) {
+          const stillRunning = jobIds.filter((id) => !seenTerminal.has(id)).map((id) => jobIdToPage[id]);
+          console.warn("[BUILD-THEME] gave up polling, still running:", stillRunning);
+          toast.info(
+            "Still generating: " + stillRunning.join(", ") + ". They'll finish in the background — " +
+            "reopen this page in a few minutes and they'll be there."
+          );
+        }
+      }
+
+      // Refresh token balance display (worker deducts on success; cheap read).
+      const { data: freshBalance } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "get_token_balance", store_id: storeId },
+      });
+      if (typeof freshBalance?.tokens_remaining === "number") {
+        setTokenBalance((prev) => ({
+          ...prev,
+          tokens_remaining: freshBalance.tokens_remaining,
+          has_tokens: freshBalance.tokens_remaining > 0,
+        }));
+      }
+
+      console.log("[BUILD-THEME] batch finished", { pagesGenerated, pagesFailed, pageFailReasons });
+      if (pagesGenerated.length === 0) {
+        throw new Error("AI failed to generate any page: " + (pageFailReasons[GT_PAGE_ORDER[0]] || "please try again."));
+      }
+
+      // Pull every generated page's draft HTML back through the edge
+      // function (get_ai_theme), NOT a direct client-side table query.
+      // The edge function reads with the service-role key, so this can
+      // never be blocked by an RLS policy gap on store_ai_theme_pages —
+      // same path the page-load restore already uses successfully.
+      const { data: atData, error: atErr } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "get_ai_theme", store_id: storeId },
+      });
+      console.log("[BUILD-THEME] get_ai_theme readback", {
+        error: atErr?.message,
+        hasHomeDraft: !!atData?.draft_html,
+        pagesReturned: (atData?.pages || []).map((p: any) => ({ page_type: p.page_type, has_draft: p.has_draft })),
+      });
+      if (atErr) throw new Error("Built the pages but couldn't read them back: " + atErr.message);
+
+      const pages: Record<string, string> = {};
+      if (atData?.draft_html) pages.home = atData.draft_html;
+      (atData?.pages || []).forEach((p: any) => { if (p.draft_html) pages[p.page_type] = p.draft_html; });
+
+      builtPagesRef.current = pages;
+      const availableTypes = GT_PAGE_ORDER.filter((t) => pages[t]);
+      console.log("[BUILD-THEME] populated builtPagesRef with:", availableTypes);
+      setBuiltPageTypes(availableTypes);
+      setPreviewPageType(availableTypes[0] || "home");
+      setBuiltHtml(availableTypes[0] ? pages[availableTypes[0]] : null);
+
+      if (Array.isArray(atData?.version_history)) {
+        setAiThemeVersionHistory(atData.version_history);
+      }
+
+      if (pagesFailed.length > 0) {
+        console.error("[BUILD-THEME] page failures", pageFailReasons);
+        const reason = pageFailReasons[pagesFailed[0]];
+        toast.warning(
+          "Built " + pagesGenerated.length + "/" + (pagesGenerated.length + pagesFailed.length) +
+          " pages. Failed: " + pagesFailed.join(", ") +
+          (reason ? " (" + reason.slice(0, 80) + ")" : "") + ". You can build again to retry."
+        );
+      } else {
+        toast.success("Full site built (" + pagesGenerated.length + " pages)! Review the preview, then publish to go live.");
+      }
+    } catch (error: any) {
+      console.error("[BUILD-THEME] ✗ error", { message: error.message, stack: error.stack });
+      toast.error(error.message || "Theme generation failed. Please try again.");
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  const handlePublishAiTheme = async () => {
+    if (!storeId || builtPageTypes.length === 0) { toast.error("No built theme to publish."); return; }
+    setIsPublishingAiTheme(true);
+    try {
+      const { error } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "publish_ai_theme", store_id: storeId },
+      });
+      if (error) throw new Error(error.message);
+      setAiThemePublished(true);
+      toast.success("AI Theme published (" + builtPageTypes.length + " pages)! Your store now shows your custom AI design.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to publish AI theme.");
+    } finally {
+      setIsPublishingAiTheme(false);
+    }
+  };
+
+  const handleResetAiTheme = async () => {
+    if (!storeId) return;
+    setIsResetting(true);
+    try {
+      const { error } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "reset_ai_theme", store_id: storeId },
+      });
+      if (error) throw new Error(error.message);
+      setAiThemePublished(false);
+      setBuiltHtml(null);
+      builtHtmlRef.current = "";
+      builtPagesRef.current = {};
+      setBuiltPageTypes([]);
+      setPreviewPageType("home");
+      setBuildProgress(null);
+      setAiThemeVersionHistory([]);
+      setShowResetAiThemeConfirm(false);
+      toast.success("AI Theme removed. Store reverted to default.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset AI theme.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // ── Unified handlers (Phase 3) ────────────────────────────────────────────
+
+  // Single entry point for all AI prompts. Calls classify_intent first (free),
+  // then routes to Style Store (CSS patch) or Build Theme (full HTML redesign).
+  const handleUnifiedSend = async () => {
+    const prompt = inputValue.trim();
+    if (!prompt || isClassifying || isSending || isBuilding) return;
+    if (!storeId) return;
+    if (!tokenBalance.has_tokens) { toast.error("No tokens remaining. Buy tokens to continue."); return; }
+
+    setIsClassifying(true);
+    let intent: "CSS_PATCH" | "FULL_REDESIGN" = "FULL_REDESIGN";
+    try {
+      const { data } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "classify_intent", store_id: storeId, prompt },
+      });
+      if (data?.intent === "CSS_PATCH") intent = "CSS_PATCH";
+      console.log("[UNIFIED] classify_intent →", intent, data?.fallback ? "(fallback)" : "");
+    } catch (e) {
+      console.warn("[UNIFIED] classify_intent failed, defaulting to FULL_REDESIGN");
+    } finally {
+      setIsClassifying(false);
+    }
+
+    if (intent === "CSS_PATCH") {
+      setLastGenerationMode("style");
+      await handleSend();
+    } else {
+      setLastGenerationMode("build");
+      await handleGenerateTheme(prompt);
+      // Clear input after build (handleSend already clears it for style path)
+      setInputValue("");
+    }
+  };
+
+  // Routes Publish to whichever path produced the last generation.
+  const handleUnifiedPublish = async () => {
+    if (lastGenerationMode === "build") {
+      await handlePublishAiTheme();
+    } else {
+      await handlePublish();
+    }
+  };
+
+  // Clears BOTH store_design_state and store_ai_themes in one call.
+  const handleUnifiedReset = async () => {
+    if (!storeId) return;
+    setIsResetting(true);
+    try {
+      const { error } = await supabase.functions.invoke("ai-designer", {
+        body: { action: "reset_all", store_id: storeId },
+      });
+      if (error) throw new Error(error.message);
+      // Clear all local UI state
+      setBuiltHtml(null);
+      builtHtmlRef.current = "";
+      builtPagesRef.current = {};
+      setBuiltPageTypes([]);
+      setPreviewPageType("home");
+      setBuildProgress(null);
+      setAiThemePublished(false);
+      setAiThemeVersionHistory([]);
+      setPendingDesign(null);
+      setPendingHistoryId(undefined);
+      setPreviewDesign(null);
+      setCurrentDesign(null);
+      setDesignVersions([]);
+      setLastGenerationMode(null);
+      previewDesignRef.current = null;
+      cumulativeCSSRef.current = "";
+      savedLayer2CSSRef.current = null;
+      localStorage.removeItem("ai_designer_reset_" + storeId);
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.location.reload();
+      }
+      toast.success("Store reset to default. All AI designs cleared.");
+    } catch (error: any) {
+      toast.error(error.message || "Reset failed.");
+    } finally {
+      setIsResetting(false);
+      setShowResetConfirm(false);
     }
   };
 
@@ -1312,6 +1781,80 @@ const AIDesigner = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* AI Theme published banner */}
+      {aiThemePublished && (
+        <div className="mx-3 mb-1 flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+          <Globe className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+          <span className="text-xs text-green-700 dark:text-green-400 font-medium">AI-built theme is live on your store</span>
+        </div>
+      )}
+
+      {/* Classifying indicator */}
+      {isClassifying && (
+        <div className="mx-3 mb-1 flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary flex-shrink-0" />
+          <span className="text-xs text-primary font-medium">Analyzing your request…</span>
+        </div>
+      )}
+
+      {/* Build Theme progress — every page builds in parallel, one bar for the batch */}
+      {isBuilding && (
+        <div className="mx-3 mb-2 space-y-1">
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary flex-shrink-0" />
+            <span className="text-xs text-muted-foreground">Building every page of your storefront…</span>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {buildProgress ? buildProgress.done + "/" + buildProgress.total + " pages" : "starting…"}
+            </span>
+          </div>
+          <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300"
+              style={{ width: (buildProgress ? (buildProgress.done / buildProgress.total) * 100 : 0) + "%" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Built page switcher — lets the merchant preview each generated page */}
+      {builtPageTypes.length > 0 && (
+        <div className="mx-3 mb-2 flex gap-1.5 overflow-x-auto pb-1">
+          {builtPageTypes.map((pt) => (
+            <button
+              key={pt}
+              onClick={() => setPreviewPageType(pt)}
+              className={
+                "flex-shrink-0 text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                (previewPageType === pt
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-muted hover:bg-muted/70")
+              }
+            >
+              {GT_PAGE_LABELS[pt] || pt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Build Theme version history */}
+      {aiThemeVersionHistory.length > 0 && (
+        <div className="border-t border-border px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Built themes ({aiThemeVersionHistory.length})</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {aiThemeVersionHistory.map((v, idx) => (
+              <button
+                key={v.id}
+                title={v.prompt}
+                onClick={() => setInputValue(v.prompt)}
+                className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full border border-border bg-muted hover:bg-muted/70 transition-colors"
+              >
+                Build v{idx + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* No tokens warning */}
       {!tokenBalance.has_tokens && (
         <div className="mx-3 mb-2 flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -1412,12 +1955,12 @@ const AIDesigner = () => {
 
           <Button
             size="icon"
-            onClick={isSending ? handleStopGeneration : handleSend}
-            disabled={!isSending && !inputValue.trim()}
+            onClick={isSending || isClassifying || isBuilding ? handleStopGeneration : handleUnifiedSend}
+            disabled={!isSending && !isClassifying && !isBuilding && !inputValue.trim()}
             className="flex-shrink-0 h-9 w-9 rounded-lg"
-            variant={isSending ? "destructive" : "default"}
+            variant={isSending || isClassifying || isBuilding ? "destructive" : "default"}
           >
-            {isSending ? (
+            {isSending || isClassifying || isBuilding ? (
               <X className="w-4 h-4" />
             ) : (
               <Send className="w-4 h-4" />
@@ -1435,31 +1978,55 @@ const AIDesigner = () => {
         <div className="flex items-center gap-2">
           <Eye className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">
-            {previewDesign ? "Live preview with AI design" : "Live store preview"}
+            {lastGenerationMode === "build"
+              ? builtHtml ? "Previewing: " + (GT_PAGE_LABELS[previewPageType] || previewPageType) : "Build preview will appear here"
+              : previewDesign ? "Live preview with AI design" : "Live store preview"}
           </span>
-          {previewDesign && (
+          {lastGenerationMode === "build" && aiThemePublished && (
+            <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
+              Published
+            </Badge>
+          )}
+          {lastGenerationMode !== "build" && previewDesign && (
             <Badge variant="outline" className="text-primary border-primary text-xs">
               AI Applied
             </Badge>
           )}
-          {pagesScanStatus && (
+          {lastGenerationMode !== "build" && pagesScanStatus && (
             <Badge variant="secondary" className="text-xs gap-1">
               <Loader2 className="w-2.5 h-2.5 animate-spin" />
               {pagesScanStatus}
             </Badge>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => iframeRef.current?.contentWindow?.location.reload()}
-          title="Reload preview"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </Button>
+        {lastGenerationMode !== "build" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => iframeRef.current?.contentWindow?.location.reload()}
+            title="Reload preview"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
       <div className="flex-1 rounded-lg overflow-hidden border border-border" style={{ minHeight: "600px" }}>
-        {storeUrl ? (
+        {lastGenerationMode === "build" ? (
+          builtHtml ? (
+            <iframe
+              srcDoc={buildSrcdocWithBridge(builtHtml)}
+              sandbox="allow-scripts allow-forms allow-popups"
+              className="w-full h-full"
+              style={{ minHeight: "600px", border: "none" }}
+              title="AI Theme Preview"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
+              <Wand2 className="w-10 h-10 opacity-20" />
+              <p className="text-sm">Describe your store and click Build Theme</p>
+            </div>
+          )
+        ) : storeUrl ? (
           <iframe
             ref={iframeRef}
             src={storeUrl}
@@ -1526,15 +2093,17 @@ const AIDesigner = () => {
               </Button>
               <Button
                 size="sm"
-                onClick={handlePublish}
-                disabled={!pendingDesign || isPublishing}
+                onClick={handleUnifiedPublish}
+                disabled={(!builtHtml && !pendingDesign) || isPublishing || isPublishingAiTheme}
               >
-                {isPublishing ? (
+                {(isPublishing || isPublishingAiTheme) ? (
                   <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : lastGenerationMode === "build" ? (
+                  <Globe className="w-4 h-4 mr-1.5" />
                 ) : (
                   <Upload className="w-4 h-4 mr-1.5" />
                 )}
-                Publish Changes
+                {lastGenerationMode === "build" ? "Publish Theme" : "Publish Changes"}
               </Button>
               <Button
                 variant="outline"
@@ -1553,6 +2122,7 @@ const AIDesigner = () => {
           </div>
         </CardContent>
       </Card>
+
 
       {/* Mobile View Toggle */}
       <div className="flex md:hidden gap-2">
@@ -1606,17 +2176,17 @@ const AIDesigner = () => {
               Reset to Default Design?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all AI-applied customizations and restore your store to the
-              <strong> platform default design</strong> — the standard look every new store starts with.
+              This will remove all AI designs — custom styles and any AI-built themes — and restore your store to the
+              <strong> platform default design</strong>.
               <br /><br />
-              Your chat history and generated designs will not be deleted. You can re-apply any design from the chat at any time.
+              Your chat history will not be deleted. You can generate new designs at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleReset}
+              onClick={handleUnifiedReset}
             >
               Yes, Reset to Default
             </AlertDialogAction>

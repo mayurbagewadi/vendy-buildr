@@ -8,9 +8,11 @@ import { LoadingSpinner } from "@/components/customer/LoadingSpinner";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicStoreCategories } from "@/lib/storefrontCategoryData";
 import { getStoreCanonicalUrl } from "@/lib/seo/canonicalUrl";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
@@ -77,9 +79,11 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
   const { store, profile, loading: storeLoading } = useStorefront();
+  const { cart, addToCart } = useCart();
   const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
   const storefrontUrls = buildStorefrontUrls({ slug: store?.slug || slug });
   const [themeRenderFailed, setThemeRenderFailed] = useState(false);
+  const isSubdomain = storefrontUrls.home === "/";
 
   useEffect(() => {
     setThemeRenderFailed(false);
@@ -151,6 +155,13 @@ const Categories = ({ slug: slugProp }: CategoriesProps = {}) => {
   const loading = storeLoading || categoriesLoading;
   const storeName = store?.name || "Store";
   const ThemeCategories = activeMarketplaceTheme?.components.Categories;
+
+  // AI-built Categories page takes priority over marketplace themes and the
+  // default layout — same precedence Store.tsx already gives the home page.
+  const aiThemePage = useAIThemePage("categories", {
+    store, isSubdomain, categories, cart, addToCart,
+  });
+  if (aiThemePage) return aiThemePage;
 
   if (loading) {
     return (

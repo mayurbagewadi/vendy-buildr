@@ -6,8 +6,10 @@ import Header from "@/new-storefront/components/StorefrontHeader";
 import StoreFooter from "@/components/customer/StoreFooter";
 import { Button } from "@/components/ui/button";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useCart } from "@/contexts/CartContext";
 import { isStoreSpecificDomain } from "@/lib/domainUtils";
 import { getStorefrontPageVariant } from "@/new-storefront/theme-engine/resolveTheme";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 
 interface PoliciesProps {
   slug?: string;
@@ -18,6 +20,13 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
   const slug = slugProp || slugParam;
   const navigate = useNavigate();
   const { store, profile, storeSlug, loading } = useStorefront();
+  const { cart, addToCart } = useCart();
+
+  // Called unconditionally (Rules of Hooks) — acted on only after every
+  // other hook below has run, so hook call order never varies across renders.
+  const aiThemePage = useAIThemePage("policies", {
+    store, isSubdomain: isStoreSpecificDomain(), cart, addToCart,
+  });
 
   useEffect(() => {
     if (window.location.hash) {
@@ -29,6 +38,10 @@ const Policies = ({ slug: slugProp }: PoliciesProps = {}) => {
       }
     }
   }, [loading]);
+
+  // AI-built Policies page takes priority over the default layout — same
+  // precedence Store.tsx already gives the home page.
+  if (aiThemePage) return aiThemePage;
 
   if (loading) {
     return (

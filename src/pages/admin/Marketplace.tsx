@@ -469,16 +469,30 @@ const AdminMarketplace = () => {
     setAddingFeature(feature.slug);
 
     try {
-      const { error } = await supabase
-        .from("stores")
-        .update({
-          storefront_theme: "dark",
-          storefront_color_palette: "default",
-          storefront_template: DEFAULT_STOREFRONT_TEMPLATE,
-        })
-        .eq("id", storeData.id);
+      // Run both writes in parallel: reset the store template + wipe the published
+      // theme state. The bootstrap view joins store_theme_states, so if that row
+      // still has a published_theme_id the storefront ignores storefront_template
+      // entirely and keeps rendering the old theme — even in incognito.
+      const [storeResult, themeStateResult] = await Promise.all([
+        supabase
+          .from("stores")
+          .update({
+            storefront_theme: "dark",
+            storefront_color_palette: "default",
+            storefront_template: DEFAULT_STOREFRONT_TEMPLATE,
+          })
+          .eq("id", storeData.id),
+        supabase
+          .from("store_theme_states")
+          .delete()
+          .eq("store_id", storeData.id),
+      ]);
 
-      if (error) throw error;
+      if (storeResult.error) throw storeResult.error;
+      // theme state delete is best-effort: row may not exist, that's fine
+      if (themeStateResult.error) {
+        console.warn("store_theme_states delete skipped:", themeStateResult.error.message);
+      }
 
       setStoreData({
         ...storeData,

@@ -9,6 +9,7 @@ import { Minus, Plus, X, ShoppingBag, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import StorefrontImage from "@/components/ui/storefront-image";
 import { useStorefront } from "@/contexts/StoreContext";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 import ThemeRenderBoundary from "@/new-storefront/theme-engine/ThemeRenderBoundary";
 import { useActiveStorefrontThemeRuntime } from "@/new-storefront/theme-engine/resolveTheme";
 import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeProps";
@@ -34,7 +35,7 @@ const parseStockValue = (value: unknown): number | null => {
 const Cart = ({ slug: slugProp }: CartProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
-  const { cart, cartTotal, updateQuantity, removeItem } = useCart();
+  const { cart, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
 
   // ── StoreContext: provides store + profile — no full store fetch needed ──────
@@ -184,6 +185,13 @@ const Cart = ({ slug: slugProp }: CartProps = {}) => {
       policies={footerStore?.policies}
     />
   );
+
+  // AI-built Cart page takes priority over marketplace themes and the
+  // default layout — same precedence Store.tsx already gives the home page.
+  const aiThemePage = useAIThemePage("cart", {
+    store: ctxStore, isSubdomain: storefrontUrls.home === "/", cart, addToCart, updateQuantity, removeItem,
+  });
+  if (aiThemePage) return aiThemePage;
 
   if (ThemeCart && !themeRenderFailed) {
     return (

@@ -40,6 +40,7 @@ export interface StoreContextData {
   storefront_template: string | null;
   free_delivery_above: number | null;
   promo_bar_text: string | null;
+  ai_theme_enabled: boolean;
   theme_state?: PublicStorefrontThemeState | null;
   [key: string]: unknown;
 }
@@ -106,6 +107,7 @@ const PUBLIC_STOREFRONT_BOOTSTRAP_COLUMNS = `
   instagram_username,
   google_reviews_enabled,
   ga_measurement_id,
+  ai_theme_enabled,
   theme_state
 `;
 

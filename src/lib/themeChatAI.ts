@@ -33,6 +33,8 @@ export async function themeChatRequest(params: {
 }): Promise<ThemeChatResult> {
   const { storeId, userId, prompt, history, currentSections, referenceImage } = params;
 
+  console.log("[STYLE-STORE] → request", { storeId, userId, prompt: prompt.slice(0, 80), historyLen: history.length, sectionsLen: currentSections.length, hasImage: !!referenceImage });
+
   const { data, error } = await supabase.functions.invoke("ai-designer", {
     body: {
       action: "theme_chat",
@@ -45,10 +47,12 @@ export async function themeChatRequest(params: {
     },
   });
 
+  console.log("[STYLE-STORE] ← raw response", { data, error });
+
   if (error) throw new Error(error.message || "AI request failed");
   if (!data?.success) throw new Error(data?.error || "AI returned an error");
 
-  return {
+  const result = {
     intent: data.intent === "patch" ? "patch" : "build",
     sections: Array.isArray(data.sections) ? data.sections : [],
     global_settings: data.global_settings ?? {},
@@ -56,4 +60,6 @@ export async function themeChatRequest(params: {
     message: data.message ?? "",
     tokens_remaining: data.tokens_remaining ?? 0,
   };
+  console.log("[STYLE-STORE] ← parsed", { intent: result.intent, sectionsCount: result.sections.length, tokensRemaining: result.tokens_remaining, message: result.message.slice(0, 100) });
+  return result;
 }

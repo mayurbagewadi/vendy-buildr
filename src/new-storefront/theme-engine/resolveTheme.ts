@@ -22,10 +22,14 @@ export const useActiveStorefrontTheme = () => {
   return getStorefrontThemeByTemplate(store?.storefront_template);
 };
 
-export const useActiveStorefrontThemeRuntime = () => {
+export const useActiveStorefrontThemeRuntime = (templateOverride?: string | null) => {
   const { store } = useStorefront();
   const publishedThemeId = store?.theme_state?.published_theme_id;
-  const template = store?.storefront_template;
+  // templateOverride applies only when the store has no installed theme
+  const storeTemplate = store?.storefront_template;
+  const template = (!storeTemplate || storeTemplate === "default") && templateOverride
+    ? templateOverride
+    : storeTemplate;
   const [runtime, setRuntime] = useState<StorefrontThemeRuntimeDefinition | null>(null);
   const [loading, setLoading] = useState(false);
 

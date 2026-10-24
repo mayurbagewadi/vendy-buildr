@@ -201,7 +201,8 @@ const BuyTokens = () => {
           Buy AI Designer Tokens
         </h1>
         <p className="text-muted-foreground">
-          Purchase tokens to use the AI Designer. Each design generation uses 1 token.
+          Purchase tokens to use the AI Designer. A Style Store chat uses 1 token; a full
+          Build Theme site build uses 7 tokens (1 per page).
         </p>
       </div>
 
@@ -217,7 +218,11 @@ const BuyTokens = () => {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li className="flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  Each AI design generation uses 1 token
+                  Style Store (chat) uses 1 token per message
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  Build Theme (full site) uses 7 tokens — 1 per page generated
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />

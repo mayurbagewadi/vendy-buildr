@@ -211,7 +211,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               )
             `)
             .eq("user_id", session.user.id)
-            .single();
+            .maybeSingle();
 
           if (subscription) {
             const now = new Date();

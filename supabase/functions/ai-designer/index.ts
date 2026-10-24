@@ -297,6 +297,52 @@ function buildDesignSystemContext(currentDesign: any, storeType: string = "gener
   };
 }
 
+// ─── Shared token deduction helper ──────────────────────────
+// Single place that deducts 1 token from a known purchase row.
+// Call this after a successful AI generation to avoid duplicating logic.
+async function deductToken(
+  supabaseClient: any,
+  purchaseId: string,
+  tokensRemaining: number,
+  tokensUsed: number
+): Promise<void> {
+  await supabaseClient.from("ai_token_purchases").update({
+    tokens_remaining: tokensRemaining - 1,
+    tokens_used: tokensUsed + 1,
+    updated_at: new Date().toISOString(),
+  }).eq("id", purchaseId);
+}
+
+// ─── Multi-purchase token deduction (Build Theme — charges 1 token per page) ──
+// A full build spans several purchase rows if the soonest-expiring one doesn't
+// cover the whole charge. Consumes soonest-expiring credits first (FIFO by expiry).
+async function getActiveTokenBalance(
+  supabaseClient: any,
+  storeId: string
+): Promise<{ purchases: { id: string; tokens_remaining: number; tokens_used: number }[]; total: number }> {
+  const { data } = await supabaseClient.from("ai_token_purchases")
+    .select("id, tokens_remaining, tokens_used")
+    .eq("store_id", storeId).eq("status", "active").gt("tokens_remaining", 0)
+    .order("expires_at", { ascending: true, nullsFirst: false });
+  const purchases = (data || []) as { id: string; tokens_remaining: number; tokens_used: number }[];
+  const total = purchases.reduce(function(sum, p) { return sum + p.tokens_remaining; }, 0);
+  return { purchases, total };
+}
+
+// ─── Build Theme — page catalog ───────────────────────────────────────────
+// Checkout and Payment Success are deliberately NOT in this list — those stay
+// on the shared, audited implementation. Never let the AI generate them.
+//
+// NOTE: actual page generation (prompt building, OpenRouter calls,
+// validation) no longer lives in this edge function — it moved to the
+// standalone worker at worker/ai-theme-worker/ (see generate_theme_page
+// below for why). GT_PAGE_TYPES stays here only because this action still
+// validates the incoming page_type against it before enqueuing. Keep the
+// worker's copy (worker/ai-theme-worker/src/prompt.ts) in sync if this list
+// ever changes.
+const GT_PAGE_TYPES = ["home", "products", "categories", "product_detail", "cart", "about", "policies"] as const;
+type GtPageType = typeof GT_PAGE_TYPES[number];
+
 // ─── Normalize CSS variable keys (strip leading --) ──────────
 function normalizeVarKeys(vars: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
@@ -969,7 +1015,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log("DEBUG: Body parsed, action:", body.action);
 
-    const { action, store_id, user_id, prompt, design, history_id, messages, package_id, amount, currency, theme } = body;
+    const { action, store_id, user_id, prompt, design, history_id, messages, package_id, amount, currency, theme, page_type } = body;
 
     // ── get_token_balance ──────────────────────────────────────
     if (action === "get_token_balance") {
@@ -1371,11 +1417,7 @@ serve(async (req) => {
         }
 
         // Deduct 1 token
-        await supabase.from("ai_token_purchases").update({
-          tokens_remaining: activePurchase.tokens_remaining - 1,
-          tokens_used: activePurchase.tokens_used + 1,
-          updated_at: new Date().toISOString(),
-        }).eq("id", activePurchase.id);
+        await deductToken(supabase, activePurchase.id, activePurchase.tokens_remaining, activePurchase.tokens_used);
 
         // Save to history
         const { data: historyRow, error: historyErr } = await supabase.from("ai_designer_history").insert({
@@ -1614,11 +1656,7 @@ serve(async (req) => {
         if (d.dark_css_variables) d.dark_css_variables = normalizeVarKeys(d.dark_css_variables);
         if (d.css_overrides) { const s = sanitizeCSS(d.css_overrides); d.css_overrides = s.sanitized; }
 
-        await supabase.from("ai_token_purchases").update({
-          tokens_remaining: genPurchase.tokens_remaining - 1,
-          tokens_used: genPurchase.tokens_used + 1,
-          updated_at: new Date().toISOString(),
-        }).eq("id", genPurchase.id);
+        await deductToken(supabase, genPurchase.id, genPurchase.tokens_remaining, genPurchase.tokens_used);
 
         const { data: genHistoryRow } = await supabase.from("ai_designer_history").insert({
           store_id, user_id, prompt,
@@ -2621,11 +2659,7 @@ serve(async (req) => {
       }
 
       // Deduct 1 token
-      await supabase.from("ai_token_purchases").update({
-        tokens_remaining: tcPurchase.tokens_remaining - 1,
-        tokens_used: tcPurchase.tokens_used + 1,
-        updated_at: new Date().toISOString(),
-      }).eq("id", tcPurchase.id);
+      await deductToken(supabase, tcPurchase.id, tcPurchase.tokens_remaining, tcPurchase.tokens_used);
 
       // Log to history
       {
@@ -2656,6 +2690,231 @@ serve(async (req) => {
         message: tcMessageText,
         tokens_remaining: tcTokensLeft,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── generate_theme_page ─────────────────────────────────────
+    // Enqueues ONE page generation job (home or any of the other 6) and
+    // returns immediately — it does NOT call the LLM itself anymore.
+    //
+    // History: this used to call OpenRouter synchronously and await the
+    // full 40-180+ second generation before responding. That tied the job's
+    // lifetime to one HTTP connection, which Cloudflare (~100s) and
+    // Supabase's own edge function wall-clock limit (150s free / 400s paid)
+    // will eventually kill — with no graceful error, and no record the job
+    // ever ran. A standalone worker on the VPS (worker/ai-theme-worker/) now
+    // does the actual generation, outside any HTTP request path — see its
+    // README for why. This action's only job is: validate, enqueue, return
+    // fast. The client polls the ai_theme_jobs table directly for status.
+    // Checkout/PaymentSuccess are not in GT_PAGE_TYPES — never reachable here.
+    if (action === "generate_theme_page") {
+      try {
+        const gtPageType = page_type as GtPageType;
+        if (!store_id || !isValidUUID(store_id) || !user_id || !isValidUUID(user_id) || !prompt || !gtPageType) {
+          return new Response(JSON.stringify({ success: false, error: "Missing required fields" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+        }
+        if (GT_PAGE_TYPES.indexOf(gtPageType) === -1) {
+          return new Response(JSON.stringify({ success: false, error: "Invalid page_type: " + gtPageType }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+        }
+
+        // Ownership check — this action uses the service-role client (bypasses
+        // RLS), so it must verify itself that user_id actually owns store_id.
+        const { data: gtpStore } = await supabase.from("stores").select("id, user_id").eq("id", store_id).single();
+        if (!gtpStore) {
+          return new Response(JSON.stringify({ success: false, error: "Store not found." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 });
+        }
+        if (gtpStore.user_id !== user_id) {
+          return new Response(JSON.stringify({ success: false, error: "Not authorized for this store." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 });
+        }
+
+        // Fail fast if there's obviously no way to pay for this. The worker
+        // re-checks at completion time and only ever charges on success —
+        // this is just an early UX check, not the source of truth.
+        const { total: gtpTokenTotal } = await getActiveTokenBalance(supabase, store_id);
+        if (gtpTokenTotal < 1) {
+          return new Response(JSON.stringify({ success: false, error: "No tokens remaining. Please purchase more tokens." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 });
+        }
+
+        const { data: gtpJob, error: gtpEnqueueErr } = await supabase.rpc("enqueue_ai_theme_job", {
+          p_store_id: store_id,
+          p_user_id: user_id,
+          p_page_type: gtPageType,
+          p_prompt: prompt,
+        });
+        if (gtpEnqueueErr || !gtpJob) {
+          console.error("[GENERATE_THEME_PAGE] enqueue failed:", gtpEnqueueErr?.message);
+          return new Response(JSON.stringify({ success: false, error: gtpEnqueueErr?.message || "Failed to enqueue job" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+        }
+
+        console.log("[GENERATE_THEME_PAGE] enqueued store=" + store_id + " page=" + gtPageType +
+          " job=" + gtpJob.id + " status=" + gtpJob.status);
+
+        return new Response(JSON.stringify({
+          success: true, job_id: gtpJob.id, page_type: gtPageType, status: gtpJob.status,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 });
+
+      } catch (error: any) {
+        console.error("[GENERATE_THEME_PAGE] CRITICAL page=" + page_type + ":", error.message || error);
+        return new Response(JSON.stringify({ success: false, error: error.message || "Internal error" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+    }
+
+    // ── publish_ai_theme ────────────────────────────────────────
+    // Copies draft_html → published_html for the home page AND every other
+    // generated page, then enables the AI theme on the store. No AI call —
+    // pure DB writes. A page with no draft (never generated, or failed
+    // validation with nothing to fall back to) is simply left as-is.
+    if (action === "publish_ai_theme") {
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const { data: patTheme, error: patErr } = await supabase.from("store_ai_themes")
+        .select("draft_html").eq("store_id", store_id).single();
+
+      const { data: patPages } = await supabase.from("store_ai_theme_pages")
+        .select("page_type, draft_html").eq("store_id", store_id);
+
+      const hasAnyDraft = !!patTheme?.draft_html || (patPages || []).some(function(p: any) { return !!p.draft_html; });
+      if ((patErr && !patPages?.length) || !hasAnyDraft) {
+        return new Response(JSON.stringify({ success: false, error: "No draft theme found. Generate a theme first." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 });
+      }
+
+      const patNow = new Date().toISOString();
+
+      if (patTheme?.draft_html) {
+        const { error: pubErr } = await supabase.from("store_ai_themes").update({
+          published_html: patTheme.draft_html,
+          published_at: patNow,
+          updated_at: patNow,
+        }).eq("store_id", store_id);
+        if (pubErr) {
+          return new Response(JSON.stringify({ success: false, error: "Failed to publish home page." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+        }
+      }
+
+      const pagesWithDraft = (patPages || []).filter(function(p: any) { return !!p.draft_html; });
+      const patPageWrites = pagesWithDraft.map(function(p: any) {
+        return supabase.from("store_ai_theme_pages").update({
+          published_html: p.draft_html,
+          published_at: patNow,
+          updated_at: patNow,
+        }).eq("store_id", store_id).eq("page_type", p.page_type);
+      });
+      const patPageResults = await Promise.all(patPageWrites);
+      patPageResults.forEach(function(r: any) {
+        if (r?.error) console.error("[PUBLISH_AI_THEME] page publish error:", r.error.message);
+      });
+
+      // Set flag on stores so storefront knows to load the AI theme
+      const { error: flagErr } = await supabase.from("stores")
+        .update({ ai_theme_enabled: true }).eq("id", store_id);
+
+      if (flagErr) console.error("[PUBLISH_AI_THEME] Flag update failed:", flagErr.message);
+
+      console.log("[PUBLISH_AI_THEME] success store=" + store_id + " pages=" + (patTheme?.draft_html ? "home," : "") + pagesWithDraft.map(function(p: any) { return p.page_type; }).join(","));
+
+      return new Response(JSON.stringify({ success: true, message: "Theme published. Customers will now see your AI-designed store." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── get_ai_theme ────────────────────────────────────────────
+    // Returns draft + published HTML and version history for the home page,
+    // plus a per-page summary (which of the other pages have a draft/are
+    // published) so the admin UI can show a multi-page build status.
+    if (action === "get_ai_theme") {
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const [gatThemeRes, gatPagesRes] = await Promise.all([
+        supabase.from("store_ai_themes")
+          .select("draft_html, draft_prompt, draft_created_at, published_html, published_at, version_history")
+          .eq("store_id", store_id).single(),
+        supabase.from("store_ai_theme_pages")
+          .select("page_type, draft_html, draft_created_at, published_html, published_at")
+          .eq("store_id", store_id),
+      ]);
+
+      const gatTheme = gatThemeRes.data;
+      const gatPages = gatPagesRes.data || [];
+
+      if (!gatTheme && gatPages.length === 0) {
+        return new Response(JSON.stringify({ success: true, has_theme: false }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        has_theme: true,
+        draft_html: gatTheme?.draft_html ?? null,
+        draft_prompt: gatTheme?.draft_prompt ?? null,
+        draft_created_at: gatTheme?.draft_created_at ?? null,
+        published_html: gatTheme?.published_html ?? null,
+        published_at: gatTheme?.published_at ?? null,
+        version_history: gatTheme?.version_history ?? [],
+        pages: gatPages.map(function(p: any) {
+          return {
+            page_type: p.page_type,
+            has_draft: !!p.draft_html,
+            draft_html: p.draft_html ?? null,
+            draft_created_at: p.draft_created_at ?? null,
+            has_published: !!p.published_html,
+            published_html: p.published_html ?? null,
+            published_at: p.published_at ?? null,
+          };
+        }),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── reset_ai_theme ──────────────────────────────────────────
+    // Unpublishes the AI theme (home + every other page) — store falls back
+    // to default layout everywhere. Preserves drafts and version history.
+    if (action === "reset_ai_theme") {
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const ratNow = new Date().toISOString();
+
+      const { error: ratErr } = await supabase.from("store_ai_themes").update({
+        published_html: null,
+        published_at: null,
+        updated_at: ratNow,
+      }).eq("store_id", store_id);
+
+      if (ratErr) {
+        return new Response(JSON.stringify({ success: false, error: "Reset failed." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const { error: ratPagesErr } = await supabase.from("store_ai_theme_pages").update({
+        published_html: null,
+        published_at: null,
+        updated_at: ratNow,
+      }).eq("store_id", store_id);
+      if (ratPagesErr) console.error("[RESET_AI_THEME] page reset error:", ratPagesErr.message);
+
+      const { error: flagErr } = await supabase.from("stores")
+        .update({ ai_theme_enabled: false }).eq("id", store_id);
+
+      if (flagErr) console.error("[RESET_AI_THEME] Flag update failed:", flagErr.message);
+
+      console.log("[RESET_AI_THEME] success store=" + store_id);
+
+      return new Response(JSON.stringify({ success: true, message: "AI theme unpublished. Store is back to default." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── reset_design ───────────────────────────────────────────
@@ -2708,6 +2967,183 @@ serve(async (req) => {
         order_id: razorpayOrder.id,
         amount: razorpayOrder.amount,
         razorpay_key_id: platformSettings.razorpay_key_id
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── classify_intent ────────────────────────────────────────
+    // Lightweight pre-step: classify a user prompt as CSS_PATCH or FULL_REDESIGN.
+    // Used by the unified admin UI to route to the correct generation path.
+    // Cost: ~300 tokens (cheap). No token deduction — classification is free.
+    if (action === "classify_intent") {
+      if (!prompt || !store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing prompt or store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const { data: ciSettings } = await supabase.from("platform_settings")
+        .select("openrouter_api_key, openrouter_model, openrouter_fallback_model")
+        .eq("id", SETTINGS_ID).single();
+
+      if (!ciSettings?.openrouter_api_key) {
+        return new Response(JSON.stringify({ success: false, error: "AI not configured." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+      }
+
+      const ciModel = ((ciSettings.openrouter_model || ciSettings.openrouter_fallback_model) as string || "").trim();
+
+      const ciSystemPrompt =
+        "You classify ecommerce store design requests into exactly one of two categories.\n\n" +
+        "CSS_PATCH: Small targeted style changes. Examples: change color, adjust font, update spacing, " +
+        "tweak border radius, change button style, modify background color, update typography.\n\n" +
+        "FULL_REDESIGN: Complete layout changes or new page structure. Examples: redesign the store, " +
+        "create a new homepage layout, add new sections, change the overall look and feel, " +
+        "build a new storefront, completely redo the design.\n\n" +
+        "Respond with ONLY one of these two words: CSS_PATCH or FULL_REDESIGN\n" +
+        "No explanation. No punctuation. Just the category.";
+
+      const ciResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + ciSettings.openrouter_api_key,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: ciModel,
+          messages: [
+            { role: "system", content: ciSystemPrompt },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 10,
+          temperature: 0,
+        }),
+      });
+
+      if (!ciResponse.ok) {
+        // Fallback: default to FULL_REDESIGN on classifier failure (safer — doesn't under-deliver)
+        console.warn("[CLASSIFY_INTENT] OpenRouter error " + ciResponse.status + " — defaulting to FULL_REDESIGN");
+        return new Response(JSON.stringify({ success: true, intent: "FULL_REDESIGN", fallback: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const ciJson = await ciResponse.json();
+      const ciRaw = (ciJson.choices?.[0]?.message?.content || "").trim().toUpperCase();
+      const ciIntent = ciRaw === "CSS_PATCH" ? "CSS_PATCH" : "FULL_REDESIGN";
+
+      console.log("[CLASSIFY_INTENT] store=" + store_id + " prompt_len=" + prompt.length + " intent=" + ciIntent + " raw=" + ciRaw);
+
+      return new Response(JSON.stringify({ success: true, intent: ciIntent }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── reset_all ──────────────────────────────────────────────
+    // Unified reset: clears BOTH Style Store (store_design_state) and
+    // Build Theme (store_ai_themes published_html) in one call.
+    // Sets ai_theme_enabled = false. Preserves draft HTML and version history.
+    if (action === "reset_all") {
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const raNow = new Date().toISOString();
+
+      const [raDesignResult, raThemeResult, raPagesResult, raFlagResult] = await Promise.all([
+        // Clear Style Store CSS variables
+        supabase.from("store_design_state").delete().eq("store_id", store_id),
+        // Unpublish Build Theme home page (preserve draft + history for future use)
+        supabase.from("store_ai_themes").update({
+          published_html: null,
+          published_at: null,
+          updated_at: raNow,
+        }).eq("store_id", store_id),
+        // Unpublish every other Build Theme page (preserve drafts)
+        supabase.from("store_ai_theme_pages").update({
+          published_html: null,
+          published_at: null,
+          updated_at: raNow,
+        }).eq("store_id", store_id),
+        // Disable AI theme flag
+        supabase.from("stores").update({ ai_theme_enabled: false }).eq("id", store_id),
+      ]);
+
+      if (raDesignResult.error) console.warn("[RESET_ALL] store_design_state error:", raDesignResult.error.message);
+      if (raThemeResult.error) console.warn("[RESET_ALL] store_ai_themes error:", raThemeResult.error.message);
+      if (raPagesResult.error) console.warn("[RESET_ALL] store_ai_theme_pages error:", raPagesResult.error.message);
+      if (raFlagResult.error) console.warn("[RESET_ALL] stores flag error:", raFlagResult.error.message);
+
+      console.log("[RESET_ALL] success store=" + store_id);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Store design fully reset. Back to platform default.",
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── get_designer_state ─────────────────────────────────────
+    // Returns both Style Store state and Build Theme state in one DB call.
+    // Replaces two separate fetches from the admin page.
+    if (action === "get_designer_state") {
+      if (!store_id || !isValidUUID(store_id)) {
+        return new Response(JSON.stringify({ success: false, error: "Missing store_id" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+      }
+
+      const [gdsDesignRes, gdsThemeRes, gdsPagesRes, gdsTokenRes] = await Promise.all([
+        supabase.from("store_design_state")
+          .select("css_variables, dark_css_variables, ai_full_css, mode, updated_at")
+          .eq("store_id", store_id).maybeSingle(),
+        supabase.from("store_ai_themes")
+          .select("draft_html, draft_prompt, draft_created_at, published_html, published_at, version_history")
+          .eq("store_id", store_id).maybeSingle(),
+        supabase.from("store_ai_theme_pages")
+          .select("page_type, draft_html, published_html, published_at")
+          .eq("store_id", store_id),
+        supabase.from("ai_token_purchases")
+          .select("tokens_remaining, expires_at")
+          .eq("store_id", store_id).eq("status", "active").gt("tokens_remaining", 0)
+          .order("expires_at", { ascending: true, nullsFirst: false }),
+      ]);
+
+      const gdsTokens = (gdsTokenRes.data || []).reduce(
+        function(sum: number, p: any) { return sum + p.tokens_remaining; }, 0
+      );
+      const gdsExpiry = gdsTokenRes.data?.[0]?.expires_at ?? null;
+      const gdsPages = gdsPagesRes.data || [];
+
+      console.log("[GET_DESIGNER_STATE] store=" + store_id +
+        " has_css=" + !!gdsDesignRes.data +
+        " has_theme=" + !!gdsThemeRes.data +
+        " pages=" + gdsPages.length +
+        " tokens=" + gdsTokens);
+
+      return new Response(JSON.stringify({
+        success: true,
+        // Style Store state
+        style_store: gdsDesignRes.data ?? null,
+        // Build Theme state
+        build_theme: gdsThemeRes.data
+          ? {
+              has_draft: !!gdsThemeRes.data.draft_html,
+              draft_prompt: gdsThemeRes.data.draft_prompt ?? null,
+              draft_created_at: gdsThemeRes.data.draft_created_at ?? null,
+              has_published: !!gdsThemeRes.data.published_html,
+              published_at: gdsThemeRes.data.published_at ?? null,
+              version_history: gdsThemeRes.data.version_history ?? [],
+            }
+          : null,
+        // Build Theme — every non-home page's status (for the multi-page build UI)
+        build_theme_pages: gdsPages.map(function(p: any) {
+          return {
+            page_type: p.page_type,
+            has_draft: !!p.draft_html,
+            has_published: !!p.published_html,
+            published_at: p.published_at ?? null,
+          };
+        }),
+        // Shared token balance
+        tokens_remaining: gdsTokens,
+        expires_at: gdsExpiry,
+        has_tokens: gdsTokens > 0,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

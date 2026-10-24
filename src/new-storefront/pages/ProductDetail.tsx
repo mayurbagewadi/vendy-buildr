@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, ShoppingCart, Share2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { useAIThemePage } from "@/new-storefront/components/AIThemePage";
 import { generateProductImageAlt } from "@/lib/seo/altTags";
 import StorefrontImage from "@/components/ui/storefront-image";
 import { getImageUrl } from "@/lib/responsiveImages";
@@ -104,7 +105,7 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
 
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addToCart, triggerFlyAnimation } = useCart();
+  const { cart, addToCart, triggerFlyAnimation } = useCart();
   const { runtime: activeTheme } = useActiveStorefrontThemeRuntime();
 
   // ── StoreContext: store + profile already resolved — no separate fetch needed
@@ -140,6 +141,13 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   const isSubdomain = storefrontUrls.home === "/";
   const isSeoAvailable = product ? isProductAvailableForSeo(product) : false;
   const ThemeProductDetail = activeTheme?.components.ProductDetail;
+
+  // Called unconditionally (Rules of Hooks) — resolves once `product` is
+  // loaded, acted on only after the loading/not-found checks below so the
+  // AI page never mounts with a stale/null current product.
+  const aiThemePage = useAIThemePage("product_detail", {
+    store: ctxStore, isSubdomain, cart, addToCart, currentProduct: product,
+  });
 
   useEffect(() => {
     setThemeRenderFailed(false);
@@ -334,6 +342,10 @@ const ProductDetail = ({ slug: slugProp }: ProductDetailProps = {}) => {
   if (!product) {
     return null;
   }
+
+  // AI-built Product Detail page takes priority over marketplace themes and
+  // the default layout — same precedence Store.tsx already gives the home page.
+  if (aiThemePage) return aiThemePage;
 
   const currentVariant = product.variants?.find(v => v.name === selectedVariant);
 

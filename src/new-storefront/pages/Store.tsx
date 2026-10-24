@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/new-storefront/components/StorefrontHeader";
@@ -25,6 +25,7 @@ import { buildThemeRuntimeContext } from "@/new-storefront/theme-engine/runtimeP
 import { resolveThemeSettings } from "@/new-storefront/theme-engine/settings";
 import { buildStorefrontUrls } from "@/new-storefront/theme-engine/storefrontUrls";
 import type { ThemeStorefrontProps, ThemeSectionInstance } from "@/new-storefront/theme-engine/types";
+import { AIThemeRenderer } from "@/new-storefront/components/AIThemeRenderer";
 
 const StoreFooter = lazy(() => import("@/components/customer/StoreFooter"));
 const InstagramReels = lazy(() => import("@/components/customer/InstagramReels"));
@@ -68,13 +69,18 @@ interface StoreProps {
 const Store = ({ slug: slugProp }: StoreProps = {}) => {
   const { slug: slugParam } = useParams<{ slug?: string }>();
   const slug = slugProp || slugParam;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // preview_theme: set by admin AI Designer when store has no installed theme.
+  // Allows Style Store preview to render with a guaranteed theme (EcoSoap by default).
+  const previewTheme = searchParams.get('preview_theme');
 
   // ── StoreContext: store + profile served from 5-min session cache.
   // On return visits this is instant (zero DB round trip).
   const { store: ctxStore, profile, loading: storeLoading } = useStorefront();
   const store = ctxStore;
   const { cart, cartCount, cartTotal, addToCart, updateQuantity, removeItem } = useCart();
-  const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime();
+  const { runtime: activeMarketplaceTheme } = useActiveStorefrontThemeRuntime(previewTheme);
 
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [themeRenderFailed, setThemeRenderFailed] = useState(false);
@@ -136,8 +142,26 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
     gcTime:    10 * 60 * 1000, // keep in memory 10 min for instant back-navigation
   });
 
-  // Combined loading: wait for both store context AND page-specific data
-  const loading = storeLoading || pageLoading;
+  // ── AI-generated theme HTML ─────────────────────────────────────────────────
+  // Only fetched when store.ai_theme_enabled = true (flag set on publish).
+  // Large blob (~50-100 KB) — deliberately kept out of the stores row.
+  const { data: aiThemeRow, isLoading: aiThemeLoading } = useQuery({
+    queryKey: ["ai-theme", ctxStore?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("store_ai_themes")
+        .select("published_html")
+        .eq("store_id", ctxStore!.id)
+        .single();
+      return data;
+    },
+    enabled: !!ctxStore?.id && !!ctxStore?.ai_theme_enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime:   10 * 60 * 1000,
+  });
+
+  // Combined loading: wait for store context, page data, and AI theme (if applicable)
+  const loading = storeLoading || pageLoading || (!!ctxStore?.ai_theme_enabled && aiThemeLoading);
 
   // Derive display data from query results (no separate state needed)
   const categories       = pageData?.categories ?? [];
@@ -221,6 +245,34 @@ const Store = ({ slug: slugProp }: StoreProps = {}) => {
           <Button>Go Home</Button>
         </Link>
       </div>
+    );
+  }
+
+  // ── AI-generated theme renderer ─────────────────────────────────────────────
+  // Takes priority over marketplace themes and the default fallback layout.
+  // The published HTML is a complete standalone page; VendyBridge provides data.
+  const aiPublishedHtml = aiThemeRow?.published_html ?? null;
+  if (store.ai_theme_enabled && aiPublishedHtml) {
+    return (
+      <>
+        <SEOHead
+          title={store.name + " - Online Store | Shop Quality Products"}
+          description={store.description || "Browse " + store.name + "'s collection of quality products."}
+          canonical={getStoreCanonicalUrl(store.slug, store.subdomain, store.custom_domain)}
+          image={store.logo_url || store.hero_banner_url || "https://digitaldukandar.in/logo.png"}
+          keywords={categories.map((c) => c.name).concat([store.name, "online store", "shop"])}
+          type="website"
+        />
+        <AIThemeRenderer
+          html={aiPublishedHtml}
+          store={store}
+          products={products}
+          categories={categories}
+          cart={cart}
+          addToCart={addToCart}
+          isSubdomain={isSubdomain}
+        />
+      </>
     );
   }
 
