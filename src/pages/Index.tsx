@@ -403,7 +403,7 @@ const Index = () => {
         {/* Primary Meta Tags */}
         <title>DigitalDukandar — Smart Business Needs Smart Website | Create Online Store &amp; Sell Online</title>
         <meta name="title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store & Sell Online" />
-        <meta name="description" content="Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments & analytics. Trusted by 10,000+ store owners. No coding needed. Start free — no credit card required." />
+        <meta name="description" content="Build your ecommerce website in minutes. Free online store builder with AI designer, WhatsApp integration, payments & analytics. No coding needed. Start free — no credit card required." />
         <meta name="keywords" content="ecommerce website builder, create online store, build ecommerce website, sell online, best ecommerce platform, free online store, online store builder, ecommerce platform, AI ecommerce website builder, no code online store, whatsapp ecommerce, free ecommerce platform, shopify alternative, start selling online, ecommerce platform for small business, ecommerce website builder free, whatsapp store builder, free shopify alternative, cheap ecommerce platform, ecommerce platform for beginners, build online store free, no transaction fee ecommerce, sell online free, AI online store builder, woocommerce alternative, bigcommerce alternative, squarespace alternative, ecommerce platform comparison, small business online store, dropshipping website builder, mobile ecommerce platform, custom domain online store, sell products online, online selling platform, ecommerce store builder, website builder with ecommerce, free website with online store, sell online without fees, ecommerce website free, start online store, ecommerce builder, no code ecommerce builder, online shop builder, ecommerce site builder, create ecommerce website, ecommerce website for small business, free online shop, sell online for free, best free online store builder, ecommerce platform with whatsapp, whatsapp order management, AI store designer, ecommerce analytics, inventory management ecommerce, coupon code ecommerce, discount management online store" />
         <link rel="canonical" href="https://digitaldukandar.in" />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-2MC5M4T5JX"></script>
@@ -418,7 +418,7 @@ const Index = () => {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://digitaldukandar.in" />
         <meta property="og:title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store" />
-        <meta property="og:description" content="Build your ecommerce website in minutes. AI-powered online store builder with WhatsApp integration, custom domain & analytics. Trusted by 10,000+ store owners. Start free!" />
+        <meta property="og:description" content="Build your ecommerce website in minutes. AI-powered online store builder with WhatsApp integration, custom domain & analytics. Start free!" />
         <meta property="og:image" content="https://digitaldukandar.in/logo.png" />
         <meta property="og:site_name" content="DigitalDukandar" />
         <meta property="og:locale" content="en_US" />
@@ -427,7 +427,7 @@ const Index = () => {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://digitaldukandar.in" />
         <meta name="twitter:title" content="DigitalDukandar — Smart Business Needs Smart Website | Create Online Store" />
-        <meta name="twitter:description" content="Build your ecommerce website in minutes. AI-powered store builder with WhatsApp integration, payments & analytics. 10,000+ store owners trust us. Start free!" />
+        <meta name="twitter:description" content="Build your ecommerce website in minutes. AI-powered store builder with WhatsApp integration, payments & analytics. Start free!" />
         <meta name="twitter:image" content="https://digitaldukandar.in/logo.png" />
 
         {/* Additional SEO */}
@@ -634,13 +634,6 @@ const Index = () => {
         
         <div className="container relative mx-auto px-4 lg:px-8 py-24 lg:py-36">
           <div className="max-w-5xl mx-auto text-center">
-            {/* Badge */}
-            <div className="hero-badge inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-primary px-5 py-2.5 rounded-full text-sm font-semibold mb-8 shadow-lg backdrop-blur-sm">
-              <Star className="w-4 h-4 fill-primary" />
-              Trusted by 10,000+ Entrepreneurs Worldwide
-              <Sparkles className="w-4 h-4" />
-            </div>
-
             {/* Main Heading */}
             <div className="hero-heading mb-6">
               <AnimatedText
@@ -1106,7 +1099,7 @@ const Index = () => {
               Why Smart Businesses Choose DigitalDukandar
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Trusted by 10,000+ entrepreneurs worldwide to build ecommerce websites and sell online without coding
+              Entrepreneurs use DigitalDukandar to build ecommerce websites and sell online without coding
             </p>
           </div>
 
@@ -1153,7 +1146,7 @@ const Index = () => {
               Start Your Free Ecommerce Website Today
             </h2>
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-              Join 10,000+ entrepreneurs using DigitalDukandar as their <strong>ecommerce website builder</strong>. Create your <strong>online store</strong> in just 5 minutes — free, no credit card required.
+              Join entrepreneurs using DigitalDukandar as their <strong>ecommerce website builder</strong>. Create your <strong>online store</strong> in just 5 minutes — free, no credit card required.
             </p>
             <Link to="/auth" className="w-full sm:w-auto inline-block">
               <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 text-sm sm:text-base font-semibold shadow-xl">
@@ -1169,11 +1162,7 @@ const Index = () => {
       {/* Stats Bar */}
       <section className="bg-primary/5 border-y border-primary/10 py-12">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="font-playfair text-4xl font-bold text-primary mb-1">10,000+</p>
-              <p className="text-sm text-muted-foreground">Online Stores Created</p>
-            </div>
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-8 text-center">
             <div>
               <p className="font-playfair text-4xl font-bold text-primary mb-1">5 min</p>
               <p className="text-sm text-muted-foreground">Average Setup Time</p>
