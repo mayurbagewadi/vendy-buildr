@@ -19,6 +19,15 @@ import blog18Raw from "../../blogs/blog-18-upi-cod-razorpay-ecommerce-india.md?r
 import blog19Raw from "../../blogs/blog-19-ecommerce-for-housewife-local-shop-india.md?raw";
 import blog20Raw from "../../blogs/blog-20-ecommerce-affiliate-helper-program-india.md?raw";
 import blog21Raw from "../../blogs/blog-21-ecommerce-india-faq.md?raw";
+import blog22Raw from "../../blogs/blog-22-best-online-store-builder-whatsapp-sellers-india.md?raw";
+import blog23Raw from "../../blogs/blog-23-website-for-instagram-sellers-india-cod.md?raw";
+import blog24Raw from "../../blogs/blog-24-ecommerce-platform-under-500-india.md?raw";
+import blog25Raw from "../../blogs/blog-25-sell-clothes-boutique-online-india.md?raw";
+import blog26Raw from "../../blogs/blog-26-online-store-upi-cod-custom-domain-india.md?raw";
+import blog27Raw from "../../blogs/blog-27-how-whatsapp-ordering-works-online-store.md?raw";
+import blog28Raw from "../../blogs/blog-28-shopify-transaction-fee-india.md?raw";
+import blog29Raw from "../../blogs/blog-29-dukaan-alternative.md?raw";
+import blog30Raw from "../../blogs/blog-30-instamojo-alternative.md?raw";
 
 export interface BlogPost {
   slug: string;
@@ -211,6 +220,69 @@ export const blogPosts: BlogPost[] = [
     "Ecommerce India FAQ 2026 — 25 Most Asked Questions Answered",
     "Answers to India's most asked ecommerce questions in 2026. GST, company registration, UPI payments, Shopify cost in India, dropshipping, ranking on Google and more.",
     "2026-04-26"
+  ),
+  makeBlogPost(
+    "best-online-store-builder-whatsapp-sellers-india",
+    blog22Raw,
+    "Best Online Store Builder for WhatsApp Sellers in India (2026)",
+    "How to pick an online store builder that sends orders to your WhatsApp, supports COD and UPI, and does not take a cut of every sale.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "website-for-instagram-sellers-india-cod",
+    blog23Raw,
+    "Best Website Builder for Instagram Sellers in India with COD (2026)",
+    "How Instagram sellers get a website with COD, UPI and WhatsApp orders, and how to cut COD returns.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "ecommerce-platform-under-500-india",
+    blog24Raw,
+    "Best Ecommerce Platform for Small Business in India Under ₹500/Month (2026)",
+    "Real 2026 costs of DigitalDukandar, Dukaan, Instamojo and Shopify once per-order fees are added.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "sell-clothes-boutique-online-india",
+    blog25Raw,
+    "Best Platform to Sell Clothes or a Boutique Online in India (2026)",
+    "What a clothing or boutique store needs online: sizes, stock per size, videos, COD and WhatsApp orders.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "online-store-upi-cod-custom-domain-india",
+    blog26Raw,
+    "Online Store Builder with UPI, COD and Custom Domain in India (2026)",
+    "What to check for UPI payments, Cash on Delivery and your own domain, with real plan prices.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "how-whatsapp-ordering-works-online-store",
+    blog27Raw,
+    "How WhatsApp Ordering Works on an Online Store — Step by Step (2026)",
+    "Step-by-step flow of WhatsApp ordering for customers and sellers, order limits and common problems.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "shopify-transaction-fee-india",
+    blog28Raw,
+    "Why Does Shopify Charge an Extra 2% Fee in India? (2026 Explained)",
+    "Shopify Payments is not available in India, so Shopify adds a third-party transaction fee on top of your gateway fee.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "dukaan-alternative",
+    blog29Raw,
+    "Dukaan Alternative in India — No Per-Order Service Fee (2026)",
+    "Dukaan charges a 0.99%–4.99% service fee per order. Compare costs with DigitalDukandar, which has no per-order commission.",
+    "2026-11-10"
+  ),
+  makeBlogPost(
+    "instamojo-alternative",
+    blog30Raw,
+    "Instamojo Alternative with Lower Fees in India (2026)",
+    "Instamojo fees vs DigitalDukandar's no-commission plans, with a worked example per order.",
+    "2026-11-10"
   ),
 ];
 
